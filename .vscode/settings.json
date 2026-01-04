@@ -1,0 +1,45 @@
+{
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  "typescript.suggest.autoImports": true,
+  "typescript.preferences.noSemicolons": "off",
+  "typescript.format.semicolons": "insert",
+  "typescript.preferences.quoteMark": "double",
+  "typescript.format.enable": true,
+  "typescript.validate.enable": true,
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.workspaceSymbols": "on",
+  "typescript.preferences.noUnusedParameters": true,
+  "typescript.preferences.noUnusedLocals": true,
+  "typescript.referencesCodeLens.enabled": true,
+  "typescript.implementationsCodeLens.enabled": true,
+  "files.exclude": {
+    "**/mcp-server-demo": true,
+    "**/mcp-server-demo/**": true,
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/*.tsbuildinfo": true,
+    "**/.git": false,
+    "**/.vscode": false
+  },
+  "typescript.preferences.exclude": [
+    "**/node_modules/**",
+    "**/mcp-server-demo/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/*.tsbuildinfo"
+  ],
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/mcp-server-demo": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/*.tsbuildinfo": true
+  },
+  "files.watcherExclude": {
+    "**/mcp-server-demo/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/dist/**": true
+  }
+}

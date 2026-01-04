@@ -1,0 +1,56 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2020"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "incremental": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./lib/*",
+        "./components/*",
+        "./*"
+      ]
+    },
+    "strict": false
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "lib/**/*",
+    "next-env.d.ts",
+    "src/**/*",
+    ".next/types/**/*.ts",
+    "app/**/*",
+    "scripts/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "mcp-server-demo",
+    "**/mcp-server-demo/**",
+    ".next",
+    "**/.next/**",
+    "dist",
+    "**/dist/**",
+    "*.tsbuildinfo"
+  ]
+}

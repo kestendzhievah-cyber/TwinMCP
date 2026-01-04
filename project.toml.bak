@@ -1,0 +1,29 @@
+[[build.env]]
+name = "NODE_ENV"
+value = "production"
+
+[[build.env]]
+name = "NPM_CONFIG_PRODUCTION"
+value = "false"
+
+[[build.env]]
+name = "NODE_OPTIONS"
+value = "--max-old-space-size=8192"
+
+[build]
+builder = "paketobuildpacks/builder:base"
+
+[[build.buildpacks]]
+id = "google.nodejs.runtime"
+version = "latest"
+
+[[build.buildpacks]]
+id = "google.nodejs.npm"
+version = "latest"
+
+[[build.buildpacks]]
+id = "google.nodejs.functions-framework"
+version = "latest"
+
+[build.buildpack-groups]
+id = "google.nodejs.firestore"

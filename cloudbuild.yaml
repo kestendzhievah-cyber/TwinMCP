@@ -1,0 +1,44 @@
+steps:
+  # Étape 1: Définir la version de Node.js
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['install', '-g', 'npm@latest']
+    id: 'install-npm'
+
+  # Étape 2: Installer les dépendances avec la bonne version de Node.js
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['install', '--legacy-peer-deps']
+    env:
+      - 'NODE_OPTIONS=--max-old-space-size=8192'
+    id: 'npm-install'
+
+  # Étape 3: Construire l'application
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['run', 'build']
+    env:
+      - 'NODE_OPTIONS=--max-old-space-size=8192'
+      - 'CI=false'
+    id: 'build-app'
+
+  # Étape 4: Déployer sur Firebase
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['app', 'deploy', 'app.yaml', '--project=apex-474212']
+    id: 'deploy-app'
+
+# Configuration des options de build
+options:
+  machineType: 'E2_HIGHCPU_32'
+  diskSizeGb: '50'
+  env:
+    - 'NODE_OPTIONS=--max-old-space-size=8192'
+    - 'CI=false'
+    - 'NPM_CONFIG_PRODUCTION=false'
+
+# Images à produire (si nécessaire)
+images: []
+
+# Fichiers à ignorer
+ignore:
+  - 'node_modules/**'
+  - '.git/**'
+  - '.github/**'
+  - '.firebase/**'

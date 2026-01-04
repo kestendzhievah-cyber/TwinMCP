@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider  = "postgres"
+  url       = env("DATABASE_URL")
+  // Pour utiliser Prisma Migrate
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// Modèle pour les clients multi-tenant
+model Client {
+  id                   String                @id @default(cuid())
+  name                 String                @unique
+  domain               String?               @unique // ex: clientA.domain.com pour isolation par domaine
+  apiKeys              Json // clés API externes (chiffrées en production)
+  settings             Json? // paramètres personnalisés (devise, timezone, etc.)
+  modules              ModuleOnClient[]
+  environmentVariables EnvironmentVariable[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@map("clients")
+}
+
+// Modèle pour les modules disponibles
+model Module {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  version     String?
+  clients     ModuleOnClient[]
+
+  @@map("modules")
+}
+
+// Relation many-to-many entre clients et modules
+model ModuleOnClient {
+  id       String  @id @default(cuid())
+  clientId String
+  moduleId String
+  enabled  Boolean @default(true)
+  client   Client  @relation(fields: [clientId], references: [id])
+  module   Module  @relation(fields: [moduleId], references: [id])
+
+  @@unique([clientId, moduleId])
+  @@map("module_on_clients")
+}
+
+// Modèle pour les variables d'environnement par client et environnement
+model EnvironmentVariable {
+  id          String      @id @default(cuid())
+  key         String // ex: API_KEY, DATABASE_URL
+  value       String // valeur chiffrée en production
+  environment Environment @default(DEVELOPMENT) // dev, staging, production
+  clientId    String
+  client      Client      @relation(fields: [clientId], references: [id])
+
+  @@unique([key, environment, clientId])
+  @@map("environment_variables")
+}
+
+// Enums pour les environnements
+enum Environment {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  role      Role     @default(BUYER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders            Order[]
+  cart              Cart?
+  mcpConfigurations MCPConfiguration[]
+
+  // ... autres champs existants ...
+  products Product[] // Pour les produits du vendeur
+
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  image       String?
+  categoryId  String
+  sellerId    String
+  status      Status   @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category          Category           @relation(fields: [categoryId], references: [id])
+  seller            User               @relation(fields: [sellerId], references: [id])
+  orderItems        OrderItem[]
+  mcpConfigurations MCPConfiguration[]
+
+  // ... autres champs existants ...
+  cartItems CartItem[] // Ajoutez cette ligne
+
+  @@map("products")
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  total     Float
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Cart {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  user  User       @relation(fields: [userId], references: [id])
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String @id @default(cuid())
+  cartId    String
+  productId String
+  quantity  Int
+
+  cart    Cart    @relation(fields: [cartId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("cart_items")
+}
+
+// Nouveau modèle pour les configurations MCP
+model MCPConfiguration {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  configData  Json // Stocke les paramètres de configuration au format JSON
+  status      ConfigStatus @default(ACTIVE)
+  userId      String
+  productId   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@map("mcp_configurations")
+}
+
+// Enums
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ConfigStatus {
+  ACTIVE
+  INACTIVE
+  TESTING
+  ERROR
+}
