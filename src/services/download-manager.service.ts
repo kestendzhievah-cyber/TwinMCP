@@ -5,12 +5,12 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import { 
-  DownloadTask, 
-  DownloadResult, 
-  DownloadedFile, 
+import {
+  DownloadTask,
+  DownloadResult,
+  DownloadedFile,
   StorageConfig,
-  DownloadQueue
+  DownloadQueue,
 } from '../types/download.types';
 import { DOWNLOAD_CONFIG } from '../config/download.config';
 
@@ -29,7 +29,9 @@ export class DownloadManagerService {
     this.maxConcurrentDownloads = config.maxConcurrentDownloads;
   }
 
-  async createDownloadTask(task: Omit<DownloadTask, 'id' | 'status' | 'progress' | 'createdAt' | 'retryCount'>): Promise<string> {
+  async createDownloadTask(
+    task: Omit<DownloadTask, 'id' | 'status' | 'progress' | 'createdAt' | 'retryCount'>
+  ): Promise<string> {
     const downloadTask: DownloadTask = {
       ...task,
       id: crypto.randomUUID(),
@@ -38,15 +40,15 @@ export class DownloadManagerService {
         downloaded: 0,
         total: 0,
         percentage: 0,
-        currentFile: ''
+        currentFile: '',
       },
       createdAt: new Date(),
-      retryCount: 0
+      retryCount: 0,
     };
 
     await this.saveDownloadTask(downloadTask);
     this.downloadQueue.push(downloadTask);
-    
+
     this.downloadQueue.sort((a, b) => {
       const priorityOrder = { high: 3, normal: 2, low: 1 };
       return priorityOrder[b.priority] - priorityOrder[a.priority];
@@ -59,15 +61,12 @@ export class DownloadManagerService {
 
   async getDownloadStatus(taskId: string): Promise<DownloadTask | null> {
     if (this.activeDownloads.has(taskId)) {
-      return this.activeDownloads.get(taskId)!;
+      return this.activeDownloads.get(taskId) || null;
     }
 
-    const result = await this.db.query(
-      'SELECT * FROM download_tasks WHERE id = $1',
-      [taskId]
-    );
+    const result = await this.db.query('SELECT * FROM download_tasks WHERE id = $1', [taskId]);
 
-    return result.rows[0] || null;
+    return result.rows[0] ?? null;
   }
 
   async getDownloadQueue(): Promise<DownloadQueue> {
@@ -75,7 +74,7 @@ export class DownloadManagerService {
       this.getTasksByStatus('pending'),
       this.getTasksByStatus('downloading'),
       this.getTasksByStatus('completed'),
-      this.getTasksByStatus('failed')
+      this.getTasksByStatus('failed'),
     ]);
 
     const stats = await this.calculateDownloadStats();
@@ -85,21 +84,24 @@ export class DownloadManagerService {
       active,
       completed,
       failed,
-      stats
+      stats,
     };
   }
 
   private async processQueue(): Promise<void> {
-    while (this.activeDownloads.size < this.maxConcurrentDownloads && this.downloadQueue.length > 0) {
+    while (
+      this.activeDownloads.size < this.maxConcurrentDownloads &&
+      this.downloadQueue.length > 0
+    ) {
       const task = this.downloadQueue.shift()!;
-      
+
       task.status = 'downloading';
       task.startedAt = new Date();
       await this.updateTaskStatus(task.id, 'downloading');
-      
+
       this.activeDownloads.set(task.id, task);
-      
-      this.downloadTask(task).catch((error: unknown) => {
+
+      void this.downloadTask(task).catch((error: unknown) => {
         console.error(`Download failed for task ${task.id}:`, error);
         this.handleDownloadError(task, error as Error);
       });
@@ -108,7 +110,7 @@ export class DownloadManagerService {
 
   private async downloadTask(task: DownloadTask): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       let result: DownloadResult;
 
@@ -133,14 +135,13 @@ export class DownloadManagerService {
         size: result.metadata.totalSize,
         files: result.metadata.fileCount,
         duration: Date.now() - startTime,
-        checksum: await this.calculateDirectoryChecksum(result.localPath)
+        checksum: await this.calculateDirectoryChecksum(result.localPath),
       };
 
       await this.updateTaskStatus(task.id, 'completed', task.metadata);
       await this.saveDownloadResult(task.id, result);
 
       console.log(`Download completed for task ${task.id}: ${result.localPath}`);
-
     } catch (error) {
       await this.handleDownloadError(task, error as Error);
     } finally {
@@ -159,20 +160,19 @@ export class DownloadManagerService {
     await fsPromises.mkdir(localPath, { recursive: true });
 
     let gitCommand = `git clone`;
-    
+
     if (task.options.shallow) {
       gitCommand += ' --depth 1';
     }
-    
+
     gitCommand += ` https://github.com/${owner}/${repository}.git ${localPath}`;
 
     try {
       const { stderr } = await execAsync(gitCommand);
-      
+
       if (stderr && !stderr.includes('Cloning into')) {
         console.warn(`Git clone warning for ${owner}/${repository}:`, stderr);
       }
-
     } catch (error) {
       throw new Error(`Git clone failed: ${(error as Error).message}`);
     }
@@ -190,7 +190,7 @@ export class DownloadManagerService {
       localPath,
       metadata,
       files,
-      errors: []
+      errors: [],
     };
   }
 
@@ -210,7 +210,6 @@ export class DownloadManagerService {
       await execAsync(`npm pack ${packageSpec} --pack-destination="${localPath}"`);
       await execAsync(`tar -xzf "${tarballPath}" -C "${localPath}"`);
       await fsPromises.unlink(tarballPath);
-
     } catch (error) {
       throw new Error(`NPM download failed: ${(error as Error).message}`);
     }
@@ -224,7 +223,7 @@ export class DownloadManagerService {
       localPath,
       metadata,
       files,
-      errors: []
+      errors: [],
     };
   }
 
@@ -238,7 +237,9 @@ export class DownloadManagerService {
     await fsPromises.mkdir(localPath, { recursive: true });
 
     try {
-      await execAsync(`wget --mirror --convert-links --adjust-extension --page-requisites --no-parent "${url}" -P "${localPath}"`);
+      await execAsync(
+        `wget --mirror --convert-links --adjust-extension --page-requisites --no-parent "${url}" -P "${localPath}"`
+      );
     } catch (error) {
       throw new Error(`Website download failed: ${(error as Error).message}`);
     }
@@ -252,7 +253,7 @@ export class DownloadManagerService {
       localPath,
       metadata,
       files,
-      errors: []
+      errors: [],
     };
   }
 
@@ -260,42 +261,44 @@ export class DownloadManagerService {
     for (const pattern of excludePatterns) {
       try {
         await execAsync(`find "${localPath}" -path "${pattern}" -delete`);
-      } catch (error) {
-      }
+      } catch (error) {}
     }
   }
 
-  private async analyzeDirectory(dirPath: string, maxDepth: number = 10): Promise<DownloadedFile[]> {
+  private async analyzeDirectory(
+    dirPath: string,
+    maxDepth: number = 10
+  ): Promise<DownloadedFile[]> {
     const files: DownloadedFile[] = [];
-    
+
     const analyze = async (currentPath: string, depth: number = 0): Promise<void> => {
       if (depth > maxDepth) return;
 
       try {
         const entries = await fsPromises.readdir(currentPath, { withFileTypes: true });
-        
+
         for (const entry of entries) {
           const fullPath = path.join(currentPath, entry.name);
           const relativePath = path.relative(dirPath, fullPath);
-          
+
           if (entry.name.startsWith('.')) continue;
-          
+
           const stats = await fsPromises.stat(fullPath);
           const checksum = await this.calculateFileChecksum(fullPath);
-          
+
           if (entry.isDirectory()) {
             files.push({
               path: relativePath,
               type: 'directory',
               size: 0,
               lastModified: stats.mtime,
-              checksum
+              checksum,
             });
-            
+
             await analyze(fullPath, depth + 1);
           } else {
             const mimeType = await this.getMimeType(fullPath);
-            
+
             files.push({
               path: relativePath,
               type: 'file',
@@ -303,7 +306,7 @@ export class DownloadManagerService {
               lastModified: stats.mtime,
               checksum,
               ...(mimeType && { mimeType }),
-              ...(mimeType?.startsWith('text/') && { encoding: 'utf8' })
+              ...(mimeType?.startsWith('text/') && { encoding: 'utf8' }),
             });
           }
         }
@@ -324,30 +327,34 @@ export class DownloadManagerService {
     extractedSize: number;
   }> {
     const files = await this.analyzeDirectory(dirPath);
-    
+
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
     const fileCount = files.filter(f => f.type === 'file').length;
     const directoryCount = files.filter(f => f.type === 'directory').length;
-    
+
     return {
       totalSize,
       fileCount,
       directoryCount,
       downloadTime: 0,
-      extractedSize: totalSize
+      extractedSize: totalSize,
     };
   }
 
   private getLocalPath(task: DownloadTask): string {
     const basePath = this.storageConfig.basePath;
-    
+
     switch (task.type) {
       case 'github':
         return path.join(basePath, 'github', task.source.owner!, task.source.repository!);
       case 'npm':
         return path.join(basePath, 'npm', task.source.packageName!);
       case 'website':
-        return path.join(basePath, 'website', crypto.createHash('md5').update(task.source.url!).digest('hex'));
+        return path.join(
+          basePath,
+          'website',
+          crypto.createHash('md5').update(task.source.url!).digest('hex')
+        );
       default:
         return path.join(basePath, 'downloads', task.id);
     }
@@ -357,11 +364,11 @@ export class DownloadManagerService {
     try {
       const hash = crypto.createHash('sha256');
       const stream = fs.createReadStream(filePath);
-      
+
       for await (const chunk of stream) {
         hash.update(chunk);
       }
-      
+
       return hash.digest('hex');
     } catch (error) {
       return '';
@@ -372,13 +379,13 @@ export class DownloadManagerService {
     try {
       const hash = crypto.createHash('sha256');
       const files = await this.analyzeDirectory(dirPath);
-      
+
       files.sort((a, b) => a.path.localeCompare(b.path));
-      
+
       for (const file of files) {
         hash.update(`${file.path}:${file.checksum}`);
       }
-      
+
       return hash.digest('hex');
     } catch (error) {
       return '';
@@ -400,39 +407,42 @@ export class DownloadManagerService {
         '.md': 'text/markdown',
         '.txt': 'text/plain',
         '.html': 'text/html',
-        '.css': 'text/css'
+        '.css': 'text/css',
       };
-      
+
       return mimeTypes[ext];
     }
   }
 
   private async handleDownloadError(task: DownloadTask, error: Error): Promise<void> {
     task.retryCount++;
-    
+
     if (task.retryCount < this.config.maxRetries) {
       task.status = 'retrying';
       task.error = error.message;
-      
-      await this.updateTaskStatus(task.id, 'retrying', { error: error.message, retryCount: task.retryCount });
-      
+
+      await this.updateTaskStatus(task.id, 'retrying', {
+        error: error.message,
+        retryCount: task.retryCount,
+      });
+
       await this.delay(this.config.retryDelay * task.retryCount);
-      
+
       this.downloadQueue.push(task);
       this.processQueue();
-      
     } else {
       task.status = 'failed';
       task.error = error.message;
-      
+
       await this.updateTaskStatus(task.id, 'failed', { error: error.message });
-      
+
       console.error(`Download failed permanently for task ${task.id}:`, error);
     }
   }
 
   private async saveDownloadTask(task: DownloadTask): Promise<void> {
-    await this.db.query(`
+    await this.db.query(
+      `
       INSERT INTO download_tasks (
         id, type, source, options, priority, status, 
         progress, metadata, created_at, started_at, 
@@ -448,21 +458,23 @@ export class DownloadManagerService {
         completed_at = EXCLUDED.completed_at,
         error = EXCLUDED.error,
         retry_count = EXCLUDED.retry_count
-    `, [
-      task.id,
-      task.type,
-      JSON.stringify(task.source),
-      JSON.stringify(task.options),
-      task.priority,
-      task.status,
-      JSON.stringify(task.progress),
-      JSON.stringify(task.metadata),
-      task.createdAt,
-      task.startedAt,
-      task.completedAt,
-      task.error,
-      task.retryCount
-    ]);
+    `,
+      [
+        task.id,
+        task.type,
+        JSON.stringify(task.source),
+        JSON.stringify(task.options),
+        task.priority,
+        task.status,
+        JSON.stringify(task.progress),
+        JSON.stringify(task.metadata),
+        task.createdAt,
+        task.startedAt,
+        task.completedAt,
+        task.error,
+        task.retryCount,
+      ]
+    );
   }
 
   private async updateTaskStatus(taskId: string, status: string, metadata?: any): Promise<void> {
@@ -482,28 +494,34 @@ export class DownloadManagerService {
       updateFields.push(`completed_at = NOW()`);
     }
 
-    await this.db.query(`
+    await this.db.query(
+      `
       UPDATE download_tasks 
       SET ${updateFields.join(', ')}
       WHERE id = $1
-    `, values);
+    `,
+      values
+    );
   }
 
   private async saveDownloadResult(taskId: string, result: DownloadResult): Promise<void> {
-    await this.db.query(`
+    await this.db.query(
+      `
       INSERT INTO download_results (
         task_id, success, local_path, metadata, files, errors, created_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, NOW()
       )
-    `, [
-      taskId,
-      result.success,
-      result.localPath,
-      JSON.stringify(result.metadata),
-      JSON.stringify(result.files),
-      result.errors
-    ]);
+    `,
+      [
+        taskId,
+        result.success,
+        result.localPath,
+        JSON.stringify(result.metadata),
+        JSON.stringify(result.files),
+        result.errors,
+      ]
+    );
   }
 
   private async getTasksByStatus(status: string): Promise<DownloadTask[]> {
@@ -517,7 +535,7 @@ export class DownloadManagerService {
       source: JSON.parse(row.source),
       options: JSON.parse(row.options),
       progress: JSON.parse(row.progress),
-      metadata: JSON.parse(row.metadata || '{}')
+      metadata: JSON.parse(row.metadata || '{}'),
     }));
   }
 
@@ -534,13 +552,13 @@ export class DownloadManagerService {
     `);
 
     const stats = result.rows[0];
-    
+
     return {
       totalTasks: parseInt(stats.total_tasks),
       completedTasks: parseInt(stats.completed_tasks),
       failedTasks: parseInt(stats.failed_tasks),
       averageDownloadTime: parseFloat(stats.avg_download_time) || 0,
-      totalDownloadedSize: parseInt(stats.total_downloaded_size)
+      totalDownloadedSize: parseInt(stats.total_downloaded_size),
     };
   }
 

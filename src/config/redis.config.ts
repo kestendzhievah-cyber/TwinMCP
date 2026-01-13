@@ -19,7 +19,7 @@ export const defaultRedisConfig: RedisConfig = {
   connectTimeout: 10000,
   lazyConnect: true,
   retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3
+  maxRetriesPerRequest: 3,
 };
 
 export class RedisManager {
@@ -32,10 +32,10 @@ export class RedisManager {
       socket: {
         host: this.config.host,
         port: this.config.port,
-        connectTimeout: this.config.connectTimeout
+        connectTimeout: this.config.connectTimeout,
       },
       password: this.config.password || undefined,
-      database: this.config.database
+      database: this.config.database,
     });
 
     this.setupErrorHandling();
@@ -112,12 +112,12 @@ export class RedisManager {
         version: (infoObj as any)['redis_version'],
         usedMemory: (infoObj as any)['used_memory_human'],
         connectedClients: (infoObj as any)['connected_clients'],
-        uptimeInSeconds: (infoObj as any)['uptime_in_seconds']
+        uptimeInSeconds: (infoObj as any)['uptime_in_seconds'],
       };
     } catch (error) {
       return {
         connected: false,
-        error: (error as Error).message
+        error: (error as Error).message,
       };
     }
   }

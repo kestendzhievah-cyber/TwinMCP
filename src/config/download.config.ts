@@ -8,8 +8,8 @@ export const DOWNLOAD_CONFIG: CrawlerConfig = {
   chunkSize: 1024 * 1024, // 1MB
   userAgent: 'TwinMe-Crawler/1.0 (+https://twinme.ai)',
   headers: {
-    'Accept': 'application/vnd.github.v3+json',
-    'Accept-Encoding': 'gzip, deflate, br'
+    Accept: 'application/vnd.github.v3+json',
+    'Accept-Encoding': 'gzip, deflate, br',
   },
   excludePatterns: [
     '**/node_modules/**',
@@ -20,7 +20,7 @@ export const DOWNLOAD_CONFIG: CrawlerConfig = {
     '**/.nyc_output/**',
     '**/.cache/**',
     '**/tmp/**',
-    '**/temp/**'
+    '**/temp/**',
   ],
   includePatterns: [
     '**/*.md',
@@ -40,10 +40,10 @@ export const DOWNLOAD_CONFIG: CrawlerConfig = {
     '**/*.test.js',
     '**/*.test.ts',
     '**/*.spec.js',
-    '**/*.spec.ts'
+    '**/*.spec.ts',
   ],
   maxFileSize: 100 * 1024 * 1024, // 100MB
-  maxDirectoryDepth: 10
+  maxDirectoryDepth: 10,
 };
 
 export const STORAGE_CONFIG: StorageConfig = {
@@ -52,10 +52,10 @@ export const STORAGE_CONFIG: StorageConfig = {
   compression: {
     enabled: true,
     algorithm: 'gzip',
-    level: 6
+    level: 6,
   },
   retention: {
     days: 30,
-    policy: 'archive'
-  }
+    policy: 'archive',
+  },
 };

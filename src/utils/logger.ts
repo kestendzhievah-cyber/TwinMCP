@@ -7,7 +7,7 @@ const logFormat = winston.format.combine(
 );
 
 export const logger = winston.createLogger({
-  level: process.env['LOG_LEVEL'] || 'info',
+  level: process.env['LOG_LEVEL'] ?? 'info',
   format: logFormat,
   defaultMeta: { service: 'twinmcp' },
   transports: [
@@ -18,10 +18,9 @@ export const logger = winston.createLogger({
 
 // Logger console en développement
 if (process.env['NODE_ENV'] !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    )
-  }));
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
+    })
+  );
 }

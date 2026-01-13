@@ -7,17 +7,12 @@ const db = new Pool({
   connectionString: process.env['DATABASE_URL'],
 });
 
-const downloadManager = new DownloadManagerService(
-  db,
-  STORAGE_CONFIG,
-  DOWNLOAD_CONFIG
-);
-
+const downloadManager = new DownloadManagerService(db, STORAGE_CONFIG, DOWNLOAD_CONFIG);
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     const taskData = {
       type: body.type,
       source: body.source,
@@ -27,14 +22,14 @@ export async function POST(request: NextRequest) {
         includeTests: false,
         includeExamples: true,
         maxDepth: 5,
-        excludePatterns: []
+        excludePatterns: [],
       },
       priority: body.priority || 'normal',
       metadata: {
         size: 0,
         files: 0,
-        duration: 0
-      }
+        duration: 0,
+      },
     };
 
     const taskId = await downloadManager.createDownloadTask(taskData);
@@ -42,15 +37,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       taskId,
-      message: 'Download task created successfully'
+      message: 'Download task created successfully',
     });
-
   } catch (error) {
     console.error('Error creating download task:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -61,32 +58,37 @@ export async function GET(request: NextRequest) {
 
     if (taskId) {
       const task = await downloadManager.getDownloadStatus(taskId);
-      
+
       if (!task) {
-        return NextResponse.json({
-          success: false,
-          error: 'Task not found'
-        }, { status: 404 });
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Task not found',
+          },
+          { status: 404 }
+        );
       }
 
       return NextResponse.json({
         success: true,
-        task
+        task,
       });
     } else {
       const queue = await downloadManager.getDownloadQueue();
-      
+
       return NextResponse.json({
         success: true,
-        queue
+        queue,
       });
     }
-
   } catch (error) {
     console.error('Error fetching download status:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }
