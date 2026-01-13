@@ -142,58 +142,96 @@ exports.Prisma.UserScalarFieldEnum = {
   email: 'email',
   name: 'name',
   avatar: 'avatar',
+  hashedPassword: 'hashedPassword',
+  oauthProvider: 'oauthProvider',
+  oauthId: 'oauthId',
   role: 'role',
+  clientId: 'clientId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
 
-exports.Prisma.CategoryScalarFieldEnum = {
+exports.Prisma.LibraryScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  displayName: 'displayName',
   description: 'description',
-  createdAt: 'createdAt'
-};
-
-exports.Prisma.ProductScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  description: 'description',
-  price: 'price',
-  image: 'image',
-  categoryId: 'categoryId',
-  sellerId: 'sellerId',
-  status: 'status',
+  vendor: 'vendor',
+  repoUrl: 'repoUrl',
+  docsUrl: 'docsUrl',
+  defaultVersion: 'defaultVersion',
+  popularityScore: 'popularityScore',
+  totalSnippets: 'totalSnippets',
+  totalTokens: 'totalTokens',
+  language: 'language',
+  ecosystem: 'ecosystem',
+  tags: 'tags',
+  metadata: 'metadata',
+  clientId: 'clientId',
+  lastCrawledAt: 'lastCrawledAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
 
-exports.Prisma.OrderScalarFieldEnum = {
+exports.Prisma.LibraryVersionScalarFieldEnum = {
+  id: 'id',
+  libraryId: 'libraryId',
+  version: 'version',
+  releaseDate: 'releaseDate',
+  isLatest: 'isLatest',
+  docsSnapshotUrl: 'docsSnapshotUrl'
+};
+
+exports.Prisma.LibraryAliasScalarFieldEnum = {
+  id: 'id',
+  libraryId: 'libraryId',
+  alias: 'alias'
+};
+
+exports.Prisma.DocumentationChunkScalarFieldEnum = {
+  id: 'id',
+  libraryVersionId: 'libraryVersionId',
+  chunkIndex: 'chunkIndex',
+  content: 'content',
+  contentType: 'contentType',
+  sourceUrl: 'sourceUrl',
+  tokenCount: 'tokenCount',
+  embeddingId: 'embeddingId',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  libraryId: 'libraryId'
+};
+
+exports.Prisma.ApiKeyScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
-  total: 'total',
-  status: 'status',
+  keyHash: 'keyHash',
+  keyPrefix: 'keyPrefix',
+  name: 'name',
+  tier: 'tier',
+  quotaDaily: 'quotaDaily',
+  quotaMonthly: 'quotaMonthly',
+  usedDaily: 'usedDaily',
+  usedMonthly: 'usedMonthly',
+  lastUsedAt: 'lastUsedAt',
+  expiresAt: 'expiresAt',
+  isActive: 'isActive',
+  permissions: 'permissions',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  revokedAt: 'revokedAt'
 };
 
-exports.Prisma.OrderItemScalarFieldEnum = {
+exports.Prisma.UsageLogScalarFieldEnum = {
   id: 'id',
-  orderId: 'orderId',
-  productId: 'productId',
-  quantity: 'quantity',
-  price: 'price'
-};
-
-exports.Prisma.CartScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId'
-};
-
-exports.Prisma.CartItemScalarFieldEnum = {
-  id: 'id',
-  cartId: 'cartId',
-  productId: 'productId',
-  quantity: 'quantity'
+  userId: 'userId',
+  apiKeyId: 'apiKeyId',
+  libraryId: 'libraryId',
+  toolName: 'toolName',
+  query: 'query',
+  tokensReturned: 'tokensReturned',
+  responseTimeMs: 'responseTimeMs',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.MCPConfigurationScalarFieldEnum = {
@@ -203,9 +241,67 @@ exports.Prisma.MCPConfigurationScalarFieldEnum = {
   configData: 'configData',
   status: 'status',
   userId: 'userId',
-  productId: 'productId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.OAuthTokenScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  provider: 'provider',
+  accessToken: 'accessToken',
+  refreshToken: 'refreshToken',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.OAuthClientScalarFieldEnum = {
+  id: 'id',
+  clientId: 'clientId',
+  clientSecretHash: 'clientSecretHash',
+  name: 'name',
+  redirectUris: 'redirectUris',
+  allowedScopes: 'allowedScopes',
+  grantTypes: 'grantTypes',
+  requirePkce: 'requirePkce',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.OAuthAuthorizationCodeScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  clientId: 'clientId',
+  userId: 'userId',
+  redirectUri: 'redirectUri',
+  scopes: 'scopes',
+  codeChallenge: 'codeChallenge',
+  codeChallengeMethod: 'codeChallengeMethod',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.OAuthAccessTokenScalarFieldEnum = {
+  id: 'id',
+  tokenHash: 'tokenHash',
+  clientId: 'clientId',
+  userId: 'userId',
+  scopes: 'scopes',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.OAuthRefreshTokenScalarFieldEnum = {
+  id: 'id',
+  tokenHash: 'tokenHash',
+  accessTokenId: 'accessTokenId',
+  clientId: 'clientId',
+  userId: 'userId',
+  scopes: 'scopes',
+  expiresAt: 'expiresAt',
+  isRevoked: 'isRevoked',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -249,20 +345,6 @@ exports.Role = {
   ADMIN: 'ADMIN'
 };
 
-exports.Status = {
-  ACTIVE: 'ACTIVE',
-  INACTIVE: 'INACTIVE',
-  DRAFT: 'DRAFT'
-};
-
-exports.OrderStatus = {
-  PENDING: 'PENDING',
-  PAID: 'PAID',
-  SHIPPED: 'SHIPPED',
-  DELIVERED: 'DELIVERED',
-  CANCELLED: 'CANCELLED'
-};
-
 exports.ConfigStatus = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
@@ -276,13 +358,18 @@ exports.Prisma.ModelName = {
   ModuleOnClient: 'ModuleOnClient',
   EnvironmentVariable: 'EnvironmentVariable',
   User: 'User',
-  Category: 'Category',
-  Product: 'Product',
-  Order: 'Order',
-  OrderItem: 'OrderItem',
-  Cart: 'Cart',
-  CartItem: 'CartItem',
-  MCPConfiguration: 'MCPConfiguration'
+  Library: 'Library',
+  LibraryVersion: 'LibraryVersion',
+  LibraryAlias: 'LibraryAlias',
+  DocumentationChunk: 'DocumentationChunk',
+  ApiKey: 'ApiKey',
+  UsageLog: 'UsageLog',
+  MCPConfiguration: 'MCPConfiguration',
+  OAuthToken: 'OAuthToken',
+  OAuthClient: 'OAuthClient',
+  OAuthAuthorizationCode: 'OAuthAuthorizationCode',
+  OAuthAccessToken: 'OAuthAccessToken',
+  OAuthRefreshToken: 'OAuthRefreshToken'
 };
 
 /**

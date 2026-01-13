@@ -14,9 +14,7 @@ export async function GET(req: AuthenticatedRequest) {
   const userId = url.searchParams.get('userId');
 
   if (!req.user || !userId || userId !== req.user.id) {
-    return NextResponse.json(
-      { error: 'Unauthorized' }, { status: 401 }
-    );
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Your chat logic here
@@ -29,9 +27,7 @@ export async function POST(req: AuthenticatedRequest) {
   const userId = body.userId;
 
   if (!req.user || !userId || userId !== req.user.id) {
-    return NextResponse.json(
-      { error: 'Unauthorized' }, { status: 401 }
-    );
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Handle chat creation or message

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consentement OAuth - TwinMCP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .client-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-left: 4px solid #667eea;
+        }
+
+        .client-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+
+        .client-id {
+            color: #666;
+            font-size: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .scopes-section {
+            margin-bottom: 25px;
+        }
+
+        .scopes-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .scope-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .scope-item:last-child {
+            border-bottom: none;
+        }
+
+        .scope-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 18px;
+        }
+
+        .scope-icon.read {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .scope-icon.write {
+            background: #fce4ec;
+            color: #d32f2f;
+        }
+
+        .scope-icon.admin {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .scope-icon.openid {
+            background: #e8f5e8;
+            color: #388e3c;
+        }
+
+        .scope-icon.profile {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .scope-icon.email {
+            background: #e1f5fe;
+            color: #0288d1;
+        }
+
+        .scope-details {
+            flex: 1;
+        }
+
+        .scope-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .scope-description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-approve:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-deny {
+            background: #f8f9fa;
+            color: #666;
+            border: 1px solid #dee2e6;
+        }
+
+        .btn-deny:hover {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+            }
+
+            .header, .content {
+                padding: 20px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .scope-item {
+                padding: 16px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Consentement OAuth</h1>
+            <p>{{client.name}} demande l'autorisation d'accéder à votre compte</p>
+        </div>
+
+        <div class="content">
+            <div class="client-info">
+                <div class="client-name">{{client.name}}</div>
+                <div class="client-id">Client ID: {{client.clientId}}</div>
+            </div>
+
+            <div class="scopes-section">
+                <div class="scopes-title">Permissions demandées</div>
+                {{#each scopes}}
+                <div class="scope-item">
+                    <div class="scope-icon {{this}}">{{getScopeIcon this}}</div>
+                    <div class="scope-details">
+                        <div class="scope-name">{{getScopeName this}}</div>
+                        <div class="scope-description">{{getScopeDescription this}}</div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+
+            <div class="warning">
+                <strong>⚠️ Important:</strong> En autorisant cet accès, vous permettez à {{client.name}} d'effectuer les actions ci-dessus en votre nom. Vous pouvez révoquer cet accès à tout moment depuis vos paramètres de sécurité.
+            </div>
+
+            <form method="POST" action="/oauth/consent">
+                <input type="hidden" name="client_id" value="{{client.clientId}}">
+                <input type="hidden" name="redirect_uri" value="{{redirectUri}}">
+                <input type="hidden" name="scope" value="{{#each scopes}}{{this}}{{#unless @last}} {{/unless}}{{/each}}">
+                <input type="hidden" name="state" value="{{state}}">
+                <input type="hidden" name="code_challenge" value="{{codeChallenge}}">
+                <input type="hidden" name="code_challenge_method" value="{{codeChallengeMethod}}">
+                
+                <div class="actions">
+                    <button type="submit" name="approve" value="yes" class="btn btn-approve">
+                        ✅ Autoriser l'accès
+                    </button>
+                    <button type="submit" name="approve" value="no" class="btn btn-deny">
+                        ❌ Refuser
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="footer">
+            <a href="https://twinmcp.com/privacy" target="_blank">Politique de confidentialité</a>
+            <span style="margin: 0 10px;">•</span>
+            <a href="https://twinmcp.com/terms" target="_blank">Conditions d'utilisation</a>
+        </div>
+    </div>
+
+    <script>
+        // Helper functions pour les scopes (à implémenter côté serveur)
+        function getScopeIcon(scope) {
+            const icons = {
+                'read': '📖',
+                'write': '✏️',
+                'admin': '🔐',
+                'openid': '🔑',
+                'profile': '👤',
+                'email': '📧'
+            };
+            return icons[scope] || '🔒';
+        }
+
+        function getScopeName(scope) {
+            const names = {
+                'read': 'Lire les données',
+                'write': 'Écrire les données',
+                'admin': 'Accès administrateur',
+                'openid': 'Authentification OpenID',
+                'profile': 'Profil utilisateur',
+                'email': 'Adresse email'
+            };
+            return names[scope] || scope;
+        }
+
+        function getScopeDescription(scope) {
+            const descriptions = {
+                'read': 'Permet de lire vos données et configurations',
+                'write': 'Permet de modifier vos données et configurations',
+                'admin': 'Permet un accès complet à toutes les fonctionnalités',
+                'openid': 'Permet l\'authentification via OpenID Connect',
+                'profile': 'Permet d\'accéder à votre profil de base',
+                'email': 'Permet d\'accéder à votre adresse email'
+            };
+            return descriptions[scope] || 'Permission personnalisée';
+        }
+    </script>
+</body>
+</html>

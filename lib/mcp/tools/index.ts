@@ -6,6 +6,10 @@ export { NotionTool } from './productivity/notion'
 export { FirebaseTool } from './data/firebase'
 export { GitHubTool } from './development/github'
 
+// Outils TwinMCP principaux
+export { ResolveLibraryIdTool } from './resolve-library-id.tool'
+export { QueryDocsTool } from './query-docs.tool'
+
 // Import du registry pour l'enregistrement automatique
 import { registry } from '../core/registry'
 import { EmailTool } from './communication/email'
@@ -14,9 +18,16 @@ import { CalendarTool } from './productivity/calendar'
 import { NotionTool } from './productivity/notion'
 import { FirebaseTool } from './data/firebase'
 import { GitHubTool } from './development/github'
+import { ResolveLibraryIdTool } from './resolve-library-id.tool'
+import { QueryDocsTool } from './query-docs.tool'
 
 // Liste de tous les outils disponibles
 export const allTools = [
+  // Outils TwinMCP principaux (priorité haute)
+  new ResolveLibraryIdTool(null as any), // Sera initialisé plus tard
+  new QueryDocsTool(null as any), // Sera initialisé plus tard
+  
+  // Outils de productivité existants
   new EmailTool(),
   new SlackTool(),
   new CalendarTool(),
@@ -26,10 +37,39 @@ export const allTools = [
 ]
 
 // Fonction d'initialisation - enregistre tous les outils
-export async function initializeTools(): Promise<void> {
+export async function initializeTools(services: any = {}): Promise<void> {
   console.log('🔧 Initializing MCP Tools...')
 
-  for (const tool of allTools) {
+  // Initialiser les services TwinMCP
+  const { libraryResolutionService, vectorSearchService } = services
+
+  // Créer les instances avec les services
+  const twinmcpTools = [
+    new ResolveLibraryIdTool(libraryResolutionService),
+    new QueryDocsTool(vectorSearchService)
+  ]
+
+  // Enregistrer les outils TwinMCP en premier
+  for (const tool of twinmcpTools) {
+    try {
+      registry.register(tool)
+      console.log(`✅ Registered TwinMCP tool: ${tool.name} (${tool.category})`)
+    } catch (error) {
+      console.error(`❌ Failed to register TwinMCP tool ${tool.name}:`, error)
+    }
+  }
+
+  // Enregistrer les autres outils
+  const otherTools = [
+    new EmailTool(),
+    new SlackTool(),
+    new CalendarTool(),
+    new NotionTool(),
+    new FirebaseTool(),
+    new GitHubTool()
+  ]
+
+  for (const tool of otherTools) {
     try {
       registry.register(tool)
       console.log(`✅ Registered tool: ${tool.name} (${tool.category})`)

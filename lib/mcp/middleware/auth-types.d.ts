@@ -1,0 +1,50 @@
+export interface AuthContext {
+    userId: string;
+    email?: string;
+    apiKey?: string;
+    permissions: Permission[];
+    rateLimit: RateLimitConfig;
+    isAuthenticated: boolean;
+    authMethod: 'api_key' | 'jwt' | 'none';
+}
+export interface Permission {
+    resource: string;
+    actions: string[];
+    conditions?: {
+        maxCost?: number;
+        maxRequests?: number;
+        allowedCategories?: string[];
+    };
+}
+export interface RateLimitConfig {
+    requests: number;
+    period: string;
+    strategy: 'fixed' | 'sliding' | 'token-bucket';
+}
+export interface User {
+    id: string;
+    email: string;
+    name: string;
+    permissions: Permission[];
+    rateLimit: RateLimitConfig;
+    isActive: boolean;
+    createdAt: Date;
+    lastLogin?: Date;
+}
+export interface ApiKey {
+    id: string;
+    key: string;
+    userId: string;
+    name: string;
+    permissions: Permission[];
+    rateLimit: RateLimitConfig;
+    isActive: boolean;
+    expiresAt?: Date;
+    createdAt: Date;
+    lastUsed?: Date;
+}
+export interface AuthError extends Error {
+    code: 'UNAUTHORIZED' | 'FORBIDDEN' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'INVALID_API_KEY';
+    statusCode: 401 | 403 | 400;
+}
+//# sourceMappingURL=auth-types.d.ts.map

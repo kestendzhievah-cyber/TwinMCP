@@ -1,23 +1,18 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "es2020"
-    ],
+    "target": "ES2022",
+    "lib": ["ES2022", "dom", "dom.iterable"],
     "allowJs": true,
     "skipLibCheck": true,
+    "strict": true,
     "noEmit": true,
-    "incremental": false,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "downlevelIteration": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "incremental": true,
     "plugins": [
       {
         "name": "next"
@@ -25,23 +20,31 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./lib/*",
-        "./components/*",
-        "./*"
-      ]
+      "@/*": ["./lib/*", "./components/*", "./src/*", "./*"],
+      "@/types/*": ["./src/types/*"],
+      "@/utils/*": ["./src/utils/*"],
+      "@/config/*": ["./src/config/*"]
     },
-    "strict": false
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "downlevelIteration": true
   },
   "include": [
+    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    "lib/**/*",
-    "next-env.d.ts",
-    "src/**/*",
-    ".next/types/**/*.ts",
-    "app/**/*",
-    "scripts/**/*"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
@@ -51,6 +54,7 @@
     "**/.next/**",
     "dist",
     "**/dist/**",
+    "Projet/**",
     "*.tsbuildinfo"
   ]
 }

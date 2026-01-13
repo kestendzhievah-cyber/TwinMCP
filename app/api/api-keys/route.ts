@@ -1,153 +1,184 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth, db } from '../../../../lib/firebase-admin';
+import { NextRequest, NextResponse } from 'next/server'
+import { AuthService } from '@/lib/services/auth.service'
+import { PrismaClient } from '@prisma/client'
+import Redis from 'ioredis'
 
-// Generate a secure API key
-function generateApiKey(): string {
-  const prefix = 'tmcp_sk_';
-  const randomBytes = Array.from({ length: 32 }, () => 
-    Math.random().toString(36).substring(2, 15)
-  ).join('');
-  return prefix + randomBytes;
-}
+const prisma = new PrismaClient()
+const authService = new AuthService(prisma, new Redis(process.env.REDIS_URL || 'redis://localhost:6379'))
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the user from the token
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    // Authentification via API Key
+    const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '')
+    
+    if (!apiKey) {
+      return NextResponse.json({
+        error: 'API key required',
+        code: 'MISSING_API_KEY'
+      }, { status: 401 })
     }
 
-    const decodedToken = await auth.verifyIdToken(token);
-    const uid = decodedToken.uid;
+    const authResult = await authService.validateApiKey(apiKey)
+    if (!authResult.success) {
+      return NextResponse.json({
+        error: authResult.error,
+        code: 'INVALID_API_KEY'
+      }, { status: 401 })
+    }
 
-    // Fetch user's API keys from Firestore
-    const apiKeysSnapshot = await db
-      .collection('users')
-      .doc(uid)
-      .collection('apiKeys')
-      .orderBy('createdAt', 'desc')
-      .get();
+    // Récupérer les clés API de l'utilisateur
+    const apiKeys = await authService.listUserApiKeys(authResult.apiKeyData!.userId)
 
-    const apiKeys = apiKeysSnapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().name,
-      key: doc.data().key,
-      createdAt: doc.data().createdAt,
-      lastUsed: doc.data().lastUsed || null,
-    }));
+    // Ajouter les statistiques d'utilisation (simulation pour l'instant)
+    const keysWithUsage = apiKeys.map(key => ({
+      ...key,
+      usage: {
+        requestsToday: Math.floor(Math.random() * 500),
+        requestsThisHour: Math.floor(Math.random() * 50),
+        successRate: 95 + Math.random() * 5
+      }
+    }))
 
-    return NextResponse.json({ apiKeys });
-  } catch (error: any) {
-    console.error('Error fetching API keys:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la récupération des clés API' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      data: keysWithUsage
+    })
+
+  } catch (error) {
+    console.error('Error fetching API keys:', error)
+    
+    return NextResponse.json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the user from the token
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    // Authentification via API Key
+    const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '')
+    
+    if (!apiKey) {
+      return NextResponse.json({
+        error: 'API key required',
+        code: 'MISSING_API_KEY'
+      }, { status: 401 })
     }
 
-    const decodedToken = await auth.verifyIdToken(token);
-    const uid = decodedToken.uid;
-
-    // Get the key name from request body
-    const { name } = await request.json();
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Nom de la clé requis et doit être une chaîne de caractères' },
-        { status: 400 }
-      );
+    const authResult = await authService.validateApiKey(apiKey)
+    if (!authResult.success) {
+      return NextResponse.json({
+        error: authResult.error,
+        code: 'INVALID_API_KEY'
+      }, { status: 401 })
     }
 
-    // Check if user already has too many API keys (limit: 10 per user)
-    const existingKeysSnapshot = await db
-      .collection('users')
-      .doc(uid)
-      .collection('apiKeys')
-      .get();
+    // Parser le corps de la requête
+    const body = await request.json()
+    const { name } = body
 
-    if (existingKeysSnapshot.size >= 10) {
-      return NextResponse.json(
-        { error: 'Limite de 10 clés API atteinte' },
-        { status: 400 }
-      );
+    if (!name || typeof name !== 'string') {
+      return NextResponse.json({
+        error: 'Name parameter is required and must be a string',
+        code: 'INVALID_NAME'
+      }, { status: 400 })
     }
 
-    // Generate new API key
-    const apiKey = generateApiKey();
-    const apiKeyData = {
-      name: name.trim(),
-      key: apiKey,
-      createdAt: new Date().toISOString(),
-      lastUsed: null,
-    };
+    // Vérifier la limite de clés (max 10 par utilisateur)
+    const existingKeys = await authService.listUserApiKeys(authResult.apiKeyData!.userId)
+    if (existingKeys.length >= 10) {
+      return NextResponse.json({
+        error: 'Maximum API keys limit reached (10 keys per user)',
+        code: 'KEY_LIMIT_EXCEEDED'
+      }, { status: 400 })
+    }
 
-    // Save to Firestore
-    const docRef = await db
-      .collection('users')
-      .doc(uid)
-      .collection('apiKeys')
-      .add(apiKeyData);
+    // Générer une nouvelle clé API
+    const newApiKey = await authService.generateApiKey(authResult.apiKeyData!.userId, name)
 
-    // Return the created API key (only show the full key once)
     return NextResponse.json({
-      id: docRef.id,
-      name: apiKeyData.name,
-      key: apiKeyData.key,
-      createdAt: apiKeyData.createdAt,
-      lastUsed: apiKeyData.lastUsed,
-    });
-  } catch (error: any) {
-    console.error('Error creating API key:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la création de la clé API' },
-      { status: 500 }
-    );
+      success: true,
+      data: {
+        id: newApiKey.apiKey,
+        keyPrefix: newApiKey.prefix,
+        name,
+        quotaRequestsPerMinute: 100,
+        quotaRequestsPerDay: 10000,
+        createdAt: new Date().toISOString(),
+        usage: {
+          requestsToday: 0,
+          requestsThisHour: 0,
+          successRate: 100
+        }
+      }
+    })
+
+  } catch (error) {
+    console.error('Error creating API key:', error)
+    
+    return NextResponse.json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Get the user from the token
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
+    // Authentification via API Key
+    const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '')
+    
+    if (!apiKey) {
+      return NextResponse.json({
+        error: 'API key required',
+        code: 'MISSING_API_KEY'
+      }, { status: 401 })
     }
 
-    const decodedToken = await auth.verifyIdToken(token);
-    const uid = decodedToken.uid;
-
-    // Get the key ID from request body
-    const { keyId } = await request.json();
-    if (!keyId || typeof keyId !== 'string') {
-      return NextResponse.json(
-        { error: 'ID de la clé requis' },
-        { status: 400 }
-      );
+    const authResult = await authService.validateApiKey(apiKey)
+    if (!authResult.success) {
+      return NextResponse.json({
+        error: authResult.error,
+        code: 'INVALID_API_KEY'
+      }, { status: 401 })
     }
 
-    // Delete the API key from Firestore
-    await db
-      .collection('users')
-      .doc(uid)
-      .collection('apiKeys')
-      .doc(keyId)
-      .delete();
+    // Parser l'URL pour obtenir l'ID de la clé à révoquer
+    const url = new URL(request.url)
+    const keyId = url.pathname.split('/').pop()
 
-    return NextResponse.json({ message: 'Clé API supprimée avec succès' });
-  } catch (error: any) {
-    console.error('Error deleting API key:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la suppression de la clé API' },
-      { status: 500 }
-    );
+    if (!keyId) {
+      return NextResponse.json({
+        error: 'Key ID is required',
+        code: 'MISSING_KEY_ID'
+      }, { status: 400 })
+    }
+
+    // Révoquer la clé API
+    const success = await authService.revokeApiKey(keyId, authResult.apiKeyData!.userId)
+
+    if (!success) {
+      return NextResponse.json({
+        error: 'API key not found or already revoked',
+        code: 'KEY_NOT_FOUND'
+      }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'API key revoked successfully'
+    })
+
+  } catch (error) {
+    console.error('Error revoking API key:', error)
+    
+    return NextResponse.json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 })
   }
 }

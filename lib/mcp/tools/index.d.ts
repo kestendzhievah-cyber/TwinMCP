@@ -1,0 +1,24 @@
+export { EmailTool } from './communication/email';
+export { SlackTool } from './communication/slack';
+export { CalendarTool } from './productivity/calendar';
+export { NotionTool } from './productivity/notion';
+export { FirebaseTool } from './data/firebase';
+export { GitHubTool } from './development/github';
+export { ResolveLibraryIdTool } from './resolve-library-id.tool';
+export { QueryDocsTool } from './query-docs.tool';
+import { EmailTool } from './communication/email';
+import { SlackTool } from './communication/slack';
+import { CalendarTool } from './productivity/calendar';
+import { NotionTool } from './productivity/notion';
+import { FirebaseTool } from './data/firebase';
+import { GitHubTool } from './development/github';
+import { ResolveLibraryIdTool } from './resolve-library-id.tool';
+import { QueryDocsTool } from './query-docs.tool';
+export declare const allTools: (EmailTool | SlackTool | CalendarTool | NotionTool | FirebaseTool | GitHubTool | ResolveLibraryIdTool | QueryDocsTool)[];
+export declare function initializeTools(services?: any): Promise<void>;
+export declare function getTool(toolId: string): import("../core").MCPTool | undefined;
+export declare function getAllTools(): import("../core").MCPTool[];
+export declare function searchTools(query: string, filters?: any): import("../core").MCPTool[];
+export declare function getToolsByCategory(category: string): import("../core").MCPTool[];
+export { registry } from '../core/registry';
+//# sourceMappingURL=index.d.ts.map

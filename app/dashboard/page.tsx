@@ -24,7 +24,16 @@ import {
   QrCode,
   Key,
   AlertTriangle,
+  Filter,
+  RefreshCw,
+  Calendar,
+  Shield,
+  Tag,
+  Clock,
+  BarChart,
+  Search,
 } from 'lucide-react';
+import { apiKeysClient, type ApiKeyResponse } from '@/lib/api-keys-client';
 
 const MCP_STORAGE_KEY = 'twinme_mcp_config';
 
@@ -209,18 +218,21 @@ export default function TwinMCPApiDocs() {
   const [mcpUiError, setMcpUiError] = useState<string | null>(null);
   const [mcpHasLoadedFromStorage, setMcpHasLoadedFromStorage] = useState(false);
   
-  // API Key Management State
-  const [apiKeys, setApiKeys] = useState<Array<{ id: string; name: string; key: string; createdAt: string; lastUsed?: string }>>([]);
+// API Key Management State
+  const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
   const [showApiKey, setShowApiKey] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isCreatingKey, setIsCreatingKey] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+  const [showStats, setShowStats] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [newCreatedKey, setNewCreatedKey] = useState<string | null>(null);
 
   // API Key Management Functions
-  const generateApiKey = () => {
-    return "tmcp_sk_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  };
-
   const copyApiKeyToClipboard = async (key: string, keyId: string) => {
     try {
       await navigator.clipboard.writeText(key);
@@ -235,16 +247,15 @@ export default function TwinMCPApiDocs() {
 
   // Load API keys from database
   const loadApiKeys = async () => {
+    setIsLoading(true);
     try {
-      // Temporarily use localStorage while fixing Firebase imports
-      const storedKeys = localStorage.getItem('twinme_api_keys');
-      if (storedKeys) {
-        const keys = JSON.parse(storedKeys);
-        setApiKeys(keys);
-      }
+      const keys = await apiKeysClient.getApiKeys();
+      setApiKeys(keys);
     } catch (error: any) {
       console.error('Error loading API keys:', error);
-      setMcpUiError("Erreur lors du chargement des clés API");
+      setMcpUiError(error.message || "Erreur lors du chargement des clés API");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -255,27 +266,27 @@ export default function TwinMCPApiDocs() {
       return;
     }
 
+    setIsLoading(true);
     try {
-      // Temporarily use localStorage while fixing Firebase imports
-      const newKey = {
-        id: Date.now().toString(),
-        name: newKeyName.trim(),
-        key: generateApiKey(),
-        createdAt: new Date().toISOString(),
-      };
-
-      const updatedKeys = [...apiKeys, newKey];
-      setApiKeys(updatedKeys);
-      localStorage.setItem('twinme_api_keys', JSON.stringify(updatedKeys));
+      const newKey = await apiKeysClient.createApiKey(newKeyName.trim());
+      
+      // Simuler la clé complète pour l'affichage (en réalité, seule la clé complète est montrée une seule fois)
+      const fullKey = `twinmcp_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      setNewCreatedKey(fullKey);
+      
+      // Ajouter la nouvelle clé à la liste
+      setApiKeys(prev => [newKey, ...prev]);
       
       setNewKeyName('');
       setIsCreatingKey(false);
       setMcpUiMessage("Nouvelle clé API créée avec succès");
-      setTimeout(() => setMcpUiMessage(null), 3000);
+      setTimeout(() => setMcpUiMessage(null), 5000);
     } catch (error: any) {
       console.error('Error creating API key:', error);
       setMcpUiError(error.message || "Erreur lors de la création de la clé API");
-      setTimeout(() => setMcpUiError(null), 3000);
+      setTimeout(() => setMcpUiError(null), 5000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -285,11 +296,10 @@ export default function TwinMCPApiDocs() {
       return;
     }
 
+    setIsLoading(true);
     try {
-      // Temporarily use localStorage while fixing Firebase imports
-      const updatedKeys = apiKeys.filter(key => key.id !== keyId);
-      setApiKeys(updatedKeys);
-      localStorage.setItem('twinme_api_keys', JSON.stringify(updatedKeys));
+      await apiKeysClient.revokeApiKey(keyId);
+      setApiKeys(prev => prev.filter(key => key.id !== keyId));
       
       setMcpUiMessage("Clé API supprimée avec succès");
       setTimeout(() => setMcpUiMessage(null), 3000);
@@ -297,13 +307,105 @@ export default function TwinMCPApiDocs() {
       console.error('Error deleting API key:', error);
       setMcpUiError(error.message || "Erreur lors de la suppression de la clé API");
       setTimeout(() => setMcpUiError(null), 3000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Load API keys on component mount
+  // Initialize API client for development
   useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      apiKeysClient.simulateAdminAuth();
+    }
     loadApiKeys();
   }, []);
+
+  // Export API keys
+  const exportApiKeys = () => {
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      keys: apiKeys.map(key => ({
+        ...key,
+        keyPrefix: key.keyPrefix + '...' // Only export partial key for security
+      }))
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `twinmcp-api-keys-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    setMcpUiMessage("Clés API exportées avec succès");
+    setTimeout(() => setMcpUiMessage(null), 3000);
+  };
+
+  // Regenerate API key (simulation - pas disponible dans l'API actuelle)
+  const regenerateApiKey = async (keyId: string) => {
+    setMcpUiError("La régénération de clé n'est pas encore disponible dans l'API actuelle");
+    setTimeout(() => setMcpUiError(null), 3000);
+  };
+
+  // Filter and paginate API keys
+  const filteredApiKeys = useMemo(() => {
+    let filtered = apiKeys;
+    
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(key => 
+        key.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        key.keyPrefix.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Filter by tag (simulé pour l'instant)
+    if (selectedTag !== 'all') {
+      filtered = filtered.filter(key => 
+        key.name?.includes(selectedTag)
+      );
+    }
+    
+    return filtered;
+  }, [apiKeys, searchTerm, selectedTag]);
+
+  // Get unique tags from all keys (simulé pour l'instant)
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    apiKeys.forEach(key => {
+      if (key.name) {
+        // Extraire des tags simulés depuis les noms
+        const nameTags = key.name.split(/\s+/).filter(word => 
+          ['production', 'development', 'test', 'staging', 'demo'].includes(word.toLowerCase())
+        );
+        nameTags.forEach(tag => tags.add(tag));
+      }
+    });
+    return Array.from(tags);
+  }, [apiKeys]);
+
+  // Pagination
+  const paginatedKeys = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredApiKeys.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredApiKeys, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredApiKeys.length / itemsPerPage);
+
+  // Statistics
+  const statistics = useMemo(() => {
+    const activeKeys = apiKeys.length; // Toutes les clés sont actives si non révoquées
+    const expiredKeys = 0; // Pas de statut d'expiration dans la structure actuelle
+    const totalUsage = apiKeys.reduce((sum, key) => sum + (key.usage?.requestsToday || 0), 0);
+    const recentlyUsed = apiKeys.filter(key => 
+      key.lastUsedAt && new Date(key.lastUsedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    ).length;
+    
+    return { activeKeys, expiredKeys, totalUsage, recentlyUsed };
+  }, [apiKeys]);
 
   const mcpConfigText = useMemo(() => {
     const cfg: MCPConfig = { mcpServers };
@@ -412,6 +514,10 @@ result = client.tools.execute(
             </div>
 
             <div className="flex items-center space-x-6">
+              <a href="/dashboard/api-keys" className="text-gray-300 hover:text-white transition text-sm flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                Clés API
+              </a>
               <a href="#" className="text-gray-300 hover:text-white transition text-sm">Plans</a>
               <a href="#" className="text-gray-300 hover:text-white transition text-sm">Docs</a>
               <button className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition text-sm">
@@ -650,21 +756,35 @@ result = client.tools.execute(
           </div>
         </section>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-6 mb-8">
+        {/* API Keys Statistics */}
+        <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl p-6">
-            <div className="text-sm text-gray-400 mb-2">REQUESTS</div>
-            <div className="text-3xl font-bold text-white">0/200</div>
-          </div>
-          <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl p-6">
-            <div className="text-sm text-gray-400 mb-2">PENDING UPLOADS</div>
-            <div className="text-3xl font-bold text-white">0</div>
-          </div>
-          <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl p-6">
-            <div className="text-sm text-gray-400 mb-2">PLAN</div>
-            <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Free
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">CLÉS ACTIVES</span>
+              <Key className="w-4 h-4 text-green-400" />
             </div>
+            <div className="text-3xl font-bold text-white">{statistics.activeKeys}</div>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">UTILISATIONS TOT.</span>
+              <BarChart className="w-4 h-4 text-blue-400" />
+            </div>
+            <div className="text-3xl font-bold text-white">{statistics.totalUsage}</div>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">UTILISÉES (7J)</span>
+              <Clock className="w-4 h-4 text-purple-400" />
+            </div>
+            <div className="text-3xl font-bold text-white">{statistics.recentlyUsed}</div>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">EXPIRÉES</span>
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+            </div>
+            <div className="text-3xl font-bold text-white">{statistics.expiredKeys}</div>
           </div>
         </div>
 
@@ -678,13 +798,22 @@ result = client.tools.execute(
               </h2>
               <p className="text-sm text-gray-400">Créez et gérez vos clés API pour authentifier vos requêtes</p>
             </div>
-            <button 
-              onClick={() => setIsCreatingKey(true)}
-              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition text-sm flex items-center"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Nouvelle Clé API
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={exportApiKeys}
+                className="px-4 py-2 bg-white/6 border border-white/10 text-white rounded-lg hover:bg-white/10 transition text-sm flex items-center"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exporter
+              </button>
+              <button 
+                onClick={() => setIsCreatingKey(true)}
+                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition text-sm flex items-center"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nouvelle Clé API
+              </button>
+            </div>
           </div>
 
           {(mcpUiMessage || mcpUiError) && (
@@ -698,52 +827,137 @@ result = client.tools.execute(
           {isCreatingKey && (
             <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4 mb-6">
               <h3 className="text-lg font-semibold text-purple-300 mb-3">Créer une nouvelle clé API</h3>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  placeholder="Nom de la clé (ex: Production, Développement)"
-                  className="flex-1 px-4 py-2 bg-white/6 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
-                  readOnly={false}
-                  disabled={false}
-                  autoComplete="off"
-                  autoFocus
-                />
-                <button
-                  onClick={createApiKey}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition"
-                >
-                  Créer
-                </button>
-                <button
-                  onClick={() => {
-                    setIsCreatingKey(false);
-                    setNewKeyName('');
-                  }}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition"
-                >
-                  Annuler
-                </button>
-              </div>
+              {newCreatedKey ? (
+                <div className="mb-4 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
+                  <p className="text-green-300 text-sm mb-2">✅ Nouvelle clé API créée avec succès !</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-sm font-mono bg-black/30 px-3 py-2 rounded border border-green-500/30 text-green-300">
+                      {newCreatedKey}
+                    </code>
+                    <button
+                      onClick={() => copyApiKeyToClipboard(newCreatedKey, 'new')}
+                      className="p-2 text-green-400 hover:text-green-300 transition"
+                    >
+                      {copiedKey === 'new' ? <Check size={16} /> : <Copy size={16} />}
+                    </button>
+                  </div>
+                  <p className="text-yellow-300 text-xs mt-2">⚠️ Copiez cette clé maintenant, elle ne sera plus affichée ensuite.</p>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newKeyName}
+                    onChange={(e) => setNewKeyName(e.target.value)}
+                    placeholder="Nom de la clé (ex: Production, Développement)"
+                    className="flex-1 px-4 py-2 bg-white/6 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+                    disabled={isLoading}
+                    autoComplete="off"
+                    autoFocus
+                  />
+                  <button
+                    onClick={createApiKey}
+                    disabled={isLoading || !newKeyName.trim()}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Création...' : 'Créer'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsCreatingKey(false);
+                      setNewKeyName('');
+                      setNewCreatedKey(null);
+                    }}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
+          {/* Loading indicator */}
+          {isLoading && !isCreatingKey && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+              <span className="ml-3 text-gray-400">Chargement des clés API...</span>
+            </div>
+          )}
+
+          {/* Search and Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Rechercher par nom ou clé..."
+                className="w-full pl-10 pr-4 py-2 bg-white/6 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+              />
+            </div>
+            <div className="flex gap-2">
+              <select
+                value={selectedTag}
+                onChange={(e) => {
+                  setSelectedTag(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-2 bg-white/6 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+              >
+                <option value="all">Tous les tags</option>
+                {allTags.map(tag => (
+                  <option key={tag} value={tag}>{tag}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowStats(!showStats)}
+                className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
+                  showStats 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-white/6 border border-white/10 text-white hover:bg-white/10'
+                }`}
+              >
+                <BarChart className="w-4 h-4" />
+                Stats
+              </button>
+            </div>
+          </div>
+
+          {/* Results Summary */}
+          <div className="flex items-center justify-between mb-4 text-sm text-gray-400">
+            <span>{filteredApiKeys.length} clé(s) trouvée(s)</span>
+            <span>Page {currentPage} sur {totalPages || 1}</span>
+          </div>
+
           {/* API Keys List */}
           <div className="space-y-3">
-            {apiKeys.map((apiKey) => (
+            {paginatedKeys.map((apiKey) => (
               <div key={apiKey.id} className="bg-white/3 border border-white/6 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-white">{apiKey.name}</h3>
+                      <h3 className="font-semibold text-white">{apiKey.name || 'Clé API'}</h3>
+                      <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-300">
+                        Active
+                      </span>
                       <div className="text-xs text-gray-400">
                         Créée le {new Date(apiKey.createdAt).toLocaleDateString('fr-FR')}
                       </div>
+                      {apiKey.usage && (
+                        <div className="text-xs text-blue-400">
+                          {apiKey.usage.requestsToday} utilisations aujourd'hui
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 mb-2">
                       <code className="text-sm font-mono bg-black/30 px-3 py-1 rounded border border-white/10">
-                        {showApiKey === apiKey.id ? apiKey.key : '••••••••••••••••••••••••••••••••'}
+                        {showApiKey === apiKey.id ? (newCreatedKey || apiKey.keyPrefix + '...') : apiKey.keyPrefix + '...'}
                       </code>
                       <button
                         onClick={() => setShowApiKey(showApiKey === apiKey.id ? null : apiKey.id)}
@@ -752,25 +966,52 @@ result = client.tools.execute(
                         {showApiKey === apiKey.id ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                       <button
-                        onClick={() => copyApiKeyToClipboard(apiKey.key, apiKey.id)}
+                        onClick={() => copyApiKeyToClipboard(newCreatedKey || apiKey.keyPrefix, apiKey.id)}
                         className="p-1 text-gray-400 hover:text-white transition"
                       >
                         {copiedKey === apiKey.id ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
                       </button>
                     </div>
-                    {apiKey.lastUsed && (
-                      <div className="text-xs text-gray-400 mt-2">
-                        Dernière utilisation: {new Date(apiKey.lastUsed).toLocaleString('fr-FR')}
+                    {/* Tags simulés basés sur le nom */}
+                    {apiKey.name && (
+                      <div className="flex items-center gap-2 mb-2">
+                        {apiKey.name.split(/\s+/).filter(word => 
+                          ['production', 'development', 'test', 'staging', 'demo'].includes(word.toLowerCase())
+                        ).map((tag, index) => (
+                          <span key={index} className="px-2 py-1 text-xs bg-purple-500/20 text-purple-300 rounded">
+                            <Tag className="w-3 h-3 inline mr-1" />
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {apiKey.lastUsedAt && (
+                      <div className="text-xs text-gray-400">
+                        Dernière utilisation: {new Date(apiKey.lastUsedAt).toLocaleString('fr-FR')}
+                      </div>
+                    )}
+                    {apiKey.usage && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Taux de succès: {apiKey.usage.successRate.toFixed(1)}%
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => deleteApiKey(apiKey.id)}
-                    className="p-2 text-red-400 hover:text-red-300 transition"
-                    title="Supprimer la clé"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => regenerateApiKey(apiKey.id)}
+                      className="p-2 text-blue-400 hover:text-blue-300 transition"
+                      title="Régénérer la clé"
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+                    <button
+                      onClick={() => deleteApiKey(apiKey.id)}
+                      className="p-2 text-red-400 hover:text-red-300 transition"
+                      title="Supprimer la clé"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -781,6 +1022,41 @@ result = client.tools.execute(
               <Key className="w-12 h-12 mx-auto mb-3 text-gray-500" />
               <p>Aucune clé API créée</p>
               <p className="text-sm">Cliquez sur "Nouvelle Clé API" pour commencer</p>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 bg-white/6 border border-white/10 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition"
+              >
+                Précédent
+              </button>
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-2 rounded-lg transition ${
+                      currentPage === page
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-white/6 border border-white/10 text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 bg-white/6 border border-white/10 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition"
+              >
+                Suivant
+              </button>
             </div>
           )}
 
