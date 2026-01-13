@@ -1,4 +1,4 @@
-import winston from 'winston';
+import * as winston from 'winston';
 
 const logFormat = winston.format.combine(
   winston.format.timestamp(),
@@ -17,7 +17,7 @@ export const logger = winston.createLogger({
 });
 
 // Logger console en développement
-if (process.env.NODE_ENV !== 'production') {
+if (process.env['NODE_ENV'] !== 'production') {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize(),

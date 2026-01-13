@@ -345,3 +345,39 @@ model OAuthRefreshToken {
 
   @@map("oauth_refresh_tokens")
 }
+
+// Tables pour le service de téléchargement
+model DownloadTask {
+  id          String   @id @default(cuid())
+  type        String // 'github', 'npm', 'website', 'documentation'
+  source      Json     // { owner?, repository?, packageName?, version?, url? }
+  options     Json     // { shallow, includeDocs, includeTests, includeExamples, maxDepth, excludePatterns }
+  priority    String   @default("normal") // 'low', 'normal', 'high'
+  status      String   @default("pending") // 'pending', 'downloading', 'completed', 'failed', 'retrying'
+  progress    Json     // { downloaded, total, percentage, currentFile }
+  metadata    Json?    // { size, files, duration, checksum? }
+  created_at  DateTime @default(now())
+  started_at  DateTime?
+  completed_at DateTime?
+  error       String?
+  retry_count Int      @default(0)
+
+  downloadResults DownloadResult[]
+
+  @@map("download_tasks")
+}
+
+model DownloadResult {
+  id         String   @id @default(cuid())
+  task_id    String   @unique @map("task_id")
+  success    Boolean  @default(true)
+  local_path String   @map("local_path")
+  metadata   Json     // { totalSize, fileCount, directoryCount, downloadTime, extractedSize }
+  files      Json     // DownloadedFile[]
+  errors     String[] @default([])
+  created_at DateTime @default(now())
+
+  downloadTask DownloadTask @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@map("download_results")
+}

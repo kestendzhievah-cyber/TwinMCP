@@ -1,4 +1,4 @@
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 
 export interface RedisConfig {
   host: string;
@@ -23,7 +23,7 @@ export const defaultRedisConfig: RedisConfig = {
 };
 
 export class RedisManager {
-  private client: RedisClientType;
+  private client: any;
   private config: RedisConfig;
 
   constructor(config: Partial<RedisConfig> = {}) {
@@ -34,7 +34,7 @@ export class RedisManager {
         port: this.config.port,
         connectTimeout: this.config.connectTimeout
       },
-      password: this.config.password,
+      password: this.config.password || undefined,
       database: this.config.database
     });
 
@@ -42,7 +42,7 @@ export class RedisManager {
   }
 
   private setupErrorHandling(): void {
-    this.client.on('error', (error) => {
+    this.client.on('error', (error: any) => {
       console.error('Redis Client Error:', error);
     });
 
@@ -77,7 +77,7 @@ export class RedisManager {
     }
   }
 
-  getClient(): RedisClientType {
+  getClient(): any {
     return this.client;
   }
 
@@ -109,10 +109,10 @@ export class RedisManager {
         host: this.config.host,
         port: this.config.port,
         database: this.config.database,
-        version: infoObj.redis_version,
-        usedMemory: infoObj.used_memory_human,
-        connectedClients: infoObj.connected_clients,
-        uptimeInSeconds: infoObj.uptime_in_seconds
+        version: (infoObj as any)['redis_version'],
+        usedMemory: (infoObj as any)['used_memory_human'],
+        connectedClients: (infoObj as any)['connected_clients'],
+        uptimeInSeconds: (infoObj as any)['uptime_in_seconds']
       };
     } catch (error) {
       return {
@@ -133,7 +133,7 @@ export function getRedisManager(config?: Partial<RedisConfig>): RedisManager {
   return redisManager;
 }
 
-export async function initializeRedis(config?: Partial<RedisConfig>): Promise<RedisClientType> {
+export async function initializeRedis(config?: Partial<RedisConfig>): Promise<any> {
   const manager = getRedisManager(config);
   await manager.connect();
   return manager.getClient();
