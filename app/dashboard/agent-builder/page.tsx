@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Send, Plus, Settings, Sparkles, Save, Play, Pause, Trash2, Bot, Zap, Mail, Calendar, Github, Slack, Database, MessageSquare, Copy, Eye, EyeOff, X, CheckCircle, TrendingUp, AlertTriangle, Crown, Users, MessageCircle } from 'lucide-react';
-import { LimitsDisplay } from '../../../components/ui/LimitsDisplay';
-import { LimitReachedModal } from '../../../components/ui/LimitReachedModal';
+import { LimitsDisplay } from '@/components/ui/LimitsDisplay';
+import { LimitReachedModal } from '@/components/ui/LimitReachedModal';
+
 interface UserLimitsResponse {
   plan: string;
   limits: {

@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
           metadata: {
             executionTime: result.metadata?.executionTime || (Date.now() - startTime),
             cacheHit: result.metadata?.cacheHit || false,
+            apiCallsCount: result.metadata?.apiCallsCount || 1,
             cost: result.metadata?.cost || 0,
             authenticated: authContext.isAuthenticated,
             authMethod: authContext.authMethod

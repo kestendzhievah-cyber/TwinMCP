@@ -2,7 +2,7 @@
 
 ## Roadmap de développement
 
-### Phase 1 : MVP (Q1 2025) ✅
+### Phase 1 : MVP (Q1 2026) ✅
 - [x] Serveur MCP de base
 - [x] Outils `resolve-library-id` et `query-docs`
 - [x] Authentification API key et OAuth 2.0
@@ -10,14 +10,14 @@
 - [x] Crawling automatique des bibliothèques
 - [x] Infrastructure de base
 
-### Phase 2 : Améliorations (Q2 2025) 🚧
+### Phase 2 : Améliorations (Q2 2026) 🚧
 - [ ] Interface de contribution collaborative
 - [ ] Support des bibliothèques privées
 - [ ] Intégration CI/CD avancée
 - [ ] Analytics et usage avancé
 - [ ] Optimisations de performance
 
-### Phase 3 : Enterprise (Q3 2025) 📋
+### Phase 3 : Enterprise (Q3 2026) 📋
 - [ ] Multi-langage (Python, Go, Rust)
 - [ ] Plugin system avancé
 - [ ] Enterprise features (SSO, audit logs)

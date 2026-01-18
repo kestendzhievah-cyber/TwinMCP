@@ -27,6 +27,10 @@ export interface UserLimitsResponse {
   canCreateAgent: boolean;
   suggestedUpgrade: string | null;
   subscriptionStatus?: string;
+  agentsCount?: number;
+  agentsLimit?: number;
+  conversationsUsed?: number;
+  conversationsLimit?: number;
 }
 
 export async function canCreateAgent(userId: string): Promise<{
@@ -118,7 +122,11 @@ export async function getUserLimits(userId: string): Promise<UserLimitsResponse>
       limits,
       canCreateAgent,
       suggestedUpgrade: suggestedUpgrade ? String(suggestedUpgrade) : null,
-      subscriptionStatus: userData.subscriptionStatus || 'active'
+      subscriptionStatus: userData.subscriptionStatus || 'active',
+      agentsCount: currentCount,
+      agentsLimit: planConfig.agents,
+      conversationsUsed: 0, // TODO: implement conversation counting
+      conversationsLimit: planConfig.conversations
     };
   } catch (error) {
     console.error('Error getting user limits:', error);

@@ -45,12 +45,13 @@ export class ContextAssemblyService {
     // 5. Assemblage selon le template
     const template = getTemplateForModel(request.targetModel);
     const assembledSections = await this.assembleSections(extractedStructures, template, request);
+    const originalTokenCount = assembledSections.reduce((sum, s) => sum + s.tokenCount, 0);
     
     // 6. Compression si nécessaire
     const compressedSections = await this.compressIfNeeded(assembledSections, request);
     
     // 7. Génération du contexte final
-    const finalContext = this.generateFinalContext(compressedSections, template);
+    const finalContext = this.generateFinalContext(compressedSections, template, originalTokenCount);
     
     // 8. Calcul des métriques de qualité
     const quality = await this.calculateQuality(finalContext.content, request);
@@ -80,10 +81,10 @@ export class ContextAssemblyService {
       // Classification du type de contenu
       let contentType: string;
       
-      if (this.isCodeBlock(content)) {
-        contentType = 'code';
-      } else if (this.isApiReference(content)) {
+      if (this.isApiReference(content)) {
         contentType = 'api';
+      } else if (this.isCodeBlock(content)) {
+        contentType = 'code';
       } else if (this.isExample(content)) {
         contentType = 'example';
       } else if (this.isExplanation(content)) {
@@ -209,7 +210,9 @@ export class ContextAssemblyService {
       
       let content = '';
       
-      switch (templateSection.name) {
+      const sectionKey = templateSection.id;
+
+      switch (sectionKey) {
         case 'overview':
         case 'summary':
         case 'introduction':
@@ -276,7 +279,11 @@ export class ContextAssemblyService {
     });
   }
 
-  private generateFinalContext(sections: ContextSection[], template: ContextTemplate): {
+  private generateFinalContext(
+    sections: ContextSection[],
+    template: ContextTemplate,
+    originalTokenCount: number
+  ): {
     content: string;
     tokenCount: number;
     compressionRatio: number;
@@ -302,14 +309,17 @@ export class ContextAssemblyService {
     }
     
     const tokenCount = this.tokenCounter.countTokens(content);
-    const originalTokens = sections.reduce((sum, s) => sum + s.tokenCount, 0);
-    const compressionRatio = originalTokens > 0 ? tokenCount / originalTokens : 1;
+    const compressionRatio = originalTokenCount > 0 ? tokenCount / originalTokenCount : 1;
     
     return { content, tokenCount, compressionRatio };
   }
 
   // Méthodes utilitaires
   private isCodeBlock(content: string): boolean {
+    if (content.includes('API Reference') || content.includes('API')) {
+      return false;
+    }
+
     return content.includes('```') || 
            content.includes('function ') || 
            content.includes('class ') ||
@@ -450,7 +460,7 @@ export class ContextAssemblyService {
     const avgSentenceLength = sentences.reduce((sum, s) => sum + s.length, 0) / sentences.length;
     
     const optimalLength = 20;
-    const lengthScore = 1 - Math.abs(avgSentenceLength - optimalLength) / optimalLength;
+    const lengthScore = Math.max(0, 1 - Math.abs(avgSentenceLength - optimalLength) / optimalLength);
     
     const structureBonus = content.includes('#') ? 0.1 : 0;
     

@@ -31,8 +31,10 @@ module.exports = {
     },
   },
   setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
+  testPathIgnorePatterns: ['<rootDir>/__tests__/.*\\.d\\.ts$'],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^uuid$': '<rootDir>/__tests__/mocks/uuid.ts'
   },
   testTimeout: 10000,
   verbose: true

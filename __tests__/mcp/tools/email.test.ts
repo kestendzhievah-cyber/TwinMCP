@@ -141,7 +141,9 @@ describe('EmailTool', () => {
         rateLimit: { requests: 100, period: '1h', strategy: 'sliding' }
       }
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+      const consoleSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation((..._args: unknown[]) => undefined)
 
       await emailTool.execute(args, config)
 

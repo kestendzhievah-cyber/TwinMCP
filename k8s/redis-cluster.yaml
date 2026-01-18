@@ -1,0 +1,50 @@
+apiVersion: redis.redis.opstreelabs.in/v1beta1
+kind: RedisCluster
+metadata:
+  name: twinme-redis
+  namespace: twinme-prod
+spec:
+  clusterSize: 6
+  clusterVersion: v7.0.5
+  persistenceEnabled: true
+  
+  redisExporter:
+    enabled: true
+    image: oliver006/redis_exporter:latest
+    
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
+        storageClassName: fast-ssd
+            
+  securityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+      
+  config:
+    maxmemory-policy: allkeys-lru
+    timeout: 0
+    tcp-keepalive: 300
+    maxclients: 10000
+    
+  nodeSelector:
+    node-type: redis
+    
+  tolerations:
+  - key: "redis"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"

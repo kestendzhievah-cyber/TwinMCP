@@ -95,6 +95,12 @@ model User {
   mcpConfigurations MCPConfiguration[]
   usageLogs         UsageLog[]
   oauthTokens       OAuthToken[]
+  conversations     Conversation[]
+  messageReactions  MessageReaction[]
+  userPreferences   UserPreferences?
+  themes            Theme[]
+  personalizationAnalytics PersonalizationAnalytics[]
+  conversationShares ConversationShare[]
 
   @@map("users")
 }
@@ -344,4 +350,645 @@ model OAuthRefreshToken {
   client      OAuthClient      @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("oauth_refresh_tokens")
+}
+
+// Tables pour le service de téléchargement
+model DownloadTask {
+  id          String   @id @default(cuid())
+  type        String // 'github', 'npm', 'website', 'documentation'
+  source      Json     // { owner?, repository?, packageName?, version?, url? }
+  options     Json     // { shallow, includeDocs, includeTests, includeExamples, maxDepth, excludePatterns }
+  priority    String   @default("normal") // 'low', 'normal', 'high'
+  status      String   @default("pending") // 'pending', 'downloading', 'completed', 'failed', 'retrying'
+  progress    Json     // { downloaded, total, percentage, currentFile }
+  metadata    Json?    // { size, files, duration, checksum? }
+  created_at  DateTime @default(now())
+  started_at  DateTime?
+  completed_at DateTime?
+  error       String?
+  retry_count Int      @default(0)
+
+  downloadResults DownloadResult[]
+
+  @@map("download_tasks")
+}
+
+model DownloadResult {
+  id         String   @id @default(cuid())
+  task_id    String   @unique @map("task_id")
+  success    Boolean  @default(true)
+  local_path String   @map("local_path")
+  metadata   Json     // { totalSize, fileCount, directoryCount, downloadTime, extractedSize }
+  files      Json     // DownloadedFile[]
+  errors     String[] @default([])
+  created_at DateTime @default(now())
+
+  downloadTask DownloadTask @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@map("download_results")
+}
+
+// Tables pour le système de prompts
+model PromptCategory {
+  id             String  @id
+  name           String
+  description    String?
+  parentCategory String? @map("parent_category")
+  icon           String?
+  color          String?
+  order          Int     @default(0) @map("order_index")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  templates      PromptTemplate[]
+  parent         PromptCategory? @relation("CategoryHierarchy", fields: [parentCategory], references: [id])
+  children       PromptCategory[] @relation("CategoryHierarchy")
+
+  @@map("prompt_categories")
+}
+
+model PromptTemplate {
+  id            String    @id
+  version       String
+  name          String
+  description   String?
+  category      String
+  status        String    @default("draft")
+  template      String
+  variables     Json      @default("[]")
+  examples      Json      @default("[]")
+  metadata      Json      @default("{}")
+  constraints   Json      @default("{}")
+  optimization  Json      @default("{}")
+  testing       Json      @default("{}")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  categoryRel   PromptCategory @relation(fields: [category], references: [id])
+  executions    PromptExecution[]
+  changes       TemplateChange[]
+  optimizations OptimizationRecord[]
+
+  @@unique([id, version])
+  @@map("prompt_templates")
+}
+
+model TemplateChange {
+  id          String   @id @default(cuid())
+  templateId  String   @map("template_id")
+  fromVersion String   @map("from_version")
+  toVersion   String   @map("to_version")
+  changes     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  template    PromptTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("template_changes")
+}
+
+model PromptExecution {
+  id              String   @id @default(cuid())
+  templateId      String   @map("template_id")
+  templateVersion String   @map("template_version")
+  variables       Json     @default("{}")
+  renderedPrompt  String   @map("rendered_prompt")
+  context         Json?
+  model           String
+  provider        String
+  response        String?
+  metrics         Json     @default("{}")
+  quality         Json     @default("{}")
+  feedback        Json?
+  abTestVariant   String?  @map("ab_test_variant")
+  userId          String?  @map("user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  template        PromptTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("prompt_executions")
+}
+
+model PromptExecutionError {
+  id           String   @id @default(cuid())
+  templateId   String   @map("template_id")
+  variables    Json     @default("{}")
+  errorMessage String   @map("error_message")
+  context      Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("prompt_execution_errors")
+}
+
+model ABTest {
+  id           String    @id @default(cuid())
+  name         String
+  description  String?
+  status       String    @default("draft")
+  variants     Json      @default("[]")
+  trafficSplit Json      @default("{}") @map("traffic_split")
+  startDate    DateTime? @map("start_date")
+  endDate      DateTime? @map("end_date")
+  sampleSize   Int       @default(1000) @map("sample_size")
+  confidence   Decimal   @default(0.95)
+  results      Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("ab_tests")
+}
+
+model OptimizationRecord {
+  id            String   @id @default(cuid())
+  templateId    String   @map("template_id")
+  timestamp     DateTime
+  type          String
+  reason        String?
+  changes       Json     @default("[]")
+  metricsBefore Json     @default("{}") @map("metrics_before")
+  metricsAfter  Json     @default("{}") @map("metrics_after")
+  improvement   Decimal?
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  template      PromptTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("optimization_records")
+}
+
+// Tables pour le système de gestion des conversations
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  metadata  Json     @default("{}")
+  settings  Json     @default("{}")
+  analytics Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+  shares   ConversationShare[]
+  exports  ConversationExport[]
+  
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  role           String   // 'user' | 'assistant' | 'system'
+  content        String
+  timestamp      DateTime @default(now())
+  metadata       Json     @default("{}")
+  
+  conversation   Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reactions      MessageReaction[]
+  attachments    MessageAttachment[]
+  
+  @@map("messages")
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  emoji     String
+  timestamp DateTime @default(now())
+  
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([messageId, userId, emoji])
+  @@map("message_reactions")
+}
+
+model MessageAttachment {
+  id        String  @id @default(cuid())
+  messageId String  @map("message_id")
+  type      String  // 'image' | 'file' | 'code' | 'link' | 'audio' | 'video'
+  name      String
+  url       String
+  size      BigInt?
+  mimeType  String? @map("mime_type")
+  metadata  Json    @default("{}")
+  thumbnail String?
+  
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  @@map("message_attachments")
+}
+
+model ConversationShare {
+  id           String    @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  shareId      String    @unique @map("share_id")
+  createdBy    String    @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  expiresAt    DateTime? @map("expires_at")
+  permissions  Json      @default("{}")
+  settings     Json      @default("{}")
+  analytics    Json      @default("{}")
+  
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  creator      User        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  @@map("conversation_shares")
+}
+
+model ConversationExport {
+  id            String    @id @default(cuid())
+  conversationId String    @map("conversation_id")
+  format        String    // 'json' | 'markdown' | 'pdf' | 'html' | 'csv'
+  options       Json      @default("{}")
+  status        String    @default("pending") // 'pending' | 'processing' | 'completed' | 'failed'
+  downloadUrl   String?   @map("download_url")
+  expiresAt     DateTime? @map("expires_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  completedAt   DateTime? @map("completed_at")
+  error         String?
+  
+  conversation  Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@map("conversation_exports")
+}
+
+// Modèles pour le contexte intelligent
+model ContextSource {
+  id            String    @id @default(cuid())
+  type          String    // 'documentation' | 'code' | 'example' | 'api' | 'tutorial'
+  title         String
+  content       String
+  url           String?
+  libraryId     String?   @map("library_id")
+  version       String?
+  language      String
+  tags          String[]
+  relevanceScore Float    @default(0.0) @map("relevance_score")
+  freshness     Float    @default(0.0)
+  popularity    Float    @default(0.0)
+  lastUpdated   DateTime @default(now()) @map("last_updated")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  chunks        ContextChunk[]
+  
+  @@map("context_sources")
+}
+
+model ContextChunk {
+  id            String    @id @default(cuid())
+  sourceId      String    @map("source_id")
+  content       String
+  positionStart Int       @default(0) @map("position_start")
+  positionEnd   Int       @default(0) @map("position_end")
+  positionIndex Int       @default(0) @map("position_index")
+  positionTotal Int       @default(1) @map("position_total")
+  sectionTitle  String?   @map("section_title")
+  codeBlocks    Int       @default(0) @map("code_blocks")
+  links         Int       @default(0)
+  images        Int       @default(0)
+  complexity    String    @default("medium") // 'low' | 'medium' | 'high'
+  embedding     Float[]   // Vector embedding
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  source        ContextSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  
+  @@map("context_chunks")
+}
+
+model ContextQuery {
+  id              String    @id @default(cuid())
+  conversationId  String    @map("conversation_id")
+  messageId       String    @map("message_id")
+  queryText       String    @map("query_text")
+  intentType      String?   @map("intent_type") // 'question' | 'explanation' | 'example' | 'troubleshooting' | 'comparison' | 'tutorial'
+  intentConfidence Float?   @map("intent_confidence")
+  intentKeywords  String[]  @default([]) @map("intent_keywords")
+  intentCategory  String?   @map("intent_category")
+  intentSubcategory String? @map("intent_subcategory")
+  entities        Json      @default("{}")
+  filters         Json      @default("{}")
+  options         Json      @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  results         ContextResult[]
+  analytics       ContextQueryAnalytics[]
+  
+  @@map("context_queries")
+}
+
+model ContextResult {
+  id             String    @id @default(cuid())
+  queryId        String    @map("query_id")
+  sources        Json      @default("[]")
+  chunks         Json      @default("[]")
+  summary        String?
+  totalSources   Int       @default(0) @map("total_sources")
+  totalChunks    Int       @default(0) @map("total_chunks")
+  queryTime      Int       @default(0) @map("query_time") // en millisecondes
+  relevanceScore Float     @default(0.0) @map("relevance_score")
+  coverage       Float     @default(0.0)
+  freshness      Float     @default(0.0)
+  suggestions    Json      @default("[]")
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  query          ContextQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  
+  @@map("context_results")
+}
+
+model ContextInjection {
+  id               String    @id @default(cuid())
+  conversationId   String    @map("conversation_id")
+  messageId        String    @map("message_id")
+  context          Json
+  templateId       String?   @map("template_id")
+  injectedPrompt   String    @map("injected_prompt")
+  originalLength   Int       @default(0) @map("original_length")
+  injectedLength   Int       @default(0) @map("injected_length")
+  compressionRatio Float     @default(0.0) @map("compression_ratio")
+  relevanceScore  Float     @default(0.0) @map("relevance_score")
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  @@map("context_injections")
+}
+
+model ContextTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  type        String   // 'general_context' | 'code_context' | 'api_context' | 'example_context' | 'tutorial_context'
+  template    String
+  variables   String[] @default([])
+  description String?
+  version     String   @default("1.0.0")
+  usageCount  Int      @default(0) @map("usage_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("context_templates")
+}
+
+model ContextQueryAnalytics {
+  id             String   @id @default(cuid())
+  queryId        String?  @map("query_id")
+  conversationId String   @map("conversation_id")
+  queryText      String   @map("query_text")
+  intent         Json
+  entities       Json     @default("{}")
+  filters        Json     @default("{}")
+  options        Json     @default("{}")
+  resultMetadata Json     @default("{}") @map("result_metadata")
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  query          ContextQuery? @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  
+  @@map("context_query_analytics")
+}
+
+model ContextCache {
+  id          String    @id @default(cuid())
+  cacheKey    String    @unique @map("cache_key")
+  queryText   String    @map("query_text")
+  result      Json
+  expiresAt   DateTime  @map("expires_at")
+  hitCount    Int       @default(0) @map("hit_count")
+  lastAccessed DateTime  @default(now()) @map("last_accessed")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  @@map("context_cache")
+}
+
+// Tables pour le système de personnalisation
+
+model UserPreferences {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  preferences Json     // UserPreferences au format JSON
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_preferences")
+}
+
+model Theme {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  category      String   // 'built-in' | 'custom' | 'community'
+  colors        Json     // ThemeColors au format JSON
+  typography    Json     // ThemeTypography au format JSON
+  spacing       Json     // ThemeSpacing au format JSON
+  shadows       Json     // ThemeShadows au format JSON
+  borderRadius  Json     @map("border_radius") // ThemeBorderRadius au format JSON
+  animations    Json     // ThemeAnimations au format JSON
+  custom        Boolean  @default(false)
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  creator       User?    @relation(fields: [createdBy], references: [id])
+  
+  @@map("themes")
+}
+
+model PersonalizationAnalytics {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  actionType String   @map("action_type") // 'theme_change' | 'theme_created' | 'preference_update' | 'preference_import'
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("personalization_analytics")
+}
+
+// Tables pour le système de facturation
+
+model UserProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique @map("user_id")
+  firstName  String?  @map("first_name")
+  lastName   String?  @map("last_name")
+  email      String?
+  phone      String?
+  address    String?
+  city       String?
+  state      String?
+  country    String?
+  postalCode String?  @map("postal_code")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  
+  invoices   Invoice[]
+  payments   Payment[]
+  subscriptions Subscription[]
+  credits    Credit[]
+  
+  @@map("user_profiles")
+}
+
+model Invoice {
+  id          String      @id @default(cuid())
+  number      String      @unique
+  userId      String      @map("user_id")
+  userProfile UserProfile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      InvoiceStatus @default(DRAFT)
+  period      Json        // BillingPeriod JSON
+  issueDate   DateTime    @default(now()) @map("issue_date")
+  dueDate     DateTime    @map("due_date")
+  paidDate    DateTime?   @map("paid_date")
+  subtotal     Decimal     @default(0) @db.Decimal(10, 2)
+  tax         Decimal     @default(0) @db.Decimal(10, 2)
+  total       Decimal     @default(0) @db.Decimal(10, 2)
+  currency    String      @default("EUR")
+  items       Json        @default("[]")
+  billingAddress Json      @default("{}") @map("billing_address")
+  metadata    Json        @default("{}")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  payments    Payment[]
+  
+  @@map("invoices")
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  invoiceId             String        @map("invoice_id")
+  invoice               Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  userId                String        @map("user_id")
+  userProfile           UserProfile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String
+  status                PaymentStatus  @default(PENDING)
+  providerTransactionId  String?       @map("provider_transaction_id")
+  failureReason         String?       @map("failure_reason")
+  refundedAmount        Decimal?      @map("refunded_amount") @db.Decimal(10, 2)
+  createdAt             DateTime      @default(now()) @map("created_at")
+  processedAt           DateTime?     @map("processed_at")
+  metadata              Json          @default("{}")
+  
+  @@map("payments")
+}
+
+model Subscription {
+  id                String            @id @default(cuid())
+  userId            String            @map("user_id")
+  userProfile       UserProfile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan              String
+  status            SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime          @map("current_period_start")
+  currentPeriodEnd   DateTime          @map("current_period_end")
+  cancelAtPeriodEnd  Boolean           @default(false) @map("cancel_at_period_end")
+  amount            Decimal            @db.Decimal(10, 2)
+  currency          String
+  interval          SubscriptionInterval @default(MONTH)
+  intervalCount     Int               @default(1) @map("interval_count")
+  trialStart        DateTime?          @map("trial_start")
+  trialEnd          DateTime?          @map("trial_end")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  metadata          Json               @default("{}")
+  
+  @@map("subscriptions")
+}
+
+model Credit {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  userProfile UserProfile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Decimal          @db.Decimal(10, 2)
+  currency  String
+  reason    String
+  type      CreditType
+  expiresAt DateTime?        @map("expires_at")
+  usedAt    DateTime?         @map("used_at")
+  invoiceId String?          @map("invoice_id")
+  createdAt DateTime          @default(now()) @map("created_at")
+  metadata  Json              @default("{}")
+  
+  @@map("credits")
+}
+
+model BillingAlert {
+  id           String           @id @default(cuid())
+  userId       String           @map("user_id")
+  type         BillingAlertType
+  threshold    Decimal?         @db.Decimal(10, 2)
+  currentValue Decimal?         @db.Decimal(10, 2) @map("current_value")
+  message      String
+  isRead       Boolean          @default(false) @map("is_read")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  readAt       DateTime?        @map("read_at")
+  metadata     Json             @default("{}")
+  
+  @@map("billing_alerts")
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  amount      Decimal  @db.Decimal(10, 2)
+  currency    String
+  interval    PlanInterval @default(MONTH)
+  features    String[]
+  limits      Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  metadata    Json     @default("{}")
+  
+  @@map("plans")
+}
+
+// Enums pour la facturation
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionInterval {
+  MONTH
+  YEAR
+}
+
+enum CreditType {
+  PROMOTIONAL
+  REFUND
+  COMPENSATION
+  ADJUSTMENT
+}
+
+enum BillingAlertType {
+  USAGE_THRESHOLD
+  PAYMENT_FAILED
+  INVOICE_OVERDUE
+  SUBSCRIPTION_EXPIRING
+}
+
+enum PlanInterval {
+  MONTH
+  YEAR
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase-admin';
-import { getUserLimits } from '@/lib/user-limits';
+import { getUserLimits, UserLimitsResponse } from '@/lib/user-limits';
 
 export async function GET(request: NextRequest) {
   try {

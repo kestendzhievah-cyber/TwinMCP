@@ -198,8 +198,8 @@ export class AuthService {
   generateJWT(userId: string, expiresIn: string = '24h'): string {
     return jwt.sign(
       { userId, timestamp: Date.now() },
-      this.jwtSecret as jwt.Secret,
-      { expiresIn: expiresIn as any }
+      this.jwtSecret,
+      { expiresIn }
     )
   }
 

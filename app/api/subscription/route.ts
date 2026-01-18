@@ -56,7 +56,12 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any
+  const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ['latest_invoice.payment_intent']
+  })
+  const subscription = (
+    'data' in subscriptionResponse ? subscriptionResponse.data : subscriptionResponse
+  ) as Stripe.Subscription
 
   return NextResponse.json({
     status: subscription.status,
