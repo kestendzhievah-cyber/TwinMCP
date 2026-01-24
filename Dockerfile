@@ -1,15 +1,31 @@
-FROM node:20-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apk add --no-cache libc6-compat openssl
+# Install system dependencies for native modules (sharp, bcrypt, puppeteer)
+RUN apk add --no-cache \
+    libc6-compat \
+    openssl \
+    python3 \
+    make \
+    g++ \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Skip Puppeteer Chromium download (use system chromium)
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Copy package files
 COPY package.json ./
 
-# Install dependencies with verbose logging
-RUN npm install --legacy-peer-deps --loglevel verbose 2>&1 || (cat /root/.npm/_logs/*.log && exit 1)
+# Install dependencies (ignore prepare/husky scripts)
+RUN npm install --legacy-peer-deps --ignore-scripts && \
+    npm rebuild bcrypt --build-from-source || true
 
 # Copy source code
 COPY . .
