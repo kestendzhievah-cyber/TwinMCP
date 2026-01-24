@@ -25,6 +25,7 @@ const hasServiceAccount = (
 );
 
 let firebaseAdminApp: App | null = null;
+let initializationError: Error | null = null;
 
 // Fonction pour obtenir ou initialiser l'application Firebase Admin
 export function getFirebaseAdminApp() {
@@ -32,7 +33,12 @@ export function getFirebaseAdminApp() {
     return firebaseAdminApp;
   }
 
+  // During build time, return null gracefully instead of throwing
   if (!hasServiceAccount) {
+    if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+      console.error('Firebase Admin initialization error', new Error('Les informations d\'identification Firebase Admin sont manquantes'));
+      return null as any;
+    }
     throw new Error('Les informations d\'identification Firebase Admin sont manquantes');
   }
 
@@ -55,6 +61,11 @@ export function getFirebaseAdminApp() {
     return firebaseAdminApp;
   } catch (error) {
     console.error('Erreur lors de l\'initialisation de Firebase Admin:', error);
+    // During build time, return null gracefully instead of throwing
+    if (process.env.NODE_ENV === 'production') {
+      initializationError = error as Error;
+      return null as any;
+    }
     throw error;
   }
 }

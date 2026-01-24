@@ -28,6 +28,18 @@ const nextConfig = {
       maxEntrypointSize: 1024 * 1024 * 5, // 5MB
     };
 
+    // Externaliser les packages problématiques côté serveur
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'vm2': 'commonjs vm2',
+        'dockerode': 'commonjs dockerode',
+        'ssh2': 'commonjs ssh2',
+        'puppeteer': 'commonjs puppeteer',
+        'sharp': 'commonjs sharp',
+      });
+    }
+
     // Configurer les résolutions pour éviter les problèmes de dépendances
     config.resolve.fallback = {
       ...config.resolve.fallback,

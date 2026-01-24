@@ -1,15 +1,20 @@
 import { NextResponse } from 'next/server';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getFirebaseAdminApp } from '@/lib/firebase/admin';
 
-// Initialisation de Firebase Admin
-try {
-  getFirebaseAdminApp();
-} catch (error) {
-  console.error('Firebase Admin initialization error', error);
-}
+// Lazy initialization of Firestore
+let db: Firestore | null = null;
 
-const db = getFirestore();
+function getDb(): Firestore {
+  if (!db) {
+    const app = getFirebaseAdminApp();
+    if (!app) {
+      throw new Error('Firebase Admin not initialized');
+    }
+    db = getFirestore(app);
+  }
+  return db;
+}
 
 // GET /api/chatbot/[id]
 export async function GET(
@@ -26,7 +31,7 @@ export async function GET(
       );
     }
 
-    const docRef = db.collection('chatbots').doc(id);
+    const docRef = getDb().collection('chatbots').doc(id);
     const doc = await docRef.get();
 
     if (!doc.exists) {
@@ -93,7 +98,7 @@ export async function PUT(
     // Ajout de la date de mise à jour
     updateData.updatedAt = new Date();
 
-    const docRef = db.collection('chatbots').doc(id);
+    const docRef = getDb().collection('chatbots').doc(id);
     
     // Vérifier si le document existe
     const doc = await docRef.get();

@@ -1,6 +1,11 @@
 import vision from '@google-cloud/vision';
-import sharp from 'sharp';
 import OpenAI from 'openai';
+
+// Dynamic import for sharp to avoid build-time errors
+const getSharp = async () => {
+  const sharpModule = await import('sharp');
+  return sharpModule.default;
+};
 
 export interface ImageAnalysis {
   description: string;
@@ -34,6 +39,7 @@ export class ImageService {
   }
 
   async analyze(imageBuffer: Buffer): Promise<ImageAnalysis> {
+    const sharp = await getSharp();
     const optimized = await sharp(imageBuffer)
       .resize(1024, 1024, { fit: 'inside' })
       .jpeg({ quality: 85 })
@@ -66,7 +72,7 @@ export class ImageService {
     const text = await this.extractText(imageBuffer);
 
     return {
-      description: response.choices[0].message.content || '',
+      description: response.choices[0].message.content ?? '',
       metadata,
       objects,
       text
@@ -75,31 +81,33 @@ export class ImageService {
 
   async extractText(imageBuffer: Buffer): Promise<string> {
     const [result] = await this.visionClient.textDetection(imageBuffer);
-    return result.fullTextAnnotation?.text || '';
+    return result.fullTextAnnotation?.text ?? '';
   }
 
   async detectObjects(imageBuffer: Buffer): Promise<DetectedObject[]> {
     const [result] = await this.visionClient.objectLocalization(imageBuffer);
 
     return result.localizedObjectAnnotations?.map(obj => ({
-      name: obj.name || '',
-      confidence: obj.score || 0,
+      name: obj.name ?? '',
+      confidence: obj.score ?? 0,
       boundingBox: obj.boundingPoly
-    })) || [];
+    })) ?? [];
   }
 
   async extractMetadata(imageBuffer: Buffer): Promise<ImageMetadata> {
+    const sharp = await getSharp();
     const metadata = await sharp(imageBuffer).metadata();
 
     return {
-      width: metadata.width || 0,
-      height: metadata.height || 0,
-      format: metadata.format || 'unknown',
+      width: metadata.width ?? 0,
+      height: metadata.height ?? 0,
+      format: metadata.format ?? 'unknown',
       size: imageBuffer.length
     };
   }
 
   async optimizeImage(imageBuffer: Buffer, maxWidth: number = 1920): Promise<Buffer> {
+    const sharp = await getSharp();
     return await sharp(imageBuffer)
       .resize(maxWidth, null, { 
         fit: 'inside',
@@ -110,6 +118,7 @@ export class ImageService {
   }
 
   async generateThumbnail(imageBuffer: Buffer, size: number = 200): Promise<Buffer> {
+    const sharp = await getSharp();
     return await sharp(imageBuffer)
       .resize(size, size, { fit: 'cover' })
       .jpeg({ quality: 80 })

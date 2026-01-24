@@ -4,8 +4,15 @@ export class KeyManagementService {
   private keys: Map<string, Buffer> = new Map();
 
   async getEncryptionKey(keyId: string): Promise<Buffer> {
-    const key = this.keys.get(keyId);
+    let key = this.keys.get(keyId);
     if (!key) {
+      // Fallback to environment variable for build time
+      const envKey = process.env.ENCRYPTION_KEY ?? process.env.BILLING_ENCRYPTION_KEY;
+      if (envKey) {
+        key = Buffer.from(envKey.padEnd(32, '0').slice(0, 32));
+        this.keys.set(keyId, key);
+        return key;
+      }
       throw new Error(`Encryption key not found: ${keyId}`);
     }
     return key;
