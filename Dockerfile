@@ -10,12 +10,16 @@ RUN apt-get update && apt-get install -y \
 
 # Skip Puppeteer download
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV HUSKY=0
+
+# Install yarn
+RUN corepack enable && corepack prepare yarn@stable --activate
 
 # Copy package files
 COPY package.json ./
 
-# Install dependencies
-RUN npm install --legacy-peer-deps --ignore-scripts
+# Install dependencies with yarn
+RUN yarn install --ignore-scripts --network-timeout 600000
 
 # Copy source code
 COPY . .
@@ -26,11 +30,11 @@ RUN npx prisma generate || true
 # Build the app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-RUN npm run build
+RUN yarn build
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["npm", "start"]
+CMD ["yarn", "start"]
