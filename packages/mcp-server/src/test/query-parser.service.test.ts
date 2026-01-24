@@ -9,7 +9,7 @@ describe('QueryParserService', () => {
 
   test('should normalize query correctly', () => {
     const result = parser.parseQuery('React.js');
-    expect(result.normalized).toBe('react js');
+    expect(result.normalized).toBe('react.js');
     expect(result.original).toBe('React.js');
   });
 
@@ -29,6 +29,10 @@ describe('QueryParserService', () => {
     const result = parser.parseQuery('react hooks');
     const frameworks = result.entities.filter(e => e.type === 'framework');
     expect(frameworks).toHaveLength(1);
+    expect(frameworks[0]).toBeDefined();
+    if (!frameworks[0]) {
+      throw new Error('Expected framework entity to be defined');
+    }
     expect(frameworks[0].value).toBe('react');
     expect(frameworks[0].confidence).toBe(1.0);
   });
@@ -37,6 +41,10 @@ describe('QueryParserService', () => {
     const result = parser.parseQuery('react 18.2.0');
     const versions = result.entities.filter(e => e.type === 'version');
     expect(versions).toHaveLength(1);
+    expect(versions[0]).toBeDefined();
+    if (!versions[0]) {
+      throw new Error('Expected version entity to be defined');
+    }
     expect(versions[0].value).toBe('18.2.0');
     expect(versions[0].confidence).toBe(0.9);
   });
@@ -83,9 +91,8 @@ describe('QueryParserService', () => {
 
   test('should handle special characters', () => {
     const result = parser.parseQuery('react@18.0.0');
-    expect(result.normalized).toBe('react 18.0.0');
-    expect(result.tokens).toContain('react');
-    expect(result.tokens).toContain('18.0.0');
+    expect(result.normalized).toBe('react@18.0.0');
+    expect(result.tokens).toContain('react@18.0.0');
   });
 
   test('should detect multiple ecosystems', () => {

@@ -1,10 +1,7 @@
-import { ToolHandler, MCPContext } from '../types/mcp';
-import { ResolveLibraryIdInputSchema, ResolveLibraryIdOutputSchema, ResolveLibraryIdInput, ResolveLibraryIdOutput } from '../schemas/resolve-library-id.schema';
-import { LibraryResolutionService } from '../services/library-resolution.service';
-import { Pool } from 'pg';
-import { createClient } from 'redis';
+import { ToolHandler, MCPContext, ResolveLibraryParams, ResolveLibraryResult } from '../types/mcp';
+import { TwinMCPClient } from '../client/twinmcp-client';
 
-export class ResolveLibraryHandler implements ToolHandler<ResolveLibraryIdInput, ResolveLibraryIdOutput> {
+export class ResolveLibraryHandler implements ToolHandler<ResolveLibraryParams, ResolveLibraryResult> {
   name = 'resolve-library-id';
   description = 'Resolve library names and find matching software libraries with advanced search and scoring';
   inputSchema = {
@@ -50,46 +47,31 @@ export class ResolveLibraryHandler implements ToolHandler<ResolveLibraryIdInput,
     required: ['query']
   };
 
-  private resolutionService: LibraryResolutionService;
+  constructor(private client: TwinMCPClient) {}
 
-  constructor(db: Pool, redis: any) {
-    this.resolutionService = new LibraryResolutionService(db, redis);
-  }
+  async handler(params: ResolveLibraryParams, context: MCPContext): Promise<ResolveLibraryResult> {
+    if (!params.query || params.query.trim().length === 0) {
+      throw new Error('Invalid input parameters: query is required');
+    }
 
-  async handler(params: ResolveLibraryIdInput, context: MCPContext): Promise<ResolveLibraryIdOutput> {
-    // Valider l'entrée avec Zod
-    const validatedInput = ResolveLibraryIdInputSchema.parse(params);
-    
-    context.logger.info('Resolving library', { 
-      query: validatedInput.query,
-      context: validatedInput.context,
-      limit: validatedInput.limit,
-      include_aliases: validatedInput.include_aliases
+    context.logger.info('Resolving library', {
+      query: params.query,
+      libraryName: params.libraryName,
+      version: params.version,
     });
 
     try {
-      const result = await this.resolutionService.resolveLibrary(validatedInput || {} as ResolveLibraryIdInput);
-      
-      // Valider la sortie avec Zod
-      const validatedOutput = ResolveLibraryIdOutputSchema.parse(result);
-      
+      const result = await this.client.resolveLibrary(params);
+
       context.logger.info('Library resolved successfully', {
-        query: validatedOutput.query,
-        resultsCount: validatedOutput.results.length,
-        totalFound: validatedOutput.total_found,
-        processingTime: validatedOutput.processing_time_ms,
+        libraryId: result.libraryId,
+        confidence: result.confidence,
         requestId: context.requestId,
       });
 
-      return validatedOutput;
+      return result;
     } catch (error) {
-      context.logger.error('Failed to resolve library', error, { params: validatedInput });
-      
-      // Gérer les erreurs Zod
-      if ((error as any).name === 'ZodError') {
-        throw new Error(`Invalid input parameters: ${(error as any).errors.map((e: any) => e.message).join(', ')}`);
-      }
-      
+      context.logger.error('Failed to resolve library', error, { params });
       throw error;
     }
   }

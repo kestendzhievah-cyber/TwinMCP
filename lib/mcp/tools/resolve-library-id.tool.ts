@@ -1,6 +1,6 @@
-import { MCPTool, ValidationResult, ExecutionResult } from '../../core/types'
+import { MCPTool, ValidationResult, ExecutionResult } from '../core/types'
 import { z } from 'zod'
-import { LibraryResolutionService, ResolveLibraryIdInputSchema, ResolveLibraryIdOutputSchema } from '../../../services/library-resolution.service'
+import { LibraryResolutionService, ResolveLibraryIdInputSchema, ResolveLibraryIdOutput } from '../../services/library-resolution.service'
 
 export class ResolveLibraryIdTool implements MCPTool {
   id = 'resolve-library-id'
@@ -92,7 +92,7 @@ export class ResolveLibraryIdTool implements MCPTool {
       }
       return {
         success: false,
-        errors: [{ path: 'unknown', message: error.message }]
+        errors: [{ path: 'unknown', message: (error as Error).message }]
       }
     }
   }
@@ -110,8 +110,7 @@ export class ResolveLibraryIdTool implements MCPTool {
           metadata: {
             executionTime: Date.now() - startTime,
             cacheHit: false,
-            apiCallsCount: 0,
-            errors: validation.errors
+            apiCallsCount: 0
           }
         }
       }
@@ -138,7 +137,7 @@ export class ResolveLibraryIdTool implements MCPTool {
       }
       
     } catch (error) {
-      console.error(`[ResolveLibraryId] Error: ${error.message}`, error.stack)
+      console.error(`[ResolveLibraryId] Error: ${(error as Error).message}`, (error as Error).stack)
       
       return {
         success: false,

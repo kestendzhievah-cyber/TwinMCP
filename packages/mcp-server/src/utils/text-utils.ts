@@ -78,27 +78,30 @@ export class TextUtils {
     if (str1.length === 0) return str2.length;
     if (str2.length === 0) return str1.length;
 
-    const matrix: number[][] = [];
-    
+    const matrix: number[][] = Array.from({ length: str2.length + 1 }, () =>
+      Array(str1.length + 1).fill(0)
+    );
+
     for (let i = 0; i <= str2.length; i++) {
-      matrix[i] = [];
       for (let j = 0; j <= str1.length; j++) {
         if (i === 0) {
-          matrix[i][j] = j;
+          matrix[i]![j] = j;
         } else if (j === 0) {
-          matrix[i][j] = i;
+          matrix[i]![j] = i;
         } else {
           const cost = str1[j - 1] === str2[i - 1] ? 0 : 1;
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j] + 1,     // deletion
-            matrix[i][j - 1] + 1,     // insertion
-            matrix[i - 1][j - 1] + cost // substitution
+          const prevRow = matrix[i - 1] ?? [];
+          const currentRow = matrix[i] ?? [];
+          matrix[i]![j] = Math.min(
+            (prevRow[j] ?? 0) + 1, // deletion
+            (currentRow[j - 1] ?? 0) + 1, // insertion
+            (prevRow[j - 1] ?? 0) + cost // substitution
           );
         }
       }
     }
 
-    return matrix[str2.length] ? matrix[str2.length][str1.length] ?? 0 : 0;
+    return matrix[str2.length]![str1.length] ?? 0;
   }
 
   static areSimilar(str1: string, str2: string, threshold: number = 2): boolean {

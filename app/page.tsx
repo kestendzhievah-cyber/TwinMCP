@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MessageSquare, Zap, TrendingUp, Shield, Check, ArrowRight, Sparkles, Users, Clock, DollarSign } from 'lucide-react';
+import { MessageSquare, Zap, TrendingUp, Shield, Check, ArrowRight, Sparkles, Users, Clock, DollarSign, Code2, Library, Boxes, Workflow } from 'lucide-react';
 
 export default function AgentFlowLanding() {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function AgentFlowLanding() {
   // Handler for plan selection/signup
   const handlePlanClick = (planName: string) => {
     const planMap: { [key: string]: string } = {
-      'Starter': '/signup?plan=starter',
+      'Free': '/signup?plan=free',
       'Professional': '/signup?plan=professional',
       'Enterprise': '/signup?plan=enterprise'
     };
@@ -35,77 +35,77 @@ export default function AgentFlowLanding() {
   };
 
   const stats = [
-    { icon: Users, value: '10,000+', label: 'Entreprises actives' },
-    { icon: MessageSquare, value: '5M+', label: 'Conversations/mois' },
-    { icon: Clock, value: '80%', label: 'Temps économisé' },
-    { icon: DollarSign, value: '3.2x', label: 'ROI moyen' }
+    { icon: Users, value: '5,000+', label: 'Développeurs actifs' },
+    { icon: Library, value: '500+', label: 'Serveurs MCP créés' },
+    { icon: Code2, value: '95%', label: 'Temps de dev économisé' },
+    { icon: Workflow, value: '10x', label: 'Plus rapide' }
   ];
 
   const features = [
     {
-      icon: Sparkles,
-      title: 'IA Multi-Modèles',
-      description: 'GPT-4, Claude, Gemini - Choisissez le meilleur modèle pour chaque tâche'
+      icon: Code2,
+      title: 'Création Simplifiée',
+      description: 'Créez vos serveurs MCP en quelques clics avec notre interface intuitive'
     },
     {
-      icon: Zap,
-      title: 'Déploiement Instantané',
-      description: 'Votre agent IA opérationnel en moins de 5 minutes'
+      icon: Library,
+      title: 'Bibliothèque Complète',
+      description: 'Accédez à des centaines de serveurs MCP prêts à l\'emploi'
     },
     {
-      icon: TrendingUp,
-      title: 'Analytics Avancés',
-      description: 'Tableaux de bord en temps réel pour optimiser vos performances'
+      icon: Boxes,
+      title: 'Intégration Facile',
+      description: 'Connectez vos serveurs MCP à n\'importe quelle application en quelques lignes'
     },
     {
       icon: Shield,
-      title: 'Sécurité Enterprise',
-      description: 'Conformité RGPD, chiffrement end-to-end, hébergement EU'
+      title: 'Sécurité & Fiabilité',
+      description: 'Infrastructure sécurisée, monitoring 24/7, conformité RGPD'
     }
   ];
 
   const plans = [
     {
-      name: 'Starter',
-      price: '29',
-      description: 'Parfait pour tester',
+      name: 'Free',
+      price: '0',
+      description: 'Parfait pour débuter',
       features: [
-        '1 agent IA',
-        '1 000 conversations/mois',
-        'Modèles basiques',
-        'Support email',
-        'Analytics basiques'
+        '3 serveurs MCP',
+        '200 requêtes/jour',
+        'Accès bibliothèque publique',
+        'Support communauté',
+        'Documentation complète'
       ],
       cta: 'Démarrer gratuitement',
       popular: false
     },
     {
       name: 'Professional',
-      price: '99',
+      price: '14.99',
       description: 'Le plus populaire',
       features: [
-        '5 agents IA',
-        '10 000 conversations/mois',
-        'Tous les modèles (GPT-4, Claude)',
+        'Serveurs MCP illimités',
+        '10 000 requêtes/jour',
+        'Serveurs privés',
         'Support prioritaire 24/7',
         'Analytics avancés',
-        'Intégrations CRM',
-        'API complète'
+        'API complète',
+        'Webhooks & intégrations'
       ],
       cta: 'Essai gratuit 14 jours',
       popular: true
     },
     {
       name: 'Enterprise',
-      price: '499',
+      price: null,
       description: 'Pour les équipes',
       features: [
-        'Agents illimités',
-        'Conversations illimitées',
-        'Tous les modèles + Custom',
+        'Tout du plan Pro',
+        'Requêtes illimitées',
+        'Serveurs MCP personnalisés',
         'Account manager dédié',
         'SLA 99.9%',
-        'Intégrations sur-mesure',
+        'Déploiement on-premise',
         'Formation & onboarding',
         'White-label disponible'
       ],
@@ -116,16 +116,16 @@ export default function AgentFlowLanding() {
 
   const testimonials = [
     {
-      company: 'TechCorp',
-      author: 'Marie Dubois, CEO',
-      content: 'AgentFlow a réduit notre temps de réponse de 85%. Notre équipe se concentre maintenant sur les cas complexes.',
-      savings: '12 000€/mois économisés'
+      company: 'DevStudio',
+      author: 'Marc Lefebvre, CTO',
+      content: 'TwinMCP a transformé notre workflow. Nous créons des serveurs MCP en minutes au lieu de jours. La bibliothèque est une mine d\'or.',
+      savings: '200h de dev économisées/mois'
     },
     {
-      company: 'E-Shop Pro',
-      author: 'Thomas Martin, CMO',
-      content: 'Nos ventes ont augmenté de 40% grâce à l\'agent commercial IA qui qualifie les leads 24/7.',
-      savings: '+180 000€ de CA annuel'
+      company: 'AI Solutions',
+      author: 'Sophie Bernard, Lead Dev',
+      content: 'L\'intégration MCP n\'a jamais été aussi simple. Nos clients adorent la flexibilité et la rapidité de déploiement.',
+      savings: '10x plus rapide'
     }
   ];
 
@@ -152,7 +152,7 @@ export default function AgentFlowLanding() {
               </button>
               <button 
                 onClick={handleFreeTrialOrLogin}
-                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/50">
+                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/50">
                 Essai Gratuit
               </button>
             </div>
@@ -164,30 +164,30 @@ export default function AgentFlowLanding() {
       <section className="pt-32 pb-20 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <div className="inline-block mb-4 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-full">
-            <span className="text-purple-300 text-sm font-semibold">🚀 +10 000 entreprises nous font confiance</span>
+            <span className="text-purple-300 text-sm font-semibold">🚀 +5 000 développeurs nous font confiance</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Créez des Agents IA qui
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Vendent</span> et
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Supportent</span>
+            Créez vos
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Serveurs MCP</span>
+            <br/>en quelques clics
           </h1>
           
           <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
-            Automatisez votre support client et boostez vos ventes avec des agents IA intelligents. 
-            Aucun code requis. Déploiement en 5 minutes.
+            La plateforme tout-en-un pour créer, gérer et déployer vos serveurs Model Context Protocol. 
+            Bibliothèque complète + Création simplifiée.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <button 
               onClick={handleFreeTrialOrLogin}
-              className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50 flex items-center justify-center">
+              className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50 flex items-center justify-center">
               Démarrer Gratuitement
               <ArrowRight className="ml-2 w-5 h-5" />
             </button>
             <button 
               onClick={handleDemo}
-              className="px-8 py-4 bg-white/10 backdrop-blur text-white text-lg font-semibold rounded-lg hover:bg-white/20 transition border border-white/20">
+              className="px-8 py-4 bg-white/10 backdrop-blur text-white text-lg font-semibold rounded-full hover:bg-white/20 transition border border-white/20">
               Voir la Démo
             </button>
           </div>
@@ -210,10 +210,10 @@ export default function AgentFlowLanding() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Tout ce dont vous avez besoin
+              Tout pour vos serveurs MCP
             </h2>
             <p className="text-xl text-gray-400">
-              Une plateforme complète pour créer, déployer et optimiser vos agents IA
+              Une plateforme complète pour créer, gérer et déployer vos serveurs Model Context Protocol
             </p>
           </div>
 
@@ -261,8 +261,14 @@ export default function AgentFlowLanding() {
                   <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                   <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
                   <div className="flex items-end justify-center">
-                    <span className="text-5xl font-bold text-white">{plan.price}€</span>
-                    <span className="text-gray-400 ml-2 mb-2">/mois</span>
+                    {plan.price !== null ? (
+                      <>
+                        <span className="text-5xl font-bold text-white">{plan.price}€</span>
+                        <span className="text-gray-400 ml-2 mb-2">/mois</span>
+                      </>
+                    ) : (
+                      <span className="text-3xl font-bold text-white">Sur devis</span>
+                    )}
                   </div>
                 </div>
 
@@ -283,7 +289,7 @@ export default function AgentFlowLanding() {
                       handlePlanClick(plan.name);
                     }
                   }}
-                  className={`w-full py-3 rounded-lg font-semibold transition ${
+                  className={`w-full py-3 rounded-full font-semibold transition ${
                   plan.popular
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/50'
                     : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
@@ -328,14 +334,14 @@ export default function AgentFlowLanding() {
       <section className="py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Prêt à Transformer Votre Business ?
+            Prêt à Créer vos Serveurs MCP ?
           </h2>
           <p className="text-xl text-gray-300 mb-8">
-            Rejoignez les milliers d'entreprises qui automatisent avec AgentFlow
+            Rejoignez les milliers de développeurs qui utilisent TwinMCP
           </p>
           <button 
             onClick={handleFreeTrialOrLogin}
-            className="px-10 py-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xl font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50">
+            className="px-10 py-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xl font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50">
             Démarrer Gratuitement - 14 Jours d'Essai
           </button>
           <p className="text-gray-400 text-sm mt-4">
@@ -347,7 +353,7 @@ export default function AgentFlowLanding() {
       {/* Footer */}
       <footer className="border-t border-slate-800 py-12 px-4">
         <div className="max-w-7xl mx-auto text-center text-gray-400">
-          <p>© 2025 AgentFlow. Tous droits réservés.</p>
+          <p>© 2025 TwinMCP. Tous droits réservés.</p>
         </div>
       </footer>
     </div>

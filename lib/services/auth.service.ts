@@ -6,6 +6,10 @@ export interface ApiKeyData {
   id: string
   userId: string
   keyPrefix: string
+  tier: string
+  quotaDaily: number
+  quotaMonthly: number
+  permissions: unknown
   quotaRequestsPerMinute: number
   quotaRequestsPerDay: number
 }
@@ -14,6 +18,8 @@ export interface AuthResult {
   success: boolean
   apiKeyData?: ApiKeyData
   error?: string
+  errorCode?: 'INVALID_API_KEY' | 'RATE_LIMITED' | 'EXPIRED_API_KEY' | 'INACTIVE_API_KEY'
+  statusCode?: number
 }
 
 export class AuthService {
@@ -30,7 +36,9 @@ export class AuthService {
       if (!apiKey || !apiKey.startsWith('twinmcp_')) {
         return {
           success: false,
-          error: 'Invalid API key format'
+          error: 'Invalid API key format',
+          errorCode: 'INVALID_API_KEY',
+          statusCode: 401
         }
       }
 
@@ -41,7 +49,8 @@ export class AuthService {
       const apiKeyRecord = await this.db.apiKey.findFirst({
         where: {
           keyPrefix: keyPrefix,
-          revokedAt: null
+          revokedAt: null,
+          isActive: true
         },
         include: {
           user: {
@@ -57,7 +66,9 @@ export class AuthService {
       if (!apiKeyRecord) {
         return {
           success: false,
-          error: 'API key not found or revoked'
+          error: 'API key not found or revoked',
+          errorCode: 'INVALID_API_KEY',
+          statusCode: 401
         }
       }
 
@@ -66,16 +77,29 @@ export class AuthService {
       if (!isValid) {
         return {
           success: false,
-          error: 'Invalid API key'
+          error: 'Invalid API key',
+          errorCode: 'INVALID_API_KEY',
+          statusCode: 401
+        }
+      }
+
+      if (apiKeyRecord.expiresAt && apiKeyRecord.expiresAt < new Date()) {
+        return {
+          success: false,
+          error: 'API key has expired',
+          errorCode: 'EXPIRED_API_KEY',
+          statusCode: 401
         }
       }
 
       // Vérifier les quotas
-      const quotaCheck = await this.checkQuotas(apiKeyRecord.id, apiKeyRecord.quotaRequestsPerMinute, apiKeyRecord.quotaRequestsPerDay)
+      const quotaCheck = await this.checkQuotas(apiKeyRecord.id, apiKeyRecord.quotaDaily, apiKeyRecord.quotaMonthly)
       if (!quotaCheck.allowed) {
         return {
           success: false,
-          error: quotaCheck.reason
+          error: quotaCheck.reason,
+          errorCode: 'RATE_LIMITED',
+          statusCode: 429
         }
       }
 
@@ -85,14 +109,20 @@ export class AuthService {
         data: { lastUsedAt: new Date() }
       })
 
+      const quotaRequestsPerMinute = Math.max(1, Math.floor(apiKeyRecord.quotaDaily / (24 * 60)))
+
       return {
         success: true,
         apiKeyData: {
           id: apiKeyRecord.id,
           userId: apiKeyRecord.userId,
           keyPrefix: apiKeyRecord.keyPrefix,
-          quotaRequestsPerMinute: apiKeyRecord.quotaRequestsPerMinute,
-          quotaRequestsPerDay: apiKeyRecord.quotaRequestsPerDay
+          tier: apiKeyRecord.tier,
+          quotaDaily: apiKeyRecord.quotaDaily,
+          quotaMonthly: apiKeyRecord.quotaMonthly,
+          permissions: apiKeyRecord.permissions,
+          quotaRequestsPerMinute,
+          quotaRequestsPerDay: apiKeyRecord.quotaDaily
         }
       }
 
@@ -100,41 +130,43 @@ export class AuthService {
       console.error('Error validating API key:', error)
       return {
         success: false,
-        error: 'Authentication failed'
+        error: 'Authentication failed',
+        errorCode: 'INVALID_API_KEY',
+        statusCode: 401
       }
     }
   }
 
-  private async checkQuotas(apiKeyId: string, perMinuteLimit: number, perDayLimit: number): Promise<{ allowed: boolean; reason?: string }> {
+  private async checkQuotas(apiKeyId: string, dailyLimit: number, monthlyLimit: number): Promise<{ allowed: boolean; reason?: string }> {
     const now = new Date()
-    const currentMinute = Math.floor(now.getTime() / 60000)
-    const currentDay = Math.floor(now.getTime() / 86400000)
+    const dayKey = `quota:daily:${apiKeyId}:${now.toISOString().slice(0, 10)}`
+    const monthKey = `quota:monthly:${apiKeyId}:${now.toISOString().slice(0, 7)}`
 
-    // Vérifier quota par minute
-    const minuteKey = `rate_limit:${apiKeyId}:${currentMinute}`
-    const minuteCount = await this.redis.incr(minuteKey)
-    if (minuteCount === 1) {
-      await this.redis.expire(minuteKey, 60)
-    }
+    if (dailyLimit !== -1) {
+      const dayCount = await this.redis.incr(dayKey)
+      if (dayCount === 1) {
+        await this.redis.expire(dayKey, this.getSecondsUntilEndOfDay(now))
+      }
 
-    if (minuteCount > perMinuteLimit) {
-      return {
-        allowed: false,
-        reason: 'Rate limit exceeded: too many requests per minute'
+      if (dayCount > dailyLimit) {
+        return {
+          allowed: false,
+          reason: 'Daily quota exceeded'
+        }
       }
     }
 
-    // Vérifier quota par jour
-    const dayKey = `rate_limit:${apiKeyKey}:${currentDay}`
-    const dayCount = await this.redis.incr(dayKey)
-    if (dayCount === 1) {
-      await this.redis.expire(dayKey, 86400)
-    }
+    if (monthlyLimit !== -1) {
+      const monthCount = await this.redis.incr(monthKey)
+      if (monthCount === 1) {
+        await this.redis.expire(monthKey, this.getSecondsUntilEndOfMonth(now))
+      }
 
-    if (dayCount > perDayLimit) {
-      return {
-        allowed: false,
-        reason: 'Daily quota exceeded'
+      if (monthCount > monthlyLimit) {
+        return {
+          allowed: false,
+          reason: 'Monthly quota exceeded'
+        }
       }
     }
 
@@ -157,8 +189,9 @@ export class AuthService {
         keyHash,
         keyPrefix: prefix + randomPart.slice(0, 12),
         name: name || `API Key ${new Date().toISOString()}`,
-        quotaRequestsPerMinute: 100,
-        quotaRequestsPerDay: 10000
+        tier: 'free',
+        quotaDaily: 100,
+        quotaMonthly: 3000
       }
     })
 
@@ -189,7 +222,7 @@ export class AuthService {
   }
 
   async listUserApiKeys(userId: string) {
-    return await this.db.apiKey.findMany({
+    const keys = await this.db.apiKey.findMany({
       where: {
         userId,
         revokedAt: null
@@ -198,8 +231,9 @@ export class AuthService {
         id: true,
         keyPrefix: true,
         name: true,
-        quotaRequestsPerMinute: true,
-        quotaRequestsPerDay: true,
+        tier: true,
+        quotaDaily: true,
+        quotaMonthly: true,
         lastUsedAt: true,
         createdAt: true
       },
@@ -207,6 +241,12 @@ export class AuthService {
         createdAt: 'desc'
       }
     })
+
+    return keys.map(key => ({
+      ...key,
+      quotaRequestsPerMinute: Math.max(1, Math.floor(key.quotaDaily / (24 * 60))),
+      quotaRequestsPerDay: key.quotaDaily
+    }))
   }
 
   private generateRandomString(length: number): string {
@@ -220,18 +260,63 @@ export class AuthService {
 
   async logUsage(apiKeyId: string, toolName: string, libraryId?: string, query?: string, tokensReturned?: number, responseTimeMs?: number) {
     try {
-      await this.db.usageLog.create({
-        data: {
-          apiKeyId,
-          toolName,
-          libraryId,
-          query,
-          tokensReturned,
-          responseTimeMs
-        }
+      const apiKeyRecord = await this.db.apiKey.findUnique({
+        where: { id: apiKeyId },
+        select: { usedDaily: true, usedMonthly: true, lastUsedAt: true, userId: true }
       })
+
+      const now = new Date()
+      const usedDaily = apiKeyRecord && this.isSameDay(apiKeyRecord.lastUsedAt, now)
+        ? apiKeyRecord.usedDaily + 1
+        : 1
+      const usedMonthly = apiKeyRecord && this.isSameMonth(apiKeyRecord.lastUsedAt, now)
+        ? apiKeyRecord.usedMonthly + 1
+        : 1
+
+      await this.db.$transaction([
+        this.db.usageLog.create({
+          data: {
+            apiKeyId,
+            userId: apiKeyRecord?.userId,
+            toolName,
+            libraryId,
+            query,
+            tokensReturned,
+            responseTimeMs
+          }
+        }),
+        this.db.apiKey.update({
+          where: { id: apiKeyId },
+          data: {
+            usedDaily,
+            usedMonthly,
+            lastUsedAt: now
+          }
+        })
+      ])
     } catch (error) {
       console.error('Error logging usage:', error)
     }
+  }
+
+  private isSameDay(date: Date | null | undefined, now: Date): boolean {
+    if (!date) return false
+    return date.toISOString().slice(0, 10) === now.toISOString().slice(0, 10)
+  }
+
+  private isSameMonth(date: Date | null | undefined, now: Date): boolean {
+    if (!date) return false
+    return date.toISOString().slice(0, 7) === now.toISOString().slice(0, 7)
+  }
+
+  private getSecondsUntilEndOfDay(now: Date): number {
+    const endOfDay = new Date(now)
+    endOfDay.setHours(23, 59, 59, 999)
+    return Math.max(1, Math.floor((endOfDay.getTime() - now.getTime()) / 1000))
+  }
+
+  private getSecondsUntilEndOfMonth(now: Date): number {
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    return Math.max(1, Math.floor((endOfMonth.getTime() - now.getTime()) / 1000))
   }
 }

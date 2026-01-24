@@ -2,6 +2,8 @@ import { TwinMCPServer } from '../server';
 import { TwinMCPClient } from '../client/twinmcp-client';
 import { MCPLogger } from '../utils/logger';
 import { QueryDocsParams, QueryDocsResult } from '../types/mcp';
+import { ResolveLibraryHandler } from '../handlers/resolve-library.handler';
+import { QueryDocsHandler } from '../handlers/query-docs.handler';
 
 class MockTwinMCPClient extends TwinMCPClient {
   override async resolveLibrary(_params: any) {
@@ -45,12 +47,17 @@ describe('TwinMCP Server', () => {
   let mockClient: MockTwinMCPClient;
 
   beforeEach(() => {
+    process.env['TWINMCP_API_KEY'] = 'test-key';
     mockClient = new MockTwinMCPClient();
     server = new TwinMCPServer({
       logger: MCPLogger.create('Test'),
     });
 
     (server as any).client = mockClient;
+    (server as any).handlers = new Map<string, any>([
+      ['resolve-library-id', new ResolveLibraryHandler(mockClient)],
+      ['query-docs', new QueryDocsHandler(mockClient)]
+    ]);
   });
 
   describe('Tool Registration', () => {

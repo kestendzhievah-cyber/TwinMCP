@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
@@ -15,6 +15,10 @@ import {
 import { DOWNLOAD_CONFIG } from '../config/download.config';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+// Regex for validating GitHub owner/repository names (alphanumeric, dash, underscore, dot)
+const GITHUB_NAME_REGEX = /^[A-Za-z0-9_.-]+$/;
 
 export class DownloadManagerService {
   private activeDownloads: Map<string, DownloadTask> = new Map();
@@ -156,23 +160,27 @@ export class DownloadManagerService {
       throw new Error('GitHub source requires owner and repository');
     }
 
+    // Security: Validate owner and repository names to prevent injection
+    if (!GITHUB_NAME_REGEX.test(owner)) {
+      throw new Error(`Invalid GitHub owner name: ${owner}`);
+    }
+    if (!GITHUB_NAME_REGEX.test(repository)) {
+      throw new Error(`Invalid GitHub repository name: ${repository}`);
+    }
+
     const localPath = this.getLocalPath(task);
     await fsPromises.mkdir(localPath, { recursive: true });
 
-    let gitCommand = `git clone`;
-
+    // Build args array for execFile (safe from shell injection)
+    const args = ['clone'];
     if (task.options.shallow) {
-      gitCommand += ' --depth 1';
+      args.push('--depth', '1');
     }
-
-    gitCommand += ` https://github.com/${owner}/${repository}.git ${localPath}`;
+    args.push(`https://github.com/${owner}/${repository}.git`, localPath);
 
     try {
-      const { stderr } = await execAsync(gitCommand);
-
-      if (stderr && !stderr.includes('Cloning into')) {
-        console.warn(`Git clone warning for ${owner}/${repository}:`, stderr);
-      }
+      // Use execFileAsync instead of execAsync for security (no shell interpolation)
+      await execFileAsync('git', args, { timeout: this.config.timeout });
     } catch (error) {
       throw new Error(`Git clone failed: ${(error as Error).message}`);
     }
@@ -200,6 +208,11 @@ export class DownloadManagerService {
       throw new Error('NPM source requires package name');
     }
 
+    // Windows compatibility: tar command may not be available
+    if (process.platform === 'win32') {
+      throw new Error('NPM download with tar extraction is not fully supported on Windows. Please use GitHub download instead.');
+    }
+
     const localPath = this.getLocalPath(task);
     await fsPromises.mkdir(localPath, { recursive: true });
 
@@ -207,7 +220,7 @@ export class DownloadManagerService {
     const tarballPath = path.join(localPath, 'package.tgz');
 
     try {
-      await execAsync(`npm pack ${packageSpec} --pack-destination="${localPath}"`);
+      await execFileAsync('npm', ['pack', packageSpec, `--pack-destination=${localPath}`], { timeout: this.config.timeout });
       await execAsync(`tar -xzf "${tarballPath}" -C "${localPath}"`);
       await fsPromises.unlink(tarballPath);
     } catch (error) {
@@ -233,13 +246,25 @@ export class DownloadManagerService {
       throw new Error('Website source requires URL');
     }
 
+    // Windows compatibility: wget command is not available by default
+    if (process.platform === 'win32') {
+      throw new Error('Website download (wget) is not supported on Windows. Please use GitHub download instead.');
+    }
+
     const localPath = this.getLocalPath(task);
     await fsPromises.mkdir(localPath, { recursive: true });
 
     try {
-      await execAsync(
-        `wget --mirror --convert-links --adjust-extension --page-requisites --no-parent "${url}" -P "${localPath}"`
-      );
+      await execFileAsync('wget', [
+        '--mirror',
+        '--convert-links',
+        '--adjust-extension',
+        '--page-requisites',
+        '--no-parent',
+        url,
+        '-P',
+        localPath
+      ], { timeout: this.config.timeout });
     } catch (error) {
       throw new Error(`Website download failed: ${(error as Error).message}`);
     }
@@ -258,10 +283,44 @@ export class DownloadManagerService {
   }
 
   private async cleanRepository(localPath: string, excludePatterns: string[]): Promise<void> {
-    for (const pattern of excludePatterns) {
+    // Cross-platform implementation using Node.js fs (no dependency on Unix 'find' command)
+    const defaultPatternsToClean = ['node_modules', '.git', 'dist', 'build', '.cache'];
+    
+    for (const pattern of [...excludePatterns, ...defaultPatternsToClean]) {
       try {
-        await execAsync(`find "${localPath}" -path "${pattern}" -delete`);
-      } catch (error) {}
+        // Simple pattern matching: if pattern is a directory name, find and remove it
+        const cleanPattern = pattern.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\//g, '');
+        if (!cleanPattern) continue;
+        
+        await this.removeMatchingDirectories(localPath, cleanPattern);
+      } catch (error) {
+        console.warn(`Failed to clean pattern ${pattern}:`, error);
+      }
+    }
+  }
+
+  private async removeMatchingDirectories(basePath: string, dirName: string, maxDepth: number = 5): Promise<void> {
+    if (maxDepth <= 0) return;
+
+    try {
+      const entries = await fsPromises.readdir(basePath, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        
+        const fullPath = path.join(basePath, entry.name);
+        
+        if (entry.name === dirName) {
+          // Remove this directory
+          await fsPromises.rm(fullPath, { recursive: true, force: true });
+          console.log(`Cleaned: ${fullPath}`);
+        } else {
+          // Recurse into subdirectories
+          await this.removeMatchingDirectories(fullPath, dirName, maxDepth - 1);
+        }
+      }
+    } catch (error) {
+      // Ignore errors (directory might not exist or permission issues)
     }
   }
 

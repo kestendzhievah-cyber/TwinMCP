@@ -13,6 +13,12 @@ export class MCPRegistry {
 
   // Enregistrer un outil
   register(tool: MCPTool): void {
+    // Vérifier si l'outil existe déjà
+    if (this.tools.has(tool.id)) {
+      console.log(`ℹ️  Tool with id '${tool.id}' already registered, skipping`)
+      return
+    }
+
     this.validateTool(tool)
 
     this.tools.set(tool.id, tool)
@@ -39,6 +45,14 @@ export class MCPRegistry {
 
       console.log(`❌ Tool unregistered: ${toolId}`)
     }
+  }
+
+  // Vider le registre (utile pour les tests)
+  clear(): void {
+    this.tools.clear()
+    this.toolsByCategory.clear()
+    this.plugins.clear()
+    console.log(`🧹 Registry cleared`)
   }
 
   // Obtenir un outil par ID
@@ -155,10 +169,6 @@ export class MCPRegistry {
       throw new Error('Tool must have id and name')
     }
 
-    if (this.tools.has(tool.id)) {
-      throw new Error(`Tool with id '${tool.id}' already exists`)
-    }
-
     if (!tool.category) {
       throw new Error('Tool must have a category')
     }
@@ -247,14 +257,6 @@ export class MCPRegistry {
       })),
       stats: this.getStats()
     }
-  }
-
-  // Nettoyer le registry
-  clear(): void {
-    this.tools.clear()
-    this.plugins.clear()
-    this.toolsByCategory.clear()
-    console.log('🧹 Registry cleared')
   }
 }
 

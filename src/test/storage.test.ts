@@ -119,7 +119,7 @@ describe('Storage Service', () => {
         },
       ];
 
-      await documentStorage.storeChunkedDocument(libraryId, version, chunks);
+      await documentStorage.storeChunkedDocuments(libraryId, version, chunks);
       
       const retrieved = await documentStorage.getChunkedDocuments(libraryId, version);
       expect(retrieved).toHaveLength(3);

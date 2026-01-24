@@ -217,6 +217,59 @@ export default function TwinMCPApiDocs() {
   const [mcpUiMessage, setMcpUiMessage] = useState<string | null>(null);
   const [mcpUiError, setMcpUiError] = useState<string | null>(null);
   const [mcpHasLoadedFromStorage, setMcpHasLoadedFromStorage] = useState(false);
+
+  // GitHub Import State
+  const [githubImportUrl, setGithubImportUrl] = useState('');
+  const [githubImportStatus, setGithubImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [githubImportTaskId, setGithubImportTaskId] = useState<string | null>(null);
+  const [githubImportError, setGithubImportError] = useState<string | null>(null);
+
+  // GitHub Import Handler
+  const handleImportFromGitHub = async () => {
+    if (!githubImportUrl.trim()) {
+      setGithubImportError('Please enter a GitHub URL');
+      return;
+    }
+
+    // Extract owner/repo from GitHub URL
+    const match = githubImportUrl.match(/github\.com\/([^\/]+)\/([^\/\s]+)/);
+    if (!match) {
+      setGithubImportError('Invalid GitHub URL format. Expected: https://github.com/owner/repo');
+      return;
+    }
+
+    const [, owner, repository] = match;
+    setGithubImportStatus('loading');
+    setGithubImportError(null);
+    setGithubImportTaskId(null);
+
+    try {
+      const res = await fetch('/api/downloads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'github',
+          source: { owner, repository: repository.replace('.git', '').replace(/\/$/, '') },
+          options: { shallow: true, includeDocs: true, includeTests: false, includeExamples: true, maxDepth: 5, excludePatterns: [] },
+          priority: 'normal'
+        })
+      });
+
+      const data: { success: boolean; taskId?: string; error?: string } = await res.json();
+      if (data.success && data.taskId) {
+        setGithubImportTaskId(data.taskId);
+        setGithubImportStatus('success');
+        setMcpUiMessage(`GitHub import started! Task ID: ${data.taskId}`);
+        setTimeout(() => setMcpUiMessage(null), 5000);
+      } else {
+        setGithubImportStatus('error');
+        setGithubImportError(data.error || 'Failed to start import');
+      }
+    } catch (error) {
+      setGithubImportStatus('error');
+      setGithubImportError(error instanceof Error ? error.message : 'Network error');
+    }
+  };
   
 // API Key Management State
   const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
@@ -1076,9 +1129,35 @@ result = client.tools.execute(
         <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl p-6 mb-8">
           <div className="mb-4">
             <h2 className="text-xl font-bold text-white mb-1">Connect</h2>
-            <button className="text-sm text-purple-400 hover:text-purple-300 transition">
-              Clone the docs for installation
-            </button>
+            <p className="text-sm text-gray-400 mb-3">Import an MCP server from GitHub</p>
+            <div className="flex items-center space-x-2 mb-2">
+              <input
+                type="text"
+                placeholder="https://github.com/owner/repo"
+                value={githubImportUrl}
+                onChange={(e) => {
+                  setGithubImportUrl(e.target.value);
+                  setGithubImportError(null);
+                }}
+                className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500"
+              />
+              <button
+                onClick={handleImportFromGitHub}
+                disabled={githubImportStatus === 'loading'}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:cursor-not-allowed text-white text-sm rounded-lg transition flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>{githubImportStatus === 'loading' ? 'Importing...' : 'Import'}</span>
+              </button>
+            </div>
+            {githubImportError && (
+              <p className="text-red-400 text-xs mt-1">{githubImportError}</p>
+            )}
+            {githubImportTaskId && (
+              <p className="text-green-400 text-xs mt-1">
+                ✓ Import started - Task ID: <code className="bg-slate-700 px-1 rounded">{githubImportTaskId}</code>
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">

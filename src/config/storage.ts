@@ -79,7 +79,7 @@ export class StorageService {
       return {
         provider: 'minio',
         bucket: process.env.MINIO_BUCKET_NAME,
-        endpoint: `${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || 9000}`,
+        endpoint: this.buildMinioEndpoint(),
         accessKeyId: process.env.MINIO_ACCESS_KEY,
         secretAccessKey: process.env.MINIO_SECRET_KEY,
         forcePathStyle: true,
@@ -139,10 +139,10 @@ export class StorageService {
   async downloadFile(key: string): Promise<Buffer> {
     try {
       const cacheKey = `storage:file:${key}`;
-      const cached = await CacheService.get<Buffer>(cacheKey);
+      const cached = await CacheService.get<string>(cacheKey);
       if (cached) {
         logger.debug(`File cache hit: ${key}`);
-        return cached;
+        return Buffer.from(cached, 'base64');
       }
 
       const command = new GetObjectCommand({
@@ -163,7 +163,7 @@ export class StorageService {
       
       const buffer = Buffer.concat(chunks);
 
-      await CacheService.set(cacheKey, buffer, 3600);
+      await CacheService.set(cacheKey, buffer.toString('base64'), 3600);
 
       logger.info(`File downloaded successfully: ${key} (${buffer.length} bytes)`);
       return buffer;
@@ -226,8 +226,6 @@ export class StorageService {
         key: obj.Key!,
         size: obj.Size || 0,
         lastModified: obj.LastModified || new Date(),
-        contentType: obj.Metadata?.['content-type'],
-        metadata: obj.Metadata || {},
       }));
 
       logger.debug(`Listed ${files.length} files with prefix: ${prefix}`);
@@ -340,6 +338,19 @@ export class StorageService {
     return Object.entries(tags)
       .map(([key, value]) => `${key}=${value}`)
       .join('&');
+  }
+
+  private buildMinioEndpoint(): string {
+    const endpoint = process.env.MINIO_ENDPOINT || 'localhost';
+    const port = process.env.MINIO_PORT || '9000';
+    const useSsl = (process.env.MINIO_USE_SSL || 'false').toLowerCase() === 'true';
+
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return `${endpoint}:${port}`;
+    }
+
+    const protocol = useSsl ? 'https' : 'http';
+    return `${protocol}://${endpoint}:${port}`;
   }
 
   async healthCheck(): Promise<boolean> {

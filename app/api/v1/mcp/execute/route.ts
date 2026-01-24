@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { registry } from '@/lib/mcp/tools'
-import { authService } from '@/lib/mcp/middleware/auth'
+import { authenticateMcpRequest, mcpDbAuthService } from '@/lib/mcp/middleware/api-key-auth'
 import { validator } from '@/lib/mcp/core/validator'
 import { rateLimiter } from '@/lib/mcp/middleware/rate-limit'
 import { getQueue } from '@/lib/mcp/utils/queue'
 import { getMetrics } from '@/lib/mcp/utils/metrics'
+import { ensureMCPInitialized } from '@/lib/mcp/ensure-init'
 
 // POST /api/v1/mcp/execute - Exécuter un outil
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
 
   try {
+    // Ensure MCP system is initialized (lazy init)
+    await ensureMCPInitialized()
+
     // Authentification
-    const authContext = await authService.authenticate(request)
-    if (!authContext.isAuthenticated) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
+    const authContext = await authenticateMcpRequest(request)
 
     // Parse du body
     const body = await request.json()
@@ -42,7 +40,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Autorisation
-    const authorized = await authService.authorize(authContext, toolId, 'execute')
+    const authorized = authContext.permissions.some(permission => {
+      if (permission.resource === 'global') {
+        return permission.actions.includes('execute')
+      }
+      if (permission.resource === toolId) {
+        return permission.actions.includes('execute')
+      }
+      return false
+    })
     if (!authorized) {
       return NextResponse.json(
         { error: 'Insufficient permissions' },
@@ -69,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limiting
-    const rateLimitCheck = await rateLimiter.checkUserLimit(authContext.userId, toolId)
+    const rateLimitCheck = await rateLimiter.checkUserLimit(authContext.userId, toolId, authContext.rateLimit)
     if (!rateLimitCheck) {
       return NextResponse.json(
         { error: 'Rate limit exceeded' },
@@ -99,6 +105,17 @@ export async function POST(request: NextRequest) {
         apiCallsCount: 1,
         estimatedCost: 0
       })
+
+      if (authContext.apiKeyId) {
+        await mcpDbAuthService.logUsage(
+          authContext.apiKeyId,
+          toolId,
+          undefined,
+          undefined,
+          undefined,
+          Date.now() - startTime
+        )
+      }
 
       return NextResponse.json({
         jobId,
@@ -132,6 +149,18 @@ export async function POST(request: NextRequest) {
         estimatedCost: result.metadata?.cost || 0
       })
 
+      if (authContext.apiKeyId) {
+        const estimatedTokens = Math.ceil(JSON.stringify(body).length / 4)
+        await mcpDbAuthService.logUsage(
+          authContext.apiKeyId,
+          toolId,
+          undefined,
+          undefined,
+          estimatedTokens,
+          Date.now() - startTime
+        )
+      }
+
       if (result.success) {
         return NextResponse.json({
           result: result.data,
@@ -143,7 +172,8 @@ export async function POST(request: NextRequest) {
             apiCallsCount: result.metadata?.apiCallsCount || 1,
             cost: result.metadata?.cost || 0,
             authenticated: authContext.isAuthenticated,
-            authMethod: authContext.authMethod
+            authMethod: authContext.authMethod,
+            plan: authContext.tier
           }
         })
       } else {
@@ -154,7 +184,8 @@ export async function POST(request: NextRequest) {
           metadata: {
             executionTime: result.metadata?.executionTime || (Date.now() - startTime),
             authenticated: authContext.isAuthenticated,
-            authMethod: authContext.authMethod
+            authMethod: authContext.authMethod,
+            plan: authContext.tier
           }
         }, { status: 500 })
       }
@@ -179,6 +210,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: error.message || 'Tool execution failed',
+        code: error.code,
         apiVersion: 'v1'
       },
       { status: error.statusCode || 500 }

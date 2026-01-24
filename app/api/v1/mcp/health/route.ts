@@ -3,12 +3,16 @@ import { registry } from '@/lib/mcp/tools'
 import { authService } from '@/lib/mcp/middleware/auth'
 import { getQueue } from '@/lib/mcp/utils/queue'
 import { getMetrics } from '@/lib/mcp/utils/metrics'
+import { ensureMCPInitialized, isMCPInitialized } from '@/lib/mcp/ensure-init'
 
 // GET /api/v1/mcp/health - Health check
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
 
   try {
+    // Ensure MCP system is initialized (lazy init)
+    await ensureMCPInitialized()
+
     // Vérifications de santé
     const registryStats = registry.getStats()
     const queue = getQueue()

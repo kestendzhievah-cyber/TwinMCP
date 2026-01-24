@@ -101,14 +101,20 @@ export class InvoiceStorageService {
     try {
       const prefix = this.buildUserPrefix(userId);
       const files = await this.storage.listFiles(prefix);
-      
-      const metadata: InvoicePDFMetadata[] = files.map(file => ({
-        invoiceId: file.metadata?.invoiceId || '',
-        invoiceNumber: file.metadata?.invoiceNumber || '',
-        userId: file.metadata?.userId || userId,
-        generatedAt: new Date(file.metadata?.generatedAt || file.lastModified),
-        fileSize: file.size,
-      }));
+
+      const metadata = await Promise.all(
+        files.map(async file => {
+          const info = await this.storage.getFileInfo(file.key);
+          const parsed = this.parseInvoiceKey(file.key);
+          return {
+            invoiceId: info?.metadata?.invoiceId || parsed.invoiceId,
+            invoiceNumber: info?.metadata?.invoiceNumber || parsed.invoiceNumber,
+            userId: info?.metadata?.userId || parsed.userId || userId,
+            generatedAt: new Date(info?.metadata?.generatedAt || info?.lastModified || file.lastModified),
+            fileSize: info?.size || file.size,
+          };
+        })
+      );
 
       logger.info(`Listed ${metadata.length} invoice PDFs for user ${userId}`);
       return metadata;
@@ -187,6 +193,15 @@ export class InvoiceStorageService {
 
   private buildUserPrefix(userId: string): string {
     return `${this.basePath}/${userId}/`;
+  }
+
+  private parseInvoiceKey(key: string): { userId?: string; invoiceId: string; invoiceNumber: string } {
+    const parts = key.split('/');
+    const userId = parts.length >= 2 ? parts[1] : undefined;
+    const filename = parts[parts.length - 1] || '';
+    const name = filename.replace('.pdf', '');
+    const [invoiceId = '', invoiceNumber = ''] = name.split('_');
+    return { userId, invoiceId, invoiceNumber };
   }
 
   async healthCheck(): Promise<boolean> {

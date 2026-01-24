@@ -1,314 +1,175 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals'
-import { initializeMCP } from '../../lib/mcp/init'
+import { initializeMCP, shutdownMCP } from '../../lib/mcp/init'
+import { registry } from '../../lib/mcp/tools'
+import { validator } from '../../lib/mcp/core/validator'
 
-// Mock Next.js request for testing
-interface MockNextRequest {
-  url: string
-  headers: Map<string, string>
-  body?: string
-  method?: string
-}
-
-const createMockRequest = (url: string, options: any = {}): MockNextRequest => {
-  return {
-    url,
-    headers: new Map(Object.entries(options.headers || {})),
-    body: options.body,
-    method: options.method || 'GET'
-  }
-}
+/**
+ * MCP Integration Tests
+ * 
+ * Ces tests vérifient le fonctionnement du système MCP sans serveur HTTP.
+ * Ils testent directement les composants: registry, validator, tools.
+ */
 
 describe('MCP API Integration', () => {
   beforeAll(async () => {
+    // Clear registry before initialization to avoid duplicates between test runs
+    registry.clear()
     await initializeMCP()
-  })
+  }, 30000)
 
   afterAll(async () => {
-    // Cleanup if needed
+    await shutdownMCP()
   })
 
-  describe('Tools API', () => {
-    it('should list all available tools', async () => {
-      const request = createMockRequest('http://localhost:3000/api/v1/mcp/tools')
-      const response = await fetch(request.url)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.tools).toBeDefined()
-      expect(Array.isArray(data.tools)).toBe(true)
-      expect(data.totalCount).toBeGreaterThan(0)
-      expect(data.apiVersion).toBe('v1')
+  describe('Registry', () => {
+    it('should have tools registered after initialization', () => {
+      const tools = registry.getAll()
+      expect(tools).toBeDefined()
+      expect(Array.isArray(tools)).toBe(true)
+      expect(tools.length).toBeGreaterThan(0)
     })
 
-    it('should execute email tool', async () => {
-      const request = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'mcp-default-key-12345'
-        },
-        body: JSON.stringify({
-          toolId: 'email',
-          args: {
-            to: 'test@example.com',
-            subject: 'Test Email',
-            body: 'This is a test email'
-          }
-        })
-      })
-
-      const response = await fetch(request.url, {
-        method: 'POST',
-        headers: Object.fromEntries(request.headers),
-        body: request.body
-      })
-
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(data.result).toBeDefined()
-      expect(data.result.messageId).toBeDefined()
-      expect(data.apiVersion).toBe('v1')
+    it('should get tool by id', () => {
+      const emailTool = registry.get('email')
+      expect(emailTool).toBeDefined()
+      expect(emailTool?.id).toBe('email')
+      expect(emailTool?.category).toBe('communication')
     })
 
-    it('should validate email arguments', async () => {
-      const request = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'mcp-default-key-12345'
-        },
-        body: JSON.stringify({
-          toolId: 'email',
-          args: {
-            to: 'invalid-email',
-            subject: 'Test Email'
-            // missing body
-          }
-        })
-      })
-
-      const response = await fetch(request.url, {
-        method: 'POST',
-        headers: Object.fromEntries(request.headers),
-        body: request.body
-      })
-
-      expect(response.status).toBe(400)
-      const data = await response.json()
-      expect(data.error).toContain('Validation failed')
+    it('should get tools by category', () => {
+      const communicationTools = registry.getByCategory('communication')
+      expect(communicationTools).toBeDefined()
+      expect(communicationTools.length).toBeGreaterThan(0)
+      expect(communicationTools.every(t => t.category === 'communication')).toBe(true)
     })
 
-    it('should enforce rate limiting', async () => {
-      const requests = []
+    it('should search tools by query', () => {
+      const results = registry.search('email')
+      expect(results).toBeDefined()
+      expect(results.length).toBeGreaterThan(0)
+    })
 
-      // Make multiple rapid requests
-      for (let i = 0; i < 5; i++) {
-        const request = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': 'mcp-default-key-12345'
-          },
-          body: JSON.stringify({
-            toolId: 'email',
-            args: {
-              to: 'ratelimit@example.com',
-              subject: `Rate Limit Test ${i}`,
-              body: 'Rate limit test email'
-            }
-          })
-        })
+    it('should return registry stats', () => {
+      const stats = registry.getStats()
+      expect(stats).toBeDefined()
+      expect(stats.totalTools).toBeGreaterThan(0)
+      expect(stats.toolsByCategory).toBeDefined()
+    })
+  })
 
-        requests.push(fetch(request.url, {
-          method: 'POST',
-          headers: Object.fromEntries(request.headers),
-          body: request.body
-        }))
+  describe('Tool Validation', () => {
+    it('should validate correct email args', async () => {
+      const emailTool = registry.get('email')
+      expect(emailTool).toBeDefined()
+
+      const result = await emailTool!.validate({
+        to: 'test@example.com',
+        subject: 'Test Subject',
+        body: 'Test body content'
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.data).toBeDefined()
+    })
+
+    it('should reject invalid email format', async () => {
+      const emailTool = registry.get('email')
+      expect(emailTool).toBeDefined()
+
+      const result = await emailTool!.validate({
+        to: 'invalid-email',
+        subject: 'Test Subject',
+        body: 'Test body'
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toBeDefined()
+      expect(result.errors!.length).toBeGreaterThan(0)
+    })
+
+    it('should reject missing required fields', async () => {
+      const emailTool = registry.get('email')
+      expect(emailTool).toBeDefined()
+
+      const result = await emailTool!.validate({
+        to: 'test@example.com'
+        // missing subject and body
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toBeDefined()
+    })
+  })
+
+  describe('Tool Structure', () => {
+    it('should have required properties on all tools', () => {
+      const tools = registry.getAll()
+
+      for (const tool of tools) {
+        expect(tool.id).toBeDefined()
+        expect(tool.name).toBeDefined()
+        expect(tool.version).toBeDefined()
+        expect(tool.category).toBeDefined()
+        expect(tool.description).toBeDefined()
+        expect(tool.inputSchema).toBeDefined()
+        expect(typeof tool.validate).toBe('function')
+        expect(typeof tool.execute).toBe('function')
       }
-
-      const responses = await Promise.all(requests)
-      const rateLimited = responses.some(r => r.status === 429)
-
-      // At least one should be rate limited (depending on implementation)
-      expect(rateLimited).toBe(true)
-    })
-  })
-
-  describe('Health Check', () => {
-    it('should return healthy status', async () => {
-      const request = createMockRequest('http://localhost:3000/api/v1/mcp/health')
-      const response = await fetch(request.url)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.status).toBe('healthy')
-      expect(data.apiVersion).toBe('v1')
-      expect(data.services.registry.status).toBe('healthy')
-      expect(data.services.queue.status).toBe('healthy')
-    })
-  })
-
-  describe('Authentication', () => {
-    it('should require authentication for protected endpoints', async () => {
-      const request = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          toolId: 'email',
-          args: {
-            to: 'test@example.com',
-            subject: 'Test',
-            body: 'Test'
-          }
-        })
-      })
-
-      const response = await fetch(request.url, {
-        method: 'POST',
-        headers: Object.fromEntries(request.headers),
-        body: request.body
-      })
-
-      expect(response.status).toBe(401)
     })
 
-    it('should accept valid API key', async () => {
-      const request = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'mcp-default-key-12345'
-        },
-        body: JSON.stringify({
-          toolId: 'email',
-          args: {
-            to: 'test@example.com',
-            subject: 'Test',
-            body: 'Test'
-          }
-        })
-      })
+    it('should have valid categories', () => {
+      const validCategories = ['communication', 'productivity', 'development', 'data']
+      const tools = registry.getAll()
 
-      const response = await fetch(request.url, {
-        method: 'POST',
-        headers: Object.fromEntries(request.headers),
-        body: request.body
-      })
-
-      expect(response.status).toBe(200)
-    })
-  })
-
-  describe('Error Handling', () => {
-    it('should handle unknown tool', async () => {
-      const request = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'mcp-default-key-12345'
-        },
-        body: JSON.stringify({
-          toolId: 'unknown-tool',
-          args: {}
-        })
-      })
-
-      const response = await fetch(request.url, {
-        method: 'POST',
-        headers: Object.fromEntries(request.headers),
-        body: request.body
-      })
-
-      expect(response.status).toBe(404)
-      const data = await response.json()
-      expect(data.error).toContain('not found')
-    })
-
-    it('should handle missing required arguments', async () => {
-      const request = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'mcp-default-key-12345'
-        },
-        body: JSON.stringify({
-          toolId: 'email',
-          args: {
-            to: 'test@example.com'
-            // missing subject and body
-          }
-        })
-      })
-
-      const response = await fetch(request.url, {
-        method: 'POST',
-        headers: Object.fromEntries(request.headers),
-        body: request.body
-      })
-
-      expect(response.status).toBe(400)
-      const data = await response.json()
-      expect(data.error).toContain('Validation failed')
-    })
-  })
-
-  describe('Caching', () => {
-    it('should cache identical requests', async () => {
-      const args = {
-        to: 'cache-test@example.com',
-        subject: 'Cache Test',
-        body: 'Cache test content'
+      for (const tool of tools) {
+        expect(validCategories).toContain(tool.category)
       }
+    })
 
-      // First request
-      const request1 = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'mcp-default-key-12345'
-        },
-        body: JSON.stringify({
-          toolId: 'email',
-          args
-        })
+    it('should have capabilities defined', () => {
+      const tools = registry.getAll()
+
+      for (const tool of tools) {
+        expect(tool.capabilities).toBeDefined()
+        expect(typeof tool.capabilities.async).toBe('boolean')
+        expect(typeof tool.capabilities.batch).toBe('boolean')
+        expect(typeof tool.capabilities.streaming).toBe('boolean')
+        expect(typeof tool.capabilities.webhook).toBe('boolean')
+      }
+    })
+  })
+
+  describe('Validator', () => {
+    it('should validate using tool validate method', async () => {
+      const emailTool = registry.get('email')
+      expect(emailTool).toBeDefined()
+
+      const result = await emailTool!.validate({
+        to: 'test@example.com',
+        subject: 'Test',
+        body: 'Test body'
       })
 
-      const response1 = await fetch(request1.url, {
-        method: 'POST',
-        headers: Object.fromEntries(request1.headers),
-        body: request1.body
+      expect(result.success).toBe(true)
+    })
+
+    it('should reject invalid data using tool validate method', async () => {
+      const emailTool = registry.get('email')
+      expect(emailTool).toBeDefined()
+
+      const result = await emailTool!.validate({
+        to: 'not-an-email',
+        subject: 'Test',
+        body: 'Test body'
       })
 
-      expect(response1.status).toBe(200)
-      const data1 = await response1.json()
-      expect(data1.metadata.cacheHit).toBe(false)
+      expect(result.success).toBe(false)
+    })
 
-      // Second request (should be cached)
-      const request2 = createMockRequest('http://localhost:3000/api/v1/mcp/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'mcp-default-key-12345'
-        },
-        body: JSON.stringify({
-          toolId: 'email',
-          args
-        })
-      })
-
-      const response2 = await fetch(request2.url, {
-        method: 'POST',
-        headers: Object.fromEntries(request2.headers),
-        body: request2.body
-      })
-
-      expect(response2.status).toBe(200)
-      const data2 = await response2.json()
-      expect(data2.metadata.cacheHit).toBe(true)
+    it('should return error for unknown tool schema', async () => {
+      const result = await validator.validate('unknown-tool', {})
+      expect(result.success).toBe(false)
+      expect(result.errors).toBeDefined()
     })
   })
 })

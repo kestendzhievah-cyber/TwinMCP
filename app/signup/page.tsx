@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Sparkles, Chrome, AlertCircle, CheckCircle, UserPlus } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 
 // Déclaration de types pour reCAPTCHA
 declare global {

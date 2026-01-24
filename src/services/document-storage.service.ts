@@ -102,7 +102,7 @@ export class DocumentStorageService {
     }
   }
 
-  async storeChunkedDocument(
+  async storeChunkedDocuments(
     libraryId: string,
     version: string,
     chunks: Array<{

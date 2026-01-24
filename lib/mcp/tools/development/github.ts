@@ -178,31 +178,46 @@ export class GitHubTool implements MCPTool {
 
   private async executeGitHubAction(args: any, config: any): Promise<any> {
     // Simulation des actions GitHub
-    // Dans une vraie implémentation, utiliser GitHub API
+    // Dans une vraie implémentation, utiliser GitHub API avec @octokit/rest
 
     await new Promise(resolve => setTimeout(resolve, 180)) // Simulation réseau
 
+    let result: any
+
     switch (args.action) {
       case 'issues':
-        return await this.getIssues(args)
+        result = await this.getIssues(args)
+        break
 
       case 'pulls':
-        return await this.getPullRequests(args)
+        result = await this.getPullRequests(args)
+        break
 
       case 'commits':
-        return await this.getCommits(args)
+        result = await this.getCommits(args)
+        break
 
       case 'releases':
-        return await this.getReleases(args)
+        result = await this.getReleases(args)
+        break
 
       case 'create_issue':
-        return await this.createIssue(args, config)
+        result = await this.createIssue(args, config)
+        break
 
       case 'create_pr':
-        return await this.createPullRequest(args, config)
+        result = await this.createPullRequest(args, config)
+        break
 
       default:
         throw new Error(`Unsupported action: ${args.action}`)
+    }
+
+    // Add simulation flag to all responses
+    return {
+      ...result,
+      _simulation: true,
+      _warning: 'This is simulated data. For real GitHub API integration, set GITHUB_TOKEN environment variable and implement Octokit calls.'
     }
   }
 

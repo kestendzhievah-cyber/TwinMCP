@@ -60,11 +60,11 @@ export class TwinMCPClient {
         const response = await this.fetchWithTimeout(url, requestOptions);
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorData = (await response.json().catch(() => ({}))) as { message?: string };
           throw new Error(errorData.message || `HTTP ${response.status}`);
         }
 
-        const result = await response.json();
+        const result = (await response.json()) as T;
         this.logger.debug('Request successful', { requestId, attempt });
         return result;
 

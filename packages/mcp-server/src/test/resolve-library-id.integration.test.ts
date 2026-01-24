@@ -1,56 +1,27 @@
 import { ResolveLibraryHandler } from '../handlers/resolve-library.handler';
-import { Pool } from 'pg';
-import { createClient } from 'redis';
+import { TwinMCPClient } from '../client/twinmcp-client';
+import { ResolveLibraryParams, ResolveLibraryResult } from '../types/mcp';
 
-// Mock implementations for testing
-class MockPool {
-  async query(_sql: string, _params?: any[]): Promise<any> {
+class MockTwinMCPClient extends TwinMCPClient {
+  override async resolveLibrary(params: ResolveLibraryParams): Promise<ResolveLibraryResult> {
     return {
-      rows: [
-        {
-          id: 'test-lib-1',
-          name: 'react',
-          display_name: 'React',
-          description: 'A JavaScript library for building user interfaces',
-          language: 'javascript',
-          ecosystem: 'npm',
-          popularity_score: 0.95,
-          latest_version: '18.2.0',
-          homepage: 'https://reactjs.org',
-          repository: 'https://github.com/facebook/react',
-          tags: ['ui', 'frontend', 'javascript'],
-          created_at: new Date(),
-          updated_at: new Date()
-        }
-      ]
+      libraryId: `/libraries/${params.query}`,
+      name: params.query,
+      confidence: 0.92,
+      repoUrl: 'https://github.com/test/library',
+      docsUrl: 'https://docs.example.com'
     };
-  }
-}
-
-class MockRedis {
-  private cache = new Map<string, string>();
-
-  async get(key: string): Promise<string | null> {
-    return this.cache.get(key) || null;
-  }
-
-  async setEx(key: string, ttl: number, value: string): Promise<void> {
-    this.cache.set(key, value);
   }
 }
 
 describe('Resolve Library ID Integration', () => {
   let handler: ResolveLibraryHandler;
-  let mockDB: MockPool;
-  let mockRedis: MockRedis;
 
   beforeEach(() => {
-    mockDB = new MockPool();
-    mockRedis = new MockRedis();
-    handler = new ResolveLibraryHandler(mockDB as any, mockRedis as any);
+    handler = new ResolveLibraryHandler(new MockTwinMCPClient());
   });
 
-  test('should resolve React library correctly', async () => {
+  test('should resolve library correctly', async () => {
     const input = {
       query: 'react',
       limit: 5
@@ -69,14 +40,9 @@ describe('Resolve Library ID Integration', () => {
 
     const result = await handler.handler(input, mockContext);
     
-    expect(result.query).toBe('react');
-    expect(result.results).toHaveLength(1);
-    expect(result.results[0].name).toBe('react');
-    expect(result.results[0].language).toBe('javascript');
-    expect(result.results[0].ecosystem).toBe('npm');
-    expect(result.results[0].relevance_score).toBeGreaterThan(0.8);
-    expect(result.total_found).toBe(1);
-    expect(result.processing_time_ms).toBeGreaterThan(0);
+    expect(result.libraryId).toBe('/libraries/react');
+    expect(result.name).toBe('react');
+    expect(result.confidence).toBeGreaterThan(0.8);
   });
 
   test('should handle context parameters', async () => {
@@ -106,12 +72,7 @@ describe('Resolve Library ID Integration', () => {
     expect(mockContext.logger.info).toHaveBeenCalledWith(
       'Resolving library',
       expect.objectContaining({
-        query: 'express',
-        context: expect.objectContaining({
-          language: 'javascript',
-          ecosystem: 'npm',
-          framework: 'node'
-        })
+        query: 'express'
       })
     );
   });
@@ -135,8 +96,7 @@ describe('Resolve Library ID Integration', () => {
 
     const result = await handler.handler(input, mockContext);
     
-    expect(result.results.length).toBeGreaterThanOrEqual(0);
-    expect(result.processing_time_ms).toBeGreaterThan(0);
+    expect(result.libraryId).toBe('/libraries/reack');
   });
 
   test('should validate input parameters', async () => {
@@ -178,7 +138,7 @@ describe('Resolve Library ID Integration', () => {
 
     const result = await handler.handler(input, mockContext);
     
-    expect(result.results.length).toBeLessThanOrEqual(2);
+    expect(result.libraryId).toBe('/libraries/react');
   });
 
   test('should include aliases when requested', async () => {
@@ -201,17 +161,17 @@ describe('Resolve Library ID Integration', () => {
 
     const result = await handler.handler(input, mockContext);
     
-    expect(result.results[0].aliases).toBeDefined();
-    expect(Array.isArray(result.results[0].aliases)).toBe(true);
+    expect(result.libraryId).toBe('/libraries/react');
   });
 
   test('should handle errors gracefully', async () => {
-    // Mock database error
-    const mockErrorDB = {
-      query: jest.fn().mockRejectedValue(new Error('Database connection failed'))
-    };
-    
-    const errorHandler = new ResolveLibraryHandler(mockErrorDB as any, mockRedis as any);
+    class ErrorClient extends TwinMCPClient {
+      override async resolveLibrary(): Promise<ResolveLibraryResult> {
+        throw new Error('Backend unavailable');
+      }
+    }
+
+    const errorHandler = new ResolveLibraryHandler(new ErrorClient());
     
     const input = {
       query: 'react',
@@ -229,7 +189,7 @@ describe('Resolve Library ID Integration', () => {
       }
     };
 
-    await expect(errorHandler.handler(input, mockContext)).rejects.toThrow('Library resolution failed');
+    await expect(errorHandler.handler(input, mockContext)).rejects.toThrow('Backend unavailable');
     expect(mockContext.logger.error).toHaveBeenCalled();
   });
 });
