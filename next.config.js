@@ -70,6 +70,7 @@ const nextConfig = {
     ];
   },
   // Configuration pour le build de production
+  output: 'standalone',
   experimental: {
     outputFileTracingRoot: process.env.NODE_ENV === 'production' ? './' : undefined,
     outputFileTracingExcludes: {

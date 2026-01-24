@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: twinmcp-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://twinmcp_user:twinmcp_password@postgres:5432/twinmcp_dev
+      - REDIS_URL=redis://redis:6379
+      - QDRANT_URL=http://qdrant:6333
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+    networks:
+      - twinmcp-network
+
   postgres:
     image: postgres:15-alpine
     container_name: twinmcp-postgres
