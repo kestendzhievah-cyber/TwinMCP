@@ -1,42 +1,30 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
 
-FROM base AS deps
-RUN apk add --no-cache libc6-compat python3 make g++
 WORKDIR /app
 
+# Install system dependencies
+RUN apk add --no-cache libc6-compat openssl
+
+# Copy package files
 COPY package.json ./
-RUN npm install --legacy-peer-deps
 
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Install dependencies with verbose logging
+RUN npm install --legacy-peer-deps --loglevel verbose 2>&1 || (cat /root/.npm/_logs/*.log && exit 1)
+
+# Copy source code
 COPY . .
 
+# Generate Prisma client
+RUN npx prisma generate || true
+
+# Build the app
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npx prisma generate
-RUN npm run build
-
-FROM base AS runner
-WORKDIR /app
-
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/.env.production ./.env.production
-
-USER nextjs
+RUN npm run build
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["npm", "start"]
