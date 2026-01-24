@@ -1,31 +1,21 @@
-FROM node:18-alpine
+FROM node:18-slim
 
 WORKDIR /app
 
-# Install system dependencies for native modules (sharp, bcrypt, puppeteer)
-RUN apk add --no-cache \
-    libc6-compat \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
     openssl \
-    python3 \
-    make \
-    g++ \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
     ca-certificates \
-    ttf-freefont
+    && rm -rf /var/lib/apt/lists/*
 
-# Skip Puppeteer Chromium download (use system chromium)
+# Skip Puppeteer download
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Copy package files
 COPY package.json ./
 
-# Install dependencies (ignore prepare/husky scripts)
-RUN npm install --legacy-peer-deps --ignore-scripts && \
-    npm rebuild bcrypt --build-from-source || true
+# Install dependencies
+RUN npm install --legacy-peer-deps --ignore-scripts
 
 # Copy source code
 COPY . .
