@@ -1,6 +1,24 @@
 import Redis from 'ioredis';
 import { logger } from '../utils/logger';
 
+// Check if Redis is disabled
+const REDIS_DISABLED = process.env['REDIS_DISABLED'] === 'true' || !process.env['REDIS_URL'];
+
+// Mock Redis client for when Redis is disabled
+class MockRedis {
+  async get(): Promise<null> { return null; }
+  async set(): Promise<'OK'> { return 'OK'; }
+  async setex(): Promise<'OK'> { return 'OK'; }
+  async del(): Promise<number> { return 1; }
+  async exists(): Promise<number> { return 0; }
+  async incr(): Promise<number> { return 1; }
+  async expire(): Promise<number> { return 1; }
+  async ping(): Promise<string> { return 'PONG'; }
+  async connect(): Promise<void> { }
+  async quit(): Promise<void> { }
+  on(): this { return this; }
+}
+
 // Configuration Redis
 const baseRedisConfig = {
   host: process.env['REDIS_HOST'] || 'localhost',
@@ -17,8 +35,10 @@ const redisConfig = process.env['REDIS_PASSWORD']
   ? { ...baseRedisConfig, password: process.env['REDIS_PASSWORD'] }
   : baseRedisConfig;
 
-// Client principal pour le cache
-export const redisClient = new Redis(redisConfig);
+// Client principal pour le cache (mock si Redis désactivé)
+export const redisClient: Redis | MockRedis = REDIS_DISABLED 
+  ? new MockRedis() 
+  : new Redis(redisConfig);
 
 // Client pour les sessions (DB séparée)
 const sessionConfig = {
@@ -26,28 +46,34 @@ const sessionConfig = {
   db: parseInt(process.env['REDIS_SESSION_DB'] || '1'),
 };
 
-export const redisSessionClient = new Redis(sessionConfig);
+export const redisSessionClient: Redis | MockRedis = REDIS_DISABLED 
+  ? new MockRedis() 
+  : new Redis(sessionConfig);
 
-// Gestion des événements Redis
-redisClient.on('connect', () => {
-  logger.info('Connected to Redis (cache)');
-});
+if (REDIS_DISABLED) {
+  logger.warn('Redis is DISABLED - using in-memory mock (no persistence)');
+} else {
+  // Gestion des événements Redis
+  (redisClient as Redis).on('connect', () => {
+    logger.info('Connected to Redis (cache)');
+  });
 
-redisClient.on('error', (error) => {
-  logger.error('Redis connection error (cache):', error);
-});
+  (redisClient as Redis).on('error', (error) => {
+    logger.error('Redis connection error (cache):', error);
+  });
 
-redisClient.on('close', () => {
-  logger.warn('Redis connection closed (cache)');
-});
+  (redisClient as Redis).on('close', () => {
+    logger.warn('Redis connection closed (cache)');
+  });
 
-redisSessionClient.on('connect', () => {
-  logger.info('Connected to Redis (sessions)');
-});
+  (redisSessionClient as Redis).on('connect', () => {
+    logger.info('Connected to Redis (sessions)');
+  });
 
-redisSessionClient.on('error', (error) => {
-  logger.error('Redis connection error (sessions):', error);
-});
+  (redisSessionClient as Redis).on('error', (error) => {
+    logger.error('Redis connection error (sessions):', error);
+  });
+}
 
 // Fonctions utilitaires
 export async function connectRedis(): Promise<void> {

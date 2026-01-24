@@ -32,7 +32,7 @@ RUN npx prisma generate
 # Build environment variables (dummy values for build time)
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-ENV REDIS_URL="redis://localhost:6379"
+ENV REDIS_DISABLED="true"
 ENV MINIO_ENDPOINT="localhost"
 ENV MINIO_PORT="9000"
 ENV MINIO_ACCESS_KEY="minioadmin"

@@ -16,14 +16,18 @@ export class MCPCache {
   }
 
   async initialize(): Promise<void> {
-    if (this.config.strategy === 'redis' || this.config.strategy === 'hybrid') {
+    const redisDisabled = process.env.REDIS_DISABLED === 'true' || !process.env.REDIS_URL;
+    
+    if (!redisDisabled && (this.config.strategy === 'redis' || this.config.strategy === 'hybrid')) {
       try {
         const Redis = (await import('ioredis')).default
         this.redis = new Redis({
           host: process.env.REDIS_HOST || 'localhost',
           port: parseInt(process.env.REDIS_PORT || '6379'),
           password: process.env.REDIS_PASSWORD,
-          db: parseInt(process.env.REDIS_DB || '0')
+          db: parseInt(process.env.REDIS_DB || '0'),
+          lazyConnect: true,
+          maxRetriesPerRequest: 3,
         })
 
         this.redis.on('error', (err: Error) => {
@@ -37,6 +41,8 @@ export class MCPCache {
           throw new Error('Redis is required but not available')
         }
       }
+    } else if (redisDisabled) {
+      console.log('⚠️ Redis disabled - using memory-only cache')
     }
 
     // Nettoyage périodique du cache mémoire
