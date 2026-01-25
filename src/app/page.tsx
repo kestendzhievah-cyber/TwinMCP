@@ -13,7 +13,10 @@ export default function AgentFlowLanding() {
   };
 
   const handleDemo = () => {
-    router.push('/dashboard/agent-mcp-demo');
+    const featuresSection = document.getElementById('features');
+    if (featuresSection) {
+      featuresSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleContact = () => {

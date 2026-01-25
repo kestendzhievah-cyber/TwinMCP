@@ -3,16 +3,43 @@
 // layout.tsx
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Home, Users, BarChart3, Settings } from "lucide-react";
+import { Home, Users, BarChart3, Settings, Loader2 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useAuth } from "../../lib/auth-context";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [isHovered, setIsHovered] = useState(false);
   const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Rediriger vers login si non authentifié
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
 
   const handleNavigation = (path: string) => {
     router.push(path);
   };
+
+  // Afficher un loader pendant la vérification de l'authentification
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen bg-[#0a0a0f] items-center justify-center">
+        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // Ne pas afficher le dashboard si non connecté
+  if (!user) {
+    return (
+      <div className="flex h-screen w-screen bg-[#0a0a0f] items-center justify-center">
+        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen bg-[#0a0a0f] text-gray-100 overflow-hidden">

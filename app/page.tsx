@@ -25,9 +25,12 @@ export default function AgentFlowLanding() {
     router.push('/contact');
   };
 
-  // Handler for demo
+  // Handler for demo - scroll vers la section features pour montrer les fonctionnalités
   const handleDemo = () => {
-    router.push('/dashboard/agent-mcp-demo');
+    const featuresSection = document.getElementById('features');
+    if (featuresSection) {
+      featuresSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   // Handler for free trial / login

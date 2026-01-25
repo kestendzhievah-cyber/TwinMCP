@@ -81,16 +81,31 @@ export default function LoginPage() {
           errorMessage = 'Connexion annulée';
           break;
         case 'auth/popup-blocked':
-          errorMessage = 'Popup bloqué par le navigateur';
+          errorMessage = 'Popup bloqué par le navigateur. Autorisez les popups pour ce site.';
           break;
         case 'auth/account-exists-with-different-credential':
           errorMessage = 'Un compte existe déjà avec cette adresse email';
           break;
+        case 'auth/invalid-api-key':
+          errorMessage = 'Configuration Firebase invalide. Consultez FIREBASE_SETUP_GUIDE.md';
+          break;
+        case 'auth/configuration-not-found':
+          errorMessage = 'Authentification Google non configurée. Consultez FIREBASE_SETUP_GUIDE.md';
+          break;
+        case 'auth/unauthorized-domain':
+          errorMessage = 'Domaine non autorisé. Ajoutez ce domaine dans Firebase Console > Authentication > Settings > Authorized domains';
+          break;
         default:
-          errorMessage = err.message || 'Erreur lors de la connexion Google';
+          // Check if error message contains Firebase config issues
+          if (err.message?.includes('Configuration Firebase') || err.message?.includes('FIREBASE_SETUP_GUIDE')) {
+            errorMessage = '⚠️ Firebase non configuré. Consultez FIREBASE_SETUP_GUIDE.md pour configurer l\'authentification Google.';
+          } else {
+            errorMessage = err.message || 'Erreur lors de la connexion Google';
+          }
       }
 
       setError(errorMessage);
+      console.error('Erreur de connexion Google:', err);
     } finally {
       setIsLoading(false);
     }
@@ -145,7 +160,7 @@ export default function LoginPage() {
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            className="w-full mb-6 py-3 px-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-lg transition flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mb-6 py-3 px-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-full transition flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Chrome className="w-5 h-5" />
             <span>Continuer avec Google</span>
@@ -178,7 +193,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="vous@exemple.com"
                   required
-                  className="w-full pl-11 pr-4 py-3 bg-slate-700/50 border border-slate-600 text-black rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-700/50 border border-slate-600 text-black rounded-full focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
                 />
               </div>
             </div>
@@ -196,7 +211,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-11 pr-4 py-3 bg-slate-700/50 border border-slate-600 text-black rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-700/50 border border-slate-600 text-black rounded-full focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
                 />
               </div>
             </div>
@@ -210,7 +225,7 @@ export default function LoginPage() {
 
             {/* Bouton Connexion avec reCAPTCHA */}
             <button
-              className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
               type="submit"
               disabled={isLoading}
             >

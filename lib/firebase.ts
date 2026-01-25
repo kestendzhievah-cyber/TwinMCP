@@ -12,8 +12,41 @@ const firebaseConfig = {
   appId: process.env['NEXT_PUBLIC_FIREBASE_APP_ID'] || '',
 }
 
+// Validate Firebase configuration
+const isFirebaseConfigValid = () => {
+  const requiredFields = ['apiKey', 'authDomain', 'projectId', 'appId'];
+  const missingFields = requiredFields.filter(field => !firebaseConfig[field as keyof typeof firebaseConfig]);
+  
+  if (missingFields.length > 0) {
+    console.error('❌ Configuration Firebase incomplète. Champs manquants:', missingFields);
+    console.error('📖 Consultez FIREBASE_SETUP_GUIDE.md pour configurer Firebase correctement');
+    return false;
+  }
+  
+  // Check for placeholder values
+  if (firebaseConfig.apiKey.includes('your-') || 
+      firebaseConfig.messagingSenderId === '123456789012' ||
+      firebaseConfig.appId.includes('abcdef')) {
+    console.error('❌ Configuration Firebase utilise des valeurs de placeholder');
+    console.error('📖 Consultez FIREBASE_SETUP_GUIDE.md pour obtenir vos vraies clés Firebase');
+    return false;
+  }
+  
+  return true;
+};
+
 // Initialize Firebase - avoid multiple initializations
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
+let app;
+try {
+  if (!isFirebaseConfigValid()) {
+    throw new Error('Configuration Firebase invalide. Consultez FIREBASE_SETUP_GUIDE.md');
+  }
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  console.log('✅ Firebase initialisé avec succès');
+} catch (error) {
+  console.error('❌ Erreur lors de l\'initialisation de Firebase:', error);
+  throw error;
+}
 
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app)
