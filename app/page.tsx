@@ -7,13 +7,15 @@ import { MessageSquare, Zap, TrendingUp, Shield, Check, ArrowRight, Sparkles, Us
 export default function AgentFlowLanding() {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState('professional');
+  const [isAnnual, setIsAnnual] = useState(false);
 
   // Handler for plan selection/signup
   const handlePlanClick = (planName: string) => {
+    const billing = isAnnual ? 'annual' : 'monthly';
     const planMap: { [key: string]: string } = {
-      'Free': '/signup?plan=free',
-      'Professional': '/signup?plan=professional',
-      'Enterprise': '/signup?plan=enterprise'
+      'Free': `/signup?plan=free&billing=${billing}`,
+      'Professional': `/signup?plan=professional&billing=${billing}`,
+      'Enterprise': `/signup?plan=enterprise&billing=${billing}`
     };
     router.push(planMap[planName] || '/signup');
   };
@@ -25,8 +27,7 @@ export default function AgentFlowLanding() {
 
   // Handler for demo
   const handleDemo = () => {
-    // Could open a modal or redirect to demo page
-    router.push('/demo');
+    router.push('/dashboard/agent-mcp-demo');
   };
 
   // Handler for free trial / login
@@ -67,7 +68,8 @@ export default function AgentFlowLanding() {
   const plans = [
     {
       name: 'Free',
-      price: '0',
+      priceMonthly: '0',
+      priceAnnual: '0',
       description: 'Parfait pour débuter',
       features: [
         '3 serveurs MCP',
@@ -81,7 +83,8 @@ export default function AgentFlowLanding() {
     },
     {
       name: 'Professional',
-      price: '14.99',
+      priceMonthly: '14.99',
+      priceAnnual: '11.24',
       description: 'Le plus populaire',
       features: [
         'Serveurs MCP illimités',
@@ -97,7 +100,8 @@ export default function AgentFlowLanding() {
     },
     {
       name: 'Enterprise',
-      price: null,
+      priceMonthly: null,
+      priceAnnual: null,
       description: 'Pour les équipes',
       features: [
         'Tout du plan Pro',
@@ -236,9 +240,30 @@ export default function AgentFlowLanding() {
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Tarifs Transparents
             </h2>
-            <p className="text-xl text-gray-400">
+            <p className="text-xl text-gray-400 mb-8">
               Choisissez le plan qui correspond à vos besoins. Changez à tout moment.
             </p>
+            
+            {/* Toggle Mensuel / Annuel */}
+            <div className="flex items-center justify-center gap-4">
+              <span className={`text-lg ${!isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}>
+                Mensuel
+              </span>
+              <button
+                onClick={() => setIsAnnual(!isAnnual)}
+                className={`relative w-16 h-8 rounded-full transition-colors duration-300 ${isAnnual ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-slate-600'}`}
+              >
+                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 ${isAnnual ? 'translate-x-9' : 'translate-x-1'}`} />
+              </button>
+              <span className={`text-lg ${isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}>
+                Annuel
+              </span>
+              {isAnnual && (
+                <span className="ml-2 px-3 py-1 bg-green-500/20 text-green-400 text-sm font-semibold rounded-full">
+                  -25% d'économie
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -261,15 +286,22 @@ export default function AgentFlowLanding() {
                   <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                   <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
                   <div className="flex items-end justify-center">
-                    {plan.price !== null ? (
+                    {plan.priceMonthly !== null ? (
                       <>
-                        <span className="text-5xl font-bold text-white">{plan.price}€</span>
+                        <span className="text-5xl font-bold text-white">
+                          {isAnnual ? plan.priceAnnual : plan.priceMonthly}€
+                        </span>
                         <span className="text-gray-400 ml-2 mb-2">/mois</span>
                       </>
                     ) : (
                       <span className="text-3xl font-bold text-white">Sur devis</span>
                     )}
                   </div>
+                  {isAnnual && plan.priceMonthly !== null && plan.priceMonthly !== '0' && (
+                    <p className="text-green-400 text-sm mt-2">
+                      Facturé {(parseFloat(plan.priceAnnual!) * 12).toFixed(0)}€/an
+                    </p>
+                  )}
                 </div>
 
                 <ul className="space-y-3 mb-8">

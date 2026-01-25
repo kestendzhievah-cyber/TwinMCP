@@ -1,10 +1,24 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { MessageSquare, Zap, TrendingUp, Shield, Check, ArrowRight, Sparkles, Users, Clock, DollarSign } from 'lucide-react';
 
 export default function AgentFlowLanding() {
+  const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState('professional');
+
+  const handleSignup = (plan?: string) => {
+    router.push(plan ? `/signup?plan=${plan}` : '/signup');
+  };
+
+  const handleDemo = () => {
+    router.push('/dashboard/agent-mcp-demo');
+  };
+
+  const handleContact = () => {
+    router.push('/contact');
+  };
 
   const stats = [
     { icon: Users, value: '10,000+', label: 'Entreprises actives' },
@@ -117,12 +131,16 @@ export default function AgentFlowLanding() {
               <a href="#testimonials" className="text-gray-300 hover:text-white transition">Témoignages</a>
             </div>
             <div className="flex space-x-4">
-              <a href="/login" className="px-4 py-2 text-white hover:text-purple-400 transition">
+              <button 
+                onClick={() => router.push('/login')} 
+                className="px-4 py-2 text-white hover:text-purple-400 transition">
                 Connexion
-              </a>
-              <a href="/signup" className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/50">
+              </button>
+              <button 
+                onClick={() => handleSignup()} 
+                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/50">
                 Essai Gratuit
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -147,11 +165,15 @@ export default function AgentFlowLanding() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <button className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50 flex items-center justify-center">
+            <button 
+              onClick={() => handleSignup()}
+              className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50 flex items-center justify-center">
               Démarrer Gratuitement
               <ArrowRight className="ml-2 w-5 h-5" />
             </button>
-            <button className="px-8 py-4 bg-white/10 backdrop-blur text-white text-lg font-semibold rounded-lg hover:bg-white/20 transition border border-white/20">
+            <button 
+              onClick={handleDemo}
+              className="px-8 py-4 bg-white/10 backdrop-blur text-white text-lg font-semibold rounded-lg hover:bg-white/20 transition border border-white/20">
               Voir la Démo
             </button>
           </div>
@@ -239,7 +261,15 @@ export default function AgentFlowLanding() {
                   ))}
                 </ul>
 
-                <button className={`w-full py-3 rounded-lg font-semibold transition ${
+                <button 
+                  onClick={() => {
+                    if (plan.name === 'Enterprise') {
+                      handleContact();
+                    } else {
+                      handleSignup(plan.name.toLowerCase());
+                    }
+                  }}
+                  className={`w-full py-3 rounded-lg font-semibold transition ${
                   plan.popular
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/50'
                     : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
@@ -289,7 +319,9 @@ export default function AgentFlowLanding() {
           <p className="text-xl text-gray-300 mb-8">
             Rejoignez les milliers d'entreprises qui automatisent avec Corel.IA
           </p>
-          <button className="px-10 py-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xl font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50">
+          <button 
+            onClick={() => handleSignup()}
+            className="px-10 py-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xl font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50">
             Démarrer Gratuitement - 14 Jours d'Essai
           </button>
           <p className="text-gray-400 text-sm mt-4">
