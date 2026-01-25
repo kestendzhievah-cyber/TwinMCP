@@ -27,7 +27,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
 
   const router = useRouter();
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signInWithGoogle, signInWithGithub } = useAuth();
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +84,35 @@ export default function SignupPage() {
           break;
         default:
           errorMessage = err.message || 'Erreur lors de l\'inscription Google';
+      }
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGithubSignup = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await signInWithGithub();
+      setSuccess('Inscription réussie ! Redirection...');
+      setTimeout(() => router.push('/dashboard'), 1500);
+    } catch (err: any) {
+      let errorMessage = 'Erreur lors de l\'inscription GitHub';
+      switch (err.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = 'Inscription annulée';
+          break;
+        case 'auth/popup-blocked':
+          errorMessage = 'Popup bloqué par le navigateur';
+          break;
+        case 'auth/account-exists-with-different-credential':
+          errorMessage = 'Un compte existe déjà avec cette adresse email';
+          break;
+        default:
+          errorMessage = err.message || 'Erreur lors de l\'inscription GitHub';
       }
       setError(errorMessage);
     } finally {
@@ -168,6 +197,7 @@ export default function SignupPage() {
 
             {/* GitHub Button */}
             <button
+              onClick={handleGithubSignup}
               disabled={isLoading}
               className="w-full mb-6 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50"
             >

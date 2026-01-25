@@ -8,6 +8,7 @@ import {
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
+  GithubAuthProvider,
   signInWithPopup,
 } from 'firebase/auth'
 import { auth } from './firebase'
@@ -18,6 +19,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
+  signInWithGithub: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -57,6 +59,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithPopup(auth, provider)
   }
 
+  const signInWithGithub = async () => {
+    const provider = new GithubAuthProvider()
+    await signInWithPopup(auth, provider)
+  }
+
   const logout = async () => {
     await signOut(auth)
   }
@@ -67,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signInWithGoogle,
+    signInWithGithub,
     logout,
   }
 
