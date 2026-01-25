@@ -10,7 +10,7 @@ import {
   getCountFromServer
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { getPlanConfig, getSuggestedUpgrade } from './plan-config';
+import { getPlanConfig, getSuggestedUpgrade, isUnlimited } from './plan-config';
 
 interface LimitInfo {
   current: number;
@@ -21,25 +21,22 @@ interface LimitInfo {
 export interface UserLimitsResponse {
   plan: string;
   limits: {
-    agents: LimitInfo;
-    conversations: LimitInfo;
+    mcpServers: LimitInfo;
+    requestsPerDay: LimitInfo;
   };
-  canCreateAgent: boolean;
+  canCreateMcpServer: boolean;
+  canMakeRequest: boolean;
+  hasPrivateServers: boolean;
   suggestedUpgrade: string | null;
   subscriptionStatus?: string;
-  agentsCount?: number;
-  agentsLimit?: number;
-  conversationsUsed?: number;
-  conversationsLimit?: number;
 }
 
-export async function canCreateAgent(userId: string): Promise<{
+export async function canCreateMcpServer(userId: string): Promise<{
   allowed: boolean;
   currentCount?: number;
   limit?: number;
   message?: string;
   plan?: string;
-  maxAllowed?: number;
   suggestedUpgrade?: string | null;
 }> {
   try {
@@ -54,33 +51,89 @@ export async function canCreateAgent(userId: string): Promise<{
     const plan = userData.plan || 'free';
     const planConfig = getPlanConfig(plan);
 
-    const currentCount = await countActiveAgents(userId);
-    const limit = planConfig.agents;
-    const allowed = limit === -1 || currentCount < limit;
+    const currentCount = await countActiveMcpServers(userId);
+    const limit = planConfig.mcpServers;
+    const allowed = isUnlimited(limit) || currentCount < limit;
 
     return {
       allowed,
       currentCount,
       limit,
       plan,
-      maxAllowed: limit,
-      suggestedUpgrade: !allowed ? 'PRO' : null
+      suggestedUpgrade: !allowed ? 'professional' : null
     };
   } catch (error) {
-    console.error('Error checking agent creation limits:', error);
+    console.error('Error checking MCP server creation limits:', error);
     return { allowed: false, message: 'Erreur lors de la vérification des limites' };
   }
 }
 
-export async function countActiveAgents(userId: string): Promise<number> {
+export async function countActiveMcpServers(userId: string): Promise<number> {
   try {
-    const agentsRef = collection(db, 'agents');
-    const q = query(agentsRef, where('userId', '==', userId), where('active', '==', true));
+    const serversRef = collection(db, 'mcp_servers');
+    const q = query(serversRef, where('userId', '==', userId), where('active', '==', true));
     const querySnapshot = await getDocs(q);
     return querySnapshot.size;
   } catch (error) {
-    console.error('Error counting active agents:', error);
+    console.error('Error counting active MCP servers:', error);
     throw error;
+  }
+}
+
+export async function countDailyRequests(userId: string): Promise<number> {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfDay = Timestamp.fromDate(today);
+
+    const requestsRef = collection(db, 'api_requests');
+    const q = query(
+      requestsRef, 
+      where('userId', '==', userId), 
+      where('createdAt', '>=', startOfDay)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.size;
+  } catch (error) {
+    console.error('Error counting daily requests:', error);
+    return 0;
+  }
+}
+
+export async function canMakeRequest(userId: string): Promise<{
+  allowed: boolean;
+  currentCount?: number;
+  limit?: number;
+  message?: string;
+  plan?: string;
+  suggestedUpgrade?: string | null;
+}> {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      return { allowed: false, message: 'Utilisateur non trouvé' };
+    }
+
+    const userData = userSnap.data();
+    const plan = userData.plan || 'free';
+    const planConfig = getPlanConfig(plan);
+
+    const currentCount = await countDailyRequests(userId);
+    const limit = planConfig.requestsPerDay;
+    const allowed = isUnlimited(limit) || currentCount < limit;
+
+    return {
+      allowed,
+      currentCount,
+      limit,
+      plan,
+      suggestedUpgrade: !allowed ? 'professional' : null
+    };
+  } catch (error) {
+    console.error('Error checking request limits:', error);
+    return { allowed: false, message: 'Erreur lors de la vérification des limites' };
   }
 }
 
@@ -98,35 +151,40 @@ export async function getUserLimits(userId: string): Promise<UserLimitsResponse>
     const planConfig = getPlanConfig(plan);
     const suggestedUpgrade = getSuggestedUpgrade(plan);
 
-    const currentCount = await countActiveAgents(userId);
-    const agentsRemaining = planConfig.agents === -1 ? Infinity : Math.max(0, planConfig.agents - currentCount);
-    const conversationsRemaining = planConfig.conversations === -1 ? Infinity : planConfig.conversations;
+    const mcpServersCount = await countActiveMcpServers(userId);
+    const dailyRequestsCount = await countDailyRequests(userId);
+
+    const mcpServersRemaining = isUnlimited(planConfig.mcpServers) 
+      ? Infinity 
+      : Math.max(0, planConfig.mcpServers - mcpServersCount);
+    const requestsRemaining = isUnlimited(planConfig.requestsPerDay) 
+      ? Infinity 
+      : Math.max(0, planConfig.requestsPerDay - dailyRequestsCount);
 
     const limits = {
-      agents: {
-        current: currentCount,
-        max: planConfig.agents,
-        remaining: agentsRemaining
+      mcpServers: {
+        current: mcpServersCount,
+        max: planConfig.mcpServers,
+        remaining: mcpServersRemaining
       },
-      conversations: {
-        current: 0, // TODO: implement conversation counting
-        max: planConfig.conversations,
-        remaining: conversationsRemaining
+      requestsPerDay: {
+        current: dailyRequestsCount,
+        max: planConfig.requestsPerDay,
+        remaining: requestsRemaining
       }
     };
 
-    const canCreateAgent = planConfig.agents === -1 || currentCount < planConfig.agents;
+    const canCreateServer = isUnlimited(planConfig.mcpServers) || mcpServersCount < planConfig.mcpServers;
+    const canRequest = isUnlimited(planConfig.requestsPerDay) || dailyRequestsCount < planConfig.requestsPerDay;
 
     return {
       plan,
       limits,
-      canCreateAgent,
+      canCreateMcpServer: canCreateServer,
+      canMakeRequest: canRequest,
+      hasPrivateServers: planConfig.privateServers,
       suggestedUpgrade: suggestedUpgrade ? String(suggestedUpgrade) : null,
-      subscriptionStatus: userData.subscriptionStatus || 'active',
-      agentsCount: currentCount,
-      agentsLimit: planConfig.agents,
-      conversationsUsed: 0, // TODO: implement conversation counting
-      conversationsLimit: planConfig.conversations
+      subscriptionStatus: userData.subscriptionStatus || 'active'
     };
   } catch (error) {
     console.error('Error getting user limits:', error);
@@ -134,15 +192,38 @@ export async function getUserLimits(userId: string): Promise<UserLimitsResponse>
   }
 }
 
-export async function updateUserAgentsCount(userId: string, newCount: number): Promise<void> {
+export async function recordApiRequest(userId: string, endpoint: string): Promise<void> {
+  try {
+    const requestsRef = collection(db, 'api_requests');
+    const { addDoc } = await import('firebase/firestore');
+    await addDoc(requestsRef, {
+      userId,
+      endpoint,
+      createdAt: Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error recording API request:', error);
+  }
+}
+
+export async function updateUserMcpServersCount(userId: string, newCount: number): Promise<void> {
   try {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
-      agentsCount: newCount,
+      mcpServersCount: newCount,
       updatedAt: Timestamp.now()
     });
   } catch (error) {
-    console.error('Error updating user agents count:', error);
+    console.error('Error updating user MCP servers count:', error);
     throw error;
   }
 }
+
+// ============================================
+// LEGACY COMPATIBILITY ALIASES
+// Ces fonctions maintiennent la compatibilité avec l'ancien code
+// ============================================
+
+export const canCreateAgent = canCreateMcpServer;
+export const countActiveAgents = countActiveMcpServers;
+export const updateUserAgentsCount = updateUserMcpServersCount;

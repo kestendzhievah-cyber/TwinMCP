@@ -73,7 +73,7 @@ describe('QuotaService', () => {
       mockRedis.get.mockResolvedValue('0');
       mockRedis.scard.mockResolvedValue(0);
 
-      const premiumResult = await service.checkUserQuota('user1', 'premium');
+      const premiumResult = await service.checkUserQuota('user1', 'professional');
       expect(premiumResult.quotas.daily).toBe(1000);
       expect(premiumResult.quotas.monthly).toBe(30000);
 
@@ -136,9 +136,9 @@ describe('QuotaService', () => {
       mockRedis.get.mockResolvedValue('50');
       mockRedis.scard.mockResolvedValue(2);
 
-      const info = await service.getUserQuotaInfo('user1', 'premium');
+      const info = await service.getUserQuotaInfo('user1', 'professional');
       
-      expect(info.plan).toBe('premium');
+      expect(info.plan).toBe('professional');
       expect(info.quotas.daily).toBe(1000);
       expect(info.usage.daily).toBe(50);
       expect(info.usage.concurrent).toBe(2);
@@ -152,7 +152,7 @@ describe('QuotaService', () => {
       mockRedis.get.mockResolvedValue('50');
       mockRedis.scard.mockResolvedValue(2);
 
-      const result = await service.checkUserQuota('user1', 'premium');
+      const result = await service.checkUserQuota('user1', 'professional');
       
       expect(result.headers).toHaveProperty('X-Quota-Daily-Limit', '1000');
       expect(result.headers).toHaveProperty('X-Quota-Daily-Used', '50');

@@ -1,61 +1,65 @@
 interface PlanConfig {
   [key: string]: {
-    agents: number;
-    conversations: number;
-    models: string[];
+    mcpServers: number;
+    requestsPerDay: number;
+    privateServers: boolean;
     features: string[];
     support: string;
     price: number;
+    priceAnnual: number;
   };
 }
 
 export const PLAN_CONFIG: PlanConfig = {
-  starter: {
-    agents: 1,
-    conversations: 1000,
-    models: ['gpt-3.5-turbo'],
+  free: {
+    mcpServers: 3,
+    requestsPerDay: 200,
+    privateServers: false,
     features: [
-      '1 agent IA',
-      '1 000 conversations/mois',
-      'Modèles basiques (GPT-3.5)',
-      'Support email',
-      'Analytics basiques'
+      '3 serveurs MCP',
+      '200 requêtes/jour',
+      'Accès bibliothèque publique',
+      'Support communauté',
+      'Documentation complète'
     ],
-    support: 'Email',
-    price: 29
+    support: 'Communauté',
+    price: 0,
+    priceAnnual: 0
   },
   professional: {
-    agents: 5,
-    conversations: 10000,
-    models: ['gpt-3.5-turbo', 'gpt-4', 'claude-3-haiku', 'claude-3-sonnet', 'gemini-pro'],
+    mcpServers: -1, // Illimité
+    requestsPerDay: 10000,
+    privateServers: true,
     features: [
-      '5 agents IA',
-      '10 000 conversations/mois',
-      'Tous les modèles (GPT-4, Claude, Gemini)',
+      'Serveurs MCP illimités',
+      '10 000 requêtes/jour',
+      'Serveurs privés',
       'Support prioritaire 24/7',
       'Analytics avancés',
-      'Intégrations CRM',
-      'API complète'
+      'API complète',
+      'Webhooks & intégrations'
     ],
     support: 'Prioritaire 24/7',
-    price: 99
+    price: 14.99,
+    priceAnnual: 11.24
   },
   enterprise: {
-    agents: -1, // Illimité
-    conversations: -1, // Illimité
-    models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'claude-3-haiku', 'claude-3-sonnet', 'claude-3-opus', 'gemini-pro', 'gemini-pro-vision', 'custom-ai'],
+    mcpServers: -1, // Illimité
+    requestsPerDay: -1, // Illimité
+    privateServers: true,
     features: [
-      'Agents illimités',
-      'Conversations illimitées',
-      'Tous les modèles + Custom AI',
+      'Tout du plan Pro',
+      'Requêtes illimitées',
+      'Serveurs MCP personnalisés',
       'Account manager dédié',
       'SLA 99.9%',
-      'Intégrations sur-mesure',
+      'Déploiement on-premise',
       'Formation & onboarding',
       'White-label disponible'
     ],
     support: 'Account manager dédié',
-    price: 499
+    price: -1, // Sur devis
+    priceAnnual: -1
   }
 };
 
@@ -67,7 +71,7 @@ export function getPlanConfig(plan: keyof PlanConfig) {
 // Fonction pour déterminer le plan suggéré lors d'un upgrade
 export function getSuggestedUpgrade(currentPlan: keyof PlanConfig): keyof PlanConfig | null {
   switch (currentPlan) {
-    case 'starter':
+    case 'free':
       return 'professional';
     case 'professional':
       return 'enterprise';

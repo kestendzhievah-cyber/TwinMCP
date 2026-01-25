@@ -1,4 +1,5 @@
 import { RateLimitConfig } from './auth-types'
+import { canMakeRequest, recordApiRequest } from '@/lib/user-limits'
 
 interface RateLimitStore {
   increment(windowMs: number): Promise<number>
@@ -140,6 +141,39 @@ export class RateLimiter {
     }
 
     return { allowed: true }
+  }
+
+  // Vérifier les limites basées sur le plan d'abonnement
+  async checkPlanLimits(
+    userId: string,
+    endpoint: string
+  ): Promise<{ allowed: boolean; reason?: string; limit?: number; current?: number; suggestedUpgrade?: string | null }> {
+    try {
+      const result = await canMakeRequest(userId)
+      
+      if (!result.allowed) {
+        return {
+          allowed: false,
+          reason: `Limite quotidienne atteinte (${result.currentCount}/${result.limit} requêtes)`,
+          limit: result.limit,
+          current: result.currentCount,
+          suggestedUpgrade: result.suggestedUpgrade
+        }
+      }
+
+      // Enregistrer la requête pour le comptage
+      await recordApiRequest(userId, endpoint)
+
+      return { 
+        allowed: true,
+        limit: result.limit,
+        current: result.currentCount
+      }
+    } catch (error) {
+      console.error('Error checking plan limits:', error)
+      // En cas d'erreur, on autorise par défaut pour ne pas bloquer
+      return { allowed: true }
+    }
   }
 
   // Obtenir les stats de rate limiting

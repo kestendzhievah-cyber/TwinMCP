@@ -74,11 +74,26 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Rate limiting
+    // Rate limiting standard
     const rateLimitCheck = await rateLimiter.checkUserLimit(authContext.userId, toolId, authContext.rateLimit)
     if (!rateLimitCheck) {
       return NextResponse.json(
         { error: 'Rate limit exceeded' },
+        { status: 429 }
+      )
+    }
+
+    // Vérification des limites du plan d'abonnement
+    const planLimitCheck = await rateLimiter.checkPlanLimits(authContext.userId, `/api/v1/mcp/execute/${toolId}`)
+    if (!planLimitCheck.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'Limite quotidienne atteinte',
+          message: planLimitCheck.reason,
+          limit: planLimitCheck.limit,
+          current: planLimitCheck.current,
+          suggestedUpgrade: planLimitCheck.suggestedUpgrade
+        },
         { status: 429 }
       )
     }
