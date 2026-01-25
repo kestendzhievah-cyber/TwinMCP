@@ -9,6 +9,7 @@ import {
   AlertCircle, 
   CheckCircle, 
   ArrowRight,
+  ArrowLeft,
   FileText,
   Settings,
   Shield,
@@ -148,6 +149,15 @@ export default function SignupPage() {
       {/* Left Side - Sign Up Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
+          {/* Back Button */}
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition mb-6 group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span>Retour à l'accueil</span>
+          </Link>
+
           {/* Logo */}
           <div className="flex justify-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
