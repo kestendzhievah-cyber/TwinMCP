@@ -22,10 +22,11 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
+        router.push('/dashboard');
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
+        router.push('/subscription');
       }
-      router.push('/');
     } catch (err: any) {
       setError(err.message);
     } finally {

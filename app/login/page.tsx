@@ -5,18 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Mail, Lock, Sparkles, Chrome, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
-// Déclaration de types pour reCAPTCHA
-declare global {
-  interface Window {
-    grecaptcha: {
-      enterprise: {
-        execute: (sitekey: string, options: { action: string }) => Promise<string>;
-      };
-    };
-    recaptchaToken: string;
-  }
-}
-
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,61 +22,38 @@ export default function LoginPage() {
     setError('');
     setSuccess('');
 
-    // Exécuter reCAPTCHA avant la soumission et récupérer directement le token
-    let recaptchaToken = '';
-    if (typeof window !== 'undefined' && window.grecaptcha?.enterprise?.execute) {
-      try {
-        recaptchaToken = await window.grecaptcha.enterprise.execute('6LenTfIrAAAAANlD2F8YQawKA2-PtM8iDjpM2MH4', { action: 'login' });
-        // inject token into hidden input for compatibility/debugging
-        const tokenInput = document.getElementById('recaptcha-token') as HTMLInputElement | null;
-        if (tokenInput) tokenInput.value = recaptchaToken;
-      } catch (recaptchaError) {
-        setError('Erreur de vérification reCAPTCHA. Veuillez réessayer.');
-        setIsLoading(false);
-        return;
-      }
-    }
-
     try {
-      // fallback: if token not set from execute, try reading hidden input
-      if (!recaptchaToken) {
-        recaptchaToken = (document.getElementById('recaptcha-token') as HTMLInputElement)?.value || '';
-      }
-
-      if (!recaptchaToken) {
-        setError('Erreur de vérification reCAPTCHA. Veuillez réessayer.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Appeler l'API de connexion
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          recaptchaToken,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la connexion');
-      }
-
+      await signIn(email, password);
       setSuccess('Connexion réussie ! Redirection...');
 
-      // Petite pause pour montrer le message de succès
       setTimeout(() => {
         router.push('/dashboard');
       }, 1500);
 
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la connexion');
+      let errorMessage = 'Erreur lors de la connexion';
+
+      switch (err.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'Aucun compte trouvé avec cette adresse email';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Mot de passe incorrect';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Adresse email invalide';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'Ce compte a été désactivé';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
+          break;
+        default:
+          errorMessage = err.message || 'Identifiants incorrects';
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -200,13 +165,6 @@ export default function LoginPage() {
 
           {/* Formulaire Email/Password */}
           <form onSubmit={handleEmailLogin} className="space-y-4">
-            {/* reCAPTCHA Token (hidden) */}
-            <input
-              type="hidden"
-              id="recaptcha-token"
-              name="recaptcha-token"
-            />
-
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
