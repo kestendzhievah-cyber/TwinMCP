@@ -141,16 +141,15 @@ export default function AddLibrariesPage() {
                 <Github className="w-4 h-4" />
                 Install
               </Link>
-              <Link href="/dashboard" className="text-gray-300 hover:text-white transition text-sm">
-                More...
+              <Link href="/dashboard/analytics" className="text-gray-300 hover:text-white transition text-sm">
+                Docs
               </Link>
-              <button 
-                onClick={() => router.push('/dashboard')}
+              <Link 
+                href="/dashboard"
                 className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition text-sm flex items-center gap-2"
               >
-                <Plus className="w-4 h-4" />
-                Add Docs
-              </button>
+                Voir les bibliothèques
+              </Link>
             </div>
           </div>
         </div>
