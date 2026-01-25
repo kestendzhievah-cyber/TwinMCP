@@ -27,11 +27,11 @@ declare global {
     url: string;
   }
 
-  interface Response {
-    status(code: number): Response;
-    json(data: any): Response;
-    send(data: any): Response;
-    end(): Response;
+  interface ServerResponse {
+    status(code: number): ServerResponse;
+    json(data: any): ServerResponse;
+    send(data: any): ServerResponse;
+    end(): ServerResponse;
   }
 
   type NextFunction = (err?: any) => void;

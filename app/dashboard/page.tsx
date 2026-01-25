@@ -255,7 +255,7 @@ export default function TwinMCPApiDocs() {
         })
       });
 
-      const data: { success: boolean; taskId?: string; error?: string } = await res.json();
+      const data = (await res.json()) as unknown as { success: boolean; taskId?: string; error?: string };
       if (data.success && data.taskId) {
         setGithubImportTaskId(data.taskId);
         setGithubImportStatus('success');
@@ -558,7 +558,7 @@ result = client.tools.execute(
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Navigation */}
-      <nav className="border-b border-purple-500/20 bg-slate-900/80 backdrop-blur-lg sticky top-0 z-50">
+      <nav className="border-b border-purple-500/20 bg-slate-900/80 backdrop-blur-lg fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
@@ -581,7 +581,7 @@ result = client.tools.execute(
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16">
         {/* Tabs */}
         <div className="flex space-x-1 mb-8 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-lg p-1">
           {[
@@ -608,8 +608,7 @@ result = client.tools.execute(
         {/* MCP Connect Section */}
         <section className="mb-8">
           <div
-            className="p-6 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-white/6 backdrop-blur"
-            style={{ boxShadow: '0 0 10px rgba(255, 255, 255, 0.1)' }}
+            className="p-6 rounded-2xl bg-slate-800/50 backdrop-blur border border-purple-500/20"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold flex items-center gap-2">
