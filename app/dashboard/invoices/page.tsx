@@ -65,18 +65,18 @@ export default function InvoicesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (!userId) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-          <p className="text-gray-600 mb-4">Please log in to view your invoices.</p>
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+        <Card className="p-6 sm:p-8 text-center">
+          <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Authentication Required</h2>
+          <p className="text-sm sm:text-base text-gray-600 mb-4">Please log in to view your invoices.</p>
           <Button onClick={() => window.location.href = '/auth'}>
             Log In
           </Button>
@@ -86,10 +86,10 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Invoices</h1>
-        <p className="text-gray-600">Manage and view your billing invoices</p>
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Invoices</h1>
+        <p className="text-sm sm:text-base text-gray-600">Manage and view your billing invoices</p>
       </div>
 
       {selectedInvoice ? (

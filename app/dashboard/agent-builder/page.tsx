@@ -124,31 +124,32 @@ export default function AddLibrariesPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Navigation */}
       <nav className="border-b border-purple-500/20 bg-slate-900/80 backdrop-blur-lg fixed top-0 left-0 right-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <Link href="/" className="flex items-center space-x-2">
-                <Sparkles className="w-8 h-8 text-purple-400" />
-                <span className="text-2xl font-bold text-white">TwinMCP</span>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <Link href="/" className="flex items-center space-x-1.5 sm:space-x-2">
+                <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-purple-400" />
+                <span className="text-lg sm:text-2xl font-bold text-white">TwinMCP</span>
               </Link>
             </div>
 
-            <div className="flex items-center space-x-6">
-              <Link href="/pricing" className="text-gray-300 hover:text-white transition text-sm">
+            <div className="flex items-center space-x-2 sm:space-x-4 lg:space-x-6">
+              <Link href="/pricing" className="hidden md:block text-gray-300 hover:text-white transition text-xs sm:text-sm">
                 Plans
               </Link>
-              <Link href="/dashboard/docs" className="text-gray-300 hover:text-white transition text-sm flex items-center gap-1">
-                <Github className="w-4 h-4" />
-                Install
+              <Link href="/dashboard/docs" className="hidden sm:flex text-gray-300 hover:text-white transition text-xs sm:text-sm items-center gap-1">
+                <Github className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden lg:inline">Install</span>
               </Link>
-              <Link href="/dashboard/analytics" className="text-gray-300 hover:text-white transition text-sm">
+              <Link href="/dashboard/analytics" className="hidden lg:block text-gray-300 hover:text-white transition text-sm">
                 Docs
               </Link>
               <Link 
                 href="/dashboard"
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition text-sm flex items-center gap-2"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition text-xs sm:text-sm flex items-center gap-1 sm:gap-2"
               >
-                Voir les bibliothèques
+                <span className="hidden sm:inline">Voir les bibliothèques</span>
+                <span className="sm:hidden">Bibliothèques</span>
               </Link>
             </div>
           </div>
@@ -156,45 +157,45 @@ export default function AddLibrariesPage() {
       </nav>
 
       {/* Main Content */}
-      <div className="pt-24 pb-16 px-4">
+      <div className="pt-20 sm:pt-24 pb-12 sm:pb-16 px-3 sm:px-4">
         <div className="max-w-4xl mx-auto">
           {/* Add Libraries Card */}
-          <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-2xl p-8 mb-8">
-            <h1 className="text-2xl font-bold text-white mb-2">Add Libraries</h1>
-            <p className="text-gray-400 mb-8">Select and add your documentation source</p>
+          <div className="bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">Add Libraries</h1>
+            <p className="text-sm sm:text-base text-gray-400 mb-6 sm:mb-8">Select and add your documentation source</p>
 
             {/* Library Sources Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
               {librarySources.map((source) => (
                 <button
                   key={source.id}
                   onClick={() => handleSourceClick(source.id)}
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
+                  className={`flex items-center justify-between p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all duration-200 ${
                     selectedSource === source.id
                       ? 'bg-purple-500/20 border-purple-500 shadow-lg shadow-purple-500/20'
                       : 'bg-slate-700/30 border-slate-600/50 hover:border-purple-500/50 hover:bg-slate-700/50'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`${selectedSource === source.id ? 'text-purple-400' : 'text-gray-400'}`}>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className={`${selectedSource === source.id ? 'text-purple-400' : 'text-gray-400'} scale-90 sm:scale-100`}>
                       {source.icon}
                     </div>
-                    <span className={`font-medium ${selectedSource === source.id ? 'text-white' : 'text-gray-300'}`}>
+                    <span className={`font-medium text-sm sm:text-base ${selectedSource === source.id ? 'text-white' : 'text-gray-300'}`}>
                       {source.name}
                     </span>
                   </div>
-                  <ChevronRight className={`w-5 h-5 ${selectedSource === source.id ? 'text-purple-400' : 'text-gray-500'}`} />
+                  <ChevronRight className={`w-4 h-4 sm:w-5 sm:h-5 ${selectedSource === source.id ? 'text-purple-400' : 'text-gray-500'}`} />
                 </button>
               ))}
             </div>
 
             {/* Import Form (shown when source is selected) */}
             {selectedSource && (
-              <div className="bg-slate-700/30 border border-slate-600/50 rounded-xl p-6 mb-6">
-                <h3 className="text-lg font-semibold text-white mb-4">
+              <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">
                   Import from {librarySources.find(s => s.id === selectedSource)?.name}
                 </h3>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <input
                     type="text"
                     value={importUrl}
