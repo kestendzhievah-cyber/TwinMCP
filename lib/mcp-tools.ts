@@ -1,11 +1,6 @@
 // MCP Tools Configuration
 // Centralized definition of all available MCP tools
 
-import { PrismaClient } from '@prisma/client'
-import Redis from 'ioredis'
-import { LibraryResolutionService } from './services/library-resolution.service'
-import { VectorSearchService } from './services/vector-search.service'
-
 export interface MCPTool {
   name: string
   description: string
@@ -16,12 +11,46 @@ export interface MCPTool {
   }
 }
 
-// Initialisation des services
-const prisma = new PrismaClient()
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+// Lazy initialization des services pour éviter les erreurs Prisma au chargement
+let prisma: any = null
+let redis: any = null
+let libraryResolutionService: any = null
+let vectorSearchService: any = null
 
-const libraryResolutionService = new LibraryResolutionService(prisma, redis)
-const vectorSearchService = new VectorSearchService(prisma, redis)
+async function initializeServices() {
+  if (!prisma) {
+    try {
+      const { PrismaClient } = await import('@prisma/client')
+      prisma = new PrismaClient()
+    } catch (e) {
+      console.warn('Prisma not available:', e)
+    }
+  }
+  if (!redis) {
+    try {
+      const Redis = (await import('ioredis')).default
+      redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+    } catch (e) {
+      console.warn('Redis not available:', e)
+    }
+  }
+  if (prisma && redis && !libraryResolutionService) {
+    try {
+      const { LibraryResolutionService } = await import('./services/library-resolution.service')
+      libraryResolutionService = new LibraryResolutionService(prisma, redis)
+    } catch (e) {
+      console.warn('LibraryResolutionService not available:', e)
+    }
+  }
+  if (prisma && redis && !vectorSearchService) {
+    try {
+      const { VectorSearchService } = await import('./services/vector-search.service')
+      vectorSearchService = new VectorSearchService(prisma, redis)
+    } catch (e) {
+      console.warn('VectorSearchService not available:', e)
+    }
+  }
+}
 
 export const mcpTools: MCPTool[] = [
   // Outils TwinMCP principaux
@@ -182,15 +211,24 @@ export const serverInfo = {
 
 // Tool execution functions
 export const executeTool = async (toolName: string, args: any): Promise<string> => {
+  // Initialiser les services si nécessaire
+  await initializeServices()
+  
   try {
     switch (toolName) {
       case 'resolve-library-id':
-        const resolveResult = await libraryResolutionService.resolveLibrary(args)
-        return JSON.stringify(resolveResult, null, 2)
+        if (libraryResolutionService) {
+          const resolveResult = await libraryResolutionService.resolveLibrary(args)
+          return JSON.stringify(resolveResult, null, 2)
+        }
+        return JSON.stringify({ error: 'Service not available', query: args?.query }, null, 2)
       
       case 'query-docs':
-        const queryResult = await vectorSearchService.searchDocuments(args)
-        return JSON.stringify(queryResult, null, 2)
+        if (vectorSearchService) {
+          const queryResult = await vectorSearchService.searchDocuments(args)
+          return JSON.stringify(queryResult, null, 2)
+        }
+        return JSON.stringify({ error: 'Service not available', library_id: args?.library_id }, null, 2)
       
       case 'send_email':
         return `Email sent to ${args?.to} with subject "${args?.subject}"`
@@ -212,7 +250,7 @@ export const executeTool = async (toolName: string, args: any): Promise<string> 
     }
   } catch (error) {
     console.error(`Error executing tool ${toolName}:`, error)
-    return `Error: ${error.message}`
+    return `Error: ${error instanceof Error ? error.message : String(error)}`
   }
 }
 
@@ -225,5 +263,8 @@ export const validateToolArgs = (tool: MCPTool, args: any): string[] => {
   )
 }
 
-// Export des services pour utilisation externe
-export { libraryResolutionService, vectorSearchService }
+// Export des services pour utilisation externe (lazy loaded)
+export const getServices = async () => {
+  await initializeServices()
+  return { libraryResolutionService, vectorSearchService }
+}

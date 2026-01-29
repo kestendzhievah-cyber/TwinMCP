@@ -216,8 +216,12 @@ model UsageLog {
   query          String?
   tokensReturned Int?     @map("tokens_returned")
   responseTimeMs Int?     @map("response_time_ms")
+  success        Boolean  @default(true)
+  errorMessage   String?  @map("error_message")
   createdAt      DateTime @default(now())
 
+  @@index([apiKeyId, createdAt])
+  @@index([userId, createdAt])
   @@map("usage_logs")
 }
 

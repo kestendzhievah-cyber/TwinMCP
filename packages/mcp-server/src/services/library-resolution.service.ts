@@ -1,5 +1,7 @@
 import { Pool } from 'pg';
-import { Redis } from 'redis';
+import { createClient, RedisClientType } from 'redis';
+
+type Redis = RedisClientType;
 import { 
   ResolveLibraryIdInput, 
   ResolveLibraryIdOutput, 
@@ -50,7 +52,7 @@ export class LibraryResolutionService {
       // Générer des suggestions si nécessaire
       const suggestions = finalResults.length === 0 
         ? await this.generateSuggestions(parsed)
-        : undefined;
+        : [];
 
       const output: ResolveLibraryIdOutput = {
         query: input.query,

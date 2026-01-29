@@ -1,6 +1,6 @@
 # @twinmcp/mcp
 
-TwinMCP MCP Server - Documentation and code snippets for any library, powered by the Model Context Protocol.
+TwinMCP MCP Server - Documentation and code snippets for any library with API key authentication and usage tracking.
 
 ## Installation
 
@@ -10,40 +10,98 @@ npm install @twinmcp/mcp
 
 ## Usage
 
-### As MCP Server (stdio)
+### Mode STDIO (pour Claude Desktop, Cursor, etc.)
 
 ```bash
-npx @twinmcp/mcp
+npx twinmcp-server
 ```
 
-### Programmatic Usage
+### Mode HTTP (pour accès API public avec tracking)
 
-```typescript
-import { TwinMCPServer, TwinMCPClient } from '@twinmcp/mcp';
-
-// Start MCP server
-const server = new TwinMCPServer();
-await server.run();
-
-// Use client directly
-const client = new TwinMCPClient({
-  serverUrl: 'https://api.twinmcp.com',
-  apiKey: 'your-api-key',
-});
-
-// Resolve a library
-const library = await client.resolveLibrary({
-  query: 'How do I set up MongoDB authentication?'
-});
-
-// Query documentation
-const docs = await client.queryDocs({
-  libraryId: '/mongodb/docs',
-  query: 'connection pooling examples'
-});
+```bash
+npx twinmcp-http
 ```
 
-## Available Tools
+Ou avec npm scripts:
+```bash
+npm run start:http
+```
+
+## Configuration
+
+### Variables d'environnement
+
+| Variable | Description | Défaut |
+|----------|-------------|--------|
+| `TWINMCP_PORT` | Port du serveur HTTP | `3001` |
+| `TWINMCP_HOST` | Host du serveur | `0.0.0.0` |
+| `TWINMCP_API_BASE_URL` | URL de votre SaaS pour auth/tracking | `http://localhost:3000` |
+| `TWINMCP_API_KEY` | Clé API interne (optionnel) | - |
+| `TWINMCP_INTERNAL_KEY` | Clé pour communication serveur-serveur | - |
+| `TWINMCP_CORS_ORIGINS` | Origines CORS autorisées (séparées par virgule) | `*` |
+
+### Exemple de fichier .env
+
+```env
+TWINMCP_PORT=3001
+TWINMCP_HOST=0.0.0.0
+TWINMCP_API_BASE_URL=https://votre-saas.com
+TWINMCP_INTERNAL_KEY=votre-cle-interne-secrete
+TWINMCP_CORS_ORIGINS=https://votre-app.com,https://autre-app.com
+```
+
+## Endpoints API
+
+### Publics (sans authentification)
+
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/health` | GET | Health check |
+| `/api/info` | GET | Informations sur l'API |
+
+### Protégés (clé API requise)
+
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/mcp/tools` | GET | Liste des outils disponibles |
+| `/api/mcp/call` | POST | Appeler un outil |
+| `/api/mcp/sse` | GET | Connexion SSE pour protocole MCP |
+| `/api/usage` | GET | Statistiques d'utilisation |
+
+## Authentification
+
+Fournissez votre clé API via:
+- Header `X-API-Key: votre-cle`
+- Header `Authorization: Bearer votre-cle`
+- Query param `?api_key=votre-cle`
+
+## Exemples d'utilisation
+
+### Lister les outils
+
+```bash
+curl -H "X-API-Key: twinmcp_live_xxx" \
+  https://votre-serveur.com/api/mcp/tools
+```
+
+### Appeler un outil
+
+```bash
+curl -X POST \
+  -H "X-API-Key: twinmcp_live_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "resolve-library-id", "arguments": {"query": "react"}}' \
+  https://votre-serveur.com/api/mcp/call
+```
+
+### Voir l'utilisation
+
+```bash
+curl -H "X-API-Key: twinmcp_live_xxx" \
+  https://votre-serveur.com/api/usage
+```
+
+## Outils disponibles
 
 ### resolve-library-id
 
@@ -66,13 +124,73 @@ Search documentation for a specific library using natural language queries.
 - `maxResults` (optional): Maximum number of results to return (default: 10)
 - `maxTokens` (optional): Maximum total tokens in response (default: 4000)
 
-## Configuration
+## Intégration avec votre SaaS
 
-The server can be configured using environment variables:
+Le serveur MCP HTTP appelle votre SaaS pour la validation des clés API et le tracking d'utilisation.
 
-- `TWINMCP_SERVER_URL`: Backend server URL (default: http://localhost:3000)
-- `TWINMCP_API_KEY`: API key for authentication
-- `LOG_LEVEL`: Logging level (debug, info, warn, error)
+### Endpoints à implémenter sur votre SaaS
+
+#### POST /api/auth/validate-key
+
+Valide une clé API et retourne les informations utilisateur.
+
+**Réponse attendue:**
+```json
+{
+  "valid": true,
+  "userId": "user-123",
+  "apiKeyId": "key-456",
+  "tier": "premium",
+  "quotaDaily": 10000,
+  "quotaMonthly": 300000,
+  "usedDaily": 150,
+  "usedMonthly": 4500
+}
+```
+
+#### POST /api/usage/track
+
+Enregistre l'utilisation d'un outil.
+
+**Corps de la requête:**
+```json
+{
+  "apiKeyId": "key-456",
+  "userId": "user-123",
+  "toolName": "query-docs",
+  "libraryId": "react",
+  "query": "how to use hooks",
+  "tokensReturned": 1500,
+  "responseTimeMs": 234,
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+## Usage programmatique
+
+```typescript
+import { TwinMCPHttpServer } from '@twinmcp/mcp';
+
+const server = new TwinMCPHttpServer(
+  {
+    port: 3001,
+    host: '0.0.0.0',
+    corsOrigins: ['https://votre-app.com'],
+    apiKeyValidation: async (apiKey) => {
+      // Votre logique de validation
+      return { valid: true, userId: '...', apiKeyId: '...' };
+    },
+    usageTracking: async (data) => {
+      // Votre logique de tracking
+      console.log('Usage:', data);
+    },
+  },
+  { serverUrl: 'https://api.twinmcp.com' }
+);
+
+await server.start();
+```
 
 ## Development
 

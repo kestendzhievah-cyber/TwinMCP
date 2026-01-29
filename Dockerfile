@@ -47,12 +47,23 @@ ENV OPENAI_API_KEY="sk-dummy-key-for-build-only"
 
 # Firebase Admin - skip dummy credentials to use graceful fallback
 
-# Build the app
+# Build the Next.js app
 RUN npm run build
 
+# Build the MCP HTTP Server
+WORKDIR /app/packages/mcp-server
+RUN npm install --legacy-peer-deps && npm run build
+
+WORKDIR /app
+
 EXPOSE 3000
+EXPOSE 3001
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV TWINMCP_PORT=3001
+ENV TWINMCP_HOST=0.0.0.0
+ENV TWINMCP_API_BASE_URL=http://localhost:3000
 
-CMD ["npm", "start"]
+# Start both services
+CMD ["node", "scripts/start-all.js"]
