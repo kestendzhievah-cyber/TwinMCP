@@ -109,7 +109,7 @@ export class VoiceService {
   }
 
   async detectLanguage(audioBuffer: Buffer): Promise<string> {
-    const [response] = await this.speechClient.recognize({
+    const [response] = await this.getSpeechClient().recognize({
       audio: { content: audioBuffer.toString('base64') },
       config: {
         encoding: 'LINEAR16',
