@@ -393,7 +393,11 @@ class TwinMCPAPITester:
         self.test_libraries_search()
         self.test_oauth_discovery()
         self.test_mcp_json_rpc_initialize()
-        self.test_mcp_tools_list()
+        
+        # Test new features from review request
+        self.test_api_keys_management()
+        self.test_usage_tracking()
+        self.test_admin_crawl_endpoint()
         
         # Print summary
         print("\n" + "=" * 60)
