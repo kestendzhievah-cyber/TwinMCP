@@ -28,8 +28,8 @@ export interface DetectedObject {
 }
 
 export class ImageService {
-  private visionClient: vision.ImageAnnotatorClient;
-  private openai: OpenAI;
+  private visionClient: vision.ImageAnnotatorClient | null = null;
+  private openai: OpenAI | null = null;
 
   constructor() {
     this.visionClient = new vision.ImageAnnotatorClient();
