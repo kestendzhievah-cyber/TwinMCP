@@ -7,6 +7,7 @@ export class OpenAIProvider {
   constructor(private config: ProviderConfig) {
     // Client will be initialized lazily when needed
   }
+
   private getClient(): OpenAI {
     if (!this.client) {
       this.client = new OpenAI({
