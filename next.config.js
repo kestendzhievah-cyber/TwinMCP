@@ -56,6 +56,7 @@ const nextConfig = {
       /Failed to parse source map/,
       /the request of a dependency is an expression/,
       /Module not found: Can't resolve/,
+      /Critical dependency/,
     ];
 
     return config;
