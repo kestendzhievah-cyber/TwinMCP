@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // Get vector store stats
     let vectorStats = { totalDocuments: 0, libraries: 0, indexedAt: '' };
     try {
-      vectorStats = await qdrantService.getStats();
+      vectorStats = await getQdrantService().getStats();
     } catch {
       // Qdrant might not be available
     }
