@@ -1,7 +1,7 @@
 {
   "name": "@twinmcp/mcp",
   "version": "1.0.0",
-  "description": "TwinMCP MCP Server - Documentation and code snippets for any library",
+  "description": "TwinMCP MCP Server - Up-to-date documentation and code snippets for any library via Model Context Protocol",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
