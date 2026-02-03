@@ -5,12 +5,7 @@ export class OpenAIProvider {
   private client: OpenAI | null = null;
 
   constructor(private config: ProviderConfig) {
-    this.client = new OpenAI({
-      apiKey: config.apiKey,
-      baseURL: config.baseURL,
-      timeout: config.timeout,
-      maxRetries: config.retries
-    });
+    // Client will be initialized lazily when needed
   }
   private getClient(): OpenAI {
     if (!this.client) {
