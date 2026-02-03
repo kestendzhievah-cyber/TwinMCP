@@ -28,7 +28,7 @@ export class OpenAIProvider {
     try {
       const openaiRequest = this.convertToOpenAIRequest(request);
       
-      const response = await this.client.chat.completions.create(openaiRequest);
+      const response = await this.getClient().chat.completions.create(openaiRequest);
       
       return this.convertFromOpenAIResponse(response, request);
       
