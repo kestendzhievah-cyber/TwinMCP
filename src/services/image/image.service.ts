@@ -85,7 +85,7 @@ export class ImageService {
   }
 
   async detectObjects(imageBuffer: Buffer): Promise<DetectedObject[]> {
-    const [result] = await this.visionClient.objectLocalization(imageBuffer);
+    const [result] = await this.getVisionClient().objectLocalization(imageBuffer);
 
     return result.localizedObjectAnnotations?.map(obj => ({
       name: obj.name ?? '',
