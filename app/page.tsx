@@ -33,15 +33,18 @@ function useInView(threshold = 0.1) {
   return { ref, isInView };
 }
 
-// Animated Counter Component
+// Animated Counter Component - displays immediately then animates on view
 function AnimatedCounter({ end, duration = 2000, suffix = '' }: { end: number; duration?: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const { ref, isInView } = useInView();
+  const [count, setCount] = useState(end); // Start with end value
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const { ref, isInView } = useInView(0.3);
 
   useEffect(() => {
-    if (!isInView) return;
+    if (!isInView || hasAnimated) return;
+    setHasAnimated(true);
+    setCount(0);
     
-    let startTime: number;
+    let startTime: number | null = null;
     const animate = (currentTime: number) => {
       if (!startTime) startTime = currentTime;
       const progress = Math.min((currentTime - startTime) / duration, 1);
@@ -51,7 +54,7 @@ function AnimatedCounter({ end, duration = 2000, suffix = '' }: { end: number; d
       }
     };
     requestAnimationFrame(animate);
-  }, [isInView, end, duration]);
+  }, [isInView, hasAnimated, end, duration]);
 
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 }
