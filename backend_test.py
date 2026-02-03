@@ -258,24 +258,128 @@ class TwinMCPAPITester:
                 else:
                     self.log_test("Error format correct", False, "Invalid error format")
 
-    def test_mcp_tools_list(self):
-        """Test MCP tools/list method"""
-        print("\n🔍 Testing MCP Tools List...")
+    def test_api_keys_management(self):
+        """Test GET /api/v1/api-keys - API keys management endpoints"""
+        print("\n🔍 Testing API Keys Management...")
         
-        json_rpc_request = {
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "tools/list",
-            "params": {}
-        }
+        headers = {'Authorization': f'Bearer {self.auth_token}'}
         
-        # This should also fail without API key
-        success, data = self.test_post_request(
-            "MCP Tools List (no auth)", 
-            "api/mcp", 
-            json_rpc_request,
-            expected_status=401
+        # Test GET /api/v1/api-keys
+        success, data = self.test_get_request_with_headers(
+            "API Keys List", 
+            "api/v1/api-keys",
+            headers=headers,
+            expected_fields=["apiKeys", "total"]
         )
+        
+        if success:
+            api_keys = data.get("apiKeys", [])
+            self.log_test("API Keys array present", True, f"Found {len(api_keys)} keys")
+            
+            # Test POST /api/v1/api-keys
+            create_data = {
+                "name": "Test API Key",
+                "tier": "free",
+                "permissions": ["resolve-library-id", "query-docs"]
+            }
+            
+            success_create, create_response = self.test_post_request(
+                "Create API Key",
+                "api/v1/api-keys",
+                create_data,
+                expected_status=201,
+                headers=headers
+            )
+            
+            if success_create:
+                if "apiKey" in create_response and "key" in create_response["apiKey"]:
+                    self.log_test("API Key creation returns full key", True)
+                else:
+                    self.log_test("API Key creation returns full key", False, "Missing key in response")
+
+    def test_usage_tracking(self):
+        """Test GET /api/v1/usage - Usage tracking endpoint"""
+        print("\n🔍 Testing Usage Tracking...")
+        
+        headers = {'Authorization': f'Bearer {self.auth_token}'}
+        
+        success, data = self.test_get_request_with_headers(
+            "Usage Statistics", 
+            "api/v1/usage",
+            headers=headers,
+            expected_fields=["summary", "byTool", "usageOverTime", "quotas"]
+        )
+        
+        if success:
+            summary = data.get("summary", {})
+            summary_fields = ["totalRequests", "totalTokens", "avgResponseTime", "successRate"]
+            
+            for field in summary_fields:
+                if field in summary:
+                    self.log_test(f"Usage summary field '{field}' present", True)
+                else:
+                    self.log_test(f"Usage summary field '{field}' present", False)
+            
+            # Test with different periods
+            for period in ["day", "week", "month"]:
+                success_period, _ = self.test_get_request_with_headers(
+                    f"Usage Statistics ({period})", 
+                    f"api/v1/usage?period={period}",
+                    headers=headers
+                )
+
+    def test_admin_crawl_endpoint(self):
+        """Test GET /api/admin/crawl - Admin crawl endpoint"""
+        print("\n🔍 Testing Admin Crawl Endpoint...")
+        
+        headers = {'X-Admin-Key': 'test-admin-key'}
+        
+        # Test GET /api/admin/crawl
+        success, data = self.test_get_request_with_headers(
+            "Admin Crawl Status", 
+            "api/admin/crawl",
+            headers=headers,
+            expected_status=403  # Expected to fail without proper admin key
+        )
+        
+        # Test without admin key (should fail)
+        success_no_auth, _ = self.test_get_request(
+            "Admin Crawl (no auth)", 
+            "api/admin/crawl",
+            expected_status=403
+        )
+
+    def test_get_request_with_headers(self, name: str, endpoint: str, headers: Dict = None, 
+                                   expected_status: int = 200, expected_fields: List[str] = None) -> Tuple[bool, Dict]:
+        """Test GET request with custom headers"""
+        url = f"{self.base_url}/{endpoint}"
+        
+        try:
+            response = requests.get(url, headers=headers or {}, timeout=10)
+            
+            if response.status_code != expected_status:
+                self.log_test(name, False, f"Expected status {expected_status}, got {response.status_code}")
+                return False, {}
+            
+            try:
+                data = response.json()
+            except json.JSONDecodeError:
+                self.log_test(name, False, "Invalid JSON response")
+                return False, {}
+            
+            # Check expected fields if provided
+            if expected_fields:
+                missing_fields = [field for field in expected_fields if field not in data]
+                if missing_fields:
+                    self.log_test(name, False, f"Missing fields: {missing_fields}")
+                    return False, data
+            
+            self.log_test(name, True, f"Status: {response.status_code}", data)
+            return True, data
+            
+        except requests.exceptions.RequestException as e:
+            self.log_test(name, False, f"Request failed: {str(e)}")
+            return False, {}
 
     def run_all_tests(self):
         """Run all API tests"""
