@@ -59,7 +59,7 @@ export class VoiceService {
   }
 
   async synthesize(text: string, options: SynthesisOptions = {}): Promise<Buffer> {
-    const [response] = await this.ttsClient.synthesizeSpeech({
+    const [response] = await this.getTTSClient().synthesizeSpeech({
       input: { text },
       voice: {
         languageCode: options.languageCode || 'en-US',
