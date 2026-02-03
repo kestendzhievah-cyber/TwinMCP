@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { prisma } from '@/lib/prisma';
-import { qdrantService, DocumentChunk } from './qdrant-vector.service';
+import { getQdrantService, DocumentChunk } from './qdrant-vector.service';
 import { v4 as uuidv4 } from 'uuid';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
