@@ -18,7 +18,7 @@
     "build:watch": "tsc --watch",
     "dev": "ts-node --esm src/index.ts",
     "dev:http": "npm run build && node dist/start-http-server.js",
-    "start": "node dist/index.js",
+    "start": "node dist/cli.js",
     "start:http": "node dist/start-http-server.js",
     "cli": "ts-node --esm src/cli.ts",
     "test": "jest",
