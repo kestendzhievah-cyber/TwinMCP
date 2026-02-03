@@ -76,7 +76,7 @@ export class VoiceService {
   }
 
   async *streamTranscribe(audioStream: ReadableStream): AsyncGenerator<string> {
-    const stream = this.speechClient.streamingRecognize({
+    const stream = this.getSpeechClient().streamingRecognize({
       config: {
         encoding: 'LINEAR16',
         sampleRateHertz: 16000,
