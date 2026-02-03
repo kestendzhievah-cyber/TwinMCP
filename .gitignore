@@ -45,3 +45,7 @@ mcp-server-demo
 
 # local downloads cache
 downloads/
+-e 
+# Environment files
+*.env
+*.env.*
