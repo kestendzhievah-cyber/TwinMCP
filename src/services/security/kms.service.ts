@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 export class KeyManagementService {
   private keys: Map<string, Buffer> = new Map();
