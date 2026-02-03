@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { crawlerService, LIBRARY_CRAWL_CONFIGS } from '@/lib/services/github-crawler.service';
-import { qdrantService } from '@/lib/services/qdrant-vector.service';
+import { getQdrantService } from '@/lib/services/qdrant-vector.service';
 
 // Simple admin auth check
 function isAdmin(request: NextRequest): boolean {
