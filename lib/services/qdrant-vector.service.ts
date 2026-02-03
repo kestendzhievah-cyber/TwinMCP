@@ -4,7 +4,6 @@ import OpenAI from 'openai';
 // Configuration
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const COLLECTION_NAME = 'twinmcp_docs';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_DIMENSION = 1536;
@@ -48,17 +47,31 @@ export interface SearchOptions {
 }
 
 export class QdrantVectorService {
-  private qdrant: QdrantClient;
-  private openai: OpenAI;
+  private qdrant: QdrantClient | null = null;
+  private openai: OpenAI | null = null;
   private initialized: boolean = false;
 
-  constructor() {
-    this.qdrant = new QdrantClient({
-      url: QDRANT_URL,
-      apiKey: QDRANT_API_KEY,
-    });
+  // Lazy initialization to avoid build-time errors
+  private getQdrant(): QdrantClient {
+    if (!this.qdrant) {
+      this.qdrant = new QdrantClient({
+        url: QDRANT_URL,
+        apiKey: QDRANT_API_KEY,
+      });
+    }
+    return this.qdrant;
+  }
 
-    this.openai = new OpenAI({
+  private getOpenAI(): OpenAI {
+    if (!this.openai) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY environment variable is required for vector search');
+      }
+      this.openai = new OpenAI({ apiKey });
+    }
+    return this.openai;
+  }    this.openai = new OpenAI({
       apiKey: OPENAI_API_KEY,
     });
   }
