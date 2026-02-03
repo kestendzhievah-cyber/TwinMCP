@@ -64,12 +64,19 @@ export default function AgentFlowLanding() {
   const [selectedPlan, setSelectedPlan] = useState('professional');
   const [isAnnual, setIsAnnual] = useState(false);
   const [showFreeTrial, setShowFreeTrial] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Show free trial popup after 3 seconds
+  // Mount check for client-side
   useEffect(() => {
-    const timer = setTimeout(() => setShowFreeTrial(true), 3000);
-    return () => clearTimeout(timer);
+    setMounted(true);
   }, []);
+
+  // Show free trial popup after 2 seconds (reduced for better UX)
+  useEffect(() => {
+    if (!mounted) return;
+    const timer = setTimeout(() => setShowFreeTrial(true), 2000);
+    return () => clearTimeout(timer);
+  }, [mounted]);
 
   const handlePlanClick = (planName: string) => {
     const billing = isAnnual ? 'annual' : 'monthly';
