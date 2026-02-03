@@ -12,6 +12,17 @@ export class OpenAIProvider {
       maxRetries: config.retries
     });
   }
+  private getClient(): OpenAI {
+    if (!this.client) {
+      this.client = new OpenAI({
+        apiKey: this.config.apiKey,
+        baseURL: this.config.baseURL,
+        timeout: this.config.timeout,
+        maxRetries: this.config.retries
+      });
+    }
+    return this.client;
+  }
 
   async generate(request: LLMRequest): Promise<LLMResponse> {
     try {
