@@ -21,15 +21,7 @@ const nextConfig = {
   // Désactiver le cache du build
   cache: false,
   // Skip data collection for problematic routes
-  experimental: {
-    outputFileTracingRoot: process.env.NODE_ENV === 'production' ? './' : undefined,
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/**/*',
-        '.next/cache/**/*',
-      ],
-    },
-  },
+ 
   // Configuration Webpack personnalisée
   webpack: (config, { isServer }) => {
     // Augmenter la limite de taille des fichiers
