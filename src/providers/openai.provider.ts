@@ -36,7 +36,7 @@ export class OpenAIProvider {
   async generateStream(request: LLMRequest): Promise<AsyncIterable<LLMStreamChunk>> {
     const openaiRequest = this.convertToOpenAIRequest(request, { stream: true });
     
-    const stream = await this.getClient().chat.completions.create(openaiRequest) as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
+    const stream = this.getClient().chat.completions.create(openaiRequest);
     
     return this.convertFromOpenAIStream(stream, request);
   }
