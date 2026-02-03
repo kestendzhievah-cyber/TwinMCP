@@ -71,9 +71,6 @@ export class QdrantVectorService {
       this.openai = new OpenAI({ apiKey });
     }
     return this.openai;
-  }    this.openai = new OpenAI({
-      apiKey: OPENAI_API_KEY,
-    });
   }
 
   // Initialize the collection if it doesn't exist
@@ -81,11 +78,12 @@ export class QdrantVectorService {
     if (this.initialized) return;
 
     try {
-      const collections = await this.qdrant.getCollections();
+      const qdrant = this.getQdrant();
+      const collections = await qdrant.getCollections();
       const exists = collections.collections.some(c => c.name === COLLECTION_NAME);
 
       if (!exists) {
-        await this.qdrant.createCollection(COLLECTION_NAME, {
+        await qdrant.createCollection(COLLECTION_NAME, {
           vectors: {
             size: EMBEDDING_DIMENSION,
             distance: 'Cosine',
@@ -96,17 +94,17 @@ export class QdrantVectorService {
         });
 
         // Create payload indexes for filtering
-        await this.qdrant.createPayloadIndex(COLLECTION_NAME, {
+        await qdrant.createPayloadIndex(COLLECTION_NAME, {
           field_name: 'libraryId',
           field_schema: 'keyword',
         });
 
-        await this.qdrant.createPayloadIndex(COLLECTION_NAME, {
+        await qdrant.createPayloadIndex(COLLECTION_NAME, {
           field_name: 'version',
           field_schema: 'keyword',
         });
 
-        await this.qdrant.createPayloadIndex(COLLECTION_NAME, {
+        await qdrant.createPayloadIndex(COLLECTION_NAME, {
           field_name: 'contentType',
           field_schema: 'keyword',
         });
@@ -125,9 +123,10 @@ export class QdrantVectorService {
   // Generate embedding using OpenAI
   async generateEmbedding(text: string): Promise<number[]> {
     try {
-      const response = await this.openai.embeddings.create({
+      const openai = this.getOpenAI();
+      const response = await openai.embeddings.create({
         model: EMBEDDING_MODEL,
-        input: text.slice(0, 8000), // Limit input length
+        input: text.slice(0, 8000),
       });
 
       return response.data[0].embedding;
@@ -142,8 +141,9 @@ export class QdrantVectorService {
     await this.initialize();
 
     const embedding = await this.generateEmbedding(doc.content);
+    const qdrant = this.getQdrant();
 
-    await this.qdrant.upsert(COLLECTION_NAME, {
+    await qdrant.upsert(COLLECTION_NAME, {
       wait: true,
       points: [
         {
@@ -173,7 +173,9 @@ export class QdrantVectorService {
   async indexDocuments(docs: DocumentChunk[]): Promise<void> {
     await this.initialize();
 
+    const qdrant = this.getQdrant();
     const batchSize = 100;
+    
     for (let i = 0; i < docs.length; i += batchSize) {
       const batch = docs.slice(i, i + batchSize);
       
@@ -200,7 +202,7 @@ export class QdrantVectorService {
         })
       );
 
-      await this.qdrant.upsert(COLLECTION_NAME, {
+      await qdrant.upsert(COLLECTION_NAME, {
         wait: true,
         points,
       });
@@ -221,8 +223,8 @@ export class QdrantVectorService {
       scoreThreshold = 0.7,
     } = options;
 
-    // Generate query embedding
     const queryEmbedding = await this.generateEmbedding(query);
+    const qdrant = this.getQdrant();
 
     // Build filter
     const filter: any = { must: [] };
@@ -248,8 +250,7 @@ export class QdrantVectorService {
       });
     }
 
-    // Execute search
-    const results = await this.qdrant.search(COLLECTION_NAME, {
+    const results = await qdrant.search(COLLECTION_NAME, {
       vector: queryEmbedding,
       limit: topK,
       filter: filter.must.length > 0 ? filter : undefined,
@@ -277,8 +278,9 @@ export class QdrantVectorService {
   // Delete documents by library
   async deleteByLibrary(libraryId: string): Promise<void> {
     await this.initialize();
+    const qdrant = this.getQdrant();
 
-    await this.qdrant.delete(COLLECTION_NAME, {
+    await qdrant.delete(COLLECTION_NAME, {
       filter: {
         must: [
           {
@@ -299,12 +301,12 @@ export class QdrantVectorService {
     indexedAt: string;
   }> {
     await this.initialize();
-
-    const info = await this.qdrant.getCollection(COLLECTION_NAME);
+    const qdrant = this.getQdrant();
+    const info = await qdrant.getCollection(COLLECTION_NAME);
     
     return {
       totalDocuments: info.points_count || 0,
-      libraries: 0, // Would need separate query
+      libraries: 0,
       indexedAt: new Date().toISOString(),
     };
   }
@@ -312,7 +314,8 @@ export class QdrantVectorService {
   // Health check
   async healthCheck(): Promise<boolean> {
     try {
-      await this.qdrant.getCollections();
+      const qdrant = this.getQdrant();
+      await qdrant.getCollections();
       return true;
     } catch {
       return false;
@@ -320,5 +323,19 @@ export class QdrantVectorService {
   }
 }
 
-// Export singleton instance
-export const qdrantService = new QdrantVectorService();
+// Export singleton instance - lazy loaded
+let _qdrantService: QdrantVectorService | null = null;
+
+export const getQdrantService = (): QdrantVectorService => {
+  if (!_qdrantService) {
+    _qdrantService = new QdrantVectorService();
+  }
+  return _qdrantService;
+};
+
+// For backwards compatibility - but prefer getQdrantService()
+export const qdrantService = {
+  get instance() {
+    return getQdrantService();
+  }
+};
