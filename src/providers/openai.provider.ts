@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderConfig } from '../types/llm.types';
 
 export class OpenAIProvider {
-  private client: OpenAI;
+  private client: OpenAI | null = null;
 
   constructor(private config: ProviderConfig) {
     this.client = new OpenAI({
