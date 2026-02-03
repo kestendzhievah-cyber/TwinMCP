@@ -519,12 +519,11 @@ export default function AgentFlowLanding() {
             {plans.map((plan, index) => (
               <div 
                 key={index}
-                style={{ animationDelay: `${(index + 1) * 0.1}s` }}
-                className={`relative p-8 rounded-2xl border transition-all duration-300 ${
+                className={`relative p-8 rounded-2xl border transition-all duration-500 ${
                   plan.popular 
                     ? 'bg-gradient-to-br from-purple-900/50 to-pink-900/50 border-purple-500 shadow-2xl shadow-purple-500/30 md:scale-105 md:-mt-4 animate-pulse-glow z-10' 
                     : 'bg-slate-800/50 border-slate-700 hover-lift hover-glow'
-                } ${pricingSection.isInView ? 'animate-fade-in-scale' : 'opacity-0'}`}
+                }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold rounded-full">
