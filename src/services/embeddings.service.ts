@@ -3,19 +3,18 @@ import { logger } from '../utils/logger';
 import { CacheService } from '../config/redis';
 
 export class EmbeddingsService {
-  private openai: OpenAI;
-  private model: string;
+  private openai: OpenAI | null = null;
+  private model: string = process.env['OPENAI_EMBEDDING_MODEL'] || 'text-embedding-3-small';
 
-  constructor() {
-    if (!process.env['OPENAI_API_KEY']) {
-      throw new Error('OPENAI_API_KEY is required');
+  private getOpenAI(): OpenAI {
+    if (!this.openai) {
+      const apiKey = process.env['OPENAI_API_KEY'];
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY is required');
+      }
+      this.openai = new OpenAI({ apiKey });
     }
-
-    this.getOpenAI() = new OpenAI({
-      apiKey: process.env['OPENAI_API_KEY'],
-    });
-
-    this.model = process.env['OPENAI_EMBEDDING_MODEL'] || 'text-embedding-3-small';
+    return this.openai;
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
