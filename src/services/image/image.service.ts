@@ -80,7 +80,7 @@ export class ImageService {
   }
 
   async extractText(imageBuffer: Buffer): Promise<string> {
-    const [result] = await this.visionClient.textDetection(imageBuffer);
+    const [result] = await this.getVisionClient().textDetection(imageBuffer);
     return result.fullTextAnnotation?.text ?? '';
   }
 
