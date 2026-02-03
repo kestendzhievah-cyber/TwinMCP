@@ -79,7 +79,7 @@ export class GitHubCrawlerService {
 
       // Index chunks in Qdrant
       if (chunks.length > 0) {
-        await qdrantService.indexDocuments(chunks);
+        await getQdrantService().indexDocuments(chunks);
         chunksIndexed = chunks.length;
       }
 
