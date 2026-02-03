@@ -37,6 +37,7 @@ const nextConfig = {
         'ssh2': 'commonjs ssh2',
         'puppeteer': 'commonjs puppeteer',
         'sharp': 'commonjs sharp',
+        '@qdrant/js-client-rest': 'commonjs @qdrant/js-client-rest',
       });
     }
 
