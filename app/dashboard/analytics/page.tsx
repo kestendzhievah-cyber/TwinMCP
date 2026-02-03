@@ -1,452 +1,328 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { 
-  Sparkles, 
-  BookOpen, 
-  Code2, 
-  Server, 
-  Database, 
-  Shield, 
-  Zap, 
-  Users, 
-  Globe,
-  ChevronRight,
-  Search,
-  Library,
-  Boxes,
-  GitBranch,
-  FileText,
-  Terminal,
-  Key,
-  Workflow
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  Zap,
+  Activity,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Calendar,
+  ChevronDown,
+  ArrowUpRight,
+  ArrowDownRight,
+} from 'lucide-react';
 
-export default function DocsPage() {
-  const [activeSection, setActiveSection] = useState("introduction");
-  const [searchQuery, setSearchQuery] = useState("");
+interface UsageData {
+  period: string;
+  summary: {
+    totalRequests: number;
+    totalTokens: number;
+    avgResponseTime: number;
+    successRate: number;
+  };
+  byTool: { tool: string; count: number; tokens: number; avgResponseTime: number }[];
+  usageOverTime: { timestamp: string; requests: number; tokens: number }[];
+  quotas: {
+    keyId: string;
+    keyPrefix: string;
+    name: string;
+    tier: string;
+    daily: { used: number; limit: number; percentage: number; remaining: number };
+    monthly: { used: number; limit: number; percentage: number; remaining: number };
+  }[];
+}
 
-  const sections = [
-    { id: "introduction", title: "Introduction", icon: BookOpen },
-    { id: "architecture", title: "Architecture", icon: Boxes },
-    { id: "features", title: "Fonctionnalités", icon: Zap },
-    { id: "getting-started", title: "Démarrage rapide", icon: Terminal },
-    { id: "api", title: "API & Intégration", icon: Code2 },
-    { id: "security", title: "Sécurité", icon: Shield },
-  ];
+export default function AnalyticsPage() {
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('day');
+  const [data, setData] = useState<UsageData | null>(null);
 
-  const features = [
+  // Mock data for demo
+  useEffect(() => {
+    setLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setData({
+        period,
+        summary: {
+          totalRequests: period === 'day' ? 1234 : period === 'week' ? 8456 : 32145,
+          totalTokens: period === 'day' ? 456000 : period === 'week' ? 3200000 : 12800000,
+          avgResponseTime: 145,
+          successRate: 98.7,
+        },
+        byTool: [
+          { tool: 'resolve-library-id', count: 456, tokens: 12000, avgResponseTime: 120 },
+          { tool: 'query-docs', count: 778, tokens: 444000, avgResponseTime: 168 },
+        ],
+        usageOverTime: Array.from({ length: period === 'day' ? 24 : period === 'week' ? 7 : 30 }, (_, i) => ({
+          timestamp: new Date(Date.now() - i * (period === 'day' ? 3600000 : 86400000)).toISOString(),
+          requests: Math.floor(Math.random() * 100) + 20,
+          tokens: Math.floor(Math.random() * 50000) + 10000,
+        })).reverse(),
+        quotas: [
+          {
+            keyId: '1',
+            keyPrefix: 'tmcp_prod',
+            name: 'Production',
+            tier: 'professional',
+            daily: { used: 1234, limit: 10000, percentage: 12.34, remaining: 8766 },
+            monthly: { used: 32145, limit: 300000, percentage: 10.72, remaining: 267855 },
+          },
+          {
+            keyId: '2',
+            keyPrefix: 'tmcp_test',
+            name: 'Test',
+            tier: 'free',
+            daily: { used: 45, limit: 100, percentage: 45, remaining: 55 },
+            monthly: { used: 890, limit: 3000, percentage: 29.67, remaining: 2110 },
+          },
+        ],
+      });
+      setLoading(false);
+    }, 500);
+  }, [period]);
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
+  const stats = data ? [
     {
-      icon: Library,
-      title: "Bibliothèque complète",
-      description: "Accédez à des centaines de documentations de bibliothèques populaires, toujours à jour."
+      label: 'Requêtes totales',
+      value: formatNumber(data.summary.totalRequests),
+      change: '+12.5%',
+      trend: 'up',
+      icon: Activity,
+      color: 'text-blue-400',
+      bg: 'from-blue-500/20 to-blue-600/10',
     },
     {
-      icon: Search,
-      title: "Recherche intelligente",
-      description: "Trouvez instantanément les informations dont vous avez besoin grâce à notre moteur de recherche sémantique."
-    },
-    {
-      icon: GitBranch,
-      title: "Multi-versions",
-      description: "Support de plusieurs versions de chaque bibliothèque pour une compatibilité maximale."
-    },
-    {
+      label: 'Tokens consommés',
+      value: formatNumber(data.summary.totalTokens),
+      change: '+8.3%',
+      trend: 'up',
       icon: Zap,
-      title: "Réponses instantanées",
-      description: "Obtenez des extraits de documentation pertinents en quelques millisecondes."
+      color: 'text-purple-400',
+      bg: 'from-purple-500/20 to-purple-600/10',
     },
     {
-      icon: Key,
-      title: "API simple",
-      description: "Intégrez TwinMCP dans vos outils avec notre API RESTful et nos SDK."
+      label: 'Temps de réponse',
+      value: `${data.summary.avgResponseTime}ms`,
+      change: '-5.2%',
+      trend: 'down',
+      icon: Clock,
+      color: 'text-green-400',
+      bg: 'from-green-500/20 to-green-600/10',
     },
     {
-      icon: Shield,
-      title: "Sécurisé",
-      description: "Authentification OAuth 2.0 et clés API avec quotas personnalisables."
-    }
-  ];
+      label: 'Taux de succès',
+      value: `${data.summary.successRate}%`,
+      change: '+0.3%',
+      trend: 'up',
+      icon: CheckCircle,
+      color: 'text-emerald-400',
+      bg: 'from-emerald-500/20 to-emerald-600/10',
+    },
+  ] : [];
 
-  const integrations = [
-    { name: "Cursor", status: "Disponible", icon: "🖱️" },
-    { name: "Claude Code", status: "Disponible", icon: "🤖" },
-    { name: "VS Code", status: "Disponible", icon: "💻" },
-    { name: "Opencode", status: "Disponible", icon: "📝" },
-    { name: "Windsurf", status: "Disponible", icon: "🏄" },
-  ];
-
-  const popularLibraries = [
-    { name: "React", category: "Frontend", docs: "1,250+" },
-    { name: "Next.js", category: "Framework", docs: "890+" },
-    { name: "TypeScript", category: "Langage", docs: "2,100+" },
-    { name: "Prisma", category: "ORM", docs: "650+" },
-    { name: "Tailwind CSS", category: "CSS", docs: "480+" },
-    { name: "Node.js", category: "Runtime", docs: "1,800+" },
-  ];
+  // Simple bar chart component
+  const SimpleBarChart = ({ data: chartData }: { data: { value: number; label: string }[] }) => {
+    const maxValue = Math.max(...chartData.map(d => d.value));
+    return (
+      <div className="flex items-end gap-1 h-40">
+        {chartData.map((item, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <div
+              className="w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-t opacity-80 hover:opacity-100 transition"
+              style={{ height: `${(item.value / maxValue) * 100}%`, minHeight: '4px' }}
+            />
+            <span className="text-xs text-gray-500 truncate w-full text-center">
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/30 to-slate-900">
+    <div className="space-y-6">
       {/* Header */}
-      <header className="border-b border-purple-500/20 bg-slate-900/80 backdrop-blur-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-          <div className="flex justify-between items-center h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-purple-400" />
-              <span className="text-lg sm:text-2xl font-bold text-white">TwinMCP</span>
-              <span className="text-xs sm:text-sm text-purple-400 border border-purple-500/30 px-1.5 sm:px-2 py-0.5 rounded-full">Docs</span>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Rechercher..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none w-40 lg:w-64 text-sm"
-                />
-              </div>
-              <Link href="/dashboard" className="text-gray-300 hover:text-white transition text-sm sm:text-base">
-                <span className="hidden sm:inline">Dashboard</span>
-                <span className="sm:hidden">Back</span>
-              </Link>
-            </div>
-          </div>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <BarChart3 className="w-7 h-7 text-purple-400" />
+            Analytics
+          </h1>
+          <p className="text-gray-400 mt-1">
+            Surveillez l'utilisation de vos API et quotas
+          </p>
         </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="flex gap-4 lg:gap-8">
-          {/* Sidebar Navigation */}
-          <aside className="w-48 lg:w-64 flex-shrink-0 hidden lg:block">
-            <nav className="sticky top-24 space-y-1">
-              {sections.map((section) => {
-                const Icon = section.icon;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
-                      activeSection === section.id
-                        ? "bg-purple-500/20 text-white border border-purple-500/30"
-                        : "text-gray-400 hover:text-white hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{section.title}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </aside>
-
-          {/* Main Content */}
-          <main className="flex-1 min-w-0">
-            {/* Introduction Section */}
-            <section id="introduction" className="mb-12">
-              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-4">
-                  Bienvenue sur TwinMCP
-                </h1>
-                <p className="text-sm sm:text-base lg:text-xl text-gray-300 mb-4 sm:mb-6">
-                  TwinMCP est un serveur MCP (Model Context Protocol) qui fournit aux IDE et LLM 
-                  des extraits de documentation toujours à jour pour n'importe quelle bibliothèque logicielle.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <Link 
-                    href="/signup"
-                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl hover:from-purple-600 hover:to-pink-600 transition flex items-center justify-center gap-2"
-                  >
-                    Commencer gratuitement
-                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </Link>
-                  <Link 
-                    href="/dashboard/agent-builder"
-                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700 text-white text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl hover:bg-slate-800 transition text-center"
-                  >
-                    Ajouter des bibliothèques
-                  </Link>
-                </div>
-              </div>
-
-              {/* Quick Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                <div className="bg-slate-800/50 border border-purple-500/20 rounded-lg sm:rounded-xl p-4 sm:p-6 text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1">500+</div>
-                  <div className="text-xs sm:text-sm text-gray-400">Bibliothèques</div>
-                </div>
-                <div className="bg-slate-800/50 border border-purple-500/20 rounded-lg sm:rounded-xl p-4 sm:p-6 text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1">5,000+</div>
-                  <div className="text-xs sm:text-sm text-gray-400">Développeurs</div>
-                </div>
-                <div className="bg-slate-800/50 border border-purple-500/20 rounded-lg sm:rounded-xl p-4 sm:p-6 text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1">10M+</div>
-                  <div className="text-xs sm:text-sm text-gray-400">Requêtes/mois</div>
-                </div>
-                <div className="bg-slate-800/50 border border-purple-500/20 rounded-lg sm:rounded-xl p-4 sm:p-6 text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1">99.9%</div>
-                  <div className="text-xs sm:text-sm text-gray-400">Disponibilité</div>
-                </div>
-              </div>
-            </section>
-
-            {/* Architecture Section */}
-            <section id="architecture" className="mb-8 sm:mb-12">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
-                <Boxes className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-                Comment ça fonctionne
-              </h2>
-              
-              <div className="bg-slate-800/50 border border-purple-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 mb-4 sm:mb-6">
-                <div className="grid sm:grid-cols-3 gap-6 sm:gap-8">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-500/20 border border-purple-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Terminal className="w-8 h-8 text-purple-400" />
-                    </div>
-                    <h3 className="text-lg font-bold text-white mb-2">1. Connexion</h3>
-                    <p className="text-gray-400 text-sm">
-                      Connectez votre IDE (Cursor, VS Code, etc.) à TwinMCP via le protocole MCP standard.
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-500/20 border border-purple-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Search className="w-8 h-8 text-purple-400" />
-                    </div>
-                    <h3 className="text-lg font-bold text-white mb-2">2. Requête</h3>
-                    <p className="text-gray-400 text-sm">
-                      Posez une question sur une bibliothèque. Notre moteur identifie automatiquement la documentation pertinente.
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-500/20 border border-purple-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <FileText className="w-8 h-8 text-purple-400" />
-                    </div>
-                    <h3 className="text-lg font-bold text-white mb-2">3. Réponse</h3>
-                    <p className="text-gray-400 text-sm">
-                      Recevez des extraits de documentation précis et à jour, optimisés pour votre LLM.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Architecture Diagram */}
-              <div className="bg-slate-900/50 border border-slate-700 rounded-lg sm:rounded-xl p-3 sm:p-6 font-mono text-xs sm:text-sm overflow-x-auto">
-                <pre className="text-gray-300">
-{`┌─────────────────────────────────────────────────────────────┐
-│                     Votre IDE / LLM                          │
-│        (Cursor, Claude Code, VS Code, Windsurf)             │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                             │ Protocole MCP (stdio/HTTP)
-                             │
-┌────────────────────────────▼────────────────────────────────┐
-│                     TwinMCP Server                           │
-│                                                              │
-│   ┌──────────────────┐    ┌──────────────────┐              │
-│   │  resolve-library │    │    query-docs    │              │
-│   │  Identifie la    │    │  Recherche dans  │              │
-│   │  bibliothèque    │    │  la documentation│              │
-│   └──────────────────┘    └──────────────────┘              │
-│                                                              │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────┐
-│              Base de Documentation TwinMCP                   │
-│                                                              │
-│   📚 500+ bibliothèques  •  🔄 Mise à jour quotidienne      │
-│   🔍 Recherche sémantique  •  📖 Multi-versions             │
-└─────────────────────────────────────────────────────────────┘`}
-                </pre>
-              </div>
-            </section>
-
-            {/* Features Section */}
-            <section id="features" className="mb-8 sm:mb-12">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
-                <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-                Fonctionnalités
-              </h2>
-              
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {features.map((feature, index) => {
-                  const Icon = feature.icon;
-                  return (
-                    <div key={index} className="bg-slate-800/50 border border-purple-500/20 rounded-lg sm:rounded-xl p-4 sm:p-6 hover:border-purple-500/40 transition">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500/20 border border-purple-500/30 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
-                        <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-                      </div>
-                      <h3 className="text-base sm:text-lg font-bold text-white mb-2">{feature.title}</h3>
-                      <p className="text-gray-400 text-xs sm:text-sm">{feature.description}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Integrations Section */}
-            <section id="getting-started" className="mb-8 sm:mb-12">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
-                <Terminal className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-                Intégrations supportées
-              </h2>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                {integrations.map((integration, index) => (
-                  <div key={index} className="bg-slate-800/50 border border-purple-500/20 rounded-lg sm:rounded-xl p-3 sm:p-4 text-center hover:border-purple-500/40 transition">
-                    <div className="text-2xl sm:text-3xl mb-2">{integration.icon}</div>
-                    <div className="font-semibold text-white text-sm sm:text-base">{integration.name}</div>
-                    <div className="text-[10px] sm:text-xs text-green-400">{integration.status}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Quick Start Code */}
-              <div className="bg-slate-900/50 border border-slate-700 rounded-lg sm:rounded-xl overflow-hidden">
-                <div className="bg-slate-800/50 px-3 sm:px-4 py-2 border-b border-slate-700 flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-500"></div>
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-500"></div>
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-500"></div>
-                  <span className="ml-2 text-xs sm:text-sm text-gray-400">Installation</span>
-                </div>
-                <pre className="p-3 sm:p-4 text-xs sm:text-sm overflow-x-auto">
-                  <code className="text-green-400">
-{`# Installation du package TwinMCP
-npm install @twinmcp/mcp
-
-# Configuration dans votre IDE
-# Ajoutez TwinMCP comme serveur MCP dans les paramètres
-
-# Exemple d'utilisation avec API
-curl -X POST https://api.twinmcp.com/mcp \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{"tool": "query-docs", "params": {"library": "react", "query": "useState hook"}}'`}
-                  </code>
-                </pre>
-              </div>
-            </section>
-
-            {/* Popular Libraries */}
-            <section id="api" className="mb-8 sm:mb-12">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
-                <Library className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-                Bibliothèques populaires
-              </h2>
-              
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {popularLibraries.map((lib, index) => (
-                  <div key={index} className="bg-slate-800/50 border border-purple-500/20 rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-center justify-between hover:border-purple-500/40 transition">
-                    <div>
-                      <div className="font-semibold text-white text-sm sm:text-base">{lib.name}</div>
-                      <div className="text-xs sm:text-sm text-gray-400">{lib.category}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-purple-400 font-semibold text-sm sm:text-base">{lib.docs}</div>
-                      <div className="text-[10px] sm:text-xs text-gray-500">snippets</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-4 sm:mt-6 text-center">
-                <Link 
-                  href="/dashboard/agent-builder"
-                  className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 transition text-sm sm:text-base"
-                >
-                  Voir toutes les bibliothèques
-                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-                </Link>
-              </div>
-            </section>
-
-            {/* Security Section */}
-            <section id="security" className="mb-8 sm:mb-12">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
-                <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-                Sécurité & Confidentialité
-              </h2>
-              
-              <div className="bg-slate-800/50 border border-purple-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8">
-                <div className="grid sm:grid-cols-2 gap-6 sm:gap-8">
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4">Authentification</h3>
-                    <ul className="space-y-2 sm:space-y-3">
-                      <li className="flex items-start gap-2 sm:gap-3">
-                        <div className="w-4 h-4 sm:w-5 sm:h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full"></div>
-                        </div>
-                        <span className="text-gray-300 text-xs sm:text-sm">OAuth 2.0 avec Google et GitHub</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        </div>
-                        <span className="text-gray-300">Clés API avec quotas personnalisables</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        </div>
-                        <span className="text-gray-300">Révocation instantanée des accès</span>
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-4">Protection des données</h3>
-                    <ul className="space-y-3">
-                      <li className="flex items-start gap-3">
-                        <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        </div>
-                        <span className="text-gray-300">Chiffrement TLS pour toutes les communications</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        </div>
-                        <span className="text-gray-300">Conformité RGPD</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        </div>
-                        <span className="text-gray-300">Aucune conservation de vos requêtes</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-center">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">
-                Prêt à commencer ?
-              </h2>
-              <p className="text-sm sm:text-base text-gray-300 mb-4 sm:mb-6 max-w-2xl mx-auto">
-                Rejoignez des milliers de développeurs qui utilisent TwinMCP pour accéder 
-                instantanément à la documentation dont ils ont besoin.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-                <Link 
-                  href="/signup"
-                  className="px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl hover:from-purple-600 hover:to-pink-600 transition"
-                >
-                  Créer un compte gratuit
-                </Link>
-                <Link 
-                  href="/contact"
-                  className="px-6 sm:px-8 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700 text-white text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl hover:bg-slate-800 transition"
-                >
-                  Contacter l'équipe
-                </Link>
-              </div>
-            </section>
-          </main>
+        
+        {/* Period Selector */}
+        <div className="relative">
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="appearance-none px-4 py-3 pr-10 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition cursor-pointer"
+          >
+            <option value="day">Aujourd'hui</option>
+            <option value="week">7 derniers jours</option>
+            <option value="month">30 derniers jours</option>
+          </select>
+          <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
         </div>
       </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <RefreshCw className="w-8 h-8 text-purple-400 animate-spin" />
+        </div>
+      ) : data && (
+        <>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((stat, index) => (
+              <div
+                key={index}
+                className={`bg-gradient-to-br ${stat.bg} backdrop-blur-xl border border-purple-500/20 rounded-2xl p-5`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                  <span className={`flex items-center gap-1 text-sm font-medium ${
+                    stat.trend === 'up' ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {stat.trend === 'up' ? (
+                      <ArrowUpRight className="w-4 h-4" />
+                    ) : (
+                      <ArrowDownRight className="w-4 h-4" />
+                    )}
+                    {stat.change}
+                  </span>
+                </div>
+                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                <p className="text-gray-400 text-sm mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Usage Over Time */}
+            <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-purple-400" />
+                Requêtes dans le temps
+              </h3>
+              <SimpleBarChart
+                data={data.usageOverTime.slice(-12).map((item, i) => ({
+                  value: item.requests,
+                  label: period === 'day' ? `${i}h` : period === 'week' ? `J${i + 1}` : `${i + 1}`,
+                }))}
+              />
+            </div>
+
+            {/* By Tool */}
+            <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-yellow-400" />
+                Utilisation par outil
+              </h3>
+              <div className="space-y-4">
+                {data.byTool.map((tool, index) => (
+                  <div key={index} className="p-4 bg-[#0f1020] rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-white">{tool.tool}</span>
+                      <span className="text-purple-400 font-semibold">{tool.count} appels</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                      <span>{formatNumber(tool.tokens)} tokens</span>
+                      <span>~{tool.avgResponseTime}ms</span>
+                    </div>
+                    <div className="mt-3 h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                        style={{ width: `${(tool.count / data.summary.totalRequests) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Quotas */}
+          <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6">
+            <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-400" />
+              Utilisation des quotas
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {data.quotas.map((quota, index) => (
+                <div key={index} className="p-5 bg-[#0f1020] rounded-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="font-semibold text-white">{quota.name}</h4>
+                      <p className="text-sm text-gray-500">{quota.keyPrefix}... • {quota.tier}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      quota.tier === 'professional' ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {quota.tier}
+                    </span>
+                  </div>
+
+                  {/* Daily Quota */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-gray-400">Quotidien</span>
+                      <span className="text-white">
+                        {formatNumber(quota.daily.used)} / {formatNumber(quota.daily.limit)}
+                      </span>
+                    </div>
+                    <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          quota.daily.percentage > 80 ? 'bg-red-500' : quota.daily.percentage > 50 ? 'bg-yellow-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${quota.daily.percentage}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{quota.daily.remaining} restants</p>
+                  </div>
+
+                  {/* Monthly Quota */}
+                  <div>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-gray-400">Mensuel</span>
+                      <span className="text-white">
+                        {formatNumber(quota.monthly.used)} / {formatNumber(quota.monthly.limit)}
+                      </span>
+                    </div>
+                    <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          quota.monthly.percentage > 80 ? 'bg-red-500' : quota.monthly.percentage > 50 ? 'bg-yellow-500' : 'bg-blue-500'
+                        }`}
+                        style={{ width: `${quota.monthly.percentage}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{formatNumber(quota.monthly.remaining)} restants</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
