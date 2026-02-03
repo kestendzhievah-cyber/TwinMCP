@@ -131,7 +131,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await qdrantService.deleteByLibrary(libraryId);
+    await getQdrantService().deleteByLibrary(libraryId);
 
     return NextResponse.json({
       message: `Deleted indexed documents for ${libraryId}`,
