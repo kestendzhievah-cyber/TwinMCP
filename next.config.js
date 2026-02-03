@@ -30,7 +30,6 @@ const nextConfig = {
       ],
     },
   },
- 
   // Configuration Webpack personnalisée
   webpack: (config, { isServer }) => {
     // Augmenter la limite de taille des fichiers
@@ -96,15 +95,6 @@ const nextConfig = {
   },
   // Configuration pour le build de production
   output: 'standalone',
-  experimental: {
-    outputFileTracingRoot: process.env.NODE_ENV === 'production' ? './' : undefined,
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/**/*',
-        '.next/cache/**/*',
-      ],
-    },
-  },
 };
 
 module.exports = nextConfig;
