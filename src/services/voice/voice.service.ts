@@ -16,16 +16,34 @@ export interface SynthesisOptions {
 }
 
 export class VoiceService {
-  private speechClient: SpeechClient;
-  private ttsClient: TextToSpeechClient;
-  private openai: OpenAI;
+  private speechClient: SpeechClient | null = null;
+  private ttsClient: TextToSpeechClient | null = null;
+  private openai: OpenAI | null = null;
 
-  constructor() {
-    this.speechClient = new SpeechClient();
-    this.ttsClient = new TextToSpeechClient();
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
+  // Lazy initialization
+  private getSpeechClient(): SpeechClient {
+    if (!this.speechClient) {
+      this.speechClient = new SpeechClient();
+    }
+    return this.speechClient;
+  }
+
+  private getTTSClient(): TextToSpeechClient {
+    if (!this.ttsClient) {
+      this.ttsClient = new TextToSpeechClient();
+    }
+    return this.ttsClient;
+  }
+
+  private getOpenAI(): OpenAI {
+    if (!this.openai) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY environment variable is required');
+      }
+      this.openai = new OpenAI({ apiKey });
+    }
+    return this.openai;
   }
 
   async transcribe(audioBuffer: Buffer): Promise<string> {
