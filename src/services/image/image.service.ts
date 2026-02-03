@@ -47,7 +47,7 @@ export class ImageService {
 
     const base64 = optimized.toString('base64');
 
-    const response = await this.openai.chat.completions.create({
+    const response = await this.getOpenAI().chat.completions.create({
       model: 'gpt-4-vision-preview',
       messages: [{
         role: 'user',
