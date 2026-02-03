@@ -47,7 +47,7 @@ export class VoiceService {
   }
 
   async transcribe(audioBuffer: Buffer): Promise<string> {
-    const file = new File([audioBuffer], 'audio.mp3', { type: 'audio/mp3' });
+    const file = new File([new Uint8Array(audioBuffer)], 'audio.mp3', { type: 'audio/mp3' });
 
     const response = await this.getOpenAI().audio.transcriptions.create({
       file,
