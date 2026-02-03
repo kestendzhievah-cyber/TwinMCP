@@ -11,7 +11,7 @@ export class EmbeddingsService {
       throw new Error('OPENAI_API_KEY is required');
     }
 
-    this.openai = new OpenAI({
+    this.getOpenAI() = new OpenAI({
       apiKey: process.env['OPENAI_API_KEY'],
     });
 
@@ -28,7 +28,7 @@ export class EmbeddingsService {
         return cached;
       }
 
-      const response = await this.openai.embeddings.create({
+      const response = await this.getOpenAI().embeddings.create({
         model: this.model,
         input: text.trim(),
       });
@@ -67,7 +67,7 @@ export class EmbeddingsService {
         });
 
         if (uncachedTexts.length > 0) {
-          const response = await this.openai.embeddings.create({
+          const response = await this.getOpenAI().embeddings.create({
             model: this.model,
             input: uncachedTexts,
           });
@@ -120,7 +120,7 @@ export class EmbeddingsService {
 
   async getEmbeddingInfo(): Promise<{ model: string; dimensions: number }> {
     try {
-      const response = await this.openai.embeddings.create({
+      const response = await this.getOpenAI().embeddings.create({
         model: this.model,
         input: 'test',
       });
