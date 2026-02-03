@@ -1,216 +1,239 @@
 # @twinmcp/mcp
 
-TwinMCP MCP Server - Documentation and code snippets for any library with API key authentication and usage tracking.
+> Up-to-date documentation and code snippets for any library via Model Context Protocol (MCP)
+
+[![npm version](https://badge.fury.io/js/%40twinmcp%2Fmcp.svg)](https://www.npmjs.com/package/@twinmcp/mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+TwinMCP is an MCP server that provides IDE/LLM assistants with up-to-date documentation and code snippets for any library. Compatible with **Cursor**, **Claude Code**, **OpenCode**, and other MCP clients.
+
+## Features
+
+- 🔍 **Library Resolution** - Find library IDs from human-readable names
+- 📚 **Documentation Search** - Get relevant code snippets and guides
+- 🔄 **Always Up-to-date** - Documentation crawled and indexed regularly
+- 🔐 **Secure** - API key or OAuth 2.0 authentication
+- ⚡ **Fast** - Optimized for interactive IDE usage (<1-2s response time)
+- 🌐 **Multi-tenant SaaS** - Rate limiting and quotas per plan
 
 ## Installation
 
-```bash
-npm install @twinmcp/mcp
-```
-
-## Usage
-
-### Mode STDIO (pour Claude Desktop, Cursor, etc.)
+### Via npx (Recommended)
 
 ```bash
-npx twinmcp-server
+npx -y @twinmcp/mcp --api-key YOUR_API_KEY
 ```
 
-### Mode HTTP (pour accès API public avec tracking)
+### Global Install
 
 ```bash
-npx twinmcp-http
+npm install -g @twinmcp/mcp
+twinmcp --api-key YOUR_API_KEY
 ```
 
-Ou avec npm scripts:
-```bash
-npm run start:http
-```
+## IDE Integration
 
-## Configuration
+### Cursor
 
-### Variables d'environnement
+**Remote Server (Recommended)**
 
-| Variable | Description | Défaut |
-|----------|-------------|--------|
-| `TWINMCP_PORT` | Port du serveur HTTP | `3001` |
-| `TWINMCP_HOST` | Host du serveur | `0.0.0.0` |
-| `TWINMCP_API_BASE_URL` | URL de votre SaaS pour auth/tracking | `http://localhost:3000` |
-| `TWINMCP_API_KEY` | Clé API interne (optionnel) | - |
-| `TWINMCP_INTERNAL_KEY` | Clé pour communication serveur-serveur | - |
-| `TWINMCP_CORS_ORIGINS` | Origines CORS autorisées (séparées par virgule) | `*` |
+Add to `~/.cursor/mcp.json`:
 
-### Exemple de fichier .env
-
-```env
-TWINMCP_PORT=3001
-TWINMCP_HOST=0.0.0.0
-TWINMCP_API_BASE_URL=https://votre-saas.com
-TWINMCP_INTERNAL_KEY=votre-cle-interne-secrete
-TWINMCP_CORS_ORIGINS=https://votre-app.com,https://autre-app.com
-```
-
-## Endpoints API
-
-### Publics (sans authentification)
-
-| Endpoint | Méthode | Description |
-|----------|---------|-------------|
-| `/health` | GET | Health check |
-| `/api/info` | GET | Informations sur l'API |
-
-### Protégés (clé API requise)
-
-| Endpoint | Méthode | Description |
-|----------|---------|-------------|
-| `/api/mcp/tools` | GET | Liste des outils disponibles |
-| `/api/mcp/call` | POST | Appeler un outil |
-| `/api/mcp/sse` | GET | Connexion SSE pour protocole MCP |
-| `/api/usage` | GET | Statistiques d'utilisation |
-
-## Authentification
-
-Fournissez votre clé API via:
-- Header `X-API-Key: votre-cle`
-- Header `Authorization: Bearer votre-cle`
-- Query param `?api_key=votre-cle`
-
-## Exemples d'utilisation
-
-### Lister les outils
-
-```bash
-curl -H "X-API-Key: twinmcp_live_xxx" \
-  https://votre-serveur.com/api/mcp/tools
-```
-
-### Appeler un outil
-
-```bash
-curl -X POST \
-  -H "X-API-Key: twinmcp_live_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"tool": "resolve-library-id", "arguments": {"query": "react"}}' \
-  https://votre-serveur.com/api/mcp/call
-```
-
-### Voir l'utilisation
-
-```bash
-curl -H "X-API-Key: twinmcp_live_xxx" \
-  https://votre-serveur.com/api/usage
-```
-
-## Outils disponibles
-
-### resolve-library-id
-
-Resolve a library name or query to a canonical library identifier.
-
-**Parameters:**
-- `query` (required): Natural language query describing the library or functionality needed
-- `libraryName` (optional): Specific library name to search for
-- `version` (optional): Specific version of the library
-
-### query-docs
-
-Search documentation for a specific library using natural language queries.
-
-**Parameters:**
-- `libraryId` (required): The canonical library identifier (e.g., /mongodb/docs)
-- `query` (required): Natural language query for searching documentation
-- `version` (optional): Specific version of the library
-- `contentType` (optional): Filter results by content type ('snippet', 'guide', 'api_ref')
-- `maxResults` (optional): Maximum number of results to return (default: 10)
-- `maxTokens` (optional): Maximum total tokens in response (default: 4000)
-
-## Intégration avec votre SaaS
-
-Le serveur MCP HTTP appelle votre SaaS pour la validation des clés API et le tracking d'utilisation.
-
-### Endpoints à implémenter sur votre SaaS
-
-#### POST /api/auth/validate-key
-
-Valide une clé API et retourne les informations utilisateur.
-
-**Réponse attendue:**
 ```json
 {
-  "valid": true,
-  "userId": "user-123",
-  "apiKeyId": "key-456",
-  "tier": "premium",
-  "quotaDaily": 10000,
-  "quotaMonthly": 300000,
-  "usedDaily": 150,
-  "usedMonthly": 4500
+  "mcpServers": {
+    "twinmcp": {
+      "url": "https://api.twinmcp.com/mcp",
+      "headers": {
+        "TWINMCP_API_KEY": "YOUR_API_KEY"
+      }
+    }
+  }
 }
 ```
 
-#### POST /api/usage/track
+**Local Server**
 
-Enregistre l'utilisation d'un outil.
-
-**Corps de la requête:**
 ```json
 {
-  "apiKeyId": "key-456",
-  "userId": "user-123",
-  "toolName": "query-docs",
-  "libraryId": "react",
-  "query": "how to use hooks",
-  "tokensReturned": 1500,
-  "responseTimeMs": 234,
-  "success": true,
-  "timestamp": "2024-01-15T10:30:00Z"
+  "mcpServers": {
+    "twinmcp": {
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
 }
 ```
 
-## Usage programmatique
+### Claude Code
 
-```typescript
-import { TwinMCPHttpServer } from '@twinmcp/mcp';
-
-const server = new TwinMCPHttpServer(
-  {
-    port: 3001,
-    host: '0.0.0.0',
-    corsOrigins: ['https://votre-app.com'],
-    apiKeyValidation: async (apiKey) => {
-      // Votre logique de validation
-      return { valid: true, userId: '...', apiKeyId: '...' };
-    },
-    usageTracking: async (data) => {
-      // Votre logique de tracking
-      console.log('Usage:', data);
-    },
-  },
-  { serverUrl: 'https://api.twinmcp.com' }
-);
-
-await server.start();
-```
-
-## Development
+**Local**
 
 ```bash
-# Install dependencies
-npm install
-
-# Build the package
-npm run build
-
-# Run tests
-npm test
-
-# Start development server
-npm run dev
-
-# Run CLI
-npm run cli -- help
+claude mcp add twinmcp -- npx -y @twinmcp/mcp --api-key YOUR_API_KEY
 ```
+
+**Remote HTTP**
+
+```bash
+claude mcp add --transport http twinmcp https://api.twinmcp.com/mcp \
+  --header "TWINMCP_API_KEY: YOUR_API_KEY"
+```
+
+**OAuth**
+
+```bash
+claude mcp add --transport http twinmcp https://api.twinmcp.com/mcp/oauth
+```
+
+### OpenCode
+
+Add to your OpenCode configuration:
+
+**Remote**
+
+```json
+{
+  "mcp": {
+    "twinmcp": {
+      "type": "remote",
+      "url": "https://api.twinmcp.com/mcp",
+      "headers": {
+        "TWINMCP_API_KEY": "YOUR_API_KEY"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+**Local**
+
+```json
+{
+  "mcp": {
+    "twinmcp": {
+      "type": "local",
+      "command": ["npx", "-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"],
+      "enabled": true
+    }
+  }
+}
+```
+
+## MCP Tools
+
+### `resolve-library-id`
+
+Resolve library names and find matching software libraries.
+
+**Input:**
+- `query` (string, required): User question or task
+- `libraryName` (string, required): Human name of the library (e.g., "Supabase", "Next.js", "MongoDB")
+
+**Output:**
+- `libraryId`: TwinMCP ID in format `/vendor/lib`
+- `name`: Full library name
+- `description`: Library description
+- `repo`: GitHub repository URL
+- `defaultVersion`: Latest version
+- `popularity`: Popularity score
+
+### `query-docs`
+
+Search documentation for a specific library.
+
+**Input:**
+- `libraryId` (string, required): TwinMCP library ID (e.g., `/mongodb/docs`)
+- `query` (string, required): Question or task (setup, code example, configuration)
+- `version` (string, optional): Specific version
+- `maxResults` (number, optional): Max results (default: 10)
+- `maxTokens` (number, optional): Max tokens in response (default: 4000)
+
+**Output:**
+- `results`: Array of documentation snippets with:
+  - `type`: snippet | guide | api_ref
+  - `title`: Document title
+  - `content`: Markdown content
+  - `url`: Source URL
+  - `relevanceScore`: Relevance score (0-1)
+
+## Usage Examples
+
+### In Cursor/Claude
+
+Add this rule to your AI assistant:
+
+> "Always use TwinMCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask."
+
+### Force Specific Library
+
+Use the slash syntax to bypass resolution:
+
+```
+use library /vercel/next.js How do I set up middleware?
+```
+
+### Version-Specific Queries
+
+```
+How do I set up Next.js 14 middleware?
+```
+
+TwinMCP automatically resolves the version and returns v14-specific docs.
+
+## API Endpoints
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `POST /api/mcp` | API Key | Main MCP endpoint |
+| `POST /api/mcp/oauth` | OAuth 2.0 | OAuth-authenticated MCP |
+| `GET /api/libraries` | Public | Browse library catalog |
+| `GET /api/mcp/health` | Public | Health check |
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TWINMCP_API_KEY` | API key for authentication | - |
+| `TWINMCP_SERVER_URL` | Backend server URL | `https://api.twinmcp.com` |
+| `LOG_LEVEL` | Logging level | `info` |
+
+## Rate Limits
+
+| Plan | Requests/day | Tokens/response |
+|------|--------------|-----------------|
+| Free | 100 | 4,000 |
+| Professional | 10,000 | 8,000 |
+| Enterprise | Unlimited | Unlimited |
+
+## Supported Libraries
+
+TwinMCP supports 500+ popular libraries including:
+
+- **JavaScript/TypeScript**: React, Next.js, Vue, Angular, Express, Fastify
+- **Python**: Django, FastAPI, Flask, NumPy, Pandas
+- **Databases**: MongoDB, PostgreSQL, MySQL, Redis, Prisma, Supabase
+- **Cloud**: AWS SDK, GCP, Azure, Vercel, Netlify
+- **And many more...**
+
+Browse the full catalog at [twinmcp.com/libraries](https://twinmcp.com/libraries)
+
+## Getting an API Key
+
+1. Sign up at [twinmcp.com](https://twinmcp.com)
+2. Go to Dashboard → API Keys
+3. Create a new API key
+4. Copy and use in your IDE configuration
 
 ## License
 
-MIT
+MIT © TwinMCP Team
+
+## Links
+
+- [Website](https://twinmcp.com)
+- [Documentation](https://twinmcp.com/docs)
+- [API Reference](https://twinmcp.com/docs/api)
+- [GitHub](https://github.com/twinmcp/twinmcp)
+- [Discord](https://discord.gg/twinmcp)
