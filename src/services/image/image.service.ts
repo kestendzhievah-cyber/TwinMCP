@@ -31,11 +31,23 @@ export class ImageService {
   private visionClient: vision.ImageAnnotatorClient | null = null;
   private openai: OpenAI | null = null;
 
-  constructor() {
-    this.visionClient = new vision.ImageAnnotatorClient();
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
+  // Lazy initialization to avoid build-time errors
+  private getVisionClient(): vision.ImageAnnotatorClient {
+    if (!this.visionClient) {
+      this.visionClient = new vision.ImageAnnotatorClient();
+    }
+    return this.visionClient;
+  }
+
+  private getOpenAI(): OpenAI {
+    if (!this.openai) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY environment variable is required');
+      }
+      this.openai = new OpenAI({ apiKey });
+    }
+    return this.openai;
   }
 
   async analyze(imageBuffer: Buffer): Promise<ImageAnalysis> {
