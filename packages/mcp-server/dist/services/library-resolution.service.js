@@ -199,7 +199,7 @@ class LibraryResolutionService {
     }
     async getLibraryAliases(libraryId) {
         const result = await this.db.query('SELECT alias FROM library_aliases WHERE library_id = $1', [libraryId]);
-        return result.rows.map(row => row.alias);
+        return result.rows.map((row) => row.alias);
     }
     async generateSuggestions(parsed) {
         const suggestions = [];
@@ -212,7 +212,7 @@ class LibraryResolutionService {
       LIMIT 5
     `;
         const result = await this.db.query(similarQuery, [`${parsed.normalized}%`]);
-        suggestions.push(...result.rows.map(row => row.name));
+        suggestions.push(...result.rows.map((row) => row.name));
         // Suggestions basées sur les tokens
         for (const token of parsed.tokens) {
             if (token.length >= 3) {
@@ -224,7 +224,7 @@ class LibraryResolutionService {
           LIMIT 2
         `;
                 const tokenResult = await this.db.query(tokenQuery, [`${token}%`]);
-                suggestions.push(...tokenResult.rows.map(row => row.name));
+                suggestions.push(...tokenResult.rows.map((row) => row.name));
             }
         }
         return [...new Set(suggestions)].slice(0, 5);
