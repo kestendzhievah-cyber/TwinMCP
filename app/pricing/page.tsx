@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -85,7 +85,7 @@ const plans: Plan[] = [
   },
 ];
 
-export default function PricingPage() {
+function PricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -346,5 +346,24 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520] flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-12 h-12 text-purple-400 animate-spin mx-auto mb-4" />
+        <p className="text-gray-400">Chargement des tarifs...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <PricingContent />
+    </Suspense>
   );
 }
