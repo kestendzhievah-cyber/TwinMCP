@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   // Désactiver la vérification TypeScript pendant le build
   typescript: {
     ignoreBuildErrors: true,
@@ -10,25 +9,21 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Configuration pour le développement - PAS d'export statique
-  // output: 'export', // Commenté pour permettre les routes API
   // Désactiver les images optimisées
   images: {
     unoptimized: true,
   },
   // Configuration pour le build de production
   distDir: '.next',
-  // Désactiver le cache du build
-  cache: false,
-  // Skip data collection for problematic routes
-  experimental: {
-    outputFileTracingRoot: process.env.NODE_ENV === 'production' ? './' : undefined,
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/**/*',
-        '.next/cache/**/*',
-      ],
-    },
+  // Configuration pour le output standalone
+  output: 'standalone',
+  // outputFileTracingRoot moved out of experimental in Next.js 15
+  outputFileTracingRoot: process.env.NODE_ENV === 'production' ? __dirname : undefined,
+  outputFileTracingExcludes: {
+    '*': [
+      'node_modules/**/*',
+      '.next/cache/**/*',
+    ],
   },
   // Configuration Webpack personnalisée
   webpack: (config, { isServer }) => {
@@ -93,8 +88,6 @@ const nextConfig = {
       },
     ];
   },
-  // Configuration pour le build de production
-  output: 'standalone',
 };
 
 module.exports = nextConfig;
