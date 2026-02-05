@@ -110,10 +110,17 @@ export default function DashboardPage() {
     if (!user) return;
 
     try {
-      const token = await user.getIdToken();
+      let token = '';
+      try {
+        token = await user.getIdToken();
+      } catch (tokenError) {
+        console.warn('Could not get ID token, user may need to re-authenticate');
+      }
+
       const response = await fetch('/api/v1/dashboard', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+          'Content-Type': 'application/json',
         },
       });
 
@@ -122,12 +129,45 @@ export default function DashboardPage() {
       if (result.success) {
         setDashboardData(result.data);
         setError(null);
+      } else if (response.status === 401) {
+        // User needs to re-authenticate
+        setError('Session expirée. Veuillez vous reconnecter.');
+        // Set empty data to show dashboard skeleton
+        setDashboardData({
+          totalKeys: 0,
+          totalRequestsToday: 0,
+          totalRequestsMonth: 0,
+          averageSuccessRate: 100,
+          subscription: { plan: 'free', dailyLimit: 200, monthlyLimit: 6000, usedToday: 0, usedMonth: 0 },
+          keys: [],
+          recentActivity: []
+        });
       } else {
         setError(result.error || 'Erreur de chargement');
+        // Set empty data on error
+        setDashboardData({
+          totalKeys: 0,
+          totalRequestsToday: 0,
+          totalRequestsMonth: 0,
+          averageSuccessRate: 100,
+          subscription: { plan: 'free', dailyLimit: 200, monthlyLimit: 6000, usedToday: 0, usedMonth: 0 },
+          keys: [],
+          recentActivity: []
+        });
       }
     } catch (err) {
       console.error('Dashboard fetch error:', err);
       setError('Impossible de charger les données');
+      // Set empty data to show dashboard anyway
+      setDashboardData({
+        totalKeys: 0,
+        totalRequestsToday: 0,
+        totalRequestsMonth: 0,
+        averageSuccessRate: 100,
+        subscription: { plan: 'free', dailyLimit: 200, monthlyLimit: 6000, usedToday: 0, usedMonth: 0 },
+        keys: [],
+        recentActivity: []
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
