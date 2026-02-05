@@ -9,26 +9,26 @@ export interface HttpServerConfig {
 }
 export interface ApiKeyValidationResult {
     valid: boolean;
-    userId?: string;
-    apiKeyId?: string;
-    tier?: string;
-    quotaDaily?: number;
-    quotaMonthly?: number;
-    usedDaily?: number;
-    usedMonthly?: number;
-    error?: string;
-    errorCode?: string;
+    userId?: string | undefined;
+    apiKeyId?: string | undefined;
+    tier?: string | undefined;
+    quotaDaily?: number | undefined;
+    quotaMonthly?: number | undefined;
+    usedDaily?: number | undefined;
+    usedMonthly?: number | undefined;
+    error?: string | undefined;
+    errorCode?: string | undefined;
 }
 export interface UsageTrackingData {
     apiKeyId: string;
     userId: string;
     toolName: string;
-    libraryId?: string;
-    query?: string;
-    tokensReturned?: number;
+    libraryId?: string | undefined;
+    query?: string | undefined;
+    tokensReturned?: number | undefined;
     responseTimeMs: number;
     success: boolean;
-    errorMessage?: string;
+    errorMessage?: string | undefined;
 }
 export declare class TwinMCPHttpServer {
     private app;

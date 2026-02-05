@@ -27,12 +27,12 @@ export declare const ResolveLibraryIdInputSchema: z.ZodObject<{
     } | undefined;
 }, {
     query: string;
-    limit?: number | undefined;
     context?: {
         language?: string | undefined;
         framework?: string | undefined;
         ecosystem?: string | undefined;
     } | undefined;
+    limit?: number | undefined;
     include_aliases?: boolean | undefined;
 }>;
 export type ResolveLibraryIdInput = z.infer<typeof ResolveLibraryIdInputSchema>;
@@ -64,8 +64,8 @@ export declare const LibraryResultSchema: z.ZodObject<{
         confidence: number;
     }>;
 }, "strip", z.ZodTypeAny, {
-    name: string;
     description: string;
+    name: string;
     id: string;
     language: string;
     ecosystem: string;
@@ -83,8 +83,8 @@ export declare const LibraryResultSchema: z.ZodObject<{
     homepage?: string | undefined;
     repository?: string | undefined;
 }, {
-    name: string;
     description: string;
+    name: string;
     id: string;
     language: string;
     ecosystem: string;
@@ -132,8 +132,8 @@ export declare const ResolveLibraryIdOutputSchema: z.ZodObject<{
             confidence: number;
         }>;
     }, "strip", z.ZodTypeAny, {
-        name: string;
         description: string;
+        name: string;
         id: string;
         language: string;
         ecosystem: string;
@@ -151,8 +151,8 @@ export declare const ResolveLibraryIdOutputSchema: z.ZodObject<{
         homepage?: string | undefined;
         repository?: string | undefined;
     }, {
-        name: string;
         description: string;
+        name: string;
         id: string;
         language: string;
         ecosystem: string;
@@ -176,8 +176,8 @@ export declare const ResolveLibraryIdOutputSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     query: string;
     results: {
-        name: string;
         description: string;
+        name: string;
         id: string;
         language: string;
         ecosystem: string;
@@ -201,8 +201,8 @@ export declare const ResolveLibraryIdOutputSchema: z.ZodObject<{
 }, {
     query: string;
     results: {
-        name: string;
         description: string;
+        name: string;
         id: string;
         language: string;
         ecosystem: string;

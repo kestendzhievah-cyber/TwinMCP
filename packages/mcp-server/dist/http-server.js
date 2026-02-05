@@ -41,7 +41,7 @@ class TwinMCPHttpServer {
     setupMiddleware() {
         this.app.use(express_1.default.json({ limit: '10mb' }));
         this.app.use((0, cors_1.default)({
-            origin: this.config.corsOrigins || '*',
+            origin: this.config.corsOrigins ?? '*',
             methods: ['GET', 'POST', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID'],
         }));
@@ -133,7 +133,7 @@ class TwinMCPHttpServer {
         });
         // Call a tool
         this.app.post('/api/mcp/call', async (req, res) => {
-            const startTime = req.startTime || Date.now();
+            const startTime = req.startTime ?? Date.now();
             const { tool, arguments: args } = req.body;
             if (!tool || typeof tool !== 'string') {
                 res.status(400).json({
@@ -155,7 +155,7 @@ class TwinMCPHttpServer {
             }
             try {
                 const context = {
-                    requestId: req.requestId || this.generateRequestId(),
+                    requestId: req.requestId ?? this.generateRequestId(),
                     config: {},
                     logger: this.logger,
                     ...(req.auth?.userId && { userId: req.auth.userId }),
@@ -167,7 +167,7 @@ class TwinMCPHttpServer {
                     userId: req.auth?.userId,
                     apiKeyId: req.auth?.apiKeyId,
                 });
-                const result = await handler.handler(args || {}, context);
+                const result = await handler.handler(args ?? {}, context);
                 const responseTimeMs = Date.now() - startTime;
                 // Track usage
                 if (req.auth?.apiKeyId && req.auth?.userId) {
@@ -217,7 +217,7 @@ class TwinMCPHttpServer {
         });
         // SSE endpoint for MCP protocol
         this.app.get('/api/mcp/sse', async (req, res) => {
-            const sessionId = req.requestId || this.generateRequestId();
+            const sessionId = req.requestId ?? this.generateRequestId();
             this.logger.info('SSE connection started', { sessionId, userId: req.auth?.userId });
             const transport = new sse_js_1.SSEServerTransport('/api/mcp/messages', res);
             this.transports.set(sessionId, transport);
@@ -229,7 +229,7 @@ class TwinMCPHttpServer {
         });
         // SSE messages endpoint
         this.app.post('/api/mcp/messages', async (req, res) => {
-            const sessionId = req.query.sessionId;
+            const sessionId = req.query['sessionId'];
             const transport = this.transports.get(sessionId);
             if (!transport) {
                 res.status(404).json({
@@ -240,6 +240,7 @@ class TwinMCPHttpServer {
                 return;
             }
             try {
+                // Cast to the expected type for handlePostMessage
                 await transport.handlePostMessage(req, res);
             }
             catch (error) {
@@ -256,10 +257,10 @@ class TwinMCPHttpServer {
                         tier: req.auth?.tier,
                         quotaDaily: req.auth?.quotaDaily,
                         quotaMonthly: req.auth?.quotaMonthly,
-                        usedDaily: req.auth?.usedDaily || 0,
-                        usedMonthly: req.auth?.usedMonthly || 0,
-                        remainingDaily: (req.auth?.quotaDaily || 0) - (req.auth?.usedDaily || 0),
-                        remainingMonthly: (req.auth?.quotaMonthly || 0) - (req.auth?.usedMonthly || 0),
+                        usedDaily: req.auth?.usedDaily ?? 0,
+                        usedMonthly: req.auth?.usedMonthly ?? 0,
+                        remainingDaily: (req.auth?.quotaDaily ?? 0) - (req.auth?.usedDaily ?? 0),
+                        remainingMonthly: (req.auth?.quotaMonthly ?? 0) - (req.auth?.usedMonthly ?? 0),
                     },
                     timestamp: new Date().toISOString(),
                 });
@@ -290,8 +291,8 @@ class TwinMCPHttpServer {
                 });
                 res.status(401).json({
                     success: false,
-                    error: validation.error || 'Invalid API key',
-                    code: validation.errorCode || 'INVALID_API_KEY',
+                    error: validation.error ?? 'Invalid API key',
+                    code: validation.errorCode ?? 'INVALID_API_KEY',
                 });
                 return;
             }
@@ -311,11 +312,11 @@ class TwinMCPHttpServer {
         const headerKey = req.headers['x-api-key'];
         if (headerKey)
             return headerKey;
-        const authHeader = req.headers.authorization;
+        const authHeader = req.headers['authorization'];
         if (authHeader && authHeader.startsWith('Bearer ')) {
             return authHeader.substring(7);
         }
-        const queryKey = req.query.api_key;
+        const queryKey = req.query['api_key'];
         if (queryKey)
             return queryKey;
         return null;
