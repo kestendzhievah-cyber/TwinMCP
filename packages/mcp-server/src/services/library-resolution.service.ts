@@ -253,7 +253,7 @@ export class LibraryResolutionService {
       'SELECT alias FROM library_aliases WHERE library_id = $1',
       [libraryId]
     );
-    return result.rows.map(row => row.alias);
+    return result.rows.map((row: { alias: string }) => row.alias);
   }
 
   private async generateSuggestions(parsed: ParsedQuery): Promise<string[]> {
@@ -269,7 +269,7 @@ export class LibraryResolutionService {
     `;
 
     const result = await this.db.query(similarQuery, [`${parsed.normalized}%`]);
-    suggestions.push(...result.rows.map(row => row.name));
+    suggestions.push(...result.rows.map((row: { name: string }) => row.name));
 
     // Suggestions basées sur les tokens
     for (const token of parsed.tokens) {
@@ -283,7 +283,7 @@ export class LibraryResolutionService {
         `;
         
         const tokenResult = await this.db.query(tokenQuery, [`${token}%`]);
-        suggestions.push(...tokenResult.rows.map(row => row.name));
+        suggestions.push(...tokenResult.rows.map((row: { name: string }) => row.name));
       }
     }
 
