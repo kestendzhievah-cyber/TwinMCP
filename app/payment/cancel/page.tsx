@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -9,10 +9,11 @@ import {
   ArrowLeft, 
   RefreshCw,
   MessageCircle,
-  HelpCircle
+  HelpCircle,
+  Loader2
 } from 'lucide-react';
 
-export default function PaymentCancelPage() {
+function PaymentCancelContent() {
   const searchParams = useSearchParams();
   const planId = searchParams.get('plan');
 
@@ -134,5 +135,24 @@ export default function PaymentCancelPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520] flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-12 h-12 text-purple-400 animate-spin mx-auto mb-4" />
+        <p className="text-gray-400">Chargement...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function PaymentCancelPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <PaymentCancelContent />
+    </Suspense>
   );
 }
