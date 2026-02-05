@@ -24,33 +24,33 @@ export interface HttpServerConfig {
 
 export interface ApiKeyValidationResult {
   valid: boolean;
-  userId?: string;
-  apiKeyId?: string;
-  tier?: string;
-  quotaDaily?: number;
-  quotaMonthly?: number;
-  usedDaily?: number;
-  usedMonthly?: number;
-  error?: string;
-  errorCode?: string;
+  userId?: string | undefined;
+  apiKeyId?: string | undefined;
+  tier?: string | undefined;
+  quotaDaily?: number | undefined;
+  quotaMonthly?: number | undefined;
+  usedDaily?: number | undefined;
+  usedMonthly?: number | undefined;
+  error?: string | undefined;
+  errorCode?: string | undefined;
 }
 
 export interface UsageTrackingData {
   apiKeyId: string;
   userId: string;
   toolName: string;
-  libraryId?: string;
-  query?: string;
-  tokensReturned?: number;
+  libraryId?: string | undefined;
+  query?: string | undefined;
+  tokensReturned?: number | undefined;
   responseTimeMs: number;
   success: boolean;
-  errorMessage?: string;
+  errorMessage?: string | undefined;
 }
 
 interface AuthenticatedRequest extends Request {
-  auth?: ApiKeyValidationResult;
-  requestId?: string;
-  startTime?: number;
+  auth?: ApiKeyValidationResult | undefined;
+  requestId?: string | undefined;
+  startTime?: number | undefined;
 }
 
 export class TwinMCPHttpServer {
@@ -94,7 +94,7 @@ export class TwinMCPHttpServer {
   private setupMiddleware(): void {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(cors({
-      origin: this.config.corsOrigins || '*',
+      origin: this.config.corsOrigins ?? '*',
       methods: ['GET', 'POST', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID'],
     }));
@@ -199,7 +199,7 @@ export class TwinMCPHttpServer {
 
     // Call a tool
     this.app.post('/api/mcp/call', async (req: AuthenticatedRequest, res: Response) => {
-      const startTime = req.startTime || Date.now();
+      const startTime = req.startTime ?? Date.now();
       const { tool, arguments: args } = req.body;
 
       if (!tool || typeof tool !== 'string') {
@@ -224,7 +224,7 @@ export class TwinMCPHttpServer {
 
       try {
         const context: MCPContext = {
-          requestId: req.requestId || this.generateRequestId(),
+          requestId: req.requestId ?? this.generateRequestId(),
           config: {},
           logger: this.logger,
           ...(req.auth?.userId && { userId: req.auth.userId }),
@@ -238,7 +238,7 @@ export class TwinMCPHttpServer {
           apiKeyId: req.auth?.apiKeyId,
         });
 
-        const result = await handler.handler(args || {}, context);
+        const result = await handler.handler(args ?? {}, context);
         const responseTimeMs = Date.now() - startTime;
 
         // Track usage
@@ -294,7 +294,7 @@ export class TwinMCPHttpServer {
 
     // SSE endpoint for MCP protocol
     this.app.get('/api/mcp/sse', async (req: AuthenticatedRequest, res: Response) => {
-      const sessionId = req.requestId || this.generateRequestId();
+      const sessionId = req.requestId ?? this.generateRequestId();
       
       this.logger.info('SSE connection started', { sessionId, userId: req.auth?.userId });
 
@@ -311,7 +311,7 @@ export class TwinMCPHttpServer {
 
     // SSE messages endpoint
     this.app.post('/api/mcp/messages', async (req: AuthenticatedRequest, res: Response) => {
-      const sessionId = req.query.sessionId as string;
+      const sessionId = req.query['sessionId'] as string;
       const transport = this.transports.get(sessionId);
 
       if (!transport) {
@@ -324,7 +324,8 @@ export class TwinMCPHttpServer {
       }
 
       try {
-        await transport.handlePostMessage(req, res);
+        // Cast to the expected type for handlePostMessage
+        await transport.handlePostMessage(req as Request, res);
       } catch (error) {
         this.handleError(res, error, req.requestId);
       }
@@ -340,10 +341,10 @@ export class TwinMCPHttpServer {
             tier: req.auth?.tier,
             quotaDaily: req.auth?.quotaDaily,
             quotaMonthly: req.auth?.quotaMonthly,
-            usedDaily: req.auth?.usedDaily || 0,
-            usedMonthly: req.auth?.usedMonthly || 0,
-            remainingDaily: (req.auth?.quotaDaily || 0) - (req.auth?.usedDaily || 0),
-            remainingMonthly: (req.auth?.quotaMonthly || 0) - (req.auth?.usedMonthly || 0),
+            usedDaily: req.auth?.usedDaily ?? 0,
+            usedMonthly: req.auth?.usedMonthly ?? 0,
+            remainingDaily: (req.auth?.quotaDaily ?? 0) - (req.auth?.usedDaily ?? 0),
+            remainingMonthly: (req.auth?.quotaMonthly ?? 0) - (req.auth?.usedMonthly ?? 0),
           },
           timestamp: new Date().toISOString(),
         });
@@ -378,8 +379,8 @@ export class TwinMCPHttpServer {
 
         res.status(401).json({
           success: false,
-          error: validation.error || 'Invalid API key',
-          code: validation.errorCode || 'INVALID_API_KEY',
+          error: validation.error ?? 'Invalid API key',
+          code: validation.errorCode ?? 'INVALID_API_KEY',
         });
         return;
       }
@@ -401,12 +402,12 @@ export class TwinMCPHttpServer {
     const headerKey = req.headers['x-api-key'] as string;
     if (headerKey) return headerKey;
 
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers['authorization'];
     if (authHeader && authHeader.startsWith('Bearer ')) {
       return authHeader.substring(7);
     }
 
-    const queryKey = req.query.api_key as string;
+    const queryKey = req.query['api_key'] as string;
     if (queryKey) return queryKey;
 
     return null;
@@ -428,7 +429,7 @@ export class TwinMCPHttpServer {
     };
   }
 
-  private handleError(res: Response, error: unknown, requestId?: string): void {
+  private handleError(res: Response, error: unknown, requestId?: string | undefined): void {
     const message = error instanceof Error ? error.message : 'Unknown error';
     this.logger.error('Request error', error, { requestId });
 
