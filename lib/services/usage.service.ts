@@ -42,19 +42,19 @@ export const PLAN_LIMITS = {
     dailyLimit: 200,
     monthlyLimit: 6000,
     maxKeys: 2,
-    rateLimit: 10 // per minute
+    rateLimit: 20 // per minute
   },
   pro: {
     dailyLimit: 10000,
     monthlyLimit: 300000,
     maxKeys: 10,
-    rateLimit: 100 // per minute
+    rateLimit: 200 // per minute
   },
   enterprise: {
     dailyLimit: 100000,
     monthlyLimit: 3000000,
-    maxKeys: 50,
-    rateLimit: 1000 // per minute
+    maxKeys: 100,
+    rateLimit: 2000 // per minute
   }
 };
 
