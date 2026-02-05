@@ -100,7 +100,6 @@ function PricingContent() {
     setLoadingPlan(planId);
 
     try {
-      // Pour Enterprise, rediriger vers contact
       if (planId === 'enterprise') {
         router.push('/contact?plan=enterprise');
         return;
@@ -127,7 +126,6 @@ function PricingContent() {
         throw new Error(data.error || 'Erreur lors de la création de la session');
       }
 
-      // Rediriger vers Stripe Checkout
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -143,13 +141,11 @@ function PricingContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520] text-white">
-      {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-pink-500 opacity-10 rounded-full filter blur-3xl"></div>
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500 opacity-10 rounded-full filter blur-3xl"></div>
       </div>
 
-      {/* Navigation */}
       <nav className="relative z-10 border-b border-purple-500/20 bg-[#1a1b2e]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -159,17 +155,11 @@ function PricingContent() {
             </Link>
             <div className="flex items-center gap-4">
               {user ? (
-                <Link 
-                  href="/dashboard"
-                  className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-purple-700 transition"
-                >
+                <Link href="/dashboard" className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-purple-700 transition">
                   Dashboard
                 </Link>
               ) : (
-                <Link 
-                  href="/auth"
-                  className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-purple-700 transition"
-                >
+                <Link href="/auth" className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-lg hover:from-pink-600 hover:to-purple-700 transition">
                   Se connecter
                 </Link>
               )}
@@ -178,9 +168,7 @@ function PricingContent() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400">
@@ -191,61 +179,41 @@ function PricingContent() {
             Choisissez le plan qui correspond à vos besoins. Évoluez à tout moment.
           </p>
 
-          {/* Billing Toggle */}
           <div className="flex items-center justify-center gap-4">
-            <span className={`text-sm ${billingPeriod === 'monthly' ? 'text-white' : 'text-gray-400'}`}>
-              Mensuel
-            </span>
+            <span className={`text-sm ${billingPeriod === 'monthly' ? 'text-white' : 'text-gray-400'}`}>Mensuel</span>
             <button
               onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
               className="relative w-16 h-8 bg-purple-900/50 rounded-full border border-purple-500/30 transition-colors"
             >
-              <div 
-                className={`absolute top-1 w-6 h-6 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full transition-all duration-300 ${
-                  billingPeriod === 'yearly' ? 'left-9' : 'left-1'
-                }`}
-              />
+              <div className={`absolute top-1 w-6 h-6 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full transition-all duration-300 ${billingPeriod === 'yearly' ? 'left-9' : 'left-1'}`} />
             </button>
             <span className={`text-sm ${billingPeriod === 'yearly' ? 'text-white' : 'text-gray-400'}`}>
               Annuel
-              <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
-                -17%
-              </span>
+              <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">-17%</span>
             </span>
           </div>
         </div>
 
-        {/* Canceled Alert */}
         {canceled && (
           <div className="max-w-md mx-auto mb-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
-            <p className="text-sm text-yellow-200">
-              Paiement annulé. Vous pouvez réessayer quand vous le souhaitez.
-            </p>
-            <button 
-              onClick={() => router.replace('/pricing')}
-              className="ml-auto text-yellow-400 hover:text-yellow-300"
-            >
+            <p className="text-sm text-yellow-200">Paiement annulé. Vous pouvez réessayer quand vous le souhaitez.</p>
+            <button onClick={() => router.replace('/pricing')} className="ml-auto text-yellow-400 hover:text-yellow-300">
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* Error Alert */}
         {error && (
           <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <p className="text-sm text-red-200">{error}</p>
-            <button 
-              onClick={() => setError(null)}
-              className="ml-auto text-red-400 hover:text-red-300"
-            >
+            <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* Plans Grid */}
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan) => (
             <div
@@ -262,13 +230,8 @@ function PricingContent() {
                 </div>
               )}
 
-              {/* Plan Header */}
               <div className="flex items-center gap-3 mb-4">
-                <div className={`p-3 rounded-xl ${
-                  plan.highlighted 
-                    ? 'bg-gradient-to-br from-pink-500 to-purple-600' 
-                    : 'bg-purple-500/20'
-                }`}>
+                <div className={`p-3 rounded-xl ${plan.highlighted ? 'bg-gradient-to-br from-pink-500 to-purple-600' : 'bg-purple-500/20'}`}>
                   {plan.icon}
                 </div>
                 <div>
@@ -277,36 +240,25 @@ function PricingContent() {
                 </div>
               </div>
 
-              {/* Price */}
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold">
-                    {billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}€
-                  </span>
-                  <span className="text-gray-400">
-                    /{billingPeriod === 'monthly' ? 'mois' : 'an'}
-                  </span>
+                  <span className="text-4xl font-bold">{billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}€</span>
+                  <span className="text-gray-400">/{billingPeriod === 'monthly' ? 'mois' : 'an'}</span>
                 </div>
                 {billingPeriod === 'yearly' && (
-                  <p className="text-sm text-green-400 mt-1">
-                    Économisez {plan.monthlyPrice * 12 - plan.yearlyPrice}€/an
-                  </p>
+                  <p className="text-sm text-green-400 mt-1">Économisez {plan.monthlyPrice * 12 - plan.yearlyPrice}€/an</p>
                 )}
               </div>
 
-              {/* Features */}
               <ul className="space-y-3 mb-8">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start gap-3">
-                    <Check className={`w-5 h-5 flex-shrink-0 ${
-                      plan.highlighted ? 'text-pink-400' : 'text-purple-400'
-                    }`} />
+                    <Check className={`w-5 h-5 flex-shrink-0 ${plan.highlighted ? 'text-pink-400' : 'text-purple-400'}`} />
                     <span className="text-gray-300 text-sm">{feature}</span>
                   </li>
                 ))}
               </ul>
 
-              {/* CTA Button */}
               <button
                 onClick={() => handleSelectPlan(plan.id)}
                 disabled={loadingPlan !== null}
@@ -332,17 +284,12 @@ function PricingContent() {
           ))}
         </div>
 
-        {/* FAQ or Additional Info */}
         <div className="mt-20 text-center">
           <p className="text-gray-400">
-            Des questions ? {' '}
-            <Link href="/contact" className="text-pink-400 hover:text-pink-300 underline">
-              Contactez-nous
-            </Link>
+            Des questions ?{' '}
+            <Link href="/contact" className="text-pink-400 hover:text-pink-300 underline">Contactez-nous</Link>
           </p>
-          <p className="text-sm text-gray-500 mt-4">
-            Paiement sécurisé par Stripe. Annulez à tout moment.
-          </p>
+          <p className="text-sm text-gray-500 mt-4">Paiement sécurisé par Stripe. Annulez à tout moment.</p>
         </div>
       </div>
     </div>
