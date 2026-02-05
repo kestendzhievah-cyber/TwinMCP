@@ -9,24 +9,24 @@ async function main() {
   const args = process.argv.slice(2);
   
   // Parse arguments
-  let apiKey = process.env['TWINMCP_API_KEY'] || '';
-  let serverUrl = process.env['TWINMCP_SERVER_URL'] || 'https://api.twinmcp.com';
-  let command = '';
+  let apiKey: string = process.env['TWINMCP_API_KEY'] ?? '';
+  let serverUrl: string = process.env['TWINMCP_SERVER_URL'] ?? 'https://api.twinmcp.com';
+  let command: string = '';
   
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     
-    if (arg === '--api-key' && args[i + 1]) {
-      apiKey = args[i + 1];
+    if (arg === '--api-key' && args[i + 1] !== undefined) {
+      apiKey = args[i + 1]!;
       i++;
-    } else if (arg === '--server-url' && args[i + 1]) {
-      serverUrl = args[i + 1];
+    } else if (arg === '--server-url' && args[i + 1] !== undefined) {
+      serverUrl = args[i + 1]!;
       i++;
     } else if (arg === '--help' || arg === '-h') {
       command = 'help';
     } else if (arg === '--version' || arg === '-v') {
       command = 'version';
-    } else if (!arg.startsWith('--')) {
+    } else if (arg !== undefined && !arg.startsWith('--')) {
       command = arg;
     }
   }
