@@ -24,7 +24,7 @@ export default function MCPConfigurationsPage() {
 
   useEffect(() => {
     if (!user) {
-      router.push('/auth');
+      router.push('/login');
       return;
     }
     fetchConfigurations();
