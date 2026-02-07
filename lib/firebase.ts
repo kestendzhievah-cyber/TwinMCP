@@ -1,6 +1,6 @@
 // Firebase configuration
 import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import { getAuth, browserLocalPersistence, browserSessionPersistence, setPersistence } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -53,5 +53,54 @@ export const auth = getAuth(app)
 
 // Initialize Cloud Firestore and get a reference to the service
 export const db = getFirestore(app)
+
+// Persistence types for "Remember Me" functionality
+export const AUTH_PERSISTENCE = {
+  LOCAL: browserLocalPersistence,    // Persists even when browser window is closed
+  SESSION: browserSessionPersistence // Cleared when browser window is closed
+}
+
+/**
+ * Set authentication persistence based on "Remember Me" preference
+ * @param rememberMe - If true, use local persistence; if false, use session persistence
+ */
+export async function setAuthPersistence(rememberMe: boolean): Promise<void> {
+  try {
+    const persistence = rememberMe ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION
+    await setPersistence(auth, persistence)
+    console.log(`✅ Persistance définie: ${rememberMe ? 'LOCAL (Se souvenir de moi)' : 'SESSION'}`)
+  } catch (error) {
+    console.error('❌ Erreur lors de la définition de la persistance:', error)
+    throw error
+  }
+}
+
+/**
+ * Check if "Remember Me" was previously set
+ */
+export function getRememberMePreference(): boolean {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem('twinmcp_remember_me') === 'true'
+}
+
+/**
+ * Save "Remember Me" preference
+ */
+export function saveRememberMePreference(rememberMe: boolean): void {
+  if (typeof window === 'undefined') return
+  if (rememberMe) {
+    localStorage.setItem('twinmcp_remember_me', 'true')
+  } else {
+    localStorage.removeItem('twinmcp_remember_me')
+  }
+}
+
+/**
+ * Clear "Remember Me" preference (on logout)
+ */
+export function clearRememberMePreference(): void {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('twinmcp_remember_me')
+}
 
 export default app
