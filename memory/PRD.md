@@ -49,6 +49,13 @@ TwinMCP is an MCP (Model Context Protocol) server that provides up-to-date docum
   - Profil étendu avec statistiques
   - Méthodes updateProfile et refreshProfile
 
+- ✅ **Fonctionnalité "Se souvenir de moi"**
+  - Persistance Firebase (LOCAL vs SESSION)
+  - Checkbox fonctionnel sur page `/auth` et `/signup`
+  - Sauvegarde préférence dans localStorage
+  - Nettoyage automatique à la déconnexion
+  - Support Google/GitHub/Email avec persistance
+
 ### Session 4 - Authentication & Dashboard Production-Ready (2025-12)
 - ✅ **Changement URL d'authentification `/login` → `/auth`**
   - Tous les liens mis à jour (landing page, pricing, signup, dashboard)
