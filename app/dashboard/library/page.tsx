@@ -39,6 +39,18 @@ interface Library {
   isUserImported?: boolean;
 }
 
+// Helper to get libraries from localStorage
+function getLibrariesFromLocalStorage(): any[] {
+  if (typeof window === 'undefined') return [];
+  
+  try {
+    const stored = localStorage.getItem('twinmcp_user_libraries');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function LibrariesPage() {
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,16 +60,25 @@ export default function LibrariesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [stats, setStats] = useState({ userImported: 0, totalLibraries: 0 });
 
-  // Fetch libraries from API
+  // Fetch libraries from API with local storage libraries
   useEffect(() => {
     const fetchLibraries = async () => {
       try {
         setLoading(true);
+        
+        // Get libraries from localStorage
+        const localLibraries = getLibrariesFromLocalStorage();
+        
         const params = new URLSearchParams();
         if (searchQuery) params.append('search', searchQuery);
         if (selectedEcosystem !== 'all') params.append('ecosystem', selectedEcosystem);
         params.append('sortBy', sortBy);
         params.append('limit', '50');
+        
+        // Pass local libraries to API for merging
+        if (localLibraries.length > 0) {
+          params.append('clientLibraries', encodeURIComponent(JSON.stringify(localLibraries)));
+        }
 
         const response = await fetch(`/api/libraries?${params}`);
         const data = await response.json();
@@ -68,6 +89,13 @@ export default function LibrariesPage() {
         });
       } catch (error) {
         console.error('Failed to fetch libraries:', error);
+        // Fallback to local libraries only
+        const localLibraries = getLibrariesFromLocalStorage();
+        setLibraries(localLibraries);
+        setStats({
+          userImported: localLibraries.length,
+          totalLibraries: localLibraries.length
+        });
       } finally {
         setLoading(false);
       }
