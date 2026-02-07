@@ -56,6 +56,13 @@ TwinMCP is an MCP (Model Context Protocol) server that provides up-to-date docum
   - Nettoyage automatique à la déconnexion
   - Support Google/GitHub/Email avec persistance
 
+- ✅ **Import de bibliothèques MCP** 
+  - API `/api/libraries/import` - Sauvegarde en base de données
+  - API `/api/libraries` - Récupère bibliothèques importées + catalogue par défaut
+  - Page `/dashboard/agent-builder` - Import depuis GitHub, GitLab, Bitbucket, OpenAPI, etc.
+  - Page `/dashboard/library` - Affiche les bibliothèques avec badge "Importé par vous"
+  - Redirection automatique après import réussi
+
 ### Session 4 - Authentication & Dashboard Production-Ready (2025-12)
 - ✅ **Changement URL d'authentification `/login` → `/auth`**
   - Tous les liens mis à jour (landing page, pricing, signup, dashboard)
