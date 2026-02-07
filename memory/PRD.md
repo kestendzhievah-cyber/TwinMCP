@@ -126,13 +126,18 @@ TwinMCP is an MCP (Model Context Protocol) server that provides up-to-date docum
 
 | Endpoint | Method | Auth | Status |
 |----------|--------|------|--------|
+| /api/auth/verify | POST | Public | ✅ NEW |
+| /api/auth/me | GET | Bearer | ✅ NEW |
+| /api/auth/session | GET/POST | Bearer | ✅ NEW |
+| /api/auth/logout | POST | Bearer | ✅ NEW |
+| /api/auth/profile | GET/PUT | Bearer | ✅ NEW |
 | /api/mcp | GET/POST | API Key | ✅ Working |
 | /api/mcp/oauth | POST | OAuth 2.0 | ✅ Working |
 | /api/libraries | GET | Public | ✅ Working |
 | /api/v1/api-keys | GET/POST/DELETE | Bearer | ✅ Working |
 | /api/v1/dashboard | GET | Bearer | ✅ Working |
-| /api/v1/analytics | GET | Bearer | ✅ NEW |
-| /api/v1/billing | GET | Bearer | ✅ NEW |
+| /api/v1/analytics | GET | Bearer | ✅ Working |
+| /api/v1/billing | GET | Bearer | ✅ Working |
 | /api/v1/usage | GET/POST | Bearer | ✅ Working |
 | /api/admin/crawl | GET/POST/DELETE | Admin | ✅ Needs Keys |
 
