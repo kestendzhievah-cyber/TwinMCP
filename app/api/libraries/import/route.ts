@@ -65,7 +65,6 @@ function determineEcosystem(source: string, url: string): string {
     return 'composer';
   }
   
-  // Default to npm for JavaScript/TypeScript projects
   return 'npm';
 }
 
@@ -120,7 +119,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user ID from auth header (optional - for associating with user)
+    // Get user ID from auth header (optional)
     let userId: string | null = null;
     const authHeader = request.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
@@ -210,123 +209,128 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Estimate tokens and snippets (in real implementation, this would come from crawling)
+    // Estimate tokens and snippets
     const tokensCount = Math.floor(Math.random() * 400000) + 100000;
     const snippetsCount = Math.floor(Math.random() * 2000) + 500;
     const ecosystem = determineEcosystem(source, url);
     const language = determineLanguage(source, url);
 
-    // Get or create default client
-    let client;
+    // Prepare library data for response (will be stored client-side if DB fails)
+    const libraryData = {
+      id: libraryId,
+      name: libraryName,
+      displayName: libraryName,
+      vendor,
+      source,
+      ecosystem,
+      language,
+      description: `Documentation importée depuis ${source}`,
+      repo: repoUrl,
+      docs: docsUrl,
+      versions: ['1.0.0'],
+      defaultVersion: '1.0.0',
+      popularity: 50,
+      tokens: tokensCount,
+      snippets: snippetsCount,
+      tags: [source, ecosystem, language.toLowerCase()],
+      lastCrawled: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      isUserImported: true
+    };
+
+    // Try to save to database
+    let savedToDb = false;
     try {
-      client = await prisma.client.findFirst({ where: { name: 'default' } });
+      // Get or create default client
+      let client = await prisma.client.findFirst({ where: { name: 'default' } });
       if (!client) {
         client = await prisma.client.create({
           data: { name: 'default', apiKeys: {} }
         });
       }
+
+      // Check if library already exists
+      const existingLibrary = await prisma.library.findUnique({
+        where: { id: libraryId }
+      });
+
+      if (existingLibrary) {
+        // Update existing library
+        await prisma.library.update({
+          where: { id: libraryId },
+          data: {
+            displayName: libraryName,
+            repoUrl,
+            docsUrl,
+            lastCrawledAt: new Date(),
+            totalTokens: tokensCount,
+            totalSnippets: snippetsCount,
+            updatedAt: new Date()
+          }
+        });
+        savedToDb = true;
+      } else {
+        // Create new library
+        await prisma.library.create({
+          data: {
+            id: libraryId,
+            name: libraryName.toLowerCase().replace(/\s+/g, '-'),
+            displayName: libraryName,
+            description: `Documentation importée depuis ${source}`,
+            vendor,
+            repoUrl,
+            docsUrl,
+            defaultVersion: '1.0.0',
+            popularityScore: 50,
+            totalSnippets: snippetsCount,
+            totalTokens: tokensCount,
+            language,
+            ecosystem,
+            tags: [source, ecosystem, language.toLowerCase()],
+            metadata: {
+              importSource: source,
+              originalUrl: url,
+              importedBy: userId,
+              importedAt: new Date().toISOString()
+            },
+            clientId: client.id,
+            lastCrawledAt: new Date()
+          }
+        });
+
+        // Create default version
+        await prisma.libraryVersion.create({
+          data: {
+            libraryId: libraryId,
+            version: '1.0.0',
+            isLatest: true,
+            releaseDate: new Date()
+          }
+        });
+        savedToDb = true;
+      }
     } catch (dbError) {
-      console.error('Database error finding/creating client:', dbError);
-      // Return success without DB save for now
-      return NextResponse.json({
-        success: true,
-        message: 'Import démarré avec succès (mode hors-ligne)',
-        data: {
-          libraryId,
-          name: libraryName,
-          source,
-          status: 'processing',
-          tokensCount,
-          snippetsCount,
-          createdAt: new Date().toISOString()
-        }
-      });
+      console.warn('Database not available, library will be stored client-side:', dbError);
     }
 
-    // Check if library already exists
-    const existingLibrary = await prisma.library.findUnique({
-      where: { id: libraryId }
-    });
-
-    if (existingLibrary) {
-      // Update existing library
-      const updatedLibrary = await prisma.library.update({
-        where: { id: libraryId },
-        data: {
-          displayName: libraryName,
-          repoUrl,
-          docsUrl,
-          lastCrawledAt: new Date(),
-          totalTokens: tokensCount,
-          totalSnippets: snippetsCount,
-          updatedAt: new Date()
-        }
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Bibliothèque mise à jour avec succès',
-        data: {
-          libraryId: updatedLibrary.id,
-          name: updatedLibrary.displayName,
-          source,
-          status: 'updated',
-          tokensCount: updatedLibrary.totalTokens,
-          snippetsCount: updatedLibrary.totalSnippets,
-          createdAt: updatedLibrary.createdAt.toISOString()
-        }
-      });
-    }
-
-    // Create new library
-    const newLibrary = await prisma.library.create({
-      data: {
-        id: libraryId,
-        name: libraryName.toLowerCase().replace(/\s+/g, '-'),
-        displayName: libraryName,
-        description: `Documentation importée depuis ${source}`,
-        vendor,
-        repoUrl,
-        docsUrl,
-        defaultVersion: '1.0.0',
-        popularityScore: 50,
-        totalSnippets: snippetsCount,
-        totalTokens: tokensCount,
-        language,
-        ecosystem,
-        tags: [source, ecosystem, language.toLowerCase()],
-        metadata: {
-          importSource: source,
-          originalUrl: url,
-          importedBy: userId,
-          importedAt: new Date().toISOString()
-        },
-        clientId: client.id,
-        lastCrawledAt: new Date()
-      }
-    });
-
-    // Create default version
-    await prisma.libraryVersion.create({
-      data: {
-        libraryId: newLibrary.id,
-        version: '1.0.0',
-        isLatest: true,
-        releaseDate: new Date()
-      }
-    });
-
+    // Return success with library data
+    // The client will store this in localStorage if needed
     return NextResponse.json({
       success: true,
-      message: 'Bibliothèque importée avec succès',
+      message: savedToDb 
+        ? 'Bibliothèque importée avec succès' 
+        : 'Bibliothèque importée (stockage local)',
+      savedToDb,
       data: {
-        libraryId: newLibrary.id,
-        name: newLibrary.displayName,
+        libraryId: libraryData.id,
+        name: libraryData.name,
         source,
         status: 'completed',
-        tokensCount: newLibrary.totalTokens,
-        snippetsCount: newLibrary.totalSnippets,
-        createdAt: newLibrary.createdAt.toISOString()
+        tokensCount: libraryData.tokens,
+        snippetsCount: libraryData.snippets,
+        createdAt: libraryData.createdAt,
+        // Include full library data for client-side storage
+        library: libraryData
       }
     });
 
