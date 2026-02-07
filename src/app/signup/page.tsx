@@ -259,7 +259,7 @@ export default function SignupPage() {
           <div className="mt-6 text-center">
             <p className="text-gray-400">
               Déjà un compte ?{' '}
-              <a href="/login" className="text-purple-400 hover:text-purple-300 font-semibold transition">
+              <a href="/auth" className="text-purple-400 hover:text-purple-300 font-semibold transition">
                 Se connecter
               </a>
             </p>
