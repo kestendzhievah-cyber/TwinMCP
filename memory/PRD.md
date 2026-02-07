@@ -152,6 +152,9 @@ Pour déployer sur Dokploy, configurez ces variables :
 DATABASE_URL="postgresql://user:password@host:5432/dbname"
 DIRECT_DATABASE_URL="postgresql://user:password@host:5432/dbname"
 
+# Redis (OBLIGATOIRE pour sessions et rate limiting)
+REDIS_URL="redis://localhost:6379"
+
 # Firebase Authentication (OBLIGATOIRE)
 NEXT_PUBLIC_FIREBASE_API_KEY=xxx
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=xxx.firebaseapp.com
