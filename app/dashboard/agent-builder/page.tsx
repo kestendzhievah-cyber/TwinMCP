@@ -198,6 +198,11 @@ export default function AjouterBibliotheques() {
       setImportResult(result);
 
       if (result.success && result.data) {
+        // Save to localStorage for persistence
+        if (result.data.library) {
+          saveLibraryToLocalStorage(result.data.library);
+        }
+        
         setRecentImports(prev => [result.data!, ...prev.slice(0, 4)]);
         // Réinitialiser le formulaire après succès et rediriger vers la bibliothèque
         setTimeout(() => {
