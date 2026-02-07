@@ -58,6 +58,7 @@ interface LibrarySource {
 interface ImportResult {
   success: boolean;
   message?: string;
+  savedToDb?: boolean;
   data?: {
     libraryId: string;
     name: string;
@@ -66,8 +67,37 @@ interface ImportResult {
     tokensCount: number;
     snippetsCount: number;
     createdAt: string;
+    library?: any;
   };
   error?: string;
+}
+
+// Helper to save library to localStorage
+function saveLibraryToLocalStorage(library: any) {
+  if (typeof window === 'undefined') return;
+  
+  const stored = localStorage.getItem('twinmcp_user_libraries');
+  const libraries = stored ? JSON.parse(stored) : [];
+  
+  // Check if already exists
+  const existingIndex = libraries.findIndex((lib: any) => lib.id === library.id);
+  if (existingIndex >= 0) {
+    libraries[existingIndex] = library;
+  } else {
+    libraries.unshift(library);
+  }
+  
+  // Keep only last 50 libraries
+  const trimmed = libraries.slice(0, 50);
+  localStorage.setItem('twinmcp_user_libraries', JSON.stringify(trimmed));
+}
+
+// Helper to get libraries from localStorage
+function getLibrariesFromLocalStorage(): any[] {
+  if (typeof window === 'undefined') return [];
+  
+  const stored = localStorage.getItem('twinmcp_user_libraries');
+  return stored ? JSON.parse(stored) : [];
 }
 
 export default function AjouterBibliotheques() {
@@ -78,6 +108,21 @@ export default function AjouterBibliotheques() {
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [recentImports, setRecentImports] = useState<NonNullable<ImportResult['data']>[]>([]);
+
+  // Load recent imports from localStorage on mount
+  useEffect(() => {
+    const storedLibraries = getLibrariesFromLocalStorage();
+    const recent = storedLibraries.slice(0, 5).map((lib: any) => ({
+      libraryId: lib.id,
+      name: lib.name,
+      source: lib.source,
+      status: 'completed',
+      tokensCount: lib.tokens,
+      snippetsCount: lib.snippets,
+      createdAt: lib.createdAt
+    }));
+    setRecentImports(recent);
+  }, []);
 
   const librarySources: LibrarySource[] = [
     {
