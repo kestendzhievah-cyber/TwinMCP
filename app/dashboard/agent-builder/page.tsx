@@ -346,7 +346,7 @@ export default function AjouterBibliotheques() {
                     ) : (
                       <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                     )}
-                    <div>
+                    <div className="flex-1">
                       <p className={importResult.success ? 'text-green-300' : 'text-red-300'}>
                         {importResult.success ? importResult.message : importResult.error}
                       </p>
@@ -355,9 +355,22 @@ export default function AjouterBibliotheques() {
                           <p>Bibliothèque: <span className="text-white">{importResult.data.name}</span></p>
                           <p>Tokens estimés: <span className="text-white">{importResult.data.tokensCount?.toLocaleString()}</span></p>
                           <p>Snippets: <span className="text-white">{importResult.data.snippetsCount?.toLocaleString()}</span></p>
+                          <p className="mt-2 text-purple-400 flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Redirection vers la bibliothèque...
+                          </p>
                         </div>
                       )}
                     </div>
+                    {importResult.success && (
+                      <Link 
+                        href="/dashboard/library"
+                        className="text-purple-400 hover:text-purple-300 transition flex-shrink-0"
+                        title="Voir dans la bibliothèque"
+                      >
+                        <ExternalLink className="w-5 h-5" />
+                      </Link>
+                    )}
                   </div>
                 )}
 
