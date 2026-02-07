@@ -16,7 +16,8 @@ import {
   setAuthPersistence, 
   saveRememberMePreference, 
   clearRememberMePreference,
-  getRememberMePreference 
+  getRememberMePreference,
+  isFirebaseReady 
 } from './firebase'
 
 // Extended user profile from backend
@@ -54,6 +55,7 @@ interface AuthContextType {
   loading: boolean
   profileLoading: boolean
   rememberMe: boolean
+  firebaseReady: boolean
   setRememberMe: (value: boolean) => void
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
@@ -80,6 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [profileLoading, setProfileLoading] = useState(false)
   const [rememberMe, setRememberMeState] = useState(false)
+  const [firebaseReady, setFirebaseReady] = useState(false)
+
+  // Check if Firebase is ready on mount
+  useEffect(() => {
+    setFirebaseReady(isFirebaseReady())
+  }, [])
 
   // Initialize rememberMe from localStorage
   useEffect(() => {
@@ -198,6 +206,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, refreshProfile])
 
   useEffect(() => {
+    // If Firebase is not ready, just set loading to false
+    if (!auth) {
+      setLoading(false)
+      return
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       
@@ -218,6 +232,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Sign in with email and password
    */
   const signIn = async (email: string, password: string, remember?: boolean) => {
+    if (!auth) {
+      throw new Error('Firebase non initialisé. Veuillez configurer Firebase.')
+    }
+    
     const shouldRemember = remember !== undefined ? remember : rememberMe
     
     // Set persistence before signing in
@@ -232,6 +250,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Sign up with email and password
    */
   const signUp = async (email: string, password: string) => {
+    if (!auth) {
+      throw new Error('Firebase non initialisé. Veuillez configurer Firebase.')
+    }
+    
     // Always use local persistence for new accounts
     await setAuthPersistence(true)
     saveRememberMePreference(true)
@@ -243,6 +265,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Sign in with Google
    */
   const signInWithGoogle = async (remember?: boolean) => {
+    if (!auth) {
+      throw new Error('Firebase non initialisé. Veuillez configurer Firebase.')
+    }
+    
     const shouldRemember = remember !== undefined ? remember : rememberMe
     
     // Set persistence before signing in
@@ -257,6 +283,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Sign in with GitHub
    */
   const signInWithGithub = async (remember?: boolean) => {
+    if (!auth) {
+      throw new Error('Firebase non initialisé. Veuillez configurer Firebase.')
+    }
+    
     const shouldRemember = remember !== undefined ? remember : rememberMe
     
     // Set persistence before signing in
@@ -291,7 +321,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRememberMeState(false)
     
     // Then logout from Firebase
-    await signOut(auth)
+    if (auth) {
+      await signOut(auth)
+    }
     setProfile(null)
   }
 
@@ -301,6 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     profileLoading,
     rememberMe,
+    firebaseReady,
     setRememberMe,
     signIn,
     signUp,
