@@ -206,18 +206,19 @@ export async function GET(request: NextRequest) {
           }
 
           return {
-            apiKeyId: key.id,
-            keyName: key.name || 'Sans nom',
+            id: key.id,
             keyPrefix: key.keyPrefix,
+            name: key.name || 'Sans nom',
             tier: key.tier,
             quotaDaily: limits.dailyLimit,
-            usedToday: dailyUsage,
-            usedThisHour: hourlyUsage,
-            usedThisMonth: monthlyUsage,
-            remainingToday: Math.max(0, limits.dailyLimit - dailyUsage),
-            successRate,
-            lastUsedAt: key.lastUsedAt,
-            createdAt: key.createdAt
+            quotaHourly: limits.rateLimit,
+            createdAt: key.createdAt.toISOString(),
+            lastUsedAt: key.lastUsedAt?.toISOString() || null,
+            usage: {
+              requestsToday: dailyUsage,
+              requestsThisHour: hourlyUsage,
+              successRate
+            }
           };
         })
       );
