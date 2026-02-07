@@ -52,6 +52,7 @@ export default function LibrariesPage() {
   useEffect(() => {
     const fetchLibraries = async () => {
       try {
+        setLoading(true);
         const params = new URLSearchParams();
         if (searchQuery) params.append('search', searchQuery);
         if (selectedEcosystem !== 'all') params.append('ecosystem', selectedEcosystem);
@@ -61,6 +62,10 @@ export default function LibrariesPage() {
         const response = await fetch(`/api/libraries?${params}`);
         const data = await response.json();
         setLibraries(data.libraries || []);
+        setStats({
+          userImported: data.stats?.userImported || 0,
+          totalLibraries: data.stats?.totalLibraries || data.libraries?.length || 0
+        });
       } catch (error) {
         console.error('Failed to fetch libraries:', error);
       } finally {
