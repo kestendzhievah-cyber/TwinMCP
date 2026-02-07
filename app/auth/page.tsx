@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -15,7 +15,8 @@ import {
   Shield,
   Zap,
   Code2,
-  Github
+  Github,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
@@ -28,7 +29,14 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
 
   const router = useRouter();
-  const { signIn, signInWithGoogle, signInWithGithub } = useAuth();
+  const { signIn, signInWithGoogle, signInWithGithub, rememberMe, setRememberMe, user, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +50,7 @@ export default function AuthPage() {
     setError('');
 
     try {
-      await signIn(email, password);
+      await signIn(email, password, rememberMe);
       setSuccess('Connexion réussie ! Redirection...');
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
@@ -63,6 +71,9 @@ export default function AuthPage() {
         case 'auth/too-many-requests':
           errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
           break;
+        case 'auth/invalid-credential':
+          errorMessage = 'Email ou mot de passe incorrect';
+          break;
         default:
           errorMessage = err.message || 'Identifiants incorrects';
       }
@@ -77,7 +88,7 @@ export default function AuthPage() {
     setError('');
 
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(rememberMe);
       setSuccess('Connexion réussie ! Redirection...');
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
@@ -103,7 +114,7 @@ export default function AuthPage() {
     setError('');
 
     try {
-      await signInWithGithub();
+      await signInWithGithub(rememberMe);
       setSuccess('Connexion réussie ! Redirection...');
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
@@ -150,6 +161,15 @@ export default function AuthPage() {
     }
   ];
 
+  // Show loading while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 flex">
       {/* Left Side - Login Form */}
@@ -159,6 +179,7 @@ export default function AuthPage() {
           <Link 
             href="/"
             className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition mb-6 group"
+            data-testid="back-to-home"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span>Retour à l'accueil</span>
@@ -182,24 +203,63 @@ export default function AuthPage() {
 
             {/* Error/Success Messages */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3" data-testid="auth-error">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                 <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3" data-testid="auth-success">
                 <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                 <p className="text-green-600 text-sm">{success}</p>
               </div>
             )}
+
+            {/* Remember Me Checkbox - Always visible */}
+            <div className="mb-6">
+              <label 
+                className="flex items-center gap-3 cursor-pointer group select-none"
+                data-testid="remember-me-label"
+              >
+                <div 
+                  className={`relative w-5 h-5 rounded border-2 transition-all flex items-center justify-center ${
+                    rememberMe 
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 border-purple-500' 
+                      : 'bg-white border-gray-300 group-hover:border-purple-400'
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setRememberMe(!rememberMe);
+                  }}
+                >
+                  {rememberMe && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                </div>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="sr-only"
+                  data-testid="remember-me-checkbox"
+                />
+                <div className="flex-1">
+                  <span className="text-gray-700 font-medium">Se souvenir de moi</span>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {rememberMe 
+                      ? '✓ Vous resterez connecté même après fermeture du navigateur' 
+                      : 'Votre session expirera à la fermeture du navigateur'
+                    }
+                  </p>
+                </div>
+              </label>
+            </div>
 
             {/* Google Button */}
             <button
               onClick={handleGoogleLogin}
               disabled={isLoading}
               className="w-full mb-3 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50"
+              data-testid="google-login-btn"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -215,6 +275,7 @@ export default function AuthPage() {
               onClick={handleGithubLogin}
               disabled={isLoading}
               className="w-full mb-6 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50"
+              data-testid="github-login-btn"
             >
               <Github className="w-5 h-5" />
               <span>Continuer avec GitHub</span>
@@ -232,7 +293,7 @@ export default function AuthPage() {
 
             {/* Email Form */}
             {step === 'email' ? (
-              <form onSubmit={handleEmailSubmit}>
+              <form onSubmit={handleEmailSubmit} data-testid="email-form">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Adresse email
                 </label>
@@ -243,18 +304,20 @@ export default function AuthPage() {
                   placeholder="Entrez votre adresse email"
                   required
                   className="w-full px-4 py-3 bg-white border border-gray-200 text-gray-900 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition mb-4"
+                  data-testid="email-input"
                 />
                 <button
                   type="submit"
                   disabled={isLoading || !email.trim()}
                   className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  data-testid="continue-btn"
                 >
                   Continuer
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
             ) : (
-              <form onSubmit={handlePasswordSubmit}>
+              <form onSubmit={handlePasswordSubmit} data-testid="password-form">
                 <div className="mb-4 p-3 bg-purple-50 rounded-xl">
                   <p className="text-sm text-purple-700">
                     <Mail className="w-4 h-4 inline mr-2" />
@@ -270,7 +333,9 @@ export default function AuthPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Entrez votre mot de passe"
                   required
+                  autoFocus
                   className="w-full px-4 py-3 bg-white border border-gray-200 text-gray-900 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition mb-2"
+                  data-testid="password-input"
                 />
                 <div className="flex justify-end mb-4">
                   <Link href="/forgot-password" className="text-sm text-purple-600 hover:text-purple-700">
@@ -281,6 +346,7 @@ export default function AuthPage() {
                   type="submit"
                   disabled={isLoading}
                   className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  data-testid="login-btn"
                 >
                   {isLoading ? (
                     <>
@@ -359,6 +425,20 @@ export default function AuthPage() {
                 <span className="text-white text-lg">{feature.text}</span>
               </div>
             ))}
+          </div>
+
+          {/* Remember Me Info */}
+          <div className="mt-10 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Shield className="w-5 h-5 text-purple-400 mt-0.5" />
+              <div>
+                <p className="text-white font-medium">Connexion sécurisée</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Activez "Se souvenir de moi" pour rester connecté en toute sécurité,
+                  même après la fermeture de votre navigateur.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
