@@ -95,6 +95,25 @@ const DEFAULT_LIBRARY_CATALOG = [
   }
 ];
 
+// POST - Receive client-side libraries for merging
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const clientLibraries: any[] = body.clientLibraries || [];
+    
+    // Just acknowledge receipt - these are already stored client-side
+    return NextResponse.json({
+      success: true,
+      received: clientLibraries.length
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: 'Invalid request' },
+      { status: 400 }
+    );
+  }
+}
+
 // GET - List all libraries with optional filtering
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -107,6 +126,17 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const includeDefaults = searchParams.get('includeDefaults') !== 'false';
+  
+  // Client-side libraries passed as JSON in header (base64 encoded)
+  let clientLibraries: any[] = [];
+  const clientLibsHeader = searchParams.get('clientLibraries');
+  if (clientLibsHeader) {
+    try {
+      clientLibraries = JSON.parse(decodeURIComponent(clientLibsHeader));
+    } catch {
+      // Ignore parse errors
+    }
+  }
 
   let allLibraries: any[] = [];
   let dbLibraries: any[] = [];
@@ -169,16 +199,66 @@ export async function GET(request: NextRequest) {
       snippets: lib.totalSnippets,
       lastCrawled: lib.lastCrawledAt?.toISOString() || lib.createdAt.toISOString(),
       tags: lib.tags,
-      isUserImported: true // Flag to distinguish user-imported libraries
+      isUserImported: true
     }));
 
   } catch (dbError) {
-    console.warn('Database unavailable, using default catalog:', dbError);
+    console.warn('Database unavailable, using client libraries and defaults');
+  }
+
+  // Process client-side libraries
+  const processedClientLibs = clientLibraries.map(lib => ({
+    id: lib.id,
+    name: lib.name || lib.displayName,
+    vendor: lib.vendor || 'Unknown',
+    ecosystem: lib.ecosystem || 'npm',
+    language: lib.language || 'JavaScript/TypeScript',
+    description: lib.description || '',
+    repo: lib.repo || lib.repoUrl || '',
+    docs: lib.docs || lib.docsUrl || '',
+    versions: lib.versions || ['1.0.0'],
+    defaultVersion: lib.defaultVersion || '1.0.0',
+    popularity: lib.popularity || 50,
+    tokens: lib.tokens || 0,
+    snippets: lib.snippets || 0,
+    lastCrawled: lib.lastCrawled || lib.createdAt || new Date().toISOString(),
+    tags: lib.tags || [],
+    isUserImported: true
+  }));
+
+  // Filter client libraries based on search params
+  let filteredClientLibs = processedClientLibs;
+  if (search) {
+    filteredClientLibs = filteredClientLibs.filter(lib => 
+      lib.name.toLowerCase().includes(search) ||
+      lib.description.toLowerCase().includes(search)
+    );
+  }
+  if (ecosystem && ecosystem !== 'all') {
+    filteredClientLibs = filteredClientLibs.filter(lib => lib.ecosystem === ecosystem);
+  }
+
+  // Merge: client libraries first, then DB libraries, then defaults
+  const existingIds = new Set<string>();
+  
+  // Add client libraries first
+  for (const lib of filteredClientLibs) {
+    if (!existingIds.has(lib.id)) {
+      allLibraries.push(lib);
+      existingIds.add(lib.id);
+    }
+  }
+  
+  // Add DB libraries
+  for (const lib of dbLibraries) {
+    if (!existingIds.has(lib.id)) {
+      allLibraries.push(lib);
+      existingIds.add(lib.id);
+    }
   }
 
   // Combine with default catalog if enabled
   if (includeDefaults) {
-    // Filter default catalog based on search params
     let filteredDefaults = [...DEFAULT_LIBRARY_CATALOG];
     
     if (search) {
@@ -203,19 +283,13 @@ export async function GET(request: NextRequest) {
       filteredDefaults = filteredDefaults.filter(lib => lib.tags.includes(tag));
     }
 
-    // Mark default libraries and merge (user imports first)
-    const defaultsWithFlag = filteredDefaults.map(lib => ({
-      ...lib,
-      isUserImported: false
-    }));
-
-    // Merge: user-imported libraries first, then defaults (avoid duplicates by ID)
-    const existingIds = new Set(dbLibraries.map(lib => lib.id));
-    const uniqueDefaults = defaultsWithFlag.filter(lib => !existingIds.has(lib.id));
-    
-    allLibraries = [...dbLibraries, ...uniqueDefaults];
-  } else {
-    allLibraries = dbLibraries;
+    // Add defaults that don't already exist
+    for (const lib of filteredDefaults) {
+      if (!existingIds.has(lib.id)) {
+        allLibraries.push({ ...lib, isUserImported: false });
+        existingIds.add(lib.id);
+      }
+    }
   }
 
   // Sort combined list
@@ -261,6 +335,8 @@ export async function GET(request: NextRequest) {
     allLanguages.add(lib.language);
   });
 
+  const userImportedCount = allLibraries.filter(lib => lib.isUserImported).length;
+
   return NextResponse.json({
     libraries: paginatedLibraries,
     pagination: {
@@ -276,8 +352,8 @@ export async function GET(request: NextRequest) {
     },
     stats: {
       totalLibraries: total,
-      userImported: dbLibraries.length,
-      defaultCatalog: allLibraries.length - dbLibraries.length,
+      userImported: userImportedCount,
+      defaultCatalog: total - userImportedCount,
       totalTokens: allLibraries.reduce((sum, lib) => sum + lib.tokens, 0),
       totalSnippets: allLibraries.reduce((sum, lib) => sum + lib.snippets, 0)
     }
