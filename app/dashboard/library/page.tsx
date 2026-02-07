@@ -105,12 +105,16 @@ export default function LibrariesPage() {
             Bibliothèques
           </h1>
           <p className="text-gray-400 mt-1">
-            {libraries.length} bibliothèques indexées avec documentation à jour
+            {stats.totalLibraries} bibliothèques indexées
+            {stats.userImported > 0 && (
+              <span className="text-purple-400"> • {stats.userImported} importées par vous</span>
+            )}
           </p>
         </div>
         <Link
           href="/dashboard/agent-builder"
           className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-pink-600 transition flex items-center gap-2 w-fit shadow-lg shadow-purple-500/30"
+          data-testid="add-library-btn"
         >
           <Plus className="w-5 h-5" />
           Ajouter une bibliothèque
