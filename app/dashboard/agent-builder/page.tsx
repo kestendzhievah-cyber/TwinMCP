@@ -15,11 +15,16 @@ import {
   AlertCircle,
   Loader2,
   BookOpen,
-  Settings,
-  ArrowLeft,
   Database,
   Code,
-  X
+  X,
+  ExternalLink,
+  Zap,
+  Shield,
+  RefreshCw,
+  Plus,
+  Rocket,
+  Library
 } from 'lucide-react';
 
 // Icônes personnalisées pour les sources
@@ -103,7 +108,7 @@ export default function AjouterBibliotheques() {
       id: 'openapi',
       name: 'OpenAPI',
       icon: <OpenAPIIcon />,
-      description: 'Importer une spécification OpenAPI/Swagger',
+      description: 'Spécification OpenAPI/Swagger JSON ou YAML',
       placeholder: 'https://api.exemple.com/openapi.json',
       available: true
     },
@@ -111,7 +116,7 @@ export default function AjouterBibliotheques() {
       id: 'llms',
       name: 'LLMs.txt',
       icon: <FileText className="w-6 h-6" />,
-      description: 'Importer depuis un fichier LLMs.txt',
+      description: 'Fichier llms.txt pour documentation LLM',
       placeholder: 'https://exemple.com/llms.txt',
       available: true
     },
@@ -119,25 +124,18 @@ export default function AjouterBibliotheques() {
       id: 'website',
       name: 'Site Web',
       icon: <Globe className="w-6 h-6" />,
-      description: 'Extraire la documentation d\'un site web',
+      description: 'Extraire la documentation depuis un site web',
       placeholder: 'https://docs.exemple.com',
       available: true
     }
   ];
 
-  const handleSourceClick = useCallback((sourceId: string) => {
-    setSelectedSource(sourceId);
-    setImportUrl('');
-    setLibraryName('');
-    setImportResult(null);
-  }, []);
-
   const handleImport = useCallback(async () => {
-    if (!importUrl.trim() || !selectedSource) return;
-    
+    if (!selectedSource || !importUrl.trim()) return;
+
     setIsImporting(true);
     setImportResult(null);
-    
+
     try {
       const response = await fetch('/api/libraries/import', {
         method: 'POST',
@@ -147,7 +145,7 @@ export default function AjouterBibliotheques() {
         body: JSON.stringify({
           source: selectedSource,
           url: importUrl.trim(),
-          name: libraryName.trim() || undefined
+          name: libraryName.trim() || undefined,
         }),
       });
 
@@ -167,12 +165,12 @@ export default function AjouterBibliotheques() {
     } catch (error) {
       setImportResult({
         success: false,
-        error: 'Erreur de connexion au serveur. Veuillez réessayer.'
+        error: 'Erreur de connexion. Veuillez réessayer.'
       });
     } finally {
       setIsImporting(false);
     }
-  }, [importUrl, selectedSource, libraryName]);
+  }, [importUrl, selectedSource, libraryName, router]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && importUrl.trim() && !isImporting) {
@@ -190,153 +188,167 @@ export default function AjouterBibliotheques() {
   const selectedSourceData = librarySources.find(s => s.id === selectedSource);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520] text-white">
-      {/* Navigation */}
-      <nav className="border-b border-purple-500/20 bg-[#1a1b2e]/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-          <div className="flex justify-between items-center h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link href="/dashboard" className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg sm:rounded-xl flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+    <div className="space-y-6">
+      {/* Hero Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600/20 via-pink-500/10 to-purple-800/20 border border-purple-500/30">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-4 left-8 w-32 h-32 bg-purple-500 rounded-full blur-3xl" />
+          <div className="absolute bottom-4 right-8 w-40 h-40 bg-pink-500 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="relative p-6 lg:p-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            {/* Left Content */}
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+                  <Rocket className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-base sm:text-xl font-bold text-white">TwinMCP</span>
-              </Link>
+                <div>
+                  <h1 className="text-2xl lg:text-3xl font-bold text-white">
+                    Déployer un Serveur MCP
+                  </h1>
+                  <p className="text-gray-400 text-sm">
+                    Importez votre documentation en quelques clics
+                  </p>
+                </div>
+              </div>
+              
+              {/* Features Pills */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-300">
+                  <Zap className="w-3.5 h-3.5" />
+                  Import rapide
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full text-sm text-green-300">
+                  <Shield className="w-3.5 h-3.5" />
+                  Sécurisé
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-sm text-blue-300">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Mise à jour auto
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
-              <Link href="/pricing" className="hidden md:block text-gray-300 hover:text-white transition font-medium text-sm underline">
-                Tarifs
-              </Link>
-              <Link href="/dashboard/docs" className="hidden sm:flex text-gray-300 hover:text-white transition font-medium items-center gap-1 text-sm">
-                <BookOpen className="w-4 h-4" />
-                <span className="hidden lg:inline">Docs</span>
-              </Link>
-              <Link href="/dashboard/settings" className="hidden lg:flex text-gray-300 hover:text-white transition font-medium items-center gap-1 text-sm">
-                <Settings className="w-4 h-4" />
-                <span>Paramètres</span>
-              </Link>
-              <Link
-                href="/dashboard"
-                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs sm:text-sm font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition flex items-center gap-1.5"
+            {/* Right Stats */}
+            <div className="flex gap-4 lg:gap-6">
+              <div className="text-center p-4 bg-[#1a1b2e]/50 rounded-xl border border-purple-500/20">
+                <div className="text-2xl lg:text-3xl font-bold text-white">6</div>
+                <div className="text-xs text-gray-400">Sources</div>
+              </div>
+              <div className="text-center p-4 bg-[#1a1b2e]/50 rounded-xl border border-purple-500/20">
+                <div className="text-2xl lg:text-3xl font-bold text-purple-400">{recentImports.length}</div>
+                <div className="text-xs text-gray-400">Importés</div>
+              </div>
+              <Link 
+                href="/dashboard/library"
+                className="hidden lg:flex flex-col items-center justify-center p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30 hover:border-purple-500/50 transition group"
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Retour</span>
+                <Library className="w-6 h-6 text-purple-400 group-hover:text-purple-300 transition" />
+                <div className="text-xs text-gray-400 mt-1">Voir tout</div>
               </Link>
             </div>
           </div>
         </div>
-      </nav>
+      </div>
 
-      {/* Contenu Principal */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-8 py-8 sm:py-12">
-        {/* En-tête */}
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-              Ajouter une bibliothèque
-            </span>
-          </h1>
-          <p className="text-gray-400 text-sm sm:text-base">
-            Sélectionnez une source et importez votre documentation pour la rendre accessible aux LLMs
-          </p>
-        </div>
-
-        {/* Carte principale */}
-        <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6 sm:p-8 mb-8">
-          {/* Grille des sources */}
-          <div className="mb-8">
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Source Selection */}
+        <div className="lg:col-span-2">
+          <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Database className="w-5 h-5 text-purple-400" />
-              Sources disponibles
+              Choisir une source
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {librarySources.map((source) => (
                 <button
                   key={source.id}
-                  onClick={() => handleSourceClick(source.id)}
+                  onClick={() => {
+                    setSelectedSource(source.id);
+                    setImportResult(null);
+                  }}
                   disabled={!source.available}
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 text-left ${
+                  className={`group p-4 rounded-xl border transition-all text-left ${
                     selectedSource === source.id
-                      ? 'bg-purple-500/20 border-purple-500 shadow-lg shadow-purple-500/20'
+                      ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-purple-500/50 ring-2 ring-purple-500/30'
                       : source.available
-                        ? 'bg-[#0f1020] border-purple-500/20 hover:border-purple-500/50 hover:bg-purple-500/10'
-                        : 'bg-[#0f1020]/50 border-gray-700/50 opacity-50 cursor-not-allowed'
+                        ? 'bg-[#0f1020] border-purple-500/20 hover:border-purple-500/40 hover:bg-purple-500/5'
+                        : 'bg-gray-900/30 border-gray-700/30 opacity-50 cursor-not-allowed'
                   }`}
+                  data-testid={`source-${source.id}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`${selectedSource === source.id ? 'text-purple-400' : 'text-gray-400'}`}>
-                      {source.icon}
-                    </div>
-                    <div>
-                      <span className={`font-medium block ${selectedSource === source.id ? 'text-white' : 'text-gray-300'}`}>
-                        {source.name}
-                      </span>
-                      <span className="text-xs text-gray-500 hidden sm:block">
-                        {source.description}
-                      </span>
-                    </div>
+                  <div className={`mb-2 ${
+                    selectedSource === source.id 
+                      ? 'text-purple-400' 
+                      : 'text-gray-400 group-hover:text-purple-400'
+                  }`}>
+                    {source.icon}
                   </div>
-                  <ChevronRight className={`w-5 h-5 flex-shrink-0 ${selectedSource === source.id ? 'text-purple-400' : 'text-gray-600'}`} />
+                  <p className={`font-medium text-sm ${
+                    selectedSource === source.id ? 'text-white' : 'text-gray-300'
+                  }`}>
+                    {source.name}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                    {source.description}
+                  </p>
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Formulaire d'import */}
-          {selectedSource && selectedSourceData && (
-            <div className="bg-[#0f1020] border border-purple-500/20 rounded-xl p-6 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Code className="w-5 h-5 text-purple-400" />
-                  Importer depuis {selectedSourceData.name}
-                </h3>
-                <button
-                  onClick={clearSelection}
-                  className="p-1 text-gray-500 hover:text-white transition rounded-lg hover:bg-purple-500/20"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <p className="text-gray-400 text-sm mb-4">
-                {selectedSourceData.description}
-              </p>
+            {/* Import Form */}
+            {selectedSource && selectedSourceData && (
+              <div className="mt-6 pt-6 border-t border-purple-500/20 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white font-medium flex items-center gap-2">
+                    <span className="text-purple-400">{selectedSourceData.icon}</span>
+                    Importer depuis {selectedSourceData.name}
+                  </h3>
+                  <button
+                    onClick={clearSelection}
+                    className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-              <div className="space-y-4">
-                {/* Champ URL */}
+                {/* URL Input */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    URL de la source *
-                  </label>
+                  <label className="block text-sm text-gray-400 mb-2">URL *</label>
                   <input
                     type="url"
                     value={importUrl}
                     onChange={(e) => setImportUrl(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={selectedSourceData.placeholder}
-                    className="w-full bg-[#1a1b2e] border border-purple-500/30 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+                    className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+                    data-testid="import-url-input"
                   />
                 </div>
 
-                {/* Champ Nom (optionnel) */}
+                {/* Optional Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Nom de la bibliothèque (optionnel)
+                  <label className="block text-sm text-gray-400 mb-2">
+                    Nom personnalisé <span className="text-gray-600">(optionnel)</span>
                   </label>
                   <input
                     type="text"
                     value={libraryName}
                     onChange={(e) => setLibraryName(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Ex: React, Next.js, Mon API..."
-                    className="w-full bg-[#1a1b2e] border border-purple-500/30 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+                    placeholder="Ex: Ma Bibliothèque"
+                    className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+                    data-testid="import-name-input"
                   />
                 </div>
 
-                {/* Message de résultat */}
+                {/* Result Message */}
                 {importResult && (
-                  <div className={`p-4 rounded-lg flex items-start gap-3 ${
+                  <div className={`p-4 rounded-xl flex items-start gap-3 ${
                     importResult.success 
                       ? 'bg-green-500/10 border border-green-500/30' 
                       : 'bg-red-500/10 border border-red-500/30'
@@ -374,94 +386,96 @@ export default function AjouterBibliotheques() {
                   </div>
                 )}
 
-                {/* Bouton d'import */}
+                {/* Import Button */}
                 <button
                   onClick={handleImport}
-                  disabled={isImporting || !importUrl.trim()}
-                  className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={!importUrl.trim() || isImporting}
+                  className="w-full py-3.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30"
+                  data-testid="import-btn"
                 >
                   {isImporting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Importation en cours...
-                    </>
-                  ) : importResult?.success ? (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      Importé avec succès !
+                      Import en cours...
                     </>
                   ) : (
                     <>
-                      <ArrowRight className="w-5 h-5" />
-                      Importer la bibliothèque
+                      <Plus className="w-5 h-5" />
+                      Importer la documentation
                     </>
                   )}
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Imports récents */}
-        {recentImports.length > 0 && (
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Recent Imports */}
           <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-purple-400" />
+              <Clock className="w-5 h-5 text-blue-400" />
               Imports récents
             </h3>
-            <div className="space-y-3">
-              {recentImports.map((item, index) => (
-                <div
-                  key={`${item.libraryId}-${index}`}
-                  className="flex items-center justify-between p-3 bg-[#0f1020] rounded-lg border border-purple-500/10"
-                >
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                    <div>
-                      <p className="font-medium text-white">{item.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {item.tokensCount?.toLocaleString()} tokens • {item.snippetsCount?.toLocaleString()} snippets
-                      </p>
+            
+            {recentImports.length > 0 ? (
+              <div className="space-y-3">
+                {recentImports.map((imp, index) => (
+                  <div key={index} className="p-3 bg-[#0f1020] rounded-xl">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-white text-sm">{imp.name}</span>
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded">
+                        {imp.source}
+                      </span>
+                      <span>{imp.tokensCount?.toLocaleString()} tokens</span>
                     </div>
                   </div>
-                  <span className="text-xs text-purple-400 bg-purple-500/10 px-2 py-1 rounded">
-                    {item.source}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500">
+                <Database className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Aucun import récent</p>
+                <p className="text-xs mt-1">Sélectionnez une source pour commencer</p>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Lien retour */}
-        <div className="text-center mt-8">
-          <Link 
-            href="/dashboard" 
-            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition group"
-          >
-            <Clock className="w-4 h-4" />
-            Voir les tâches en cours
-            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
+          {/* Tips */}
+          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-2xl p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-yellow-400" />
+              Conseils
+            </h3>
+            <ul className="space-y-3 text-sm text-gray-400">
+              <li className="flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                <span>Utilisez des dépôts publics pour un import plus rapide</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                <span>Les fichiers README et docs/ sont automatiquement indexés</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                <span>Les mises à jour sont synchronisées automatiquement</span>
+              </li>
+            </ul>
+            
+            <Link
+              href="/dashboard/docs"
+              className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl hover:bg-purple-500/30 transition text-sm font-medium"
+            >
+              <BookOpen className="w-4 h-4" />
+              Voir la documentation
+            </Link>
+          </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t border-purple-500/20 py-8 px-4 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-gray-500 text-sm">
-            © 2026 TwinMCP - Propulsé par{' '}
-            <Link href="/" className="text-purple-400 hover:text-purple-300">
-              NéoTech
-            </Link>
-          </p>
-          <div className="flex items-center gap-6 text-sm">
-            <Link href="/about" className="text-gray-400 hover:text-white transition">À propos</Link>
-            <Link href="/contact" className="text-gray-400 hover:text-white transition">Contact</Link>
-            <Link href="/legal" className="text-gray-400 hover:text-white transition">Mentions légales</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
