@@ -194,13 +194,30 @@ export default function LibrariesPage() {
             <Link
               key={lib.id}
               href={`/dashboard/library/${encodeURIComponent(lib.id)}`}
-              className="group bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5 hover:border-purple-500/40 transition"
+              className={`group bg-[#1a1b2e] border rounded-2xl p-5 hover:border-purple-500/40 transition ${
+                lib.isUserImported 
+                  ? 'border-green-500/30 ring-1 ring-green-500/20' 
+                  : 'border-purple-500/20'
+              }`}
+              data-testid={`library-card-${lib.id}`}
             >
+              {/* User Imported Badge */}
+              {lib.isUserImported && (
+                <div className="flex items-center gap-1.5 mb-3 text-xs text-green-400">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Importé par vous</span>
+                </div>
+              )}
+              
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-purple-400" />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    lib.isUserImported 
+                      ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/20' 
+                      : 'bg-gradient-to-br from-purple-500/20 to-pink-500/20'
+                  }`}>
+                    <BookOpen className={`w-6 h-6 ${lib.isUserImported ? 'text-green-400' : 'text-purple-400'}`} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white group-hover:text-purple-400 transition">
