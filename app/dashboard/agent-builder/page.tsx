@@ -156,10 +156,12 @@ export default function AjouterBibliotheques() {
 
       if (result.success && result.data) {
         setRecentImports(prev => [result.data!, ...prev.slice(0, 4)]);
-        // Réinitialiser le formulaire après succès
+        // Réinitialiser le formulaire après succès et rediriger vers la bibliothèque
         setTimeout(() => {
           setImportUrl('');
           setLibraryName('');
+          // Rediriger vers la page de la bibliothèque après 2 secondes
+          router.push('/dashboard/library');
         }, 2000);
       }
     } catch (error) {
