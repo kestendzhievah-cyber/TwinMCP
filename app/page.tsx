@@ -279,7 +279,7 @@ export default function AgentFlowLanding() {
             </div>
             <div className="flex space-x-4">
               <button 
-                onClick={() => router.push('/login')}
+                onClick={() => router.push('/auth')}
                 className="px-4 py-2 text-white hover:text-purple-400 transition"
                 data-testid="nav-login"
               >

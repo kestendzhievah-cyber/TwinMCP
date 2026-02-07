@@ -189,7 +189,7 @@ function PricingContent() {
               </Link>
             ) : (
               <>
-                <Link href="/login" className="text-gray-300 hover:text-white transition">
+                <Link href="/auth" className="text-gray-300 hover:text-white transition">
                   Connexion
                 </Link>
                 <Link
