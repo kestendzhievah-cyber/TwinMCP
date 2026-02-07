@@ -41,6 +41,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Bibliothèques", href: "/dashboard/library", icon: Library },
+  { name: "Ajouter", href: "/dashboard/agent-builder", icon: Plus, badge: "New", badgeColor: "bg-pink-500" },
   { name: "Clés API", href: "/dashboard/api-keys", icon: Key },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Serveur MCP", href: "/dashboard/mcp-guide", icon: Server, badge: "Live", badgeColor: "bg-green-500" },
