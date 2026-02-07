@@ -193,7 +193,7 @@ function PricingContent() {
                   Connexion
                 </Link>
                 <Link
-                  href="/login"
+                  href="/auth"
                   className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/30"
                 >
                   Essai Gratuit
