@@ -1,7 +1,7 @@
 // Firebase configuration
-import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getAuth, browserLocalPersistence, browserSessionPersistence, setPersistence } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app'
+import { getAuth, browserLocalPersistence, browserSessionPersistence, setPersistence, Auth } from 'firebase/auth'
+import { getFirestore, Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: process.env['NEXT_PUBLIC_FIREBASE_API_KEY'] || '',
@@ -18,8 +18,7 @@ const isFirebaseConfigValid = () => {
   const missingFields = requiredFields.filter(field => !firebaseConfig[field as keyof typeof firebaseConfig]);
   
   if (missingFields.length > 0) {
-    console.error('❌ Configuration Firebase incomplète. Champs manquants:', missingFields);
-    console.error('📖 Consultez FIREBASE_SETUP_GUIDE.md pour configurer Firebase correctement');
+    console.warn('⚠️ Configuration Firebase incomplète. Champs manquants:', missingFields);
     return false;
   }
   
@@ -27,8 +26,7 @@ const isFirebaseConfigValid = () => {
   if (firebaseConfig.apiKey.includes('your-') || 
       firebaseConfig.messagingSenderId === '123456789012' ||
       firebaseConfig.appId.includes('abcdef')) {
-    console.error('❌ Configuration Firebase utilise des valeurs de placeholder');
-    console.error('📖 Consultez FIREBASE_SETUP_GUIDE.md pour obtenir vos vraies clés Firebase');
+    console.warn('⚠️ Configuration Firebase utilise des valeurs de placeholder');
     return false;
   }
   
@@ -36,23 +34,25 @@ const isFirebaseConfigValid = () => {
 };
 
 // Initialize Firebase - avoid multiple initializations
-let app;
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
+let firebaseInitialized = false;
+
 try {
-  if (!isFirebaseConfigValid()) {
-    throw new Error('Configuration Firebase invalide. Consultez FIREBASE_SETUP_GUIDE.md');
+  if (isFirebaseConfigValid()) {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    auth = getAuth(app);
+    db = getFirestore(app);
+    firebaseInitialized = true;
+    console.log('✅ Firebase initialisé avec succès');
+  } else {
+    console.warn('⚠️ Firebase non initialisé - configuration incomplète');
   }
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-  console.log('✅ Firebase initialisé avec succès');
 } catch (error) {
   console.error('❌ Erreur lors de l\'initialisation de Firebase:', error);
-  throw error;
+  // Don't throw - allow app to continue without Firebase
 }
-
-// Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app)
-
-// Initialize Cloud Firestore and get a reference to the service
-export const db = getFirestore(app)
 
 // Persistence types for "Remember Me" functionality
 export const AUTH_PERSISTENCE = {
@@ -65,13 +65,17 @@ export const AUTH_PERSISTENCE = {
  * @param rememberMe - If true, use local persistence; if false, use session persistence
  */
 export async function setAuthPersistence(rememberMe: boolean): Promise<void> {
+  if (!auth) {
+    console.warn('Firebase auth not initialized');
+    return;
+  }
+  
   try {
     const persistence = rememberMe ? AUTH_PERSISTENCE.LOCAL : AUTH_PERSISTENCE.SESSION
     await setPersistence(auth, persistence)
     console.log(`✅ Persistance définie: ${rememberMe ? 'LOCAL (Se souvenir de moi)' : 'SESSION'}`)
   } catch (error) {
     console.error('❌ Erreur lors de la définition de la persistance:', error)
-    throw error
   }
 }
 
@@ -80,7 +84,11 @@ export async function setAuthPersistence(rememberMe: boolean): Promise<void> {
  */
 export function getRememberMePreference(): boolean {
   if (typeof window === 'undefined') return false
-  return localStorage.getItem('twinmcp_remember_me') === 'true'
+  try {
+    return localStorage.getItem('twinmcp_remember_me') === 'true'
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -88,10 +96,14 @@ export function getRememberMePreference(): boolean {
  */
 export function saveRememberMePreference(rememberMe: boolean): void {
   if (typeof window === 'undefined') return
-  if (rememberMe) {
-    localStorage.setItem('twinmcp_remember_me', 'true')
-  } else {
-    localStorage.removeItem('twinmcp_remember_me')
+  try {
+    if (rememberMe) {
+      localStorage.setItem('twinmcp_remember_me', 'true')
+    } else {
+      localStorage.removeItem('twinmcp_remember_me')
+    }
+  } catch {
+    // Ignore localStorage errors
   }
 }
 
@@ -100,7 +112,20 @@ export function saveRememberMePreference(rememberMe: boolean): void {
  */
 export function clearRememberMePreference(): void {
   if (typeof window === 'undefined') return
-  localStorage.removeItem('twinmcp_remember_me')
+  try {
+    localStorage.removeItem('twinmcp_remember_me')
+  } catch {
+    // Ignore localStorage errors
+  }
 }
 
+/**
+ * Check if Firebase is properly initialized
+ */
+export function isFirebaseReady(): boolean {
+  return firebaseInitialized && auth !== null;
+}
+
+// Export with null safety
+export { app, auth, db, firebaseInitialized }
 export default app
