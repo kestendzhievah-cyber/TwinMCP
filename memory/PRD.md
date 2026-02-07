@@ -18,6 +18,37 @@ TwinMCP is an MCP (Model Context Protocol) server that provides up-to-date docum
 
 ## What's Been Implemented
 
+### Session 5 - Backend Authentication System (2025-12)
+- ✅ **Service d'authentification centralisé** (`/lib/services/user-auth.service.ts`)
+  - Vérification des tokens Firebase Admin
+  - Création automatique d'utilisateurs en base de données
+  - Gestion des profils (UserProfile)
+  - Attribution automatique du plan "free"
+  - Cache Redis pour les sessions et utilisateurs
+  
+- ✅ **Rate Limiting** (`/lib/middleware/rate-limiter.ts`)
+  - Sliding window avec Redis (60 req/min)
+  - Configurations multiples (auth: 10/min, api: 60/min, heavy: 10/min)
+  - Headers standards (X-RateLimit-Limit, X-RateLimit-Remaining)
+  - Fallback en mémoire si Redis indisponible
+  
+- ✅ **Middleware d'authentification** (`/lib/middleware/auth-middleware.ts`)
+  - Support Bearer token (Firebase) et API Key
+  - Validation et extraction automatique
+  - Contexte d'authentification complet
+  
+- ✅ **Nouvelles APIs d'authentification**
+  - `POST /api/auth/verify` - Vérifier token et créer session
+  - `GET /api/auth/me` - Récupérer profil utilisateur
+  - `GET/POST /api/auth/session` - Gestion des sessions
+  - `POST /api/auth/logout` - Déconnexion
+  - `GET/PUT /api/auth/profile` - Gestion du profil
+  
+- ✅ **Auth Context amélioré** (`/lib/auth-context.tsx`)
+  - Synchronisation automatique avec backend
+  - Profil étendu avec statistiques
+  - Méthodes updateProfile et refreshProfile
+
 ### Session 4 - Authentication & Dashboard Production-Ready (2025-12)
 - ✅ **Changement URL d'authentification `/login` → `/auth`**
   - Tous les liens mis à jour (landing page, pricing, signup, dashboard)
