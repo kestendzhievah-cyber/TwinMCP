@@ -36,6 +36,7 @@ interface Library {
   snippets: number;
   lastCrawled: string;
   tags: string[];
+  isUserImported?: boolean;
 }
 
 export default function LibrariesPage() {
@@ -45,6 +46,7 @@ export default function LibrariesPage() {
   const [selectedEcosystem, setSelectedEcosystem] = useState('all');
   const [sortBy, setSortBy] = useState('popularity');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [stats, setStats] = useState({ userImported: 0, totalLibraries: 0 });
 
   // Fetch libraries from API
   useEffect(() => {
