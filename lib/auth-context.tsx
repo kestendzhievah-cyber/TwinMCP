@@ -11,7 +11,13 @@ import {
   GithubAuthProvider,
   signInWithPopup,
 } from 'firebase/auth'
-import { auth } from './firebase'
+import { 
+  auth, 
+  setAuthPersistence, 
+  saveRememberMePreference, 
+  clearRememberMePreference,
+  getRememberMePreference 
+} from './firebase'
 
 // Extended user profile from backend
 export interface UserProfile {
@@ -47,10 +53,12 @@ interface AuthContextType {
   profile: UserProfile | null
   loading: boolean
   profileLoading: boolean
-  signIn: (email: string, password: string) => Promise<void>
+  rememberMe: boolean
+  setRememberMe: (value: boolean) => void
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
-  signInWithGoogle: () => Promise<void>
-  signInWithGithub: () => Promise<void>
+  signInWithGoogle: (rememberMe?: boolean) => Promise<void>
+  signInWithGithub: (rememberMe?: boolean) => Promise<void>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
   updateProfile: (data: Partial<UserProfile['profile']>) => Promise<boolean>
@@ -71,6 +79,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [profileLoading, setProfileLoading] = useState(false)
+  const [rememberMe, setRememberMeState] = useState(false)
+
+  // Initialize rememberMe from localStorage
+  useEffect(() => {
+    const saved = getRememberMePreference()
+    setRememberMeState(saved)
+  }, [])
+
+  // Wrapper to update rememberMe state and localStorage
+  const setRememberMe = useCallback((value: boolean) => {
+    setRememberMeState(value)
+    saveRememberMePreference(value)
+  }, [])
 
   /**
    * Verify token with backend and sync user
@@ -193,25 +214,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe
   }, [syncUserWithBackend])
 
-  const signIn = async (email: string, password: string) => {
-    const result = await signInWithEmailAndPassword(auth, email, password)
+  /**
+   * Sign in with email and password
+   */
+  const signIn = async (email: string, password: string, remember?: boolean) => {
+    const shouldRemember = remember !== undefined ? remember : rememberMe
+    
+    // Set persistence before signing in
+    await setAuthPersistence(shouldRemember)
+    saveRememberMePreference(shouldRemember)
+    
+    await signInWithEmailAndPassword(auth, email, password)
     // Sync will happen automatically via onAuthStateChanged
   }
 
+  /**
+   * Sign up with email and password
+   */
   const signUp = async (email: string, password: string) => {
+    // Always use local persistence for new accounts
+    await setAuthPersistence(true)
+    saveRememberMePreference(true)
+    
     await createUserWithEmailAndPassword(auth, email, password)
   }
 
-  const signInWithGoogle = async () => {
+  /**
+   * Sign in with Google
+   */
+  const signInWithGoogle = async (remember?: boolean) => {
+    const shouldRemember = remember !== undefined ? remember : rememberMe
+    
+    // Set persistence before signing in
+    await setAuthPersistence(shouldRemember)
+    saveRememberMePreference(shouldRemember)
+    
     const provider = new GoogleAuthProvider()
     await signInWithPopup(auth, provider)
   }
 
-  const signInWithGithub = async () => {
+  /**
+   * Sign in with GitHub
+   */
+  const signInWithGithub = async (remember?: boolean) => {
+    const shouldRemember = remember !== undefined ? remember : rememberMe
+    
+    // Set persistence before signing in
+    await setAuthPersistence(shouldRemember)
+    saveRememberMePreference(shouldRemember)
+    
     const provider = new GithubAuthProvider()
     await signInWithPopup(auth, provider)
   }
 
+  /**
+   * Logout
+   */
   const logout = async () => {
     // Logout from backend first
     if (user) {
@@ -228,6 +286,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
+    // Clear remember me preference
+    clearRememberMePreference()
+    setRememberMeState(false)
+    
     // Then logout from Firebase
     await signOut(auth)
     setProfile(null)
@@ -238,6 +300,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     loading,
     profileLoading,
+    rememberMe,
+    setRememberMe,
     signIn,
     signUp,
     signInWithGoogle,
