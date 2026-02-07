@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -15,7 +15,8 @@ import {
   Shield,
   Zap,
   Code2,
-  Github
+  Github,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
@@ -28,7 +29,14 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
 
   const router = useRouter();
-  const { signUp, signInWithGoogle, signInWithGithub } = useAuth();
+  const { signUp, signInWithGoogle, signInWithGithub, rememberMe, setRememberMe, user, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +79,7 @@ export default function SignupPage() {
     setError('');
 
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(rememberMe);
       setSuccess('Inscription réussie ! Redirection...');
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
