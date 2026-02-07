@@ -624,35 +624,43 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Link
-          href="/dashboard/docs"
-          className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
-        >
-          <BookOpen className="w-8 h-8 text-purple-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">Documentation</p>
-        </Link>
-        
-        <Link
           href="/dashboard/analytics"
           className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
+          data-testid="quick-action-analytics"
         >
           <BarChart3 className="w-8 h-8 text-blue-400 mb-3" />
           <p className="font-medium text-white group-hover:text-purple-400 transition">Analytics</p>
+          <p className="text-xs text-gray-500 mt-1">Statistiques en temps réel</p>
         </Link>
         
         <Link
-          href="/chat"
+          href="/dashboard/billing"
           className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
-        >
-          <MessageSquare className="w-8 h-8 text-green-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">Chat</p>
-        </Link>
-        
-        <Link
-          href="/pricing"
-          className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
+          data-testid="quick-action-billing"
         >
           <Crown className="w-8 h-8 text-yellow-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">Plans</p>
+          <p className="font-medium text-white group-hover:text-purple-400 transition">Facturation</p>
+          <p className="text-xs text-gray-500 mt-1">Abonnement & factures</p>
+        </Link>
+        
+        <Link
+          href="/dashboard/api-keys"
+          className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
+          data-testid="quick-action-api-keys"
+        >
+          <Key className="w-8 h-8 text-purple-400 mb-3" />
+          <p className="font-medium text-white group-hover:text-purple-400 transition">Clés API</p>
+          <p className="text-xs text-gray-500 mt-1">Gérer vos clés</p>
+        </Link>
+        
+        <Link
+          href="/dashboard/docs"
+          className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
+          data-testid="quick-action-docs"
+        >
+          <BookOpen className="w-8 h-8 text-green-400 mb-3" />
+          <p className="font-medium text-white group-hover:text-purple-400 transition">Documentation</p>
+          <p className="text-xs text-gray-500 mt-1">Guides & API</p>
         </Link>
       </div>
 
