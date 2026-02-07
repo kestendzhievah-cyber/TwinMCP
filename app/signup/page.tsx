@@ -105,7 +105,7 @@ export default function SignupPage() {
     setError('');
 
     try {
-      await signInWithGithub();
+      await signInWithGithub(rememberMe);
       setSuccess('Inscription réussie ! Redirection...');
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
