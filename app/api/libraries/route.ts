@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
 
-// Library catalog data - in production, this would come from the database
-const LIBRARY_CATALOG = [
+// Singleton Prisma
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const prisma = globalForPrisma.prisma || new PrismaClient();
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
+// Default library catalog (fallback when database is unavailable)
+const DEFAULT_LIBRARY_CATALOG = [
   {
     id: '/vercel/next.js',
     name: 'Next.js',
@@ -37,40 +43,6 @@ const LIBRARY_CATALOG = [
     tags: ['ui', 'components', 'frontend', 'hooks']
   },
   {
-    id: '/mongodb/docs',
-    name: 'MongoDB',
-    vendor: 'MongoDB',
-    ecosystem: 'npm',
-    language: 'JavaScript/TypeScript',
-    description: 'The database for modern applications',
-    repo: 'https://github.com/mongodb/node-mongodb-native',
-    docs: 'https://www.mongodb.com/docs/',
-    versions: ['8.0.0', '7.0.0', '6.0.18'],
-    defaultVersion: '8.0.0',
-    popularity: 95,
-    tokens: 189000,
-    snippets: 920,
-    lastCrawled: '2026-01-02T15:30:00Z',
-    tags: ['database', 'nosql', 'backend']
-  },
-  {
-    id: '/supabase/supabase',
-    name: 'Supabase',
-    vendor: 'Supabase',
-    ecosystem: 'npm',
-    language: 'JavaScript/TypeScript',
-    description: 'The open source Firebase alternative',
-    repo: 'https://github.com/supabase/supabase-js',
-    docs: 'https://supabase.com/docs',
-    versions: ['2.45.6', '2.44.0', '2.43.0'],
-    defaultVersion: '2.45.6',
-    popularity: 92,
-    tokens: 156000,
-    snippets: 780,
-    lastCrawled: '2026-01-03T08:15:00Z',
-    tags: ['baas', 'database', 'auth', 'realtime']
-  },
-  {
     id: '/prisma/prisma',
     name: 'Prisma',
     vendor: 'Prisma',
@@ -88,23 +60,6 @@ const LIBRARY_CATALOG = [
     tags: ['orm', 'database', 'typescript']
   },
   {
-    id: '/expressjs/express',
-    name: 'Express.js',
-    vendor: 'OpenJS Foundation',
-    ecosystem: 'npm',
-    language: 'JavaScript',
-    description: 'Fast, unopinionated, minimalist web framework for Node.js',
-    repo: 'https://github.com/expressjs/express',
-    docs: 'https://expressjs.com/',
-    versions: ['5.0.1', '4.21.2', '4.20.0'],
-    defaultVersion: '5.0.1',
-    popularity: 97,
-    tokens: 145000,
-    snippets: 720,
-    lastCrawled: '2026-01-02T18:00:00Z',
-    tags: ['backend', 'api', 'rest', 'server']
-  },
-  {
     id: '/tailwindlabs/tailwindcss',
     name: 'Tailwind CSS',
     vendor: 'Tailwind Labs',
@@ -120,40 +75,6 @@ const LIBRARY_CATALOG = [
     snippets: 1100,
     lastCrawled: '2026-01-03T07:30:00Z',
     tags: ['css', 'styling', 'frontend', 'utility']
-  },
-  {
-    id: '/microsoft/typescript',
-    name: 'TypeScript',
-    vendor: 'Microsoft',
-    ecosystem: 'npm',
-    language: 'TypeScript',
-    description: 'TypeScript is a superset of JavaScript that compiles to clean JavaScript output',
-    repo: 'https://github.com/microsoft/TypeScript',
-    docs: 'https://www.typescriptlang.org/docs/',
-    versions: ['5.7.3', '5.6.3', '5.5.4'],
-    defaultVersion: '5.7.3',
-    popularity: 99,
-    tokens: 267000,
-    snippets: 1450,
-    lastCrawled: '2026-01-03T06:00:00Z',
-    tags: ['language', 'types', 'compiler']
-  },
-  {
-    id: '/django/django',
-    name: 'Django',
-    vendor: 'Django Software Foundation',
-    ecosystem: 'pip',
-    language: 'Python',
-    description: 'The Web framework for perfectionists with deadlines',
-    repo: 'https://github.com/django/django',
-    docs: 'https://docs.djangoproject.com/',
-    versions: ['5.1.5', '5.0.10', '4.2.18'],
-    defaultVersion: '5.1.5',
-    popularity: 94,
-    tokens: 234000,
-    snippets: 1320,
-    lastCrawled: '2026-01-02T22:00:00Z',
-    tags: ['python', 'web', 'backend', 'orm']
   },
   {
     id: '/fastapi/fastapi',
@@ -184,56 +105,162 @@ export async function GET(request: NextRequest) {
   const tag = searchParams.get('tag');
   const sortBy = searchParams.get('sortBy') || 'popularity';
   const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '20');
-  
-  let libraries = [...LIBRARY_CATALOG];
-  
-  // Apply filters
-  if (search) {
-    libraries = libraries.filter(lib => 
-      lib.name.toLowerCase().includes(search) ||
-      lib.description.toLowerCase().includes(search) ||
-      lib.tags.some(t => t.includes(search))
-    );
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const includeDefaults = searchParams.get('includeDefaults') !== 'false';
+
+  let allLibraries: any[] = [];
+  let dbLibraries: any[] = [];
+
+  // Try to fetch from database
+  try {
+    const whereClause: any = {};
+    
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { displayName: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (ecosystem && ecosystem !== 'all') {
+      whereClause.ecosystem = ecosystem;
+    }
+    
+    if (language) {
+      whereClause.language = { contains: language, mode: 'insensitive' };
+    }
+    
+    if (tag) {
+      whereClause.tags = { has: tag };
+    }
+
+    const libraries = await prisma.library.findMany({
+      where: whereClause,
+      include: {
+        versions: {
+          where: { isLatest: true },
+          take: 1
+        }
+      },
+      orderBy: sortBy === 'name' 
+        ? { name: 'asc' }
+        : sortBy === 'tokens'
+          ? { totalTokens: 'desc' }
+          : sortBy === 'updated'
+            ? { lastCrawledAt: 'desc' }
+            : { popularityScore: 'desc' }
+    });
+
+    // Transform database libraries to match expected format
+    dbLibraries = libraries.map(lib => ({
+      id: lib.id,
+      name: lib.displayName,
+      vendor: lib.vendor || 'Unknown',
+      ecosystem: lib.ecosystem,
+      language: lib.language,
+      description: lib.description || '',
+      repo: lib.repoUrl || '',
+      docs: lib.docsUrl || '',
+      versions: lib.versions.map(v => v.version),
+      defaultVersion: lib.defaultVersion || lib.versions[0]?.version || '1.0.0',
+      popularity: Math.round(lib.popularityScore),
+      tokens: lib.totalTokens,
+      snippets: lib.totalSnippets,
+      lastCrawled: lib.lastCrawledAt?.toISOString() || lib.createdAt.toISOString(),
+      tags: lib.tags,
+      isUserImported: true // Flag to distinguish user-imported libraries
+    }));
+
+  } catch (dbError) {
+    console.warn('Database unavailable, using default catalog:', dbError);
   }
-  
-  if (ecosystem) {
-    libraries = libraries.filter(lib => lib.ecosystem === ecosystem);
+
+  // Combine with default catalog if enabled
+  if (includeDefaults) {
+    // Filter default catalog based on search params
+    let filteredDefaults = [...DEFAULT_LIBRARY_CATALOG];
+    
+    if (search) {
+      filteredDefaults = filteredDefaults.filter(lib => 
+        lib.name.toLowerCase().includes(search) ||
+        lib.description.toLowerCase().includes(search) ||
+        lib.tags.some(t => t.includes(search))
+      );
+    }
+    
+    if (ecosystem && ecosystem !== 'all') {
+      filteredDefaults = filteredDefaults.filter(lib => lib.ecosystem === ecosystem);
+    }
+    
+    if (language) {
+      filteredDefaults = filteredDefaults.filter(lib => 
+        lib.language.toLowerCase().includes(language.toLowerCase())
+      );
+    }
+    
+    if (tag) {
+      filteredDefaults = filteredDefaults.filter(lib => lib.tags.includes(tag));
+    }
+
+    // Mark default libraries and merge (user imports first)
+    const defaultsWithFlag = filteredDefaults.map(lib => ({
+      ...lib,
+      isUserImported: false
+    }));
+
+    // Merge: user-imported libraries first, then defaults (avoid duplicates by ID)
+    const existingIds = new Set(dbLibraries.map(lib => lib.id));
+    const uniqueDefaults = defaultsWithFlag.filter(lib => !existingIds.has(lib.id));
+    
+    allLibraries = [...dbLibraries, ...uniqueDefaults];
+  } else {
+    allLibraries = dbLibraries;
   }
-  
-  if (language) {
-    libraries = libraries.filter(lib => lib.language.toLowerCase().includes(language.toLowerCase()));
-  }
-  
-  if (tag) {
-    libraries = libraries.filter(lib => lib.tags.includes(tag));
-  }
-  
-  // Sort
+
+  // Sort combined list
   switch (sortBy) {
     case 'name':
-      libraries.sort((a, b) => a.name.localeCompare(b.name));
+      allLibraries.sort((a, b) => a.name.localeCompare(b.name));
       break;
     case 'tokens':
-      libraries.sort((a, b) => b.tokens - a.tokens);
+      allLibraries.sort((a, b) => b.tokens - a.tokens);
       break;
     case 'snippets':
-      libraries.sort((a, b) => b.snippets - a.snippets);
+      allLibraries.sort((a, b) => b.snippets - a.snippets);
       break;
     case 'updated':
-      libraries.sort((a, b) => new Date(b.lastCrawled).getTime() - new Date(a.lastCrawled).getTime());
+      allLibraries.sort((a, b) => 
+        new Date(b.lastCrawled).getTime() - new Date(a.lastCrawled).getTime()
+      );
       break;
     case 'popularity':
     default:
-      libraries.sort((a, b) => b.popularity - a.popularity);
+      // User-imported libraries get a boost, then sort by popularity
+      allLibraries.sort((a, b) => {
+        if (a.isUserImported && !b.isUserImported) return -1;
+        if (!a.isUserImported && b.isUserImported) return 1;
+        return b.popularity - a.popularity;
+      });
   }
   
   // Paginate
-  const total = libraries.length;
+  const total = allLibraries.length;
   const start = (page - 1) * limit;
   const end = start + limit;
-  const paginatedLibraries = libraries.slice(start, end);
+  const paginatedLibraries = allLibraries.slice(start, end);
   
+  // Collect all unique tags and ecosystems
+  const allTags = new Set<string>();
+  const allEcosystems = new Set<string>();
+  const allLanguages = new Set<string>();
+  
+  allLibraries.forEach(lib => {
+    lib.tags.forEach((t: string) => allTags.add(t));
+    allEcosystems.add(lib.ecosystem);
+    allLanguages.add(lib.language);
+  });
+
   return NextResponse.json({
     libraries: paginatedLibraries,
     pagination: {
@@ -243,14 +270,16 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit)
     },
     filters: {
-      ecosystems: ['npm', 'pip', 'cargo', 'composer'],
-      languages: ['JavaScript/TypeScript', 'Python', 'Rust', 'PHP'],
-      tags: [...new Set(LIBRARY_CATALOG.flatMap(lib => lib.tags))]
+      ecosystems: Array.from(allEcosystems),
+      languages: Array.from(allLanguages),
+      tags: Array.from(allTags)
     },
     stats: {
-      totalLibraries: LIBRARY_CATALOG.length,
-      totalTokens: LIBRARY_CATALOG.reduce((sum, lib) => sum + lib.tokens, 0),
-      totalSnippets: LIBRARY_CATALOG.reduce((sum, lib) => sum + lib.snippets, 0)
+      totalLibraries: total,
+      userImported: dbLibraries.length,
+      defaultCatalog: allLibraries.length - dbLibraries.length,
+      totalTokens: allLibraries.reduce((sum, lib) => sum + lib.tokens, 0),
+      totalSnippets: allLibraries.reduce((sum, lib) => sum + lib.snippets, 0)
     }
   });
 }
