@@ -66,6 +66,7 @@ interface ImportResult {
 }
 
 export default function AjouterBibliotheques() {
+  const router = useRouter();
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState('');
   const [libraryName, setLibraryName] = useState('');
