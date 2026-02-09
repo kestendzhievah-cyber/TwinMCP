@@ -64,7 +64,11 @@ class ApiKeysClient {
 
   private setStoredApiKey(apiKey: string): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('twinmcp_admin_api_key', apiKey);
+      try {
+        localStorage.setItem('twinmcp_admin_api_key', apiKey);
+      } catch {
+        // Ignore
+      }
     }
   }
 
