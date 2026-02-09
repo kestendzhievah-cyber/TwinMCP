@@ -218,7 +218,13 @@ const handleSubmit = (e: React.FormEvent) => {
 
   // Fonction pour réinitialiser le questionnaire
   const resetQuestionnaire = () => {
-    localStorage.removeItem('hasAnsweredQuestionnaire');
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('hasAnsweredQuestionnaire');
+      } catch {
+        // Ignore
+      }
+    }
     setCurrentStep(1);
     setHasSubmitted(false);
     setFormData({
