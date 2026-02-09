@@ -76,28 +76,36 @@ interface ImportResult {
 function saveLibraryToLocalStorage(library: any) {
   if (typeof window === 'undefined') return;
   
-  const stored = localStorage.getItem('twinmcp_user_libraries');
-  const libraries = stored ? JSON.parse(stored) : [];
-  
-  // Check if already exists
-  const existingIndex = libraries.findIndex((lib: any) => lib.id === library.id);
-  if (existingIndex >= 0) {
-    libraries[existingIndex] = library;
-  } else {
-    libraries.unshift(library);
+  try {
+    const stored = localStorage.getItem('twinmcp_user_libraries');
+    const libraries = stored ? JSON.parse(stored) : [];
+    
+    // Check if already exists
+    const existingIndex = libraries.findIndex((lib: any) => lib.id === library.id);
+    if (existingIndex >= 0) {
+      libraries[existingIndex] = library;
+    } else {
+      libraries.unshift(library);
+    }
+    
+    // Keep only last 50 libraries
+    const trimmed = libraries.slice(0, 50);
+    localStorage.setItem('twinmcp_user_libraries', JSON.stringify(trimmed));
+  } catch {
+    // Ignore localStorage errors
   }
-  
-  // Keep only last 50 libraries
-  const trimmed = libraries.slice(0, 50);
-  localStorage.setItem('twinmcp_user_libraries', JSON.stringify(trimmed));
 }
 
 // Helper to get libraries from localStorage
 function getLibrariesFromLocalStorage(): any[] {
   if (typeof window === 'undefined') return [];
   
-  const stored = localStorage.getItem('twinmcp_user_libraries');
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem('twinmcp_user_libraries');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function AjouterBibliotheques() {
