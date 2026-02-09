@@ -23,18 +23,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    
     // Vérifier si un utilisateur est déjà connecté au chargement
-    const savedUser = localStorage.getItem('twinmcp_user');
-    if (savedUser) {
+    if (typeof window !== 'undefined') {
       try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        apiClient.setApiKey(parsedUser.apiKey || '');
+        const savedUser = localStorage.getItem('twinmcp_user');
+        if (savedUser) {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          apiClient.setApiKey(parsedUser.apiKey || '');
+        }
       } catch (error) {
         console.error('Error parsing saved user:', error);
-        localStorage.removeItem('twinmcp_user');
+        try {
+          localStorage.removeItem('twinmcp_user');
+        } catch {
+          // Ignore
+        }
       }
     }
   }, []);
@@ -55,7 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         
         setUser(userData);
-        localStorage.setItem('twinmcp_user', JSON.stringify(userData));
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('twinmcp_user', JSON.stringify(userData));
+          } catch {
+            // Ignore
+          }
+        }
         apiClient.setApiKey(userData.apiKey);
         return true;
       } else {
@@ -71,7 +86,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('twinmcp_user');
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('twinmcp_user');
+      } catch {
+        // Ignore
+      }
+    }
     apiClient.clearApiKey();
   };
 
@@ -79,7 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       const updatedUser = { ...user, apiKey };
       setUser(updatedUser);
-      localStorage.setItem('twinmcp_user', JSON.stringify(updatedUser));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('twinmcp_user', JSON.stringify(updatedUser));
+        } catch {
+          // Ignore
+        }
+      }
       apiClient.setApiKey(apiKey);
     }
   };

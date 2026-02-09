@@ -13,19 +13,38 @@ class ApiClient {
   // Méthodes pour gérer l'authentification
   setApiKey(apiKey: string) {
     this.apiKey = apiKey;
-    localStorage.setItem('twinmcp_api_key', apiKey);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('twinmcp_api_key', apiKey);
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
   }
 
   getApiKey(): string | null {
     if (this.apiKey) {
       return this.apiKey;
     }
-    return localStorage.getItem('twinmcp_api_key');
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('twinmcp_api_key');
+      } catch {
+        return null;
+      }
+    }
+    return null;
   }
 
   clearApiKey() {
     this.apiKey = null;
-    localStorage.removeItem('twinmcp_api_key');
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('twinmcp_api_key');
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
   }
 
   // Méthode générique pour les requêtes API
