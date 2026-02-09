@@ -53,7 +53,11 @@ class ApiKeysClient {
 
   private getStoredApiKey(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('twinmcp_admin_api_key') || null;
+      try {
+        return localStorage.getItem('twinmcp_admin_api_key') || null;
+      } catch {
+        return null;
+      }
     }
     return null;
   }
