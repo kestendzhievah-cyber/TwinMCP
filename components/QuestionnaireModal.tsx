@@ -26,9 +26,15 @@ export default function QuestionnaireModal({ onClose }: QuestionnaireModalProps)
 
   useEffect(() => {
     // Vérifier si l'utilisateur a déjà répondu au questionnaire
-    const hasAnswered = localStorage.getItem('hasAnsweredQuestionnaire');
-    if (hasAnswered) {
-      onClose();
+    if (typeof window !== 'undefined') {
+      try {
+        const hasAnswered = localStorage.getItem('hasAnsweredQuestionnaire');
+        if (hasAnswered) {
+          onClose();
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
     }
   }, [onClose]);
 
@@ -55,7 +61,13 @@ const handleSubmit = (e: React.FormEvent) => {
     handleNext();
   } else {
     // Marquer comme complété uniquement à la soumission
-    localStorage.setItem('hasAnsweredQuestionnaire', 'completed');
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('hasAnsweredQuestionnaire', 'completed');
+      } catch {
+        // Ignore
+      }
+    }
     setHasSubmitted(true);
     onClose();
   }
