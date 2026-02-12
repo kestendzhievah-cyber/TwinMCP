@@ -1,4 +1,4 @@
-import { QdrantClient } from 'qdrant-js';
+import { QdrantClient } from '@qdrant/js-client-rest';
 import { logger } from '../utils/logger';
 
 export interface QdrantPoint {

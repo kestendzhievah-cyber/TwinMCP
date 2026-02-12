@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { nanoid } from 'nanoid';
 import QRCode from 'qrcode';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export interface ShareOptions {
   expiresAt?: Date;
