@@ -95,17 +95,14 @@ const DEFAULT_LIBRARY_CATALOG = [
   }
 ];
 
-// POST - Receive client-side libraries for merging
+// POST - Fetch libraries with client-side libraries merged in (avoids URL length limits)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const clientLibraries: any[] = body.clientLibraries || [];
     
-    // Just acknowledge receipt - these are already stored client-side
-    return NextResponse.json({
-      success: true,
-      received: clientLibraries.length
-    });
+    // Delegate to the same logic as GET, but with clientLibraries from body
+    return handleListLibraries(request, clientLibraries);
   } catch (error) {
     return NextResponse.json(
       { success: false, error: 'Invalid request' },
@@ -114,8 +111,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - List all libraries with optional filtering
+// GET - List all libraries (no client libraries in query params)
 export async function GET(request: NextRequest) {
+  return handleListLibraries(request, []);
+}
+
+// Shared logic for GET and POST
+async function handleListLibraries(request: NextRequest, clientLibraries: any[]) {
   const { searchParams } = new URL(request.url);
   
   const search = searchParams.get('search')?.toLowerCase();
@@ -126,17 +128,6 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const includeDefaults = searchParams.get('includeDefaults') !== 'false';
-  
-  // Client-side libraries passed as JSON in header (base64 encoded)
-  let clientLibraries: any[] = [];
-  const clientLibsHeader = searchParams.get('clientLibraries');
-  if (clientLibsHeader) {
-    try {
-      clientLibraries = JSON.parse(decodeURIComponent(clientLibsHeader));
-    } catch {
-      // Ignore parse errors
-    }
-  }
 
   let allLibraries: any[] = [];
   let dbLibraries: any[] = [];
@@ -183,24 +174,30 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform database libraries to match expected format
-    dbLibraries = libraries.map((lib: typeof libraries[number]) => ({
-      id: lib.id,
-      name: lib.displayName,
-      vendor: lib.vendor || 'Unknown',
-      ecosystem: lib.ecosystem,
-      language: lib.language,
-      description: lib.description || '',
-      repo: lib.repoUrl || '',
-      docs: lib.docsUrl || '',
-      versions: lib.versions.map((v: typeof lib.versions[number]) => v.version),
-      defaultVersion: lib.defaultVersion || lib.versions[0]?.version || '1.0.0',
-      popularity: Math.round(lib.popularityScore),
-      tokens: lib.totalTokens,
-      snippets: lib.totalSnippets,
-      lastCrawled: lib.lastCrawledAt?.toISOString() || lib.createdAt.toISOString(),
-      tags: lib.tags,
-      isUserImported: true
-    }));
+    dbLibraries = libraries.map((lib: typeof libraries[number]) => {
+      // Check metadata to determine if user-imported
+      const metadata = (lib.metadata as any) || {};
+      const isUserImported = !!metadata.importSource || !!metadata.importedBy;
+
+      return {
+        id: lib.id,
+        name: lib.displayName,
+        vendor: lib.vendor || 'Unknown',
+        ecosystem: lib.ecosystem,
+        language: lib.language,
+        description: lib.description || '',
+        repo: lib.repoUrl || '',
+        docs: lib.docsUrl || '',
+        versions: lib.versions.map((v: typeof lib.versions[number]) => v.version),
+        defaultVersion: lib.defaultVersion || lib.versions[0]?.version || '1.0.0',
+        popularity: Math.round(lib.popularityScore),
+        tokens: lib.totalTokens,
+        snippets: lib.totalSnippets,
+        lastCrawled: lib.lastCrawledAt?.toISOString() || lib.createdAt.toISOString(),
+        tags: lib.tags,
+        isUserImported
+      };
+    });
 
   } catch (dbError) {
     console.warn('Database unavailable, using client libraries and defaults');
@@ -238,7 +235,7 @@ export async function GET(request: NextRequest) {
     filteredClientLibs = filteredClientLibs.filter(lib => lib.ecosystem === ecosystem);
   }
 
-  // Merge: client libraries first, then DB libraries, then defaults
+  // Merge: client libraries first (most recent), then DB libraries, then defaults
   const existingIds = new Set<string>();
   
   // Add client libraries first
@@ -249,7 +246,7 @@ export async function GET(request: NextRequest) {
     }
   }
   
-  // Add DB libraries
+  // Add DB libraries (skip duplicates already from client)
   for (const lib of dbLibraries) {
     if (!existingIds.has(lib.id)) {
       allLibraries.push(lib);

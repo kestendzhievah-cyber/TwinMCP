@@ -75,12 +75,12 @@ export default function LibrariesPage() {
         params.append('sortBy', sortBy);
         params.append('limit', '50');
         
-        // Pass local libraries to API for merging
-        if (localLibraries.length > 0) {
-          params.append('clientLibraries', encodeURIComponent(JSON.stringify(localLibraries)));
-        }
-
-        const response = await fetch(`/api/libraries?${params}`);
+        // POST client libraries in body to avoid URL length limits
+        const response = await fetch(`/api/libraries?${params}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientLibraries: localLibraries }),
+        });
         const data = await response.json();
         setLibraries(data.libraries || []);
         setStats({
