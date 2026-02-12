@@ -1,4 +1,4 @@
-import { VM } from 'vm2';
+import vm from 'node:vm';
 import Docker from 'dockerode';
 
 export interface ExecutionResult {
@@ -37,19 +37,17 @@ export class CodeExecutionService {
     const output: string[] = [];
     const startTime = Date.now();
 
-    const vm = new VM({
-      timeout,
-      sandbox: {
-        console: {
-          log: (...args: any[]) => {
-            output.push(args.join(' '));
-          }
+    const sandbox = {
+      console: {
+        log: (...args: any[]) => {
+          output.push(args.join(' '));
         }
       }
-    });
+    };
+    const context = vm.createContext(sandbox);
 
     try {
-      const result = vm.run(code);
+      const result = vm.runInContext(code, context, { timeout });
       const executionTime = Date.now() - startTime;
 
       return {

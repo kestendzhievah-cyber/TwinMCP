@@ -112,7 +112,7 @@ export class QdrantService {
 
       const response = await this.client.search(this.collectionName, queryRequest);
 
-      const results: QdrantPoint[] = response.result?.map((point: any) => ({
+      const results: QdrantPoint[] = (response as any[])?.map((point: any) => ({
         id: point.id,
         vector: point.vector || [],
         payload: point.payload,
@@ -161,7 +161,7 @@ export class QdrantService {
   async getCollectionInfo(): Promise<any> {
     try {
       const info = await this.client.getCollection(this.collectionName);
-      return info.result;
+      return info;
     } catch (error) {
       logger.error('Error getting Qdrant collection info:', error);
       throw error;
