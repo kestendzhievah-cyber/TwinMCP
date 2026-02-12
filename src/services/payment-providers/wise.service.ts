@@ -32,7 +32,7 @@ export class WiseService {
       : 'https://api.sandbox.transferwise.tech';
 
     if (!this.apiKey || !this.profileId) {
-      throw new Error('Wise credentials are not configured');
+      console.warn('⚠️ Wise credentials are not configured — Wise features will be unavailable');
     }
   }
 

@@ -7,11 +7,17 @@ export class StripeService {
   constructor() {
     const apiKey = process.env.STRIPE_SECRET_KEY;
     if (!apiKey) {
-      throw new Error('STRIPE_SECRET_KEY is not configured');
+      console.warn('⚠️ STRIPE_SECRET_KEY is not configured — Stripe features will be unavailable');
     }
-    this.stripe = new Stripe(apiKey, {
+    this.stripe = new Stripe(apiKey || 'sk_not_configured', {
       apiVersion: '2025-09-30.clover'
     });
+  }
+
+  private ensureConfigured(): void {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not configured');
+    }
   }
 
   async createPaymentIntent(

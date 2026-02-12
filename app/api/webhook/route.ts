@@ -1,26 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-// Vérification des variables d'environnement
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
+// Vérification des variables d'environnement (déférée au runtime)
+function getStripeClient(): { stripe: Stripe; endpointSecret: string } {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
 
-// Vérification des variables d'environnement au démarrage
-if (!stripeSecretKey) {
-  console.error('❌ STRIPE_SECRET_KEY is not set in environment variables')
-  throw new Error('STRIPE_SECRET_KEY is not configured')
+  if (!stripeSecretKey) {
+    console.error('❌ STRIPE_SECRET_KEY is not set in environment variables')
+    throw new Error('STRIPE_SECRET_KEY is not configured')
+  }
+
+  if (!endpointSecret) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET is not set in environment variables')
+    throw new Error('STRIPE_WEBHOOK_SECRET is not configured')
+  }
+
+  const stripe = new Stripe(stripeSecretKey, {
+    typescript: true,
+  })
+
+  return { stripe, endpointSecret }
 }
-
-if (!endpointSecret) {
-  console.error('❌ STRIPE_WEBHOOK_SECRET is not set in environment variables')
-  throw new Error('STRIPE_WEBHOOK_SECRET is not configured')
-}
-
-// Initialisation du client Stripe avec la version d'API la plus récente
-const stripe = new Stripe(stripeSecretKey, {
-  // Ne pas spécifier de version pour utiliser la version par défaut du SDK
-  typescript: true,
-})
 
 // Interface pour les métadonnées de journalisation
 interface WebhookLog {
@@ -71,10 +72,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const { stripe, endpointSecret } = getStripeClient()
     let event: Stripe.Event
 
     try {
-      event = stripe.webhooks.constructEvent(body, sig!, endpointSecret!)
+      event = stripe.webhooks.constructEvent(body, sig!, endpointSecret)
       
       // Type guard pour vérifier si l'event a un objet de type Subscription
       const isSubscriptionEvent = (

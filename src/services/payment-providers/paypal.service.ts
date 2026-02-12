@@ -34,7 +34,7 @@ export class PayPalService {
       : 'https://api-m.sandbox.paypal.com';
 
     if (!this.clientId || !this.clientSecret) {
-      throw new Error('PayPal credentials are not configured');
+      console.warn('⚠️ PayPal credentials are not configured — PayPal features will be unavailable');
     }
 
     this.client = axios.create({
@@ -45,7 +45,15 @@ export class PayPalService {
     });
   }
 
+  private ensureCredentials(): void {
+    if (!this.clientId || !this.clientSecret) {
+      throw new Error('PayPal credentials are not configured');
+    }
+  }
+
   private async getAccessToken(): Promise<string> {
+    this.ensureCredentials();
+
     if (this.accessToken && this.tokenExpiry && this.tokenExpiry > new Date()) {
       return this.accessToken;
     }
