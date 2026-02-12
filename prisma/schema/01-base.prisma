@@ -1,0 +1,46 @@
+// ─── Generator & Datasource ───────────────────────────────────────
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgres"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Shared Enums ─────────────────────────────────────────────────
+
+enum Environment {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ConfigStatus {
+  ACTIVE
+  INACTIVE
+  TESTING
+  ERROR
+}

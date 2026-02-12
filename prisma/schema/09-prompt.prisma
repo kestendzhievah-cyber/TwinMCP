@@ -1,0 +1,125 @@
+// ─── Prompt Engineering Models ────────────────────────────────────
+
+model PromptCategory {
+  id             String  @id
+  name           String
+  description    String?
+  parentCategory String? @map("parent_category")
+  icon           String?
+  color          String?
+  order          Int     @default(0) @map("order_index")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  templates      PromptTemplate[]
+  parent         PromptCategory? @relation("CategoryHierarchy", fields: [parentCategory], references: [id])
+  children       PromptCategory[] @relation("CategoryHierarchy")
+
+  @@map("prompt_categories")
+}
+
+model PromptTemplate {
+  id            String    @id
+  version       String
+  name          String
+  description   String?
+  category      String
+  status        String    @default("draft")
+  template      String
+  variables     Json      @default("[]")
+  examples      Json      @default("[]")
+  metadata      Json      @default("{}")
+  constraints   Json      @default("{}")
+  optimization  Json      @default("{}")
+  testing       Json      @default("{}")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  categoryRel   PromptCategory @relation(fields: [category], references: [id])
+  executions    PromptExecution[]
+  changes       TemplateChange[]
+  optimizations OptimizationRecord[]
+
+  @@unique([id, version])
+  @@map("prompt_templates")
+}
+
+model TemplateChange {
+  id          String   @id @default(cuid())
+  templateId  String   @map("template_id")
+  fromVersion String   @map("from_version")
+  toVersion   String   @map("to_version")
+  changes     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  template    PromptTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("template_changes")
+}
+
+model PromptExecution {
+  id              String   @id @default(cuid())
+  templateId      String   @map("template_id")
+  templateVersion String   @map("template_version")
+  variables       Json     @default("{}")
+  renderedPrompt  String   @map("rendered_prompt")
+  context         Json?
+  model           String
+  provider        String
+  response        String?
+  metrics         Json     @default("{}")
+  quality         Json     @default("{}")
+  feedback        Json?
+  abTestVariant   String?  @map("ab_test_variant")
+  userId          String?  @map("user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  template        PromptTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("prompt_executions")
+}
+
+model PromptExecutionError {
+  id           String   @id @default(cuid())
+  templateId   String   @map("template_id")
+  variables    Json     @default("{}")
+  errorMessage String   @map("error_message")
+  context      Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("prompt_execution_errors")
+}
+
+model ABTest {
+  id           String    @id @default(cuid())
+  name         String
+  description  String?
+  status       String    @default("draft")
+  variants     Json      @default("[]")
+  trafficSplit Json      @default("{}") @map("traffic_split")
+  startDate    DateTime? @map("start_date")
+  endDate      DateTime? @map("end_date")
+  sampleSize   Int       @default(1000) @map("sample_size")
+  confidence   Decimal   @default(0.95)
+  results      Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("ab_tests")
+}
+
+model OptimizationRecord {
+  id            String   @id @default(cuid())
+  templateId    String   @map("template_id")
+  timestamp     DateTime
+  type          String
+  reason        String?
+  changes       Json     @default("[]")
+  metricsBefore Json     @default("{}") @map("metrics_before")
+  metricsAfter  Json     @default("{}") @map("metrics_after")
+  improvement   Decimal?
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  template      PromptTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("optimization_records")
+}

@@ -1,0 +1,43 @@
+﻿__tests__/mcp/tools/email.test.ts(144,53): error TS2554: Expected 1 arguments, but got 0.
+app/api/chatbot/delete/route.ts(41,34): error TS2554: Expected 1 arguments, but got 2.
+app/api/subscription/route.ts(63,38): error TS2339: Property 'current_period_end' does not exist on type 'Response<Subscription>'.
+app/api/user/limits/route.ts(4,36): error TS2307: Cannot find module '@/types/chatbot' or its corresponding type declarations.
+app/api/user/limits/route.ts(38,31): error TS2339: Property 'agentsCount' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(39,27): error TS2339: Property 'agentsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(40,46): error TS2339: Property 'agentsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(40,78): error TS2339: Property 'agentsCount' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(41,34): error TS2339: Property 'agentsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(41,68): error TS2339: Property 'agentsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(41,110): error TS2339: Property 'agentsCount' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(41,141): error TS2339: Property 'agentsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(44,31): error TS2339: Property 'conversationsUsed' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(45,27): error TS2339: Property 'conversationsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(46,33): error TS2339: Property 'conversationsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(46,90): error TS2339: Property 'conversationsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(46,129): error TS2339: Property 'conversationsUsed' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(47,34): error TS2339: Property 'conversationsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(47,75): error TS2339: Property 'conversationsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(47,124): error TS2339: Property 'conversationsUsed' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(47,161): error TS2339: Property 'conversationsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(50,35): error TS2339: Property 'agentsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(50,61): error TS2339: Property 'agentsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(50,95): error TS2339: Property 'agentsCount' does not exist on type 'UserLimitsResponse'.
+app/api/user/limits/route.ts(50,126): error TS2339: Property 'agentsLimit' does not exist on type 'UserLimitsResponse'.
+app/api/v1/mcp/execute/route.ts(89,9): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'Omit<QueueJob, "id" | "status" | "createdAt" | "retries">'.
+app/api/v1/mcp/execute/route.ts(134,41): error TS2339: Property 'apiCalls' does not exist on type '{ executionTime: number; cacheHit: boolean; apiCallsCount: number; cost?: number; }'.
+app/dashboard/agent-builder/page.tsx(371,16): error TS2304: Cannot find name 'LimitsDisplay'.
+app/dashboard/agent-builder/page.tsx(759,12): error TS2304: Cannot find name 'LimitReachedModal'.
+lib/firebase/admin.ts(101,22): error TS2349: This expression is not callable.
+  Type '{}' has no call signatures.
+lib/mcp/middleware/auth.ts(199,16): error TS2769: No overload matches this call.
+  Overload 1 of 5, '(payload: string | object | Buffer<ArrayBufferLike>, secretOrPrivateKey: null, options?: SignOptions & { algorithm: "none"; }): string', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'null'.
+  Overload 2 of 5, '(payload: string | object | Buffer<ArrayBufferLike>, secretOrPrivateKey: Secret | Buffer<ArrayBufferLike> | JsonWebKeyInput | PrivateKeyInput, options?: SignOptions): string', gave the following error.
+    Type 'string' is not assignable to type 'number | StringValue'.
+  Overload 3 of 5, '(payload: string | object | Buffer<ArrayBufferLike>, secretOrPrivateKey: Secret | Buffer<ArrayBufferLike> | JsonWebKeyInput | PrivateKeyInput, callback: SignCallback): void', gave the following error.
+    Object literal may only specify known properties, and 'expiresIn' does not exist in type 'SignCallback'.
+lib/mcp/middleware/rate-limit.ts(1,33): error TS2307: Cannot find module './types' or its corresponding type declarations.
+lib/mcp/tools/base/tool-interface.ts(1,25): error TS2307: Cannot find module '../core/types' or its corresponding type declarations.
+src/app/api/subscription/route.ts(63,38): error TS2339: Property 'current_period_end' does not exist on type 'Response<Subscription>'.
+src/app/dashboard/agent-builder/page.tsx(160,42): error TS2304: Cannot find name 'toggleTool'.
+src/app/dashboard/agent-builder/page.tsx(252,34): error TS2304: Cannot find name 'toggleTool'.

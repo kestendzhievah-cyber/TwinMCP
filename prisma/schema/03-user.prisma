@@ -1,0 +1,99 @@
+// ─── User & Personalization Models ────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  avatar         String?
+  hashedPassword String?
+  oauthProvider  String?
+  oauthId        String?
+  role           Role     @default(BUYER)
+  clientId       String
+  client         Client   @relation(fields: [clientId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  apiKeys           ApiKey[]
+  mcpConfigurations MCPConfiguration[]
+  usageLogs         UsageLog[]
+  oauthTokens       OAuthToken[]
+  conversations     Conversation[]
+  messageReactions  MessageReaction[]
+  userPreferences   UserPreferences?
+  themes            Theme[]
+  personalizationAnalytics PersonalizationAnalytics[]
+  conversationShares ConversationShare[]
+  profile           UserProfile?
+
+  @@map("users")
+}
+
+model UserProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName  String?  @map("first_name")
+  lastName   String?  @map("last_name")
+  email      String?
+  phone      String?
+  address    String?
+  city       String?
+  state      String?
+  country    String?
+  postalCode String?  @map("postal_code")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  
+  invoices   Invoice[]
+  payments   Payment[]
+  subscriptions Subscription[]
+  credits    Credit[]
+  
+  @@map("user_profiles")
+}
+
+model UserPreferences {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  preferences Json
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_preferences")
+}
+
+model Theme {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  category      String
+  colors        Json
+  typography    Json
+  spacing       Json
+  shadows       Json
+  borderRadius  Json     @map("border_radius")
+  animations    Json
+  custom        Boolean  @default(false)
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  creator       User?    @relation(fields: [createdBy], references: [id])
+  
+  @@map("themes")
+}
+
+model PersonalizationAnalytics {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  actionType String   @map("action_type")
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("personalization_analytics")
+}

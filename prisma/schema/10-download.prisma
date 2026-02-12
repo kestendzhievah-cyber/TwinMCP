@@ -1,0 +1,36 @@
+// ─── Download Task Models ─────────────────────────────────────────
+
+model DownloadTask {
+  id          String   @id @default(cuid())
+  type        String
+  source      Json
+  options     Json
+  priority    String   @default("normal")
+  status      String   @default("pending")
+  progress    Json
+  metadata    Json?
+  created_at  DateTime @default(now())
+  started_at  DateTime?
+  completed_at DateTime?
+  error       String?
+  retry_count Int      @default(0)
+
+  downloadResults DownloadResult[]
+
+  @@map("download_tasks")
+}
+
+model DownloadResult {
+  id         String   @id @default(cuid())
+  task_id    String   @unique @map("task_id")
+  success    Boolean  @default(true)
+  local_path String   @map("local_path")
+  metadata   Json
+  files      Json
+  errors     String[] @default([])
+  created_at DateTime @default(now())
+
+  downloadTask DownloadTask @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@map("download_results")
+}

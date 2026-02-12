@@ -1,0 +1,147 @@
+// ─── Context Intelligence Models ─────────────────────────────────
+
+model ContextSource {
+  id            String    @id @default(cuid())
+  type          String
+  title         String
+  content       String
+  url           String?
+  libraryId     String?   @map("library_id")
+  version       String?
+  language      String
+  tags          String[]
+  relevanceScore Float    @default(0.0) @map("relevance_score")
+  freshness     Float    @default(0.0)
+  popularity    Float    @default(0.0)
+  lastUpdated   DateTime @default(now()) @map("last_updated")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  chunks        ContextChunk[]
+  
+  @@map("context_sources")
+}
+
+model ContextChunk {
+  id            String    @id @default(cuid())
+  sourceId      String    @map("source_id")
+  content       String
+  positionStart Int       @default(0) @map("position_start")
+  positionEnd   Int       @default(0) @map("position_end")
+  positionIndex Int       @default(0) @map("position_index")
+  positionTotal Int       @default(1) @map("position_total")
+  sectionTitle  String?   @map("section_title")
+  codeBlocks    Int       @default(0) @map("code_blocks")
+  links         Int       @default(0)
+  images        Int       @default(0)
+  complexity    String    @default("medium")
+  embedding     Float[]
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  source        ContextSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  
+  @@map("context_chunks")
+}
+
+model ContextQuery {
+  id              String    @id @default(cuid())
+  conversationId  String    @map("conversation_id")
+  messageId       String    @map("message_id")
+  queryText       String    @map("query_text")
+  intentType      String?   @map("intent_type")
+  intentConfidence Float?   @map("intent_confidence")
+  intentKeywords  String[]  @default([]) @map("intent_keywords")
+  intentCategory  String?   @map("intent_category")
+  intentSubcategory String? @map("intent_subcategory")
+  entities        Json      @default("{}")
+  filters         Json      @default("{}")
+  options         Json      @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  results         ContextResult[]
+  analytics       ContextQueryAnalytics[]
+  
+  @@map("context_queries")
+}
+
+model ContextResult {
+  id             String    @id @default(cuid())
+  queryId        String    @map("query_id")
+  sources        Json      @default("[]")
+  chunks         Json      @default("[]")
+  summary        String?
+  totalSources   Int       @default(0) @map("total_sources")
+  totalChunks    Int       @default(0) @map("total_chunks")
+  queryTime      Int       @default(0) @map("query_time")
+  relevanceScore Float     @default(0.0) @map("relevance_score")
+  coverage       Float     @default(0.0)
+  freshness      Float     @default(0.0)
+  suggestions    Json      @default("[]")
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  query          ContextQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  
+  @@map("context_results")
+}
+
+model ContextInjection {
+  id               String    @id @default(cuid())
+  conversationId   String    @map("conversation_id")
+  messageId        String    @map("message_id")
+  context          Json
+  templateId       String?   @map("template_id")
+  injectedPrompt   String    @map("injected_prompt")
+  originalLength   Int       @default(0) @map("original_length")
+  injectedLength   Int       @default(0) @map("injected_length")
+  compressionRatio Float     @default(0.0) @map("compression_ratio")
+  relevanceScore  Float     @default(0.0) @map("relevance_score")
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  @@map("context_injections")
+}
+
+model ContextTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  type        String
+  template    String
+  variables   String[] @default([])
+  description String?
+  version     String   @default("1.0.0")
+  usageCount  Int      @default(0) @map("usage_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("context_templates")
+}
+
+model ContextQueryAnalytics {
+  id             String   @id @default(cuid())
+  queryId        String?  @map("query_id")
+  conversationId String   @map("conversation_id")
+  queryText      String   @map("query_text")
+  intent         Json
+  entities       Json     @default("{}")
+  filters        Json     @default("{}")
+  options        Json     @default("{}")
+  resultMetadata Json     @default("{}") @map("result_metadata")
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  query          ContextQuery? @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  
+  @@map("context_query_analytics")
+}
+
+model ContextCache {
+  id          String    @id @default(cuid())
+  cacheKey    String    @unique @map("cache_key")
+  queryText   String    @map("query_text")
+  result      Json
+  expiresAt   DateTime  @map("expires_at")
+  hitCount    Int       @default(0) @map("hit_count")
+  lastAccessed DateTime  @default(now()) @map("last_accessed")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  @@map("context_cache")
+}

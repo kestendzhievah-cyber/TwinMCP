@@ -1,0 +1,48 @@
+# Configuration pour Google App Engine
+runtime: nodejs18
+
+# Configuration des ressources
+instance_class: F4
+
+# Configuration des variables d'environnement
+env_variables:
+  NODE_ENV: production
+  NODE_OPTIONS: --max-old-space-size=8192
+  CI: 'false'
+
+# Configuration du scaling
+automatic_scaling:
+  target_cpu_utilization: 0.6
+  min_instances: 0
+  max_instances: 10
+
+# Configuration du réseau
+network:
+  forwarded_ports:
+    - 8080:8080
+
+# Configuration des ressources
+resources:
+  cpu: 2
+  memory_gb: 4
+  disk_size_gb: 10
+
+# Configuration des handlers
+handlers:
+  - url: /.*
+    secure: always
+    redirect_http_response_code: 301
+    script: auto
+
+# Configuration du health check
+health_check:
+  enable_health_check: true
+  check_interval_sec: 5
+  timeout_sec: 4
+  healthy_threshold: 2
+  unhealthy_threshold: 2
+
+# Configuration des logs
+basic_scaling:
+  max_instances: 10
+  idle_timeout: 10m

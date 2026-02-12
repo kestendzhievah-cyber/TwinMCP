@@ -1,0 +1,74 @@
+// ─── Library & Documentation Models ──────────────────────────────
+
+model Library {
+  id              String    @id
+  name            String    @unique
+  displayName     String
+  description     String?
+  vendor          String?
+  repoUrl         String?   @map("repo_url")
+  docsUrl         String?   @map("docs_url")
+  defaultVersion  String?   @map("default_version")
+  popularityScore Float     @default(0) @map("popularity_score")
+  totalSnippets   Int       @default(0) @map("total_snippets")
+  totalTokens     Int       @default(0) @map("total_tokens")
+  language        String
+  ecosystem       String
+  tags            String[]
+  metadata        Json?
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id])
+  lastCrawledAt   DateTime? @map("last_crawled_at")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  versions            LibraryVersion[]
+  aliases             LibraryAlias[]
+  documentationChunks DocumentationChunk[]
+  usageLogs           UsageLog[]
+
+  @@map("libraries")
+}
+
+model LibraryVersion {
+  id              String    @id @default(cuid())
+  libraryId       String    @map("library_id")
+  library         Library   @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  version         String
+  releaseDate     DateTime? @map("release_date")
+  isLatest        Boolean   @default(false) @map("is_latest")
+  docsSnapshotUrl String?   @map("docs_snapshot_url")
+
+  documentationChunks DocumentationChunk[]
+
+  @@unique([libraryId, version])
+  @@map("library_versions")
+}
+
+model LibraryAlias {
+  id        String  @id @default(cuid())
+  libraryId String  @map("library_id")
+  library   Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  alias     String
+
+  @@unique([libraryId, alias])
+  @@map("library_aliases")
+}
+
+model DocumentationChunk {
+  id               String         @id @default(cuid())
+  libraryVersionId String         @map("library_version_id")
+  libraryVersion   LibraryVersion @relation(fields: [libraryVersionId], references: [id], onDelete: Cascade)
+  chunkIndex       Int            @map("chunk_index")
+  content          String
+  contentType      String         @map("content_type")
+  sourceUrl        String?        @map("source_url")
+  tokenCount       Int            @map("token_count")
+  embeddingId      String?        @map("embedding_id")
+  metadata         Json?
+  createdAt        DateTime       @default(now())
+  Library          Library?       @relation(fields: [libraryId], references: [id])
+  libraryId        String?
+
+  @@map("documentation_chunks")
+}

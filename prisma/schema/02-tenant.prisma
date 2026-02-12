@@ -1,0 +1,51 @@
+// ─── Multi-tenant Models ──────────────────────────────────────────
+
+model Client {
+  id                   String                @id @default(cuid())
+  name                 String                @unique
+  domain               String?               @unique
+  apiKeys              Json
+  settings             Json?
+  modules              ModuleOnClient[]
+  environmentVariables EnvironmentVariable[]
+  users                User[]
+  libraries            Library[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@map("clients")
+}
+
+model Module {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  version     String?
+  clients     ModuleOnClient[]
+
+  @@map("modules")
+}
+
+model ModuleOnClient {
+  id       String  @id @default(cuid())
+  clientId String
+  moduleId String
+  enabled  Boolean @default(true)
+  client   Client  @relation(fields: [clientId], references: [id])
+  module   Module  @relation(fields: [moduleId], references: [id])
+
+  @@unique([clientId, moduleId])
+  @@map("module_on_clients")
+}
+
+model EnvironmentVariable {
+  id          String      @id @default(cuid())
+  key         String
+  value       String
+  environment Environment @default(DEVELOPMENT)
+  clientId    String
+  client      Client      @relation(fields: [clientId], references: [id])
+
+  @@unique([key, environment, clientId])
+  @@map("environment_variables")
+}
