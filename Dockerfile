@@ -40,6 +40,7 @@ ENV MINIO_USE_SSL="false"
 ENV ENCRYPTION_KEY="build-time-dummy-key-32-chars!!"
 ENV BILLING_ENCRYPTION_KEY="build-time-dummy-key-32-chars!!"
 ENV OPENAI_API_KEY="sk-dummy-key-for-build-only"
+ENV JWT_SECRET="build-time-dummy-jwt-secret-key"
 
 RUN npm run build
 
