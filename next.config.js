@@ -21,7 +21,6 @@ const nextConfig = {
   outputFileTracingRoot: process.env.NODE_ENV === 'production' ? __dirname : undefined,
   outputFileTracingExcludes: {
     '*': [
-      'node_modules/**/*',
       '.next/cache/**/*',
     ],
   },
