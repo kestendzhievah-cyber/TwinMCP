@@ -42,6 +42,9 @@ ENV BILLING_ENCRYPTION_KEY="build-time-dummy-key-32-chars!!"
 ENV OPENAI_API_KEY="sk-dummy-key-for-build-only"
 ENV JWT_SECRET="build-time-dummy-jwt-secret-key"
 
+# Ensure public directory exists (Next.js standalone output expects it)
+RUN mkdir -p /app/public
+
 RUN npm run build
 
 # ── Stage 3: Production runner ─────────────────────────────────────
