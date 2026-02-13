@@ -161,11 +161,41 @@ export default function AuthPage() {
     }
   ];
 
-  // Show loading while checking auth state
+  // Show skeleton while checking auth state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 flex">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+          <div className="w-full max-w-md animate-pulse">
+            <div className="h-4 w-32 bg-purple-500/10 rounded mb-6" />
+            <div className="flex justify-center mb-8">
+              <div className="w-16 h-16 bg-purple-500/10 rounded-2xl" />
+            </div>
+            <div className="bg-white/5 rounded-2xl p-8 space-y-4">
+              <div className="h-7 w-48 bg-purple-500/10 rounded mx-auto" />
+              <div className="h-4 w-64 bg-purple-500/10 rounded mx-auto" />
+              <div className="h-12 w-full bg-purple-500/10 rounded-xl" />
+              <div className="h-12 w-full bg-purple-500/10 rounded-xl" />
+              <div className="h-px w-full bg-purple-500/10" />
+              <div className="h-12 w-full bg-purple-500/10 rounded-xl" />
+              <div className="h-12 w-full bg-purple-500/10 rounded-xl" />
+            </div>
+          </div>
+        </div>
+        <div className="hidden lg:flex w-1/2 items-center justify-center p-12">
+          <div className="max-w-lg w-full animate-pulse space-y-6">
+            <div className="h-10 w-72 bg-purple-500/10 rounded" />
+            <div className="h-4 w-56 bg-purple-500/10 rounded" />
+            <div className="space-y-4 mt-8">
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-purple-500/10 rounded-xl" />
+                  <div className="h-5 w-48 bg-purple-500/10 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -212,17 +212,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser)
       
+      // Set loading to false immediately — we know if user exists or not
+      // Profile sync happens in background via profileLoading
+      setLoading(false)
+
       if (firebaseUser) {
-        // Sync with backend
-        await syncUserWithBackend(firebaseUser)
+        // Sync with backend in background (non-blocking)
+        syncUserWithBackend(firebaseUser)
       } else {
         setProfile(null)
       }
-      
-      setLoading(false)
     })
 
     return unsubscribe
