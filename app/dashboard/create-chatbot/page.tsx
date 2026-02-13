@@ -187,14 +187,14 @@ export default function CreateChatbotPage() {
             Retour au dashboard
           </button>
 
-          <div className="bg-black rounded-2xl shadow-sm border border-slate-200 p-8">
+          <div className="bg-[#1a1b2e] rounded-2xl shadow-sm border border-purple-500/20 p-8">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
                 <Bot className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">Créer mon Chatbot</h1>
-                <p className="text-slate-600">Configurez votre assistant IA personnel</p>
+                <h1 className="text-3xl font-bold text-white">Créer mon Chatbot</h1>
+                <p className="text-gray-400">Configurez votre assistant IA personnel</p>
               </div>
             </div>
 
@@ -221,9 +221,9 @@ export default function CreateChatbotPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Information */}
-          <div className="bg-black rounded-2xl shadow-sm border border-slate-200 p-8">
-            <h2 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-2">
-              <Settings className="w-5 h-5" />
+          <div className="bg-[#1a1b2e] rounded-2xl shadow-sm border border-purple-500/20 p-8">
+            <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+              <Settings className="w-5 h-5 text-purple-400" />
               Informations de base
             </h2>
 
@@ -302,9 +302,9 @@ export default function CreateChatbotPage() {
           </div>
 
           {/* AI Configuration */}
-          <div className="bg-black rounded-2xl shadow-sm border border-slate-200 p-8">
-            <h2 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-2">
-              <Bot className="w-5 h-5" />
+          <div className="bg-[#1a1b2e] rounded-2xl shadow-sm border border-purple-500/20 p-8">
+            <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+              <Bot className="w-5 h-5 text-purple-400" />
               Configuration IA
             </h2>
 
@@ -413,17 +413,17 @@ export default function CreateChatbotPage() {
       {/* Success Modal */}
       {showSuccessModal && createdChatbot && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-black rounded-2xl max-w-md w-full p-8">
+          <div className="bg-[#1a1b2e] rounded-2xl max-w-md w-full p-8 border border-purple-500/20">
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
 
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">
+              <h3 className="text-2xl font-bold text-white mb-2">
                 Chatbot créé avec succès !
               </h3>
 
-              <p className="text-slate-600 mb-6">
+              <p className="text-gray-400 mb-6">
                 Votre chatbot est maintenant disponible et prêt à être partagé.
               </p>
 

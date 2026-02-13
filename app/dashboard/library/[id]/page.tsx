@@ -24,44 +24,21 @@ export default function LibraryDetailPage() {
 
   if (!library) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520] text-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Bibliothèque non trouvée</h1>
-          <Link href="/dashboard" className="text-purple-400 hover:text-purple-300">Retour au dashboard</Link>
-        </div>
+      <div className="text-center py-20">
+        <h1 className="text-2xl font-bold text-white mb-4">Bibliothèque non trouvée</h1>
+        <Link href="/dashboard/library" className="text-purple-400 hover:text-purple-300">Retour aux bibliothèques</Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520] text-white">
-      {/* Navigation */}
-      <nav className="border-b border-purple-500/20 bg-[#1a1b2e]/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-xl font-bold text-white">TwinMCP</span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard/docs" className="hidden sm:flex text-gray-300 hover:text-white transition items-center gap-1 text-sm">
-                <BookOpen className="w-4 h-4" /><span className="hidden lg:inline">Docs</span>
-              </Link>
-              <Link href="/dashboard/settings" className="hidden lg:flex text-gray-300 hover:text-white transition items-center gap-1 text-sm">
-                <Settings className="w-4 h-4" /><span>Paramètres</span>
-              </Link>
-              <Link href="/dashboard" className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition flex items-center gap-2">
-                <ArrowLeft className="w-4 h-4" /><span className="hidden sm:inline">Retour</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="space-y-6">
+      {/* Back link */}
+      <Link href="/dashboard/library" className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition text-sm">
+        <ArrowLeft className="w-4 h-4" />
+        Retour aux bibliothèques
+      </Link>
 
-      {/* Contenu */}
-      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8 lg:py-12">
         {/* En-tête */}
         <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6 lg:p-8 mb-8">
           <div className="flex flex-col lg:flex-row lg:items-start gap-6">
@@ -196,19 +173,6 @@ export default function LibraryDetailPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="border-t border-purple-500/20 py-8 px-4 mt-12">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-gray-500 text-sm">© 2026 TwinMCP - Propulsé par <Link href="/" className="text-purple-400 hover:text-purple-300">NéoTech</Link></p>
-          <div className="flex items-center gap-6 text-sm">
-            <Link href="/about" className="text-gray-400 hover:text-white transition">À propos</Link>
-            <Link href="/contact" className="text-gray-400 hover:text-white transition">Contact</Link>
-            <Link href="/legal" className="text-gray-400 hover:text-white transition">Mentions légales</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

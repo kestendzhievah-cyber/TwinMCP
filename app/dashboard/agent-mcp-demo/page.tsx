@@ -138,16 +138,15 @@ export default function AgentMCPDemo() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 flex items-center">
-            <Bot className="w-10 h-10 mr-3 text-purple-400" />
-            Agent MCP Complet - Démonstration
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+            <Bot className="w-7 h-7 text-purple-400" />
+            Agent MCP - Démonstration
           </h1>
           <p className="text-gray-400">
-            Exemple d'agent utilisant Stripe, SendGrid et GitHub via outils MCP
+            Exemple d&apos;agent utilisant Stripe, SendGrid et GitHub via outils MCP
           </p>
         </div>
 
@@ -291,7 +290,6 @@ await agent.processOrder({
 // Résultat : Paiement + Email + Issue GitHub créés automatiquement`}</code>
           </pre>
         </div>
-      </div>
     </div>
   );
 }

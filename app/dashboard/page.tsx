@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { DashboardPageSkeleton } from '@/components/DashboardSkeleton';
 import {
   Plus,
   Sparkles,
@@ -195,7 +196,7 @@ export default function DashboardPage() {
         tools: [],
         lastChecked: new Date(),
         responseTime: Date.now() - startTime,
-        error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Connection failed',
+        error: error instanceof Error ? error.message : 'Connection failed',
       });
     } finally {
       setMcpLoading(false);
@@ -304,16 +305,9 @@ export default function DashboardPage() {
     return undefined;
   }, [user, authLoading, router, fetchDashboardData, checkMCPStatus]);
 
-  // Loading state
+  // Loading state — show skeleton instead of spinner for better perceived performance
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-purple-400 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Chargement du dashboard...</p>
-        </div>
-      </div>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   // Error state
@@ -337,9 +331,9 @@ export default function DashboardPage() {
 
   const plan = dashboardData?.subscription?.plan || 'free';
   const planInfo = PLAN_LABELS[plan] || PLAN_LABELS.free;
-  const usagePercentToday = dashboardData 
+  const usagePercentToday = useMemo(() => dashboardData 
     ? Math.round((dashboardData.subscription.usedToday / dashboardData.subscription.dailyLimit) * 100)
-    : 0;
+    : 0, [dashboardData]);
 
   return (
     <div className="space-y-8">

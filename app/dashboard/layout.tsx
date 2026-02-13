@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { DashboardErrorBoundary } from "@/components/DashboardErrorBoundary";
 import {
   Sparkles,
   LayoutDashboard,
@@ -56,11 +58,31 @@ const secondaryNavItems: NavItem[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, profile, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [notifications, setNotifications] = useState(3);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const userEmail = profile?.email || user?.email || '';
+  const userName = profile?.name || user?.displayName || 'Utilisateur';
+  const userInitials = userName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'U';
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -72,15 +94,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setSearchOpen(true);
+        setSearchOpen(prev => !prev);
       }
       if (e.key === "Escape") {
         setSearchOpen(false);
+        setSearchQuery("");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Focus search input when modal opens
+  useEffect(() => {
+    if (searchOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  }, [searchOpen]);
+
+  // All searchable items
+  const allSearchableItems = useMemo(() => [
+    ...mainNavItems.map(item => ({ ...item, section: 'Navigation' })),
+    ...secondaryNavItems.map(item => ({ ...item, section: 'Navigation' })),
+  ], []);
+
+  const filteredSearchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return allSearchableItems.filter(item =>
+      item.name.toLowerCase().includes(q)
+    );
+  }, [searchQuery, allSearchableItems]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -129,40 +173,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-3 px-4 py-4 border-b border-purple-500/20">
               <Search className="w-5 h-5 text-gray-400" />
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Rechercher bibliothèques, outils, documentation..."
                 className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-lg"
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Rechercher dans le dashboard"
               />
               <kbd className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">ESC</kbd>
             </div>
             <div className="p-4 max-h-96 overflow-y-auto">
               {searchQuery ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Résultats</p>
-                  <Link href="/dashboard/library" className="flex items-center gap-3 p-3 rounded-lg hover:bg-purple-500/10 transition" onClick={() => setSearchOpen(false)}>
-                    <Library className="w-5 h-5 text-purple-400" />
-                    <div>
-                      <p className="text-white font-medium">Bibliothèques</p>
-                      <p className="text-sm text-gray-500">Next.js, React, MongoDB...</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Résultats ({filteredSearchResults.length})</p>
+                  {filteredSearchResults.length > 0 ? (
+                    filteredSearchResults.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-purple-500/10 transition"
+                        onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                      >
+                        <item.icon className="w-5 h-5 text-purple-400" />
+                        <div>
+                          <p className="text-white font-medium">{item.name}</p>
+                          <p className="text-sm text-gray-500">{item.section}</p>
+                        </div>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Aucun résultat pour "{searchQuery}"</p>
                     </div>
-                  </Link>
-                  <Link href="/dashboard/api-keys" className="flex items-center gap-3 p-3 rounded-lg hover:bg-purple-500/10 transition" onClick={() => setSearchOpen(false)}>
-                    <Key className="w-5 h-5 text-green-400" />
-                    <div>
-                      <p className="text-white font-medium">Clés API</p>
-                      <p className="text-sm text-gray-500">Gérer vos clés d'accès</p>
-                    </div>
-                  </Link>
-                  <Link href="/dashboard/docs" className="flex items-center gap-3 p-3 rounded-lg hover:bg-purple-500/10 transition" onClick={() => setSearchOpen(false)}>
-                    <BookOpen className="w-5 h-5 text-blue-400" />
-                    <div>
-                      <p className="text-white font-medium">Documentation</p>
-                      <p className="text-sm text-gray-500">Guides et tutoriels</p>
-                    </div>
-                  </Link>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -174,7 +220,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           key={item.href}
                           href={item.href}
                           className="flex items-center gap-2 p-3 rounded-lg hover:bg-purple-500/10 transition text-gray-300 hover:text-white"
-                          onClick={() => setSearchOpen(false)}
+                          onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
                         >
                           <item.icon className="w-4 h-4 text-purple-400" />
                           <span className="text-sm">{item.name}</span>
@@ -185,11 +231,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <div>
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Actions</p>
                     <div className="flex gap-2">
-                      <Link href="/dashboard/agent-builder" className="flex-1 flex items-center justify-center gap-2 p-3 bg-purple-500/20 rounded-lg text-purple-400 hover:bg-purple-500/30 transition" onClick={() => setSearchOpen(false)}>
+                      <Link href="/dashboard/agent-builder" className="flex-1 flex items-center justify-center gap-2 p-3 bg-purple-500/20 rounded-lg text-purple-400 hover:bg-purple-500/30 transition" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
                         <Plus className="w-4 h-4" />
                         <span className="text-sm font-medium">Ajouter docs</span>
                       </Link>
-                      <Link href="/chat" className="flex-1 flex items-center justify-center gap-2 p-3 bg-pink-500/20 rounded-lg text-pink-400 hover:bg-pink-500/30 transition" onClick={() => setSearchOpen(false)}>
+                      <Link href="/chat" className="flex-1 flex items-center justify-center gap-2 p-3 bg-pink-500/20 rounded-lg text-pink-400 hover:bg-pink-500/30 transition" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
                         <MessageSquare className="w-4 h-4" />
                         <span className="text-sm font-medium">Chat</span>
                       </Link>
@@ -316,13 +362,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
 
               {/* Notifications */}
-              <button className="relative p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition">
+              <button className="relative p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition" aria-label="Notifications">
                 <Bell className="w-5 h-5" />
-                {notifications > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center font-medium">
-                    {notifications}
-                  </span>
-                )}
               </button>
 
               {/* External Link */}
@@ -333,8 +374,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* User Menu */}
               <div className="relative group">
                 <button className="flex items-center gap-2 p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition">
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-xs font-bold text-white">
+                    {userInitials}
                   </div>
                   <ChevronRight className="w-4 h-4 hidden lg:block rotate-90" />
                 </button>
@@ -342,8 +383,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Dropdown */}
                 <div className="absolute right-0 top-full mt-2 w-56 bg-[#1a1b2e] border border-purple-500/20 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                   <div className="p-4 border-b border-purple-500/20">
-                    <p className="font-medium text-white">Utilisateur</p>
-                    <p className="text-sm text-gray-400">user@example.com</p>
+                    <p className="font-medium text-white">{userName}</p>
+                    <p className="text-sm text-gray-400 truncate">{userEmail}</p>
                   </div>
                   <div className="p-2">
                     <Link href="/dashboard/settings" className="flex items-center gap-3 px-3 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition">
@@ -354,7 +395,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <Key className="w-4 h-4" />
                       <span className="text-sm">Clés API</span>
                     </Link>
-                    <button className="w-full flex items-center gap-3 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition"
+                    >
                       <LogOut className="w-4 h-4" />
                       <span className="text-sm">Déconnexion</span>
                     </button>
@@ -367,7 +411,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Page Content */}
         <main className="p-4 lg:p-6">
-          {children}
+          <DashboardErrorBoundary>
+            {children}
+          </DashboardErrorBoundary>
         </main>
       </div>
     </div>

@@ -20,51 +20,34 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520] text-white relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-pink-500 opacity-20 rounded-full filter blur-3xl"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500 opacity-20 rounded-full filter blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-blue-500 opacity-10 rounded-full filter blur-3xl"></div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Settings className="w-7 h-7 text-purple-400" />
+            Paramètres
+          </h1>
+          <p className="text-gray-400 mt-1">Personnalisez votre expérience</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {saveSuccess && (
+            <span className="text-sm text-green-400 flex items-center gap-1">
+              <Check className="w-4 h-4" />
+              Sauvegardé !
+            </span>
+          )}
+          <button
+            onClick={handleSave}
+            className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/30 flex items-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            Sauvegarder
+          </button>
+        </div>
       </div>
-      
-      <div className="relative z-10">
-        <nav className="sticky top-0 z-50 border-b border-purple-500/20 bg-[#1a1b2e]/90 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-            <div className="flex justify-between items-center h-14 sm:h-16">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center bg-gradient-to-br from-pink-500 to-purple-600 shadow-lg shadow-pink-500/30">
-                  <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </div>
-                <div>
-                  <span className="text-base sm:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
-                    Paramètres
-                  </span>
-                  <p className="text-[10px] sm:text-xs text-gray-400 hidden sm:block">Personnalisez votre expérience</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                {saveSuccess && (
-                  <span className="text-xs sm:text-sm text-green-400 flex items-center gap-1 sm:gap-2">
-                    <Check className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Sauvegardé !</span>
-                    <span className="sm:hidden">OK</span>
-                  </span>
-                )}
-                <button 
-                  onClick={handleSave}
-                  className="px-3 py-2 sm:px-5 sm:py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs sm:text-sm font-semibold rounded-md sm:rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all duration-200 shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50"
-                >
-                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 inline" />
-                  <span className="hidden sm:inline">Sauvegarder</span>
-                  <span className="sm:hidden">Save</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </nav>
 
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
-          <div className="grid lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid lg:grid-cols-4 gap-4 sm:gap-6">
             <div className="lg:col-span-1">
               <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 backdrop-blur-xl">
                 <nav className="space-y-1 flex lg:flex-col overflow-x-auto lg:overflow-x-visible scrollbar-hide">
@@ -349,8 +332,6 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
     </div>
   );
 }

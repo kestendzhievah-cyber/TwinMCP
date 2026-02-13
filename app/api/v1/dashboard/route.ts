@@ -225,7 +225,15 @@ export async function GET(request: NextRequest) {
 
       // Calculate totals
       const totalRequestsToday = keysWithStats.reduce((sum, k) => sum + (k.usage?.requestsToday || 0), 0);
-      const totalRequestsMonth = keysWithStats.reduce((sum, k) => sum + (k.usage?.requestsToday || 0), 0);
+      // Get actual monthly usage from DB
+      let totalRequestsMonth = 0;
+      try {
+        totalRequestsMonth = await prisma.usageLog.count({
+          where: { userId: dbUser.id, createdAt: { gte: monthStart } }
+        });
+      } catch {
+        totalRequestsMonth = keysWithStats.reduce((sum, k) => sum + (k.usage?.requestsToday || 0), 0);
+      }
       const avgSuccessRate = keysWithStats.length > 0
         ? keysWithStats.reduce((sum, k) => sum + (k.usage?.successRate || 100), 0) / keysWithStats.length
         : 100;
