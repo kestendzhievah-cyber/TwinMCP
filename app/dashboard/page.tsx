@@ -305,6 +305,13 @@ export default function DashboardPage() {
     return undefined;
   }, [user, authLoading, router, fetchDashboardData, checkMCPStatus]);
 
+  // Hooks must be called before any early returns to respect React rules of hooks
+  const plan = dashboardData?.subscription?.plan || 'free';
+  const planInfo = PLAN_LABELS[plan] || PLAN_LABELS.free;
+  const usagePercentToday = useMemo(() => dashboardData 
+    ? Math.round((dashboardData.subscription.usedToday / dashboardData.subscription.dailyLimit) * 100)
+    : 0, [dashboardData]);
+
   // Loading state — show skeleton instead of spinner for better perceived performance
   if (authLoading || loading) {
     return <DashboardPageSkeleton />;
@@ -328,12 +335,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const plan = dashboardData?.subscription?.plan || 'free';
-  const planInfo = PLAN_LABELS[plan] || PLAN_LABELS.free;
-  const usagePercentToday = useMemo(() => dashboardData 
-    ? Math.round((dashboardData.subscription.usedToday / dashboardData.subscription.dailyLimit) * 100)
-    : 0, [dashboardData]);
 
   return (
     <div className="space-y-8">
