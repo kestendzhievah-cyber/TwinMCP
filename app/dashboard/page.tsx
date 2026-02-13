@@ -312,12 +312,11 @@ export default function DashboardPage() {
     ? Math.round((dashboardData.subscription.usedToday / dashboardData.subscription.dailyLimit) * 100)
     : 0, [dashboardData]);
 
-  // Loading state — show skeleton instead of spinner for better perceived performance
+  // Use conditional rendering in JSX instead of early returns to avoid hooks ordering issues
   if (authLoading || loading) {
     return <DashboardPageSkeleton />;
   }
 
-  // Error state
   if (error && !dashboardData) {
     return (
       <div className="space-y-8">

@@ -22,12 +22,10 @@ import {
   Menu,
   X,
   Bell,
-  User,
   LogOut,
   Zap,
   Search,
   Plus,
-  ExternalLink,
   MessageSquare,
   Globe,
 } from "lucide-react";
@@ -38,6 +36,39 @@ interface NavItem {
   icon: React.ElementType;
   badge?: string;
   badgeColor?: string;
+}
+
+function NavLink({ item, collapsed = false, pathname }: { item: NavItem; collapsed?: boolean; pathname: string }) {
+  const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+  const Icon = item.icon;
+  
+  return (
+    <Link
+      href={item.href}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
+        ${isActive 
+          ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-white border border-purple-500/30" 
+          : "text-gray-400 hover:text-white hover:bg-white/5"
+        }
+        ${collapsed ? "justify-center" : ""}
+      `}
+    >
+      <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-purple-400" : "group-hover:text-purple-400"}`} />
+      {!collapsed && (
+        <>
+          <span className="font-medium text-sm">{item.name}</span>
+          {item.badge && (
+            <span className={`ml-auto px-2 py-0.5 text-xs font-semibold rounded-full text-white ${item.badgeColor || "bg-purple-500"}`}>
+              {item.badge}
+            </span>
+          )}
+        </>
+      )}
+      {collapsed && item.badge && (
+        <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${item.badgeColor || "bg-purple-500"}`} />
+      )}
+    </Link>
+  );
 }
 
 const mainNavItems: NavItem[] = [
@@ -125,44 +156,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       item.name.toLowerCase().includes(q)
     );
   }, [searchQuery, allSearchableItems]);
-
-  const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === "/dashboard";
-    return pathname.startsWith(href);
-  };
-
-  const NavLink = ({ item, collapsed = false }: { item: NavItem; collapsed?: boolean }) => {
-    const active = isActive(item.href);
-    const Icon = item.icon;
-    
-    return (
-      <Link
-        href={item.href}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
-          ${active 
-            ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-white border border-purple-500/30" 
-            : "text-gray-400 hover:text-white hover:bg-white/5"
-          }
-          ${collapsed ? "justify-center" : ""}
-        `}
-      >
-        <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-purple-400" : "group-hover:text-purple-400"}`} />
-        {!collapsed && (
-          <>
-            <span className="font-medium text-sm">{item.name}</span>
-            {item.badge && (
-              <span className={`ml-auto px-2 py-0.5 text-xs font-semibold rounded-full text-white ${item.badgeColor || "bg-purple-500"}`}>
-                {item.badge}
-              </span>
-            )}
-          </>
-        )}
-        {collapsed && item.badge && (
-          <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${item.badgeColor || "bg-purple-500"}`} />
-        )}
-      </Link>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520]">
@@ -266,13 +259,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <nav className="space-y-1">
               {mainNavItems.map((item) => (
-                <NavLink key={item.href} item={item} />
+                <NavLink key={item.href} item={item} pathname={pathname} />
               ))}
             </nav>
             <div className="my-6 border-t border-purple-500/20" />
             <nav className="space-y-1">
               {secondaryNavItems.map((item) => (
-                <NavLink key={item.href} item={item} />
+                <NavLink key={item.href} item={item} pathname={pathname} />
               ))}
             </nav>
           </div>
@@ -299,13 +292,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {mainNavItems.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={!sidebarOpen} />
+            <NavLink key={item.href} item={item} collapsed={!sidebarOpen} pathname={pathname} />
           ))}
           
           <div className="my-4 border-t border-purple-500/20" />
           
           {secondaryNavItems.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={!sidebarOpen} />
+            <NavLink key={item.href} item={item} collapsed={!sidebarOpen} pathname={pathname} />
           ))}
         </nav>
 
