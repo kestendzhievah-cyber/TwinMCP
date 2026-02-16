@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -28,7 +28,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
 
   const router = useRouter();
-  const { signIn, signInWithGoogle, signInWithGithub } = useAuth();
+  const { signIn, signInWithGoogle, signInWithGithub, rememberMe, user, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +84,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(rememberMe);
       setSuccess('Connexion réussie ! Redirection...');
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
@@ -103,7 +110,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      await signInWithGithub();
+      await signInWithGithub(rememberMe);
       setSuccess('Connexion réussie ! Redirection...');
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {

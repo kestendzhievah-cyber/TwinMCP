@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { sendPasswordResetEmail, deleteUser } from "firebase/auth";
+import { auth as firebaseAuth } from "@/lib/firebase";
 import {
   Settings,
   User,
@@ -25,6 +28,7 @@ import {
   Calendar,
   Key,
   FileText,
+  X,
 } from "lucide-react";
 
 interface ProfileForm {
@@ -45,11 +49,20 @@ interface NotificationPrefs {
 }
 
 export default function SettingsPage() {
-  const { user, profile, profileLoading, updateProfile, refreshProfile } = useAuth();
+  const { user, profile, profileLoading, updateProfile, refreshProfile, logout } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("profile");
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Security state
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [securityMessage, setSecurityMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Profile form state
   const [form, setForm] = useState<ProfileForm>({
@@ -471,20 +484,12 @@ export default function SettingsPage() {
                 <p className="text-sm text-gray-400 mb-6">Protégez votre compte et vos données.</p>
 
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-[#0f1020] rounded-xl border border-green-500/30 hover:border-green-500/50 transition">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                        <Shield className="w-6 h-6 text-green-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-white">Authentification à deux facteurs</h3>
-                        <p className="text-sm text-gray-400 mt-1">Renforcez la sécurité de votre compte avec 2FA.</p>
-                      </div>
+                  {securityMessage && (
+                    <div className={`p-4 rounded-xl flex items-center gap-3 ${securityMessage.type === "success" ? "bg-green-500/10 border border-green-500/30" : "bg-red-500/10 border border-red-500/30"}`}>
+                      {securityMessage.type === "success" ? <Check className="w-5 h-5 text-green-400 flex-shrink-0" /> : <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />}
+                      <p className={`text-sm ${securityMessage.type === "success" ? "text-green-400" : "text-red-400"}`}>{securityMessage.text}</p>
                     </div>
-                    <button className="w-full sm:w-auto px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-xl transition">
-                      Activer
-                    </button>
-                  </div>
+                  )}
 
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-[#0f1020] rounded-xl border border-purple-500/20 hover:border-purple-500/40 transition">
                     <div className="flex items-start gap-4">
@@ -493,11 +498,34 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-white">Changer le mot de passe</h3>
-                        <p className="text-sm text-gray-400 mt-1">Mettez à jour votre mot de passe régulièrement.</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          {passwordResetSent
+                            ? "Un email de réinitialisation a été envoyé. Vérifiez votre boîte de réception."
+                            : "Un email de réinitialisation sera envoyé à votre adresse."}
+                        </p>
                       </div>
                     </div>
-                    <button className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium rounded-xl transition">
-                      Modifier
+                    <button
+                      onClick={async () => {
+                        if (!firebaseAuth || !user?.email) return;
+                        setPasswordResetLoading(true);
+                        setSecurityMessage(null);
+                        try {
+                          await sendPasswordResetEmail(firebaseAuth, user.email);
+                          setPasswordResetSent(true);
+                          setSecurityMessage({ type: "success", text: "Email de réinitialisation envoyé !" });
+                        } catch (err: any) {
+                          setSecurityMessage({ type: "error", text: err.message || "Erreur lors de l'envoi" });
+                        } finally {
+                          setPasswordResetLoading(false);
+                          setTimeout(() => setSecurityMessage(null), 5000);
+                        }
+                      }}
+                      disabled={passwordResetLoading || passwordResetSent}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium rounded-xl transition disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {passwordResetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : passwordResetSent ? <Check className="w-4 h-4" /> : null}
+                      {passwordResetSent ? "Envoyé" : "Modifier"}
                     </button>
                   </div>
 
@@ -508,11 +536,19 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-white">Sessions actives</h3>
-                        <p className="text-sm text-gray-400 mt-1">Gérez les appareils connectés à votre compte.</p>
+                        <p className="text-sm text-gray-400 mt-1">Déconnectez-vous de tous les appareils.</p>
                       </div>
                     </div>
-                    <button className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium rounded-xl transition">
-                      Gérer
+                    <button
+                      onClick={async () => {
+                        try {
+                          await logout();
+                          router.push("/auth");
+                        } catch { /* ignore */ }
+                      }}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium rounded-xl transition"
+                    >
+                      Tout déconnecter
                     </button>
                   </div>
                 </div>
@@ -527,9 +563,63 @@ export default function SettingsPage() {
                 <p className="text-sm text-gray-400 mb-4">
                   La suppression de votre compte est irréversible. Toutes vos données, clés API et configurations seront définitivement perdues.
                 </p>
-                <button className="px-5 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-medium rounded-xl transition border border-red-500/30">
-                  Supprimer mon compte
-                </button>
+                {!showDeleteConfirm ? (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-5 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-medium rounded-xl transition border border-red-500/30"
+                  >
+                    Supprimer mon compte
+                  </button>
+                ) : (
+                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl space-y-3">
+                    <p className="text-sm text-red-300">
+                      Tapez <strong className="text-red-400">SUPPRIMER</strong> pour confirmer la suppression définitive de votre compte.
+                    </p>
+                    <input
+                      type="text"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder="Tapez SUPPRIMER"
+                      className="w-full px-4 py-2.5 bg-[#0f1020] border border-red-500/30 rounded-xl text-white text-sm placeholder-gray-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 outline-none transition"
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }}
+                        className="px-4 py-2 text-gray-400 hover:text-white text-sm transition"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (deleteConfirmText !== "SUPPRIMER") return;
+                          setDeleteLoading(true);
+                          try {
+                            if (firebaseAuth?.currentUser) {
+                              await deleteUser(firebaseAuth.currentUser);
+                            }
+                            await logout();
+                            router.push("/auth");
+                          } catch (err: any) {
+                            if (err.code === "auth/requires-recent-login") {
+                              setSecurityMessage({ type: "error", text: "Veuillez vous reconnecter avant de supprimer votre compte (sécurité Firebase)." });
+                            } else {
+                              setSecurityMessage({ type: "error", text: err.message || "Erreur lors de la suppression" });
+                            }
+                            setShowDeleteConfirm(false);
+                            setDeleteConfirmText("");
+                          } finally {
+                            setDeleteLoading(false);
+                          }
+                        }}
+                        disabled={deleteConfirmText !== "SUPPRIMER" || deleteLoading}
+                        className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl transition disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {deleteLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Confirmer la suppression
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

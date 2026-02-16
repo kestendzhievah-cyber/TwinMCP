@@ -86,9 +86,9 @@ export class UserAuthService {
   private initFirebaseAdmin() {
     try {
       if (!admin.apps.length) {
-        const projectId = process.env.FIREBASE_PROJECT_ID;
-        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+        const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+        const privateKey = (process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_ADMIN_PRIVATE_KEY)?.replace(/\\n/g, '\n');
 
         if (projectId && clientEmail && privateKey) {
           admin.initializeApp({
@@ -214,9 +214,13 @@ export class UserAuthService {
     try {
       // Check cache first
       const cacheKey = `user:firebase:${firebaseUid}`;
-      const cachedUser = await this.redis.get(cacheKey);
-      if (cachedUser) {
-        return JSON.parse(cachedUser);
+      try {
+        const cachedUser = await this.redis.get(cacheKey);
+        if (cachedUser) {
+          return JSON.parse(cachedUser);
+        }
+      } catch (cacheError) {
+        console.warn('[Auth] Redis cache read failed, continuing without cache');
       }
 
       // Find existing user
@@ -300,7 +304,11 @@ export class UserAuthService {
       }
 
       // Cache user
-      await this.redis.setex(cacheKey, USER_CACHE_TTL, JSON.stringify(user));
+      try {
+        await this.redis.setex(cacheKey, USER_CACHE_TTL, JSON.stringify(user));
+      } catch (cacheError) {
+        console.warn('[Auth] Redis cache write failed, continuing without cache');
+      }
 
       return user;
 
@@ -341,8 +349,12 @@ export class UserAuthService {
     };
 
     // Store session in Redis
-    const sessionKey = `session:${user.id}`;
-    await this.redis.setex(sessionKey, SESSION_TTL, JSON.stringify(session));
+    try {
+      const sessionKey = `session:${user.id}`;
+      await this.redis.setex(sessionKey, SESSION_TTL, JSON.stringify(session));
+    } catch (redisError) {
+      console.warn('[Auth] Redis session write failed, session not persisted');
+    }
 
     // Log login
     await this.logLogin(user.id);
@@ -399,9 +411,13 @@ export class UserAuthService {
     try {
       // Check cache
       const cacheKey = `auth:user:${userId}`;
-      const cached = await this.redis.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached);
+      try {
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (cacheError) {
+        console.warn('[Auth] Redis auth cache read failed, continuing without cache');
       }
 
       // Get user with relations
@@ -467,7 +483,11 @@ export class UserAuthService {
       };
 
       // Cache for 5 minutes
-      await this.redis.setex(cacheKey, USER_CACHE_TTL, JSON.stringify(authenticatedUser));
+      try {
+        await this.redis.setex(cacheKey, USER_CACHE_TTL, JSON.stringify(authenticatedUser));
+      } catch (cacheError) {
+        console.warn('[Auth] Redis auth cache write failed, continuing without cache');
+      }
 
       return authenticatedUser;
 
@@ -500,7 +520,11 @@ export class UserAuthService {
       });
 
       // Clear cache
-      await this.redis.del(`auth:user:${userId}`);
+      try {
+        await this.redis.del(`auth:user:${userId}`);
+      } catch (cacheError) {
+        console.warn('[Auth] Redis cache clear failed');
+      }
       
       return true;
     } catch (error) {

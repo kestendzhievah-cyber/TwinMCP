@@ -1,10 +1,7 @@
 import { redis } from '@/lib/redis';
+import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs'
-import Redis from 'ioredis'
-
-const prisma = new PrismaClient()
+import { createHash } from 'crypto'
 export async function POST(request: NextRequest) {
   try {
     const apiKey = request.headers.get('x-api-key') || 
@@ -55,9 +52,9 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Verify hash
-    const isValid = await bcrypt.compare(apiKey, apiKeyRecord.keyHash)
-    if (!isValid) {
+    // Verify hash (sha256 consistent with auth-middleware)
+    const keyHash = createHash('sha256').update(apiKey).digest('hex')
+    if (keyHash !== apiKeyRecord.keyHash) {
       return NextResponse.json({
         valid: false,
         error: 'Invalid API key',

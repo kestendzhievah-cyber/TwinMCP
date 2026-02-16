@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // ─── Routes that do NOT require authentication ───────────────────
 const PUBLIC_ROUTES = [
   '/api/auth/login',
+  '/api/auth/signup',
   '/api/auth/register',
   '/api/auth/verify',
   '/api/auth/forgot-password',
@@ -21,6 +22,15 @@ const PUBLIC_ROUTES = [
   '/api/ready',
   '/api/v1/mcp/health',
   '/api/monitoring/health',
+];
+
+// Routes that handle their own authentication (Firebase tokens verified at route level)
+const SELF_AUTH_ROUTES = [
+  '/api/auth/me',
+  '/api/auth/profile',
+  '/api/auth/session',
+  '/api/auth/logout',
+  '/api/auth/validate-key',
 ];
 
 const PUBLIC_PREFIXES = [
@@ -80,6 +90,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow self-authenticating routes (they verify Firebase tokens at route level)
+  if (SELF_AUTH_ROUTES.includes(pathname)) {
+    return NextResponse.next();
+  }
+
   // Extract credentials
   const authHeader = request.headers.get('authorization');
   const apiKey = request.headers.get('x-api-key');
@@ -92,19 +107,28 @@ export async function middleware(request: NextRequest) {
   // Bearer token auth
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
-    const secret = process.env.JWT_SECRET;
 
-    if (!secret) {
-      console.error('[Middleware] JWT_SECRET not configured');
-      return NextResponse.json(
-        { error: 'Server configuration error', code: 'SERVER_ERROR' },
-        { status: 500 },
-      );
+    // API key passed as Bearer token — let route handler validate
+    if (token.startsWith('twinmcp_')) {
+      return NextResponse.next();
     }
 
-    const valid = await verifyJWT(token, secret);
-    if (valid) {
+    // Firebase ID tokens are long RSA-signed JWTs (3 parts, typically >500 chars).
+    // They cannot be verified with HMAC/JWT_SECRET in Edge middleware.
+    // Let them pass through — route-level auth (UserAuthService.verifyToken)
+    // handles Firebase token verification via Firebase Admin SDK.
+    const parts = token.split('.');
+    if (parts.length === 3 && token.length > 500) {
       return NextResponse.next();
+    }
+
+    // Short JWTs: verify with JWT_SECRET (custom app-issued tokens)
+    const secret = process.env.JWT_SECRET;
+    if (secret) {
+      const valid = await verifyJWT(token, secret);
+      if (valid) {
+        return NextResponse.next();
+      }
     }
 
     return NextResponse.json(

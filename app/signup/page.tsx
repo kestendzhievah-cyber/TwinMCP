@@ -176,10 +176,10 @@ export default function SignupPage() {
           {/* Card */}
           <div className="bg-white rounded-2xl shadow-2xl p-8">
             <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              Connexion à TwinMCP
+              Créer un compte TwinMCP
             </h1>
             <p className="text-gray-500 text-center mb-8">
-              Bienvenue ! Connectez-vous pour continuer
+              Bienvenue ! Créez votre compte pour commencer
             </p>
 
             {/* Error/Success Messages */}

@@ -48,24 +48,32 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password, recaptchaToken } = body;
 
-    // Vérifier que tous les champs sont présents
-    if (!email || !password || !recaptchaToken) {
+    // Vérifier que les champs obligatoires sont présents
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'Tous les champs sont requis' },
+        { error: 'Email et mot de passe sont requis' },
         { status: 400 }
       );
     }
 
-    // Vérifier le token reCAPTCHA
-    const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
-    if (!isRecaptchaValid) {
-      return NextResponse.json(
-        { error: 'Vérification reCAPTCHA échouée' },
-        { status: 400 }
-      );
+    // Vérifier le token reCAPTCHA si fourni
+    if (recaptchaToken) {
+      const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
+      if (!isRecaptchaValid) {
+        return NextResponse.json(
+          { error: 'Vérification reCAPTCHA échouée' },
+          { status: 400 }
+        );
+      }
     }
 
     // Authentifier l'utilisateur avec Firebase
+    if (!auth) {
+      return NextResponse.json(
+        { error: 'Service d\'authentification non disponible' },
+        { status: 503 }
+      );
+    }
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
     // Retourner les informations de l'utilisateur (sans le mot de passe)
