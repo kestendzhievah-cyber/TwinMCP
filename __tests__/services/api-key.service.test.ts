@@ -1,6 +1,6 @@
-import { APIKeyService } from '../../../src/services/api-key.service';
+import { APIKeyService } from '../../src/services/api-key.service';
 import { Pool } from 'pg';
-import { APIKey, CreateAPIKeyData } from '../../../src/types/api-key.types';
+import { APIKey, CreateAPIKeyData } from '../../src/types/api-key.types';
 
 // Mock du Pool PostgreSQL
 const mockPool = {

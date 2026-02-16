@@ -1,5 +1,5 @@
-import { MCPServerFactory } from '../../../lib/mcp/utils/server-factory';
-import { MCPServerTool } from '../../../lib/mcp/types';
+import { MCPServerFactory } from '../../lib/mcp/utils/server-factory';
+import { MCPServerTool } from '../../lib/mcp/types';
 
 describe('MCP Integration Tests', () => {
   let mockTools: MCPServerTool[];

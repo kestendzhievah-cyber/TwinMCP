@@ -7,7 +7,7 @@ import { OAuthRoutes } from './oauth-routes';
 import { OAuthService } from '../services/oauth.service';
 import { OAuthConfig } from '../types/oauth.types';
 import { PrismaClient } from '@prisma/client';
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 import { setupRateLimiting } from '../lib/rate-limiting/integration';
 
 export class APIGateway {
@@ -40,7 +40,9 @@ export class APIGateway {
 
     // Initialiser Prisma et Redis (à remplacer avec l'injection de dépendances)
     const prisma = new PrismaClient();
-    const redis = createClient();
+    const redis = process.env['REDIS_URL']
+      ? new Redis(process.env['REDIS_URL'])
+      : new Redis({ host: 'localhost', port: 6379, lazyConnect: true });
     
     this.oauthService = new OAuthService(prisma, redis, oauthConfig);
     this.server = Fastify({

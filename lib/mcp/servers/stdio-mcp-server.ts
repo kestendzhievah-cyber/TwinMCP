@@ -82,7 +82,7 @@ export class StdioMCPServer {
         this.sendError(message.id, MCPErrorCodes.MethodNotFound, `Method not found: ${message.method}`);
       }
     } catch (error) {
-      this.sendError(null, MCPErrorCodes.ParseError, 'Parse error', error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error));
+      this.sendError(null, MCPErrorCodes.ParseError, 'Parse error', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -170,7 +170,7 @@ export class StdioMCPServer {
         message.id, 
         MCPErrorCodes.ToolExecutionError, 
         'Tool execution error', 
-        error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)
+        error instanceof Error ? error.message : String(error)
       );
     }
   }

@@ -4,7 +4,7 @@ import { OAuthConfig } from '../../src/types/oauth.types';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PrismaClient } from '@prisma/client';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 
 // Mock Prisma
 const mockPrisma = {
@@ -49,9 +49,9 @@ jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => mockPrisma)
 }));
 
-jest.mock('redis', () => ({
-  createClient: jest.fn(() => mockRedis)
-}));
+jest.mock('ioredis', () => {
+  return jest.fn(() => mockRedis);
+});
 
 describe('OAuthService', () => {
   let service: OAuthService;

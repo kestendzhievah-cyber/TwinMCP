@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 import { randomBytes, createHash } from 'crypto';
 import { sign } from 'jsonwebtoken';
 import { 
@@ -15,10 +15,10 @@ import {
 
 export class OAuthService {
   private prisma: PrismaClient;
-  private redis: ReturnType<typeof createClient>;
+  private redis: Redis;
   private config: OAuthConfig;
 
-  constructor(prisma: PrismaClient, redis: ReturnType<typeof createClient>, config: OAuthConfig) {
+  constructor(prisma: PrismaClient, redis: Redis, config: OAuthConfig) {
     this.prisma = prisma;
     this.redis = redis;
     this.config = config;
@@ -248,8 +248,8 @@ export class OAuthService {
     };
 
     // Mettre en cache pour 5 minutes
-    if (this.redis && this.redis['setex']) {
-      await this.redis['setex'](cacheKey, 300, JSON.stringify(result));
+    if (this.redis) {
+      await this.redis.setex(cacheKey, 300, JSON.stringify(result));
     }
 
     return result;

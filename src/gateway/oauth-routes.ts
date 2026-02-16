@@ -6,7 +6,7 @@ import { OAuthService } from '../services/oauth.service';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PrismaClient } from '@prisma/client';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { OAuthConfig } from '../types/oauth.types';
 

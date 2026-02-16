@@ -100,7 +100,7 @@ describe('Database Configuration', () => {
       expect(user.id).toBeDefined();
       testUserId = user.id;
 
-      const retrieved = await DatabaseService.getUserByEmail(userData.email);
+      const retrieved = await DatabaseService.getUserByEmail(userData.email) as any;
       expect(retrieved?.email).toBe(userData.email);
       expect(retrieved?.id).toBe(user.id);
     });
@@ -136,7 +136,7 @@ describe('Database Configuration', () => {
       const library = await DatabaseService.createLibrary(libraryData);
       expect(library.name).toBe('Test Library');
 
-      const results = await DatabaseService.searchLibraries('Test');
+      const results = await DatabaseService.searchLibraries('Test') as any[];
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].name).toBe('Test Library');
     });
@@ -149,8 +149,8 @@ describe('Database Configuration', () => {
       };
 
       const log = await DatabaseService.logUsage(logData);
-      expect(log.toolName).toBe('test-tool');
-      expect(log.responseTimeMs).toBe(100);
+      expect(log!.toolName).toBe('test-tool');
+      expect(log!.responseTimeMs).toBe(100);
     });
 
     it('should create OAuth token', async () => {

@@ -1,27 +1,6 @@
-// Note: @anthropic-ai/sdk package needs to be installed
-// import Anthropic from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderConfig } from '../types/llm.types';
 import crypto from 'crypto';
-
-// Mock implementation for now - replace with actual Anthropic SDK when available
-class Anthropic {
-  constructor(private options: any) {}
-
-  async create(request: any): Promise<any> {
-    // Mock implementation
-    return {
-      id: 'mock-id',
-      model: request.model,
-      content: [{ type: 'text', text: 'Mock response' }],
-      usage: { input_tokens: 10, output_tokens: 20 },
-      stop_reason: 'end_turn'
-    };
-  }
-
-  async messages(request: any): Promise<any> {
-    return this.create(request);
-  }
-}
 
 export class AnthropicProvider {
   private client: Anthropic;
@@ -38,7 +17,7 @@ export class AnthropicProvider {
     try {
       const anthropicRequest = this.convertToAnthropicRequest(request);
       
-      const response = await this.client.messages(anthropicRequest);
+      const response = await this.client.messages.create(anthropicRequest);
       
       return this.convertFromAnthropicResponse(response, request);
       
@@ -50,7 +29,7 @@ export class AnthropicProvider {
   async generateStream(request: LLMRequest): Promise<AsyncIterable<LLMStreamChunk>> {
     const anthropicRequest = this.convertToAnthropicRequest(request, { stream: true });
     
-    const stream = await this.client.messages(anthropicRequest);
+    const stream = await this.client.messages.stream(anthropicRequest);
     
     return this.convertFromAnthropicStream(stream, request);
   }

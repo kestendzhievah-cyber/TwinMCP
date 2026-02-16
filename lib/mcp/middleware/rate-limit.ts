@@ -1,5 +1,13 @@
 import { RateLimitConfig } from './auth-types'
-import { canMakeRequest, recordApiRequest } from '@/lib/user-limits'
+
+// Lazy-loaded to avoid Firebase initialization in test environments
+let _userLimits: typeof import('@/lib/user-limits') | null = null
+async function getUserLimitsModule() {
+  if (!_userLimits) {
+    _userLimits = await import('@/lib/user-limits')
+  }
+  return _userLimits
+}
 
 interface RateLimitStore {
   increment(key: string, windowMs: number): Promise<number>
@@ -84,14 +92,85 @@ interface RateLimitResult {
   current: number
 }
 
+/**
+ * Token Bucket for advanced burst handling.
+ * Tokens refill at a steady rate; bursts are allowed up to `burstCapacity`.
+ */
+interface TokenBucket {
+  tokens: number
+  lastRefill: number
+}
+
+export interface BurstConfig {
+  /** Sustained requests per second */
+  rate: number
+  /** Maximum burst size (tokens) */
+  burstCapacity: number
+}
+
+class TokenBucketStore {
+  private buckets: Map<string, TokenBucket> = new Map()
+
+  consume(key: string, config: BurstConfig): { allowed: boolean; tokens: number } {
+    const now = Date.now()
+    let bucket = this.buckets.get(key)
+
+    if (!bucket) {
+      bucket = { tokens: config.burstCapacity, lastRefill: now }
+      this.buckets.set(key, bucket)
+    }
+
+    // Refill tokens based on elapsed time
+    const elapsed = (now - bucket.lastRefill) / 1000
+    bucket.tokens = Math.min(
+      config.burstCapacity,
+      bucket.tokens + elapsed * config.rate
+    )
+    bucket.lastRefill = now
+
+    if (bucket.tokens >= 1) {
+      bucket.tokens -= 1
+      return { allowed: true, tokens: Math.floor(bucket.tokens) }
+    }
+
+    return { allowed: false, tokens: 0 }
+  }
+
+  getTokens(key: string, config: BurstConfig): number {
+    const bucket = this.buckets.get(key)
+    if (!bucket) return config.burstCapacity
+    const elapsed = (Date.now() - bucket.lastRefill) / 1000
+    return Math.min(config.burstCapacity, Math.floor(bucket.tokens + elapsed * config.rate))
+  }
+
+  cleanup(): void {
+    const now = Date.now()
+    const staleMs = 300_000 // 5 min
+    for (const [key, bucket] of this.buckets) {
+      if (now - bucket.lastRefill > staleMs) {
+        this.buckets.delete(key)
+      }
+    }
+  }
+
+  get size(): number {
+    return this.buckets.size
+  }
+}
+
 export class RateLimiter {
   private stores: Map<string, RateLimitStore> = new Map()
   private memoryStore = new MemoryRateLimitStore()
   private redisStore: RedisRateLimitStore | null = null
   private cleanupInterval: ReturnType<typeof setInterval> | null = null
+  private burstStore = new TokenBucketStore()
 
   constructor() {
-    this.cleanupInterval = setInterval(() => this.memoryStore.cleanup(), 60000)
+    this.cleanupInterval = setInterval(() => {
+      this.memoryStore.cleanup()
+      this.burstStore.cleanup()
+    }, 60000)
+    if (this.cleanupInterval.unref) this.cleanupInterval.unref()
     this.initRedis()
   }
 
@@ -209,7 +288,8 @@ export class RateLimiter {
     endpoint: string
   ): Promise<{ allowed: boolean; reason?: string; limit?: number; current?: number; suggestedUpgrade?: string | null }> {
     try {
-      const result = await canMakeRequest(userId)
+      const userLimits = await getUserLimitsModule()
+      const result = await userLimits.canMakeRequest(userId)
       
       if (!result.allowed) {
         return {
@@ -222,7 +302,7 @@ export class RateLimiter {
       }
 
       // Enregistrer la requête pour le comptage
-      await recordApiRequest(userId, endpoint)
+      await userLimits.recordApiRequest(userId, endpoint)
 
       return { 
         allowed: true,
@@ -236,11 +316,42 @@ export class RateLimiter {
     }
   }
 
+  // Burst-aware rate limiting (token bucket)
+  async checkBurstLimit(
+    key: string,
+    config: BurstConfig
+  ): Promise<{ allowed: boolean; tokensRemaining: number }> {
+    const result = this.burstStore.consume(key, config)
+    return { allowed: result.allowed, tokensRemaining: result.tokens }
+  }
+
+  // Burst + sustained combined check
+  async checkCombinedLimit(
+    key: string,
+    sustainedConfig: RateLimitConfig,
+    burstConfig: BurstConfig
+  ): Promise<{ allowed: boolean; reason?: string }> {
+    // 1. Check burst (short-term)
+    const burst = this.burstStore.consume(key, burstConfig)
+    if (!burst.allowed) {
+      return { allowed: false, reason: 'Burst limit exceeded' }
+    }
+
+    // 2. Check sustained (long-term window)
+    const sustained = await this.checkLimit(`sustained:${key}`, sustainedConfig)
+    if (!sustained.allowed) {
+      return { allowed: false, reason: 'Sustained rate limit exceeded' }
+    }
+
+    return { allowed: true }
+  }
+
   // Obtenir les stats de rate limiting
   getStats() {
     return {
       activeStores: this.stores.size,
       memoryStoreSize: this.memoryStore['data']?.size || 0,
+      burstBuckets: this.burstStore.size,
       backend: this.redisStore ? 'redis' : 'memory'
     }
   }

@@ -85,6 +85,9 @@ export class SlackTool implements MCPTool {
     const startTime = Date.now()
 
     try {
+      // Execute before hook
+      await this.beforeExecute(args)
+
       // Validation des arguments
       const validation = await this.validate(args)
       if (!validation.success) {
@@ -92,7 +95,7 @@ export class SlackTool implements MCPTool {
       }
 
       // Vérifier les rate limits
-      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id)
+      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id, config.rateLimit || {})
       if (!userLimit) {
         throw new Error('Rate limit exceeded for Slack tool')
       }
@@ -127,7 +130,7 @@ export class SlackTool implements MCPTool {
         }
       }
 
-      // Simulation de l'envoi Slack
+      // Envoi du message Slack
       const result = await this.sendSlackMessage(args, config)
 
       // Mettre en cache
@@ -142,10 +145,10 @@ export class SlackTool implements MCPTool {
         cacheHit: false,
         success: true,
         apiCallsCount: 1,
-        estimatedCost: 0.0001 // Coût très bas pour Slack
+        estimatedCost: 0.0001
       })
 
-      return {
+      const execResult: ExecutionResult = {
         success: true,
         data: result,
         metadata: {
@@ -155,6 +158,9 @@ export class SlackTool implements MCPTool {
           cost: 0.0001
         }
       }
+
+      // Execute after hook
+      return await this.afterExecute(execResult)
 
     } catch (error: any) {
       const executionTime = Date.now() - startTime

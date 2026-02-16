@@ -70,6 +70,9 @@ export class CalendarTool implements MCPTool {
     const startTime = Date.now()
 
     try {
+      // Execute before hook
+      await this.beforeExecute(args)
+
       // Validation des arguments
       const validation = await this.validate(args)
       if (!validation.success) {
@@ -77,7 +80,7 @@ export class CalendarTool implements MCPTool {
       }
 
       // Vérifier les rate limits
-      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id)
+      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id, config.rateLimit || {})
       if (!userLimit) {
         throw new Error('Rate limit exceeded for calendar tool')
       }
@@ -130,7 +133,7 @@ export class CalendarTool implements MCPTool {
         estimatedCost: 0.0005 // Coût estimé par requête calendar
       })
 
-      return {
+      const execResult: ExecutionResult = {
         success: true,
         data: result,
         metadata: {
@@ -140,6 +143,9 @@ export class CalendarTool implements MCPTool {
           cost: 0.0005
         }
       }
+
+      // Execute after hook
+      return await this.afterExecute(execResult)
 
     } catch (error: any) {
       const executionTime = Date.now() - startTime

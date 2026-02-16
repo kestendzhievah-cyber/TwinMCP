@@ -1,8 +1,8 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>', '<rootDir>/__tests__'],
-  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  roots: ['<rootDir>/__tests__', '<rootDir>/src'],
+  testMatch: ['**/*.test.ts', '**/*.spec.ts'],
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
@@ -31,7 +31,16 @@ module.exports = {
     },
   },
   setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
-  testPathIgnorePatterns: ['<rootDir>/__tests__/.*\\.d\\.ts$'],
+  testPathIgnorePatterns: [
+    '<rootDir>/__tests__/.*\\.d\\.ts$',
+    '<rootDir>/downloads/',
+    '<rootDir>/__tests__/mocks/',
+    '<rootDir>/__tests__/fixtures/',
+    '<rootDir>/__tests__/setup\\.ts$',
+    '<rootDir>/__tests__/setup\\.billing\\.ts$',
+    '<rootDir>/__tests__/global-setup\\.ts$',
+    '<rootDir>/__tests__/global-teardown\\.ts$',
+  ],
   moduleNameMapper: {
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',

@@ -130,3 +130,65 @@ export function getToolsByCategory(category: string) {
 
 // Export du registry pour un accès direct si nécessaire
 export { registry } from '../core/registry'
+
+// Export du ToolExecutor pour l'exécution unifiée
+export { getToolExecutor } from '../core/tool-executor'
+
+// Fonction d'exécution unifiée d'un outil par ID
+export async function executeTool(toolId: string, args: any, config: any = {}, options: any = {}) {
+  const { getToolExecutor } = await import('../core/tool-executor')
+  const tool = registry.get(toolId)
+  if (!tool) {
+    return {
+      success: false,
+      error: `Tool not found: ${toolId}`,
+      metadata: { executionTime: 0, cacheHit: false, apiCallsCount: 0 }
+    }
+  }
+  return getToolExecutor().execute(tool, args, config, options)
+}
+
+// Fonction d'exécution batch
+export async function executeBatch(
+  requests: Array<{ toolId: string; args: any; config?: any; options?: any }>,
+  concurrency: number = 5
+) {
+  const { getToolExecutor } = await import('../core/tool-executor')
+  const executor = getToolExecutor()
+
+  const resolved = requests.map(req => {
+    const tool = registry.get(req.toolId)
+    if (!tool) {
+      return null
+    }
+    return { tool, args: req.args, config: req.config, options: req.options }
+  })
+
+  // Return errors for missing tools, execute the rest
+  const results: any[] = new Array(requests.length)
+  const validRequests: Array<{ index: number; tool: any; args: any; config?: any; options?: any }> = []
+
+  resolved.forEach((req, index) => {
+    if (!req) {
+      results[index] = {
+        success: false,
+        error: `Tool not found: ${requests[index].toolId}`,
+        metadata: { executionTime: 0, cacheHit: false, apiCallsCount: 0 }
+      }
+    } else {
+      validRequests.push({ index, ...req })
+    }
+  })
+
+  if (validRequests.length > 0) {
+    const batchResults = await executor.executeBatch(
+      validRequests.map(r => ({ tool: r.tool, args: r.args, config: r.config, options: r.options })),
+      concurrency
+    )
+    validRequests.forEach((req, i) => {
+      results[req.index] = batchResults[i]
+    })
+  }
+
+  return results
+}

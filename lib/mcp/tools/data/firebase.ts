@@ -93,6 +93,9 @@ export class FirebaseTool implements MCPTool {
     const startTime = Date.now()
 
     try {
+      // Execute before hook
+      await this.beforeExecute(args)
+
       // Validation des arguments
       const validation = await this.validate(args)
       if (!validation.success) {
@@ -100,7 +103,7 @@ export class FirebaseTool implements MCPTool {
       }
 
       // Vérifier les rate limits
-      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id)
+      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id, config.rateLimit || {})
       if (!userLimit) {
         throw new Error('Rate limit exceeded for Firebase tool')
       }
@@ -160,7 +163,7 @@ export class FirebaseTool implements MCPTool {
         estimatedCost: args.operation === 'write' ? 0.002 : 0.001 // Coût plus élevé pour l'écriture
       })
 
-      return {
+      const execResult: ExecutionResult = {
         success: true,
         data: result,
         metadata: {
@@ -170,6 +173,9 @@ export class FirebaseTool implements MCPTool {
           cost: args.operation === 'write' ? 0.002 : 0.001
         }
       }
+
+      // Execute after hook
+      return await this.afterExecute(execResult)
 
     } catch (error: any) {
       const executionTime = Date.now() - startTime

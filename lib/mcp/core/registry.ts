@@ -10,12 +10,17 @@ export class MCPRegistry {
   private tools: Map<string, MCPTool> = new Map()
   private plugins: Map<string, Plugin> = new Map()
   private toolsByCategory: Map<string, Set<string>> = new Map()
+  private maxTools: number = 500
 
   // Enregistrer un outil
   register(tool: MCPTool): void {
     // Vérifier si l'outil existe déjà
     if (this.tools.has(tool.id)) {
       throw new Error(`Tool with id '${tool.id}' already exists`)
+    }
+
+    if (this.tools.size >= this.maxTools) {
+      throw new Error(`Registry is full (max ${this.maxTools} tools). Unregister tools before adding new ones.`)
     }
 
     this.validateTool(tool)
@@ -29,6 +34,52 @@ export class MCPRegistry {
     this.toolsByCategory.get(tool.category)!.add(tool.id)
 
     console.log(`✅ Tool registered: ${tool.id} (${tool.category})`)
+  }
+
+  // Hot-reload: register or replace an existing tool (version conflict detection)
+  registerOrReplace(tool: MCPTool): { replaced: boolean; previousVersion?: string } {
+    this.validateTool(tool)
+
+    const existing = this.tools.get(tool.id)
+    let replaced = false
+    let previousVersion: string | undefined
+
+    if (existing) {
+      previousVersion = existing.version
+
+      // Remove from old category index if category changed
+      if (existing.category !== tool.category) {
+        this.toolsByCategory.get(existing.category)?.delete(tool.id)
+        if (this.toolsByCategory.get(existing.category)?.size === 0) {
+          this.toolsByCategory.delete(existing.category)
+        }
+      }
+
+      replaced = true
+      console.log(`🔄 Tool hot-reloaded: ${tool.id} (${previousVersion} → ${tool.version})`)
+    } else {
+      if (this.tools.size >= this.maxTools) {
+        throw new Error(`Registry is full (max ${this.maxTools} tools).`)
+      }
+      console.log(`✅ Tool registered: ${tool.id} (${tool.category})`)
+    }
+
+    this.tools.set(tool.id, tool)
+
+    // Indexer par catégorie
+    if (!this.toolsByCategory.has(tool.category)) {
+      this.toolsByCategory.set(tool.category, new Set())
+    }
+    this.toolsByCategory.get(tool.category)!.add(tool.id)
+
+    return { replaced, previousVersion }
+  }
+
+  // Check version conflicts between two tools
+  hasVersionConflict(toolId: string, newVersion: string): boolean {
+    const existing = this.tools.get(toolId)
+    if (!existing) return false
+    return existing.version !== newVersion
   }
 
   // Désenregistrer un outil

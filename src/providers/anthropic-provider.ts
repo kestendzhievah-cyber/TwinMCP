@@ -1,26 +1,9 @@
-// Note: @anthropic-ai/sdk package needs to be installed
+import Anthropic from '@anthropic-ai/sdk';
 import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderConfig } from '../types/llm.types';
 import crypto from 'crypto';
 
-// Mock implementation for now - replace with actual Anthropic SDK when available
-class Anthropic {
-  constructor(private options: any) {}
-
-  async messages(request: any): Promise<any> {
-    return {
-      create: async (req: any) => ({
-        id: 'mock-id',
-        model: req.model,
-        content: [{ type: 'text', text: 'Mock response' }],
-        usage: { input_tokens: 10, output_tokens: 20 },
-        stop_reason: 'end_turn'
-      })
-    };
-  }
-}
-
 export class AnthropicProvider {
-  private client: any;
+  private client: Anthropic;
 
   constructor(private config: ProviderConfig) {
     this.client = new Anthropic({

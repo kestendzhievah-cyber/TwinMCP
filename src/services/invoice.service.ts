@@ -141,24 +141,28 @@ export class InvoiceService {
     if (result.rows.length === 0) return null;
 
     const row = result.rows[0];
+    const safeParse = (val: string | null | undefined) => {
+      if (val == null) return null;
+      try { return JSON.parse(val); } catch { return null; }
+    };
     const invoice = {
       id: row.id,
       userId: row.user_id,
       number: row.number,
-      period: JSON.parse(row.period),
+      period: safeParse(row.period),
       status: row.status as InvoiceStatus,
-      items: JSON.parse(row.items),
-      subtotal: parseFloat(row.subtotal),
-      tax: parseFloat(row.tax),
-      total: parseFloat(row.total),
+      items: safeParse(row.items) || [],
+      subtotal: parseFloat(row.subtotal || '0'),
+      tax: parseFloat(row.tax || '0'),
+      total: parseFloat(row.total || '0'),
       currency: row.currency,
       issueDate: row.issue_date,
       dueDate: row.due_date,
       paidAt: row.paid_date,
-      billingAddress: JSON.parse(row.billing_address),
+      billingAddress: safeParse(row.billing_address),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse(row.metadata) || {}
     };
 
     if (invoice.metadata?.customerInfo?.encrypted) {
@@ -192,24 +196,28 @@ export class InvoiceService {
 
     const result = await this.db.query(query, params);
 
+    const safeParse = (val: string | null | undefined) => {
+      if (val == null) return null;
+      try { return JSON.parse(val); } catch { return null; }
+    };
     return result.rows.map(row => ({
       id: row.id,
       userId: row.user_id,
       number: row.number,
-      period: JSON.parse(row.period),
+      period: safeParse(row.period),
       status: row.status as InvoiceStatus,
-      items: JSON.parse(row.items),
-      subtotal: parseFloat(row.subtotal),
-      tax: parseFloat(row.tax),
-      total: parseFloat(row.total),
+      items: safeParse(row.items) || [],
+      subtotal: parseFloat(row.subtotal || '0'),
+      tax: parseFloat(row.tax || '0'),
+      total: parseFloat(row.total || '0'),
       currency: row.currency,
       issueDate: row.issue_date,
       dueDate: row.due_date,
       paidAt: row.paid_date,
-      billingAddress: JSON.parse(row.billing_address),
+      billingAddress: safeParse(row.billing_address),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse(row.metadata) || {}
     }));
   }
 
@@ -338,24 +346,28 @@ export class InvoiceService {
     if (result.rows.length === 0) return null;
 
     const row = result.rows[0];
+    const safeParse2 = (val: string | null | undefined) => {
+      if (val == null) return null;
+      try { return JSON.parse(val); } catch { return null; }
+    };
     return {
       id: row.id,
       userId: row.user_id,
       number: row.number,
-      period: JSON.parse(row.period),
+      period: safeParse2(row.period),
       status: row.status as InvoiceStatus,
-      items: JSON.parse(row.items),
-      subtotal: parseFloat(row.subtotal),
-      tax: parseFloat(row.tax),
-      total: parseFloat(row.total),
+      items: safeParse2(row.items) || [],
+      subtotal: parseFloat(row.subtotal || '0'),
+      tax: parseFloat(row.tax || '0'),
+      total: parseFloat(row.total || '0'),
       currency: row.currency,
       issueDate: row.issue_date,
       dueDate: row.due_date,
       paidAt: row.paid_date,
-      billingAddress: JSON.parse(row.billing_address),
+      billingAddress: safeParse2(row.billing_address),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse2(row.metadata) || {}
     };
   }
 

@@ -282,7 +282,7 @@ router.get('/library/:libraryId/stats', initializeServices, async (req: Request,
       });
       return;
     }
-    const stats = await req.analyticsService!.getLibraryAnalytics(libraryId);
+    const stats = await req.analyticsService!.getLibraryAnalytics(libraryId as string);
     
     res.json({
       success: true,
@@ -343,7 +343,7 @@ router.get('/similar/:chunkId', initializeServices, async (req: Request, res: Re
     }
     const limit = parseInt(req.query['limit'] as string) || 10;
     
-    const similarChunks = await req.vectorSearchService!.getSimilarChunks(chunkId, limit);
+    const similarChunks = await req.vectorSearchService!.getSimilarChunks(chunkId as string, limit);
     
     res.json({
       success: true,
@@ -405,7 +405,7 @@ router.delete('/chunk/:chunkId', initializeServices, async (req: Request, res: R
       });
       return;
     }
-    await req.vectorSearchService!.deleteChunkEmbedding(chunkId);
+    await req.vectorSearchService!.deleteChunkEmbedding(chunkId as string);
     
     res.json({
       success: true,

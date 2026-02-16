@@ -139,7 +139,7 @@ export class APIKeyController {
   async getKey(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      const keyId = req.params['key_id'];
+      const keyId = req.params['key_id'] as string;
 
       if (!userId) {
         res.status(401).json({
@@ -200,7 +200,7 @@ export class APIKeyController {
   async revokeKey(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      const keyId = req.params['key_id'];
+      const keyId = req.params['key_id'] as string;
 
       if (!userId) {
         res.status(401).json({
@@ -245,7 +245,7 @@ export class APIKeyController {
   async regenerateKey(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      const keyId = req.params['key_id'];
+      const keyId = req.params['key_id'] as string;
 
       if (!userId) {
         res.status(401).json({
@@ -292,7 +292,7 @@ export class APIKeyController {
   async getKeyUsage(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      const keyId = req.params['key_id'];
+      const keyId = req.params['key_id'] as string;
       const period = (req.query['period'] as 'daily' | 'monthly') || 'daily';
       const limit = parseInt((req.query['limit'] as string) || '30');
 
@@ -323,7 +323,7 @@ export class APIKeyController {
       
       const [quotaCheck, usageHistory] = await Promise.all([
         this.quotaService.checkQuota(apiKey),
-        this.quotaService.getUsageHistory(keyId, period, limit)
+        this.quotaService.getUsageHistory(keyId as string, period, limit)
       ]);
 
       const response: UsageStatsResponse = {
@@ -355,7 +355,7 @@ export class APIKeyController {
   async updateKey(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
-      const keyId = req.params['key_id'];
+      const keyId = req.params['key_id'] as string;
       const updates = req.body;
 
       if (!userId) {

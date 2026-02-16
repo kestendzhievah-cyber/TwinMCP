@@ -1,11 +1,13 @@
 import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { MCPMessage, MCPErrorCodes, MCPMethods, MCPInitializeResponse, MCPServerTool, HttpServerConfig } from '../types';
+import { SSETransport } from './sse-transport';
 
 export class HttpMCPServer {
   private tools: Map<string, MCPServerTool> = new Map();
   private server: FastifyInstance;
   private config: HttpServerConfig;
   private isInitialized: boolean = false;
+  private sseTransport: SSETransport;
 
   constructor(config: HttpServerConfig & { tools: MCPServerTool[] }) {
     this.config = config;
@@ -19,6 +21,7 @@ export class HttpMCPServer {
       this.tools.set(tool.name, tool);
     });
     
+    this.sseTransport = new SSETransport();
     this.setupMiddleware();
     this.setupRoutes();
   }
@@ -182,10 +185,16 @@ export class HttpMCPServer {
           available: Array.from(this.tools.keys())
         },
         connections: {
-          active: 0 // this.server.server.connections n'existe pas dans Fastify 4
+          active: this.sseTransport.getSessionCount()
         }
       };
     });
+
+    // SSE transport for streaming
+    this.sseTransport.register(
+      this.server,
+      (message: MCPMessage, _sessionId: string) => this.processMessage(message)
+    );
   }
 
   private async processMessage(message: MCPMessage): Promise<MCPMessage> {
@@ -235,7 +244,7 @@ export class HttpMCPServer {
         error: {
           code: MCPErrorCodes.InternalError,
           message: 'Internal server error',
-          data: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)
+          data: error instanceof Error ? error.message : String(error)
         }
       };
     }
@@ -348,7 +357,7 @@ export class HttpMCPServer {
         error: {
           code: MCPErrorCodes.ToolExecutionError,
           message: 'Tool execution error',
-          data: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)
+          data: error instanceof Error ? error.message : String(error)
         }
       };
     }
@@ -371,10 +380,11 @@ export class HttpMCPServer {
 
   async stop(): Promise<void> {
     try {
+      this.sseTransport.destroy();
       await this.server.close();
       this.server.log.info('TwinMCP Server stopped');
     } catch (error) {
-      this.server.log.error({ msg: 'Error during shutdown', error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error) });
+      this.server.log.error({ msg: 'Error during shutdown', error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -407,5 +417,10 @@ export class HttpMCPServer {
   // Méthode pour obtenir l'instance Fastify (pour les tests)
   getServerInstance(): FastifyInstance {
     return this.server;
+  }
+
+  // Méthode pour obtenir le transport SSE
+  getSSETransport(): SSETransport {
+    return this.sseTransport;
   }
 }

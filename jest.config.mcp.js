@@ -1,7 +1,5 @@
-import { initializeMCP } from '../lib/mcp/init'
-
 // Configuration Jest pour MCP
-export default {
+module.exports = {
   // Configuration de base
   testEnvironment: 'node',
   testMatch: [
@@ -46,8 +44,10 @@ export default {
   },
 
   // Module mapping
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/$1'
+  moduleNameMapper: {
+    '^@/lib/(.*)$': '<rootDir>/lib/$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^uuid$': '<rootDir>/__tests__/mocks/uuid.ts'
   },
 
   // Timeouts

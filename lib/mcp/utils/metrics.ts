@@ -4,6 +4,7 @@ interface MetricsConfig {
   retentionDays: number
   enablePersistence: boolean
   enableAnalytics: boolean
+  maxMetrics: number
 }
 
 interface ToolStats {
@@ -40,12 +41,14 @@ export class MetricsCollector {
   constructor(config: MetricsConfig = {
     retentionDays: 30,
     enablePersistence: false,
-    enableAnalytics: true
+    enableAnalytics: true,
+    maxMetrics: 50000
   }) {
     this.config = config
 
     // Nettoyage périodique
     this.cleanupInterval = setInterval(() => this.cleanup(), 3600000) // Chaque heure
+    if (this.cleanupInterval.unref) this.cleanupInterval.unref()
   }
 
   destroy(): void {
@@ -59,6 +62,13 @@ export class MetricsCollector {
 
   async track(metric: ToolMetrics): Promise<void> {
     this.metrics.push(metric)
+
+    // Evict oldest metrics if at capacity
+    if (this.metrics.length > this.config.maxMetrics) {
+      const excess = this.metrics.length - this.config.maxMetrics
+      this.metrics.splice(0, excess)
+    }
+
     this.updateToolStats(metric)
     this.updateSystemStats(metric)
 

@@ -16,15 +16,19 @@ export class MCPQueue {
   private jobTimeout: number = 300000 // 5 minutes
   private persistenceCallback?: (job: QueueJob) => Promise<void>
   private webhookCallback?: (job: QueueJob) => Promise<void>
+  private retryTimers: Set<ReturnType<typeof setTimeout>> = new Set()
+  private maxCompletedJobs: number = 5000
 
   constructor(options: {
     maxWorkers?: number
     jobTimeout?: number
+    maxCompletedJobs?: number
     persistenceCallback?: (job: QueueJob) => Promise<void>
     webhookCallback?: (job: QueueJob) => Promise<void>
   } = {}) {
     this.maxWorkers = options.maxWorkers || 3
     this.jobTimeout = options.jobTimeout || 300000
+    this.maxCompletedJobs = options.maxCompletedJobs || 5000
     this.persistenceCallback = options.persistenceCallback
     this.webhookCallback = options.webhookCallback
 
@@ -146,12 +150,14 @@ export class MCPQueue {
         console.log(`🔄 Retrying job: ${job.id} (attempt ${job.retries})`)
 
         // Attendre avant de retenter (backoff exponentiel)
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+          this.retryTimers.delete(timer)
           this.notifyWorkers()
         }, Math.pow(2, job.retries) * 1000)
+        this.retryTimers.add(timer)
       } else {
         job.status = 'failed'
-        job.error = error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        job.error = error instanceof Error ? error.message : 'Unknown error'
         job.completedAt = new Date()
       }
     }
@@ -159,6 +165,26 @@ export class MCPQueue {
     // Persister les changements
     if (this.persistenceCallback) {
       await this.persistenceCallback(job)
+    }
+
+    // Evict old completed/failed jobs to prevent unbounded growth
+    this.evictOldJobs()
+  }
+
+  private evictOldJobs(): void {
+    const terminalJobs = Array.from(this.jobs.entries())
+      .filter(([, j]) => j.status === 'completed' || j.status === 'failed')
+    if (terminalJobs.length > this.maxCompletedJobs) {
+      // Sort by completedAt ascending, evict oldest
+      terminalJobs.sort((a, b) => {
+        const aTime = a[1].completedAt?.getTime() || 0
+        const bTime = b[1].completedAt?.getTime() || 0
+        return aTime - bTime
+      })
+      const toEvict = terminalJobs.length - this.maxCompletedJobs
+      for (let i = 0; i < toEvict; i++) {
+        this.jobs.delete(terminalJobs[i][0])
+      }
     }
   }
 
@@ -266,7 +292,13 @@ export class MCPQueue {
       console.warn(`   ⚠️ ${busyWorkers().length} worker(s) still busy after ${maxWait}ms timeout`)
     }
 
-    // 3. Clear all state
+    // 3. Clear retry timers
+    for (const timer of this.retryTimers) {
+      clearTimeout(timer)
+    }
+    this.retryTimers.clear()
+
+    // 4. Clear all state
     this.jobs.clear()
     this.workers = []
 

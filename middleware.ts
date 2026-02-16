@@ -18,7 +18,9 @@ const PUBLIC_ROUTES = [
   '/api/create-checkout-session',
   '/api/webhooks',
   '/api/health',
+  '/api/ready',
   '/api/v1/mcp/health',
+  '/api/monitoring/health',
 ];
 
 const PUBLIC_PREFIXES = [

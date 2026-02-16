@@ -4,7 +4,7 @@ import { OAuthController } from '../../src/controllers/oauth.controller';
 import { createAuthMiddleware } from '../../src/middleware/oauth.middleware';
 import { OAuthConfig } from '../../src/types/oauth.types';
 import { PrismaClient } from '@prisma/client';
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 
 // Mock des dépendances
 const mockPrisma = {
@@ -48,9 +48,9 @@ jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => mockPrisma)
 }));
 
-jest.mock('redis', () => ({
-  createClient: jest.fn(() => mockRedis)
-}));
+jest.mock('ioredis', () => {
+  return jest.fn(() => mockRedis);
+});
 
 describe('OAuth Flow Integration', () => {
   let app: FastifyInstance;

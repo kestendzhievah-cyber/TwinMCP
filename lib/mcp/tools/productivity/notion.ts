@@ -80,6 +80,9 @@ export class NotionTool implements MCPTool {
     const startTime = Date.now()
 
     try {
+      // Execute before hook
+      await this.beforeExecute(args)
+
       // Validation des arguments
       const validation = await this.validate(args)
       if (!validation.success) {
@@ -87,46 +90,13 @@ export class NotionTool implements MCPTool {
       }
 
       // Vérifier les rate limits
-      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id)
+      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id, config.rateLimit || {})
       if (!userLimit) {
         throw new Error('Rate limit exceeded for Notion tool')
       }
 
-      // Vérifier le cache
-      const cache = getCache()
-      const cacheKey = this.cache!.key(args)
-      const cachedResult = await cache.get(cacheKey)
-
-      if (cachedResult) {
-        console.log(`📝 Notion cache hit for page: ${args.title}`)
-        getMetrics().track({
-          toolId: this.id,
-          userId: config.userId || 'anonymous',
-          timestamp: new Date(),
-          executionTime: Date.now() - startTime,
-          cacheHit: true,
-          success: true,
-          apiCallsCount: 0,
-          estimatedCost: 0
-        })
-
-        return {
-          success: true,
-          data: cachedResult,
-          metadata: {
-            executionTime: Date.now() - startTime,
-            cacheHit: true,
-            apiCallsCount: 0,
-            cost: 0
-          }
-        }
-      }
-
-      // Simulation de la création de page Notion
+      // Création de page Notion (write operation — no cache)
       const result = await this.createNotionPage(args, config)
-
-      // Mettre en cache
-      await cache.set(cacheKey, result, this.cache!.ttl)
 
       // Tracker les métriques
       getMetrics().track({
@@ -137,10 +107,10 @@ export class NotionTool implements MCPTool {
         cacheHit: false,
         success: true,
         apiCallsCount: 1,
-        estimatedCost: 0.001 // Coût estimé par requête Notion
+        estimatedCost: 0.001
       })
 
-      return {
+      const execResult: ExecutionResult = {
         success: true,
         data: result,
         metadata: {
@@ -150,6 +120,9 @@ export class NotionTool implements MCPTool {
           cost: 0.001
         }
       }
+
+      // Execute after hook
+      return await this.afterExecute(execResult)
 
     } catch (error: any) {
       const executionTime = Date.now() - startTime

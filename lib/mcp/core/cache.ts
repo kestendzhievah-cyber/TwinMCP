@@ -11,9 +11,11 @@ export class MCPCache {
   private redis?: any // Redis client
   private config: CacheConfig
   private cleanupInterval: ReturnType<typeof setInterval> | null = null
+  private maxEntries: number
 
-  constructor(config: CacheConfig) {
+  constructor(config: CacheConfig, maxEntries: number = 10000) {
     this.config = config
+    this.maxEntries = maxEntries
   }
 
   async initialize(): Promise<void> {
@@ -48,6 +50,7 @@ export class MCPCache {
 
     // Nettoyage périodique du cache mémoire
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000) // Nettoyer chaque minute
+    if (this.cleanupInterval.unref) this.cleanupInterval.unref()
   }
 
   async get<T>(key: string): Promise<T | null> {
@@ -86,6 +89,17 @@ export class MCPCache {
       value,
       timestamp: Date.now(),
       ttl
+    }
+
+    // Evict oldest entries if at capacity (LRU: Map iteration order = insertion order)
+    if (this.memory.size >= this.maxEntries) {
+      const toEvict = this.memory.size - this.maxEntries + 1
+      let evicted = 0
+      for (const [k] of this.memory) {
+        if (evicted >= toEvict) break
+        this.memory.delete(k)
+        evicted++
+      }
     }
 
     // Cache mémoire (toujours)
@@ -152,8 +166,10 @@ export class MCPCache {
   getStats() {
     return {
       memorySize: this.memory.size,
+      maxEntries: this.maxEntries,
       strategy: this.config.strategy,
-      redisConnected: !!this.redis
+      redisConnected: !!this.redis,
+      utilizationPercent: Math.round((this.memory.size / this.maxEntries) * 100)
     }
   }
 

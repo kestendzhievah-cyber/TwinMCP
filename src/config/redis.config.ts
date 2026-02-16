@@ -1,4 +1,4 @@
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 
 export interface RedisConfig {
   host: string;
@@ -23,19 +23,19 @@ export const defaultRedisConfig: RedisConfig = {
 };
 
 export class RedisManager {
-  private client: any;
+  private client: Redis;
   private config: RedisConfig;
 
   constructor(config: Partial<RedisConfig> = {}) {
     this.config = { ...defaultRedisConfig, ...config };
-    this.client = createClient({
-      socket: {
-        host: this.config.host,
-        port: this.config.port,
-        connectTimeout: this.config.connectTimeout,
-      },
+    this.client = new Redis({
+      host: this.config.host,
+      port: this.config.port,
       password: this.config.password || undefined,
-      database: this.config.database,
+      db: this.config.database,
+      connectTimeout: this.config.connectTimeout,
+      lazyConnect: this.config.lazyConnect,
+      maxRetriesPerRequest: this.config.maxRetriesPerRequest,
     });
 
     this.setupErrorHandling();
@@ -70,14 +70,14 @@ export class RedisManager {
 
   async disconnect(): Promise<void> {
     try {
-      await this.client.disconnect();
+      await this.client.quit();
     } catch (error) {
       console.error('Failed to disconnect from Redis:', error);
       throw error;
     }
   }
 
-  getClient(): any {
+  getClient(): Redis {
     return this.client;
   }
 

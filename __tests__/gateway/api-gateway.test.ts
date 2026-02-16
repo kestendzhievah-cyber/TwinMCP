@@ -1,6 +1,31 @@
 import { APIGateway } from '../../src/gateway/api-gateway';
 import { APIGatewayConfig } from '../../src/types/gateway.types';
 
+jest.mock('ioredis', () => {
+  return jest.fn().mockImplementation(() => ({
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue('OK'),
+    setex: jest.fn().mockResolvedValue('OK'),
+    del: jest.fn().mockResolvedValue(1),
+    keys: jest.fn().mockResolvedValue([]),
+    on: jest.fn(),
+    connect: jest.fn().mockResolvedValue(undefined),
+    quit: jest.fn().mockResolvedValue(undefined),
+    status: 'ready',
+  }));
+});
+
+jest.mock('@prisma/client', () => ({
+  PrismaClient: jest.fn().mockImplementation(() => ({
+    $connect: jest.fn(),
+    $disconnect: jest.fn(),
+    oAuthClient: { findFirst: jest.fn() },
+    oAuthAuthorizationCode: { findFirst: jest.fn(), create: jest.fn(), delete: jest.fn(), deleteMany: jest.fn() },
+    oAuthAccessToken: { findFirst: jest.fn(), create: jest.fn(), updateMany: jest.fn(), deleteMany: jest.fn() },
+    oAuthRefreshToken: { findFirst: jest.fn(), create: jest.fn(), updateMany: jest.fn(), deleteMany: jest.fn() },
+  })),
+}));
+
 describe('APIGateway', () => {
   let gateway: APIGateway;
   let config: APIGatewayConfig;
