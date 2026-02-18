@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import {
   Search,
@@ -52,13 +53,27 @@ function getLibrariesFromLocalStorage(): any[] {
 }
 
 export default function LibrariesPage() {
+  const { user } = useAuth();
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedEcosystem, setSelectedEcosystem] = useState('all');
   const [sortBy, setSortBy] = useState('popularity');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [stats, setStats] = useState({ userImported: 0, totalLibraries: 0 });
+  const localLibrariesRef = useRef<any[]>([]);
+
+  // Cache localStorage libraries on mount
+  useEffect(() => {
+    localLibrariesRef.current = getLibrariesFromLocalStorage();
+  }, []);
+
+  // Debounce search input (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Fetch libraries from API with local storage libraries
   useEffect(() => {
@@ -66,20 +81,25 @@ export default function LibrariesPage() {
       try {
         setLoading(true);
         
-        // Get libraries from localStorage
-        const localLibraries = getLibrariesFromLocalStorage();
-        
         const params = new URLSearchParams();
-        if (searchQuery) params.append('search', searchQuery);
+        if (debouncedSearch) params.append('search', debouncedSearch);
         if (selectedEcosystem !== 'all') params.append('ecosystem', selectedEcosystem);
         params.append('sortBy', sortBy);
         params.append('limit', '50');
+
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (user) {
+          try {
+            const idToken = await user.getIdToken();
+            headers['Authorization'] = `Bearer ${idToken}`;
+          } catch { /* continue without auth */ }
+        }
         
         // POST client libraries in body to avoid URL length limits
         const response = await fetch(`/api/libraries?${params}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clientLibraries: localLibraries }),
+          headers,
+          body: JSON.stringify({ clientLibraries: localLibrariesRef.current }),
         });
         const data = await response.json();
         setLibraries(data.libraries || []);
@@ -90,7 +110,7 @@ export default function LibrariesPage() {
       } catch (error) {
         console.error('Failed to fetch libraries:', error);
         // Fallback to local libraries only
-        const localLibraries = getLibrariesFromLocalStorage();
+        const localLibraries = localLibrariesRef.current;
         setLibraries(localLibraries);
         setStats({
           userImported: localLibraries.length,
@@ -102,7 +122,7 @@ export default function LibrariesPage() {
     };
 
     fetchLibraries();
-  }, [searchQuery, selectedEcosystem, sortBy]);
+  }, [debouncedSearch, selectedEcosystem, sortBy, user]);
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;

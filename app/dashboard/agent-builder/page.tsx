@@ -244,11 +244,24 @@ export default function AjouterBibliotheques() {
     }
   }, [importUrl, selectedSource, libraryName, router, user]);
 
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && importUrl.trim() && !isImporting) {
       handleImport();
     }
   }, [importUrl, isImporting, handleImport]);
+
+  // Client-side URL validation
+  const isValidUrl = useCallback((url: string): boolean => {
+    if (!url.trim()) return true; // Empty is not invalid, just incomplete
+    try {
+      const parsed = new URL(url.trim());
+      return ['http:', 'https:'].includes(parsed.protocol);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const urlIsInvalid = importUrl.trim().length > 0 && !isValidUrl(importUrl);
 
   const clearSelection = useCallback(() => {
     setSelectedSource(null);
@@ -396,11 +409,21 @@ export default function AjouterBibliotheques() {
                     type="url"
                     value={importUrl}
                     onChange={(e) => setImportUrl(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyDown}
                     placeholder={selectedSourceData.placeholder}
-                    className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
+                    className={`w-full px-4 py-3 bg-[#0f1020] border rounded-xl text-white placeholder-gray-500 outline-none transition ${
+                      urlIsInvalid
+                        ? 'border-red-500/50 focus:border-red-500/70 focus:ring-2 focus:ring-red-500/20'
+                        : 'border-purple-500/20 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20'
+                    }`}
                     data-testid="import-url-input"
                   />
+                  {urlIsInvalid && (
+                    <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      URL invalide. Utilisez le format https://...
+                    </p>
+                  )}
                 </div>
 
                 {/* Optional Name */}
@@ -461,7 +484,7 @@ export default function AjouterBibliotheques() {
                 {/* Import Button */}
                 <button
                   onClick={handleImport}
-                  disabled={!importUrl.trim() || isImporting}
+                  disabled={!importUrl.trim() || isImporting || urlIsInvalid}
                   className="w-full py-3.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30"
                   data-testid="import-btn"
                 >

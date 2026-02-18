@@ -7,6 +7,14 @@ interface ImportRequest {
   name?: string;
 }
 
+interface RepoMetadata {
+  description: string;
+  stars: number;
+  language: string;
+  defaultBranch: string;
+  topics: string[];
+}
+
 // Extract user ID from Firebase JWT token
 function extractUserIdFromToken(token: string): string | null {
   try {
@@ -86,6 +94,66 @@ function determineLanguage(source: string, url: string): string {
   return 'JavaScript/TypeScript';
 }
 
+// Fetch real metadata from GitHub API (public, no auth required for public repos)
+async function fetchGitHubMetadata(owner: string, repo: string): Promise<RepoMetadata | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: { 
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'TwinMCP-Import'
+      },
+      signal: controller.signal,
+      next: { revalidate: 3600 } // Cache for 1 hour
+    });
+    clearTimeout(timeout);
+    
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    return {
+      description: data.description || '',
+      stars: data.stargazers_count || 0,
+      language: data.language || '',
+      defaultBranch: data.default_branch || 'main',
+      topics: data.topics || []
+    };
+  } catch {
+    return null; // Graceful fallback if API is unreachable
+  }
+}
+
+// Fetch real metadata from GitLab API (public projects)
+async function fetchGitLabMetadata(owner: string, repo: string): Promise<RepoMetadata | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    
+    const projectPath = encodeURIComponent(`${owner}/${repo}`);
+    const res = await fetch(`https://gitlab.com/api/v4/projects/${projectPath}`, {
+      headers: { 'User-Agent': 'TwinMCP-Import' },
+      signal: controller.signal,
+      next: { revalidate: 3600 }
+    });
+    clearTimeout(timeout);
+    
+    if (!res.ok) return null;
+    
+    const data = await res.json();
+    return {
+      description: data.description || '',
+      stars: data.star_count || 0,
+      language: '',
+      defaultBranch: data.default_branch || 'main',
+      topics: data.topics || data.tag_list || []
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: ImportRequest = await request.json();
@@ -106,6 +174,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate URL format and protocol
+    const trimmedUrl = url.trim();
+    try {
+      const parsedUrl = new URL(trimmedUrl);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return NextResponse.json(
+          { success: false, error: 'Seules les URLs HTTP et HTTPS sont acceptées' },
+          { status: 400 }
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Format d'URL invalide" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize name input
+    const sanitizedName = name ? name.replace(/<[^>]*>/g, '').trim().slice(0, 100) : undefined;
+
     const validSources = ['github', 'gitlab', 'bitbucket', 'openapi', 'llms', 'website'];
     if (!validSources.includes(source)) {
       return NextResponse.json(
@@ -125,75 +213,79 @@ export async function POST(request: NextRequest) {
     let libraryName = '';
     let libraryId = '';
     let vendor = '';
-    let repoUrl = url.trim();
+    let repoUrl = trimmedUrl;
     let docsUrl = '';
+    let repoMetadata: RepoMetadata | null = null;
 
     switch (source) {
       case 'github': {
-        const parsed = parseGitHubUrl(url);
+        const parsed = parseGitHubUrl(trimmedUrl);
         if (!parsed) {
           return NextResponse.json(
             { success: false, error: 'URL GitHub invalide. Format: https://github.com/owner/repo' },
             { status: 400 }
           );
         }
-        libraryName = name || parsed.repo;
+        // Fetch real repo metadata from GitHub API
+        repoMetadata = await fetchGitHubMetadata(parsed.owner, parsed.repo);
+        libraryName = sanitizedName || parsed.repo;
         libraryId = `github-${parsed.owner}-${parsed.repo}`.toLowerCase();
         vendor = parsed.owner;
         docsUrl = `https://github.com/${parsed.owner}/${parsed.repo}#readme`;
         break;
       }
       case 'gitlab': {
-        const parsed = parseGitLabUrl(url);
+        const parsed = parseGitLabUrl(trimmedUrl);
         if (!parsed) {
           return NextResponse.json(
             { success: false, error: 'URL GitLab invalide. Format: https://gitlab.com/owner/repo' },
             { status: 400 }
           );
         }
-        libraryName = name || parsed.repo;
+        repoMetadata = await fetchGitLabMetadata(parsed.owner, parsed.repo);
+        libraryName = sanitizedName || parsed.repo;
         libraryId = `gitlab-${parsed.owner}-${parsed.repo}`.toLowerCase();
         vendor = parsed.owner;
         docsUrl = `https://gitlab.com/${parsed.owner}/${parsed.repo}/-/blob/main/README.md`;
         break;
       }
       case 'bitbucket': {
-        const parsed = parseBitbucketUrl(url);
+        const parsed = parseBitbucketUrl(trimmedUrl);
         if (!parsed) {
           return NextResponse.json(
             { success: false, error: 'URL Bitbucket invalide. Format: https://bitbucket.org/owner/repo' },
             { status: 400 }
           );
         }
-        libraryName = name || parsed.repo;
+        libraryName = sanitizedName || parsed.repo;
         libraryId = `bitbucket-${parsed.owner}-${parsed.repo}`.toLowerCase();
         vendor = parsed.owner;
         docsUrl = `https://bitbucket.org/${parsed.owner}/${parsed.repo}/src/master/README.md`;
         break;
       }
       case 'openapi': {
-        const filename = url.split('/').pop()?.replace('.json', '').replace('.yaml', '').replace('.yml', '') || 'openapi-spec';
-        libraryName = name || filename;
+        const filename = trimmedUrl.split('/').pop()?.replace('.json', '').replace('.yaml', '').replace('.yml', '') || 'openapi-spec';
+        libraryName = sanitizedName || filename;
         libraryId = `openapi-${filename}-${Date.now()}`.toLowerCase();
         vendor = 'OpenAPI';
-        docsUrl = url;
+        docsUrl = trimmedUrl;
         break;
       }
       case 'llms': {
-        const filename = url.split('/').pop()?.replace('.txt', '') || 'llms-doc';
-        libraryName = name || filename;
+        const filename = trimmedUrl.split('/').pop()?.replace('.txt', '') || 'llms-doc';
+        libraryName = sanitizedName || filename;
         libraryId = `llms-${filename}-${Date.now()}`.toLowerCase();
         vendor = 'LLMs.txt';
-        docsUrl = url;
+        docsUrl = trimmedUrl;
         break;
       }
       case 'website': {
         try {
-          const urlObj = new URL(url);
-          libraryName = name || urlObj.hostname.replace('www.', '').replace('docs.', '');
+          const urlObj = new URL(trimmedUrl);
+          libraryName = sanitizedName || urlObj.hostname.replace('www.', '').replace('docs.', '');
           libraryId = `website-${urlObj.hostname.replace(/\./g, '-')}-${Date.now()}`.toLowerCase();
           vendor = urlObj.hostname;
-          docsUrl = url;
+          docsUrl = trimmedUrl;
         } catch {
           return NextResponse.json(
             { success: false, error: 'URL de site web invalide' },
@@ -204,11 +296,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Estimate tokens and snippets
-    const tokensCount = Math.floor(Math.random() * 400000) + 100000;
-    const snippetsCount = Math.floor(Math.random() * 2000) + 500;
-    const ecosystem = determineEcosystem(source, url);
-    const language = determineLanguage(source, url);
+    // Use real metadata if available, otherwise estimate
+    const repoDescription = repoMetadata?.description || `Documentation importée depuis ${source}`;
+    const popularity = repoMetadata?.stars ? Math.min(100, Math.round(Math.log10(repoMetadata.stars + 1) * 25)) : 50;
+    const language = repoMetadata?.language || determineLanguage(source, trimmedUrl);
+    const ecosystem = determineEcosystem(source, trimmedUrl);
+    const extraTags = repoMetadata?.topics || [];
+    // Estimate tokens based on repo size heuristic (real indexing happens async)
+    const tokensCount = repoMetadata?.stars 
+      ? Math.min(500000, Math.max(50000, repoMetadata.stars * 50))
+      : 100000;
+    const snippetsCount = Math.round(tokensCount / 200);
 
     // Prepare library data for response (will be stored client-side if DB fails)
     const libraryData = {
@@ -219,15 +317,15 @@ export async function POST(request: NextRequest) {
       source,
       ecosystem,
       language,
-      description: `Documentation importée depuis ${source}`,
+      description: repoDescription,
       repo: repoUrl,
       docs: docsUrl,
       versions: ['1.0.0'],
       defaultVersion: '1.0.0',
-      popularity: 50,
+      popularity,
       tokens: tokensCount,
       snippets: snippetsCount,
-      tags: [source, ecosystem, language.toLowerCase()],
+      tags: [...new Set([source, ecosystem, language.toLowerCase(), ...extraTags])],
       lastCrawled: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       isUserImported: true
@@ -271,20 +369,20 @@ export async function POST(request: NextRequest) {
             id: libraryId,
             name: libraryName.toLowerCase().replace(/\s+/g, '-'),
             displayName: libraryName,
-            description: `Documentation importée depuis ${source}`,
+            description: repoDescription,
             vendor,
             repoUrl,
             docsUrl,
             defaultVersion: '1.0.0',
-            popularityScore: 50,
+            popularityScore: popularity,
             totalSnippets: snippetsCount,
             totalTokens: tokensCount,
             language,
             ecosystem,
-            tags: [source, ecosystem, language.toLowerCase()],
+            tags: [...new Set([source, ecosystem, language.toLowerCase(), ...extraTags])],
             metadata: {
               importSource: source,
-              originalUrl: url,
+              originalUrl: trimmedUrl,
               importedBy: userId,
               importedAt: new Date().toISOString()
             },
