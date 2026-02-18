@@ -45,18 +45,18 @@ export const SSE_HEADERS = {
 
 export const STREAM_BILLING_CONFIGS: Record<string, any> = {
   openai: {
-    'gpt-3.5-turbo': {
+    'gpt-4o-mini': {
       provider: 'openai',
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       pricing: {
         streaming: {
-          perSecond: 0.0001, // $0.0001 par seconde
-          perMegabyte: 0.01, // $0.01 par MB
-          peakBandwidthPremium: 0.00001 // $0.00001 par KB/s au-dessus de 1MB/s
+          perSecond: 0.00005, // $0.00005 par seconde
+          perMegabyte: 0.005, // $0.005 par MB
+          peakBandwidthPremium: 0.000005 // $0.000005 par KB/s au-dessus de 1MB/s
         },
         tokens: {
-          input: 0.001, // $0.001 per 1K input tokens
-          output: 0.002 // $0.002 per 1K output tokens
+          input: 0.00015, // $0.00015 per 1K input tokens
+          output: 0.0006 // $0.0006 per 1K output tokens
         },
         infrastructure: {
           baseCost: 0.001, // $0.001 par connexion
@@ -83,18 +83,18 @@ export const STREAM_BILLING_CONFIGS: Record<string, any> = {
         penaltyRate: 0.1 // 10% credit pour SLA non respecté
       }
     },
-    'gpt-4': {
+    'gpt-4o': {
       provider: 'openai',
-      model: 'gpt-4',
+      model: 'gpt-4o',
       pricing: {
         streaming: {
-          perSecond: 0.0002,
-          perMegabyte: 0.02,
-          peakBandwidthPremium: 0.00002
+          perSecond: 0.0001,
+          perMegabyte: 0.01,
+          peakBandwidthPremium: 0.00001
         },
         tokens: {
-          input: 0.03, // $0.03 per 1K input tokens
-          output: 0.06 // $0.06 per 1K output tokens
+          input: 0.0025, // $0.0025 per 1K input tokens
+          output: 0.01 // $0.01 per 1K output tokens
         },
         infrastructure: {
           baseCost: 0.002,

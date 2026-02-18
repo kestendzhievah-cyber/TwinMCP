@@ -146,7 +146,7 @@ export class SSEController {
       id: query.requestId || randomUUID(),
       clientId: query.clientId || request.headers['x-client-id'] as string || 'anonymous',
       provider: body.provider || query.provider || 'openai',
-      model: body.model || query.model || 'gpt-3.5-turbo',
+      model: body.model || query.model || 'gpt-4o-mini',
       messages: body.messages || [],
       context: body.context,
       options: {

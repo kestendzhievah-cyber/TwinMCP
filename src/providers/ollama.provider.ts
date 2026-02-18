@@ -97,7 +97,7 @@ export class OllamaProvider {
       messages: request.messages.map(msg => ({
         role: msg.role,
         content: typeof msg.content === 'string' ? msg.content :
-          msg.content.map(c => c.text || '').join(''),
+          (msg.content || []).map(c => c.text || '').join(''),
       })),
       options: {
         temperature: request.options.temperature,

@@ -51,7 +51,11 @@ export interface LLMRequest {
     frequencyPenalty?: number;
     presencePenalty?: number;
     stream?: boolean;
+    tools?: LLMTool[];
+    toolChoice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
+    /** @deprecated Use tools/toolChoice instead */
     functions?: LLMFunction[];
+    /** @deprecated Use tools/toolChoice instead */
     functionCall?: 'auto' | 'none' | { name: string };
     stop?: string[];
   };
@@ -66,13 +70,20 @@ export interface LLMRequest {
 }
 
 export interface LLMMessage {
-  role: 'system' | 'user' | 'assistant' | 'function';
+  role: 'system' | 'user' | 'assistant' | 'function' | 'tool';
   content: string | Array<{
     type: 'text' | 'image';
     text?: string;
     image?: string; // base64 or URL
+  }> | null;
+  name?: string; // for function/tool messages
+  tool_call_id?: string; // for tool response messages
+  toolCalls?: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
   }>;
-  name?: string; // for function messages
+  /** @deprecated Use toolCalls instead */
   functionCall?: {
     name: string;
     arguments: string;
@@ -89,13 +100,18 @@ export interface LLMFunction {
   };
 }
 
+export interface LLMTool {
+  type: 'function';
+  function: LLMFunction;
+}
+
 export interface LLMResponse {
   id: string;
   requestId: string;
   provider: string;
   model: string;
   content: string;
-  finishReason: 'stop' | 'length' | 'function_call' | 'content_filter';
+  finishReason: 'stop' | 'length' | 'function_call' | 'tool_calls' | 'content_filter';
   usage: {
     promptTokens: number;
     completionTokens: number;
@@ -108,6 +124,12 @@ export interface LLMResponse {
     fallbackUsed?: boolean;
     retries?: number;
   };
+  toolCalls?: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
+  }>;
+  /** @deprecated Use toolCalls instead */
   functionCall?: {
     name: string;
     arguments: string;

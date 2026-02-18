@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai';
+import crypto from 'crypto';
 import { logger } from '../utils/logger';
 import { CacheService } from '../config/redis';
 
@@ -10,7 +11,7 @@ export class EmbeddingsService {
     if (!this.openai) {
       const apiKey = process.env['OPENAI_API_KEY'];
       if (!apiKey) {
-        throw new Error('OPENAI_API_KEY is required');
+        throw new Error('OPENAI_API_KEY is not configured. Set OPENAI_API_KEY environment variable.');
       }
       this.openai = new OpenAI({ apiKey });
     }
@@ -113,8 +114,7 @@ export class EmbeddingsService {
   }
 
   private hashText(text: string): string {
-    // Hash simple pour le cache (en production, utiliser crypto)
-    return Buffer.from(text).toString('base64').substring(0, 32);
+    return crypto.createHash('sha256').update(text).digest('hex');
   }
 
   async getEmbeddingInfo(): Promise<{ model: string; dimensions: number }> {

@@ -316,8 +316,8 @@ export class HealthChecker {
 
   private async checkModelAvailability(): Promise<any> {
     return {
-      'gpt-4': 'available',
-      'gpt-3.5-turbo': 'available',
+      'gpt-4o': 'available',
+      'gpt-4o-mini': 'available',
       'claude-3': 'available'
     };
   }

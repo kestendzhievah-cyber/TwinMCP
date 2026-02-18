@@ -20,7 +20,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   ];
 
   const models = {
-    openai: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo'],
+    openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
     anthropic: ['claude-3-haiku', 'claude-3-sonnet', 'claude-3-opus'],
     google: ['gemini-pro', 'gemini-pro-vision'],
     local: ['llama-2-7b', 'llama-2-13b', 'custom']

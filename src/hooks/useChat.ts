@@ -11,7 +11,7 @@ export const useChat = () => {
     error: null,
     settings: {
       defaultProvider: 'openai',
-      defaultModel: 'gpt-3.5-turbo',
+      defaultModel: 'gpt-4o-mini',
       theme: 'auto',
       fontSize: 'medium',
       soundEnabled: true,

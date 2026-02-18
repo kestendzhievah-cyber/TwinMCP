@@ -567,7 +567,7 @@ export class AnalyticsService {
 
   private getPreferredModel(models: string[]): string {
     // Retourne le modèle le plus utilisé
-    return models[0] || 'gpt-3.5-turbo';
+    return models[0] || 'gpt-4o-mini';
   }
 
   private async getAverageResponseTime(userId: string | null, period: { start: Date; end: Date }): Promise<number> {

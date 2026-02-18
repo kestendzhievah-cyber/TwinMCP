@@ -4,7 +4,7 @@ export interface ContextAssemblyRequest {
   query: string;
   queryEmbedding: number[];
   searchResults: VectorSearchResult[];
-  targetModel: 'gpt-3.5-turbo' | 'gpt-4' | 'claude-3' | 'llama-2' | 'custom';
+  targetModel: 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4-turbo' | 'gpt-4' | 'gpt-3.5-turbo' | 'claude-3' | 'llama-2' | 'custom';
   maxTokens: number;
   options: {
     includeCodeExamples: boolean;

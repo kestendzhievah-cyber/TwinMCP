@@ -7,14 +7,24 @@ export const LLM_PROVIDERS: Record<string, LLMProvider> = {
     type: 'openai',
     models: [
       {
-        id: 'gpt-4',
-        name: 'GPT-4',
+        id: 'gpt-4o',
+        name: 'GPT-4o',
         provider: 'openai',
-        contextWindow: 8192,
-        maxOutputTokens: 4096,
-        capabilities: ['functions', 'vision', 'streaming'],
-        pricing: { input: 0.03, output: 0.06 },
-        performance: { latency: 2000, quality: 9 }
+        contextWindow: 128000,
+        maxOutputTokens: 16384,
+        capabilities: ['tools', 'vision', 'streaming', 'json_mode'],
+        pricing: { input: 0.0025, output: 0.01 },
+        performance: { latency: 1000, quality: 9 }
+      },
+      {
+        id: 'gpt-4o-mini',
+        name: 'GPT-4o Mini',
+        provider: 'openai',
+        contextWindow: 128000,
+        maxOutputTokens: 16384,
+        capabilities: ['tools', 'vision', 'streaming', 'json_mode'],
+        pricing: { input: 0.00015, output: 0.0006 },
+        performance: { latency: 500, quality: 8 }
       },
       {
         id: 'gpt-4-turbo',
@@ -22,19 +32,9 @@ export const LLM_PROVIDERS: Record<string, LLMProvider> = {
         provider: 'openai',
         contextWindow: 128000,
         maxOutputTokens: 4096,
-        capabilities: ['functions', 'vision', 'streaming'],
+        capabilities: ['tools', 'vision', 'streaming', 'json_mode'],
         pricing: { input: 0.01, output: 0.03 },
         performance: { latency: 1500, quality: 9 }
-      },
-      {
-        id: 'gpt-3.5-turbo',
-        name: 'GPT-3.5 Turbo',
-        provider: 'openai',
-        contextWindow: 16384,
-        maxOutputTokens: 4096,
-        capabilities: ['functions', 'streaming'],
-        pricing: { input: 0.0015, output: 0.002 },
-        performance: { latency: 800, quality: 7 }
       }
     ],
     capabilities: {
@@ -42,8 +42,8 @@ export const LLM_PROVIDERS: Record<string, LLMProvider> = {
       functionCalling: true,
       vision: true,
       maxTokens: 128000,
-      inputCost: 0.03,
-      outputCost: 0.06
+      inputCost: 0.0025,
+      outputCost: 0.01
     },
     config: {
       apiKey: process.env['OPENAI_API_KEY'] || '',
@@ -52,8 +52,8 @@ export const LLM_PROVIDERS: Record<string, LLMProvider> = {
       retries: 3,
       retryDelay: 1000,
       rateLimit: {
-        requestsPerMinute: 3500,
-        tokensPerMinute: 90000
+        requestsPerMinute: 5000,
+        tokensPerMinute: 800000
       },
       features: {
         streaming: true,
@@ -171,18 +171,18 @@ export const LLM_PROVIDERS: Record<string, LLMProvider> = {
 
 export const LLM_BILLING_CONFIG = {
   openai: {
-    'gpt-4': {
-      pricing: { input: 0.03, output: 0.06 },
+    'gpt-4o': {
+      pricing: { input: 0.0025, output: 0.01 },
+      billingCycle: 'monthly' as const,
+      currency: 'USD'
+    },
+    'gpt-4o-mini': {
+      pricing: { input: 0.00015, output: 0.0006 },
       billingCycle: 'monthly' as const,
       currency: 'USD'
     },
     'gpt-4-turbo': {
       pricing: { input: 0.01, output: 0.03 },
-      billingCycle: 'monthly' as const,
-      currency: 'USD'
-    },
-    'gpt-3.5-turbo': {
-      pricing: { input: 0.0015, output: 0.002 },
       billingCycle: 'monthly' as const,
       currency: 'USD'
     }

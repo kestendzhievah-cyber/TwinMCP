@@ -41,7 +41,7 @@ export class AnthropicProvider {
       .map(msg => ({
         role: msg.role === 'assistant' ? 'assistant' : 'user',
         content: typeof msg.content === 'string' ? msg.content : 
-          msg.content.map(c => c.type === 'text' ? c.text : '').join('')
+          (msg.content || []).map(c => c.type === 'text' ? c.text : '').join('')
       }));
 
     const systemMessage = request.messages.find(msg => msg.role === 'system');

@@ -1,11 +1,11 @@
 import { ContextTemplate } from '../types/context-assembly.types';
 
 export const CONTEXT_TEMPLATES: Record<string, ContextTemplate> = {
-  'gpt-4-documentation': {
-    id: 'gpt-4-documentation',
-    name: 'GPT-4 Documentation Template',
-    targetModel: 'gpt-4',
-    maxTokens: 8000,
+  'gpt-4o-documentation': {
+    id: 'gpt-4o-documentation',
+    name: 'GPT-4o Documentation Template',
+    targetModel: 'gpt-4o',
+    maxTokens: 16000,
     sections: [
       {
         id: 'overview',
@@ -106,11 +106,11 @@ export const CONTEXT_TEMPLATES: Record<string, ContextTemplate> = {
     ],
     variables: []
   },
-  'gpt-3.5-turbo-quick': {
-    id: 'gpt-3.5-turbo-quick',
-    name: 'GPT-3.5 Turbo Quick Reference',
-    targetModel: 'gpt-3.5-turbo',
-    maxTokens: 4000,
+  'gpt-4o-mini-quick': {
+    id: 'gpt-4o-mini-quick',
+    name: 'GPT-4o Mini Quick Reference',
+    targetModel: 'gpt-4o-mini',
+    maxTokens: 8000,
     sections: [
       {
         id: 'summary',
@@ -242,7 +242,7 @@ export const CONTEXT_TEMPLATES: Record<string, ContextTemplate> = {
 
 export function getTemplateForModel(model: string): ContextTemplate {
   const templateKey = `${model}-documentation`;
-  return CONTEXT_TEMPLATES[templateKey] || CONTEXT_TEMPLATES['gpt-4-documentation'];
+  return CONTEXT_TEMPLATES[templateKey] || CONTEXT_TEMPLATES['gpt-4o-documentation'];
 }
 
 export function getAllTemplates(): ContextTemplate[] {

@@ -37,7 +37,7 @@ export class GoogleProvider {
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{
         text: typeof msg.content === 'string' ? msg.content : 
-          msg.content.map(c => c.text || '').join('')
+          (msg.content || []).map(c => c.text || '').join('')
       }]
     }));
 

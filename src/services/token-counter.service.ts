@@ -11,8 +11,11 @@ export class TokenCounter {
     const baseTokens = this.countTokens(text);
     
     const modelMultipliers: Record<string, number> = {
-      'gpt-3.5-turbo': 1.0,
+      'gpt-4o': 1.0,
+      'gpt-4o-mini': 1.0,
+      'gpt-4-turbo': 1.0,
       'gpt-4': 1.0,
+      'gpt-3.5-turbo': 1.0,
       'claude-3': 1.2,
       'llama-2': 1.1,
       'custom': 1.0
