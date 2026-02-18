@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { 
   Github, 
   ChevronRight, 
@@ -110,6 +111,7 @@ function getLibrariesFromLocalStorage(): any[] {
 
 export default function AjouterBibliotheques() {
   const router = useRouter();
+  const { user } = useAuth();
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState('');
   const [libraryName, setLibraryName] = useState('');
@@ -190,11 +192,23 @@ export default function AjouterBibliotheques() {
     setImportResult(null);
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add auth token if user is logged in
+      if (user) {
+        try {
+          const idToken = await user.getIdToken();
+          headers['Authorization'] = `Bearer ${idToken}`;
+        } catch (e) {
+          // Continue without auth token
+        }
+      }
+
       const response = await fetch('/api/libraries/import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           source: selectedSource,
           url: importUrl.trim(),
@@ -228,7 +242,7 @@ export default function AjouterBibliotheques() {
     } finally {
       setIsImporting(false);
     }
-  }, [importUrl, selectedSource, libraryName, router]);
+  }, [importUrl, selectedSource, libraryName, router, user]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && importUrl.trim() && !isImporting) {
