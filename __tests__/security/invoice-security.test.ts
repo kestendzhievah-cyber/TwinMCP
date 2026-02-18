@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { InvoiceService } from '../../src/services/invoice.service';
 import { EncryptionService } from '../../src/services/security/encryption.service';

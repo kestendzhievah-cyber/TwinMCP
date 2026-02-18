@@ -23,7 +23,7 @@ export interface MCPServerConfig {
   };
   http?: HttpServerConfig;
   tools: MCPServerTool[];
-  logging: {
+  logging?: {
     level: 'debug' | 'info' | 'warn' | 'error';
     structured: boolean;
   };

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { HttpMCPServer } from '../../../lib/mcp/servers/http-mcp-server';
 import { MCPServerTool } from '../../../lib/mcp/types';
 

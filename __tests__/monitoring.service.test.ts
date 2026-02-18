@@ -95,11 +95,11 @@ describe('MonitoringService', () => {
         conversions: { total: 10 }
       };
 
-      mockMetricsCollector.getSystemMetrics.mockResolvedValue(mockSystemMetrics);
-      mockMetricsCollector.getApplicationMetrics.mockResolvedValue(mockApplicationMetrics);
-      mockMetricsCollector.getDatabaseMetrics.mockResolvedValue(mockDatabaseMetrics);
-      mockMetricsCollector.getNetworkMetrics.mockResolvedValue(mockNetworkMetrics);
-      mockMetricsCollector.getBusinessMetrics.mockResolvedValue(mockBusinessMetrics);
+      mockMetricsCollector.getSystemMetrics.mockResolvedValue(mockSystemMetrics as any);
+      mockMetricsCollector.getApplicationMetrics.mockResolvedValue(mockApplicationMetrics as any);
+      mockMetricsCollector.getDatabaseMetrics.mockResolvedValue(mockDatabaseMetrics as any);
+      mockMetricsCollector.getNetworkMetrics.mockResolvedValue(mockNetworkMetrics as any);
+      mockMetricsCollector.getBusinessMetrics.mockResolvedValue(mockBusinessMetrics as any);
 
       // Mock database save
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
@@ -173,11 +173,11 @@ describe('MonitoringService', () => {
         business: { revenue: 1000 }
       };
 
-      mockMetricsCollector.getSystemMetrics.mockResolvedValue(mockMetrics.system);
-      mockMetricsCollector.getApplicationMetrics.mockResolvedValue(mockMetrics.application);
-      mockMetricsCollector.getDatabaseMetrics.mockResolvedValue(mockMetrics.database);
-      mockMetricsCollector.getNetworkMetrics.mockResolvedValue(mockMetrics.network);
-      mockMetricsCollector.getBusinessMetrics.mockResolvedValue(mockMetrics.business);
+      mockMetricsCollector.getSystemMetrics.mockResolvedValue(mockMetrics.system as any);
+      mockMetricsCollector.getApplicationMetrics.mockResolvedValue(mockMetrics.application as any);
+      mockMetricsCollector.getDatabaseMetrics.mockResolvedValue(mockMetrics.database as any);
+      mockMetricsCollector.getNetworkMetrics.mockResolvedValue(mockMetrics.network as any);
+      mockMetricsCollector.getBusinessMetrics.mockResolvedValue(mockMetrics.business as any);
 
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
       mockAlertManager.evaluateRules.mockResolvedValue([]);
@@ -198,7 +198,7 @@ describe('MonitoringService', () => {
         severity: 'warning' as const,
         source: 'test',
         metric: 'cpu.usage',
-        threshold: { operator: 'gt', value: 80, duration: 300 },
+        threshold: { operator: 'gt' as const, value: 80, duration: 300 },
         currentValue: 85,
         tags: ['test'],
         annotations: []
@@ -213,11 +213,11 @@ describe('MonitoringService', () => {
         business: { revenue: 1000 }
       };
 
-      mockMetricsCollector.getSystemMetrics.mockResolvedValue(mockMetrics.system);
-      mockMetricsCollector.getApplicationMetrics.mockResolvedValue(mockMetrics.application);
-      mockMetricsCollector.getDatabaseMetrics.mockResolvedValue(mockMetrics.database);
-      mockMetricsCollector.getNetworkMetrics.mockResolvedValue(mockMetrics.network);
-      mockMetricsCollector.getBusinessMetrics.mockResolvedValue(mockMetrics.business);
+      mockMetricsCollector.getSystemMetrics.mockResolvedValue(mockMetrics.system as any);
+      mockMetricsCollector.getApplicationMetrics.mockResolvedValue(mockMetrics.application as any);
+      mockMetricsCollector.getDatabaseMetrics.mockResolvedValue(mockMetrics.database as any);
+      mockMetricsCollector.getNetworkMetrics.mockResolvedValue(mockMetrics.network as any);
+      mockMetricsCollector.getBusinessMetrics.mockResolvedValue(mockMetrics.business as any);
 
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
       mockAlertManager.evaluateRules.mockResolvedValue([]);
@@ -250,7 +250,7 @@ describe('MonitoringService', () => {
         }
       ];
 
-      mockAlertManager.getActiveAlerts.mockResolvedValue(mockAlerts);
+      mockAlertManager.getActiveAlerts.mockResolvedValue(mockAlerts as any);
 
       const result = await monitoringService.getActiveAlerts({ severity: 'critical' });
 
@@ -280,7 +280,7 @@ describe('MonitoringService', () => {
         }
       ];
 
-      mockHealthChecker.checkService.mockImplementation((service) => {
+      mockHealthChecker.checkService.mockImplementation(((service: string) => {
         return Promise.resolve(mockHealthChecks.find(hc => hc.service === service) || {
           service,
           status: 'healthy',
@@ -289,7 +289,7 @@ describe('MonitoringService', () => {
           details: {},
           dependencies: []
         });
-      });
+      }) as any);
 
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
 
@@ -312,7 +312,7 @@ describe('MonitoringService', () => {
         }
       ];
 
-      mockHealthChecker.checkService.mockResolvedValue(mockHealthChecks[0]);
+      mockHealthChecker.checkService.mockResolvedValue(mockHealthChecks[0] as any);
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
 
       // Mock alert creation
@@ -357,7 +357,7 @@ describe('MonitoringService', () => {
         { service: 'api-gateway', status: 'degraded' }
       ];
 
-      mockHealthChecker.checkService.mockImplementation((service) => {
+      mockHealthChecker.checkService.mockImplementation(((service: string) => {
         const healthCheck = mockHealthChecks.find(hc => hc.service === service);
         return Promise.resolve(healthCheck || {
           service,
@@ -367,7 +367,7 @@ describe('MonitoringService', () => {
           details: {},
           dependencies: []
         });
-      });
+      }) as any);
 
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
 
@@ -389,7 +389,7 @@ describe('MonitoringService', () => {
         responseTime: 5000,
         details: {},
         dependencies: []
-      });
+      } as any);
 
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
 

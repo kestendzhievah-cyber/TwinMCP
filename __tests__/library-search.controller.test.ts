@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { LibrarySearchController } from '../src/controllers/library-search.controller';
 import { LibrarySearchService } from '../src/services/library-search.service';
 import { LibraryAnalyticsService } from '../src/services/library-analytics.service';

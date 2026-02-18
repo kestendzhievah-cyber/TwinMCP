@@ -1,5 +1,7 @@
 import { MCPServerFactory } from '../../lib/mcp/utils/server-factory';
 import { MCPServerTool } from '../../lib/mcp/types';
+import { StdioMCPServer } from '../../lib/mcp/servers/stdio-mcp-server';
+import { HttpMCPServer } from '../../lib/mcp/servers/http-mcp-server';
 
 describe('MCP Integration Tests', () => {
   let mockTools: MCPServerTool[];
@@ -51,7 +53,7 @@ describe('MCP Integration Tests', () => {
       const server = MCPServerFactory.create({
         mode: 'stdio',
         tools: mockTools
-      });
+      }) as StdioMCPServer;
 
       expect(server).toBeDefined();
       expect(server.getAvailableTools()).toHaveLength(2);
@@ -67,7 +69,7 @@ describe('MCP Integration Tests', () => {
       const server = MCPServerFactory.create({
         mode: 'stdio',
         tools: [mockTools[0]]
-      });
+      }) as StdioMCPServer;
 
       expect(server.getAvailableTools()).toHaveLength(1);
 
@@ -94,14 +96,13 @@ describe('MCP Integration Tests', () => {
           port: 3002,
           host: 'localhost',
           cors: false,
-          rateLimit: false,
-          logging: false
+          rateLimit: false
         },
         logging: {
           level: 'error',
           structured: false
         }
-      });
+      }) as HttpMCPServer;
 
       expect(server).toBeDefined();
       expect(server.getAvailableTools()).toHaveLength(2);
@@ -136,14 +137,13 @@ describe('MCP Integration Tests', () => {
           port: 3003,
           host: 'localhost',
           cors: false,
-          rateLimit: false,
-          logging: false
+          rateLimit: false
         },
         logging: {
           level: 'error',
           structured: false
         }
-      });
+      }) as HttpMCPServer;
 
       await server.start();
 
@@ -234,14 +234,13 @@ describe('MCP Integration Tests', () => {
           port: 3004,
           host: 'localhost',
           cors: false,
-          rateLimit: false,
-          logging: false
+          rateLimit: false
         },
         logging: {
           level: 'error',
           structured: false
         }
-      });
+      }) as { stdio: StdioMCPServer; http: HttpMCPServer };
 
       expect('stdio' in servers && 'http' in servers).toBe(true);
       expect(servers.stdio.getAvailableTools()).toHaveLength(2);
@@ -266,14 +265,13 @@ describe('MCP Integration Tests', () => {
           port: 3005,
           host: 'localhost',
           cors: false,
-          rateLimit: false,
-          logging: false
+          rateLimit: false
         },
         logging: {
           level: 'error',
           structured: false
         }
-      });
+      }) as { stdio: StdioMCPServer; http: HttpMCPServer };
 
       const info = MCPServerFactory.getServerInfo(servers);
       expect(info.mode).toBe('both');
@@ -344,8 +342,7 @@ describe('MCP Integration Tests', () => {
             port: 0, // Invalid port
             host: 'localhost',
             cors: false,
-            rateLimit: false,
-            logging: false
+            rateLimit: false
           },
           logging: {
             level: 'info',

@@ -58,7 +58,7 @@ export interface AuthResult {
 
 // Plan limits configuration
 const PLAN_LIMITS = {
-  free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 2 },
+  free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3 },
   pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10 },
   enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100 }
 };

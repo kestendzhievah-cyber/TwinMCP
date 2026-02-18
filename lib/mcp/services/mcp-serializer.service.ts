@@ -20,7 +20,7 @@ export class MCPMessageSerializer {
       
       return jsonMessage;
     } catch (error) {
-      throw new Error(`Failed to serialize MCP message: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
+      throw new Error(`Failed to serialize MCP message: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -48,7 +48,7 @@ export class MCPMessageSerializer {
       if (error instanceof SyntaxError) {
         throw new Error(`JSON parse error: ${error.message}`);
       }
-      throw new Error(`Failed to deserialize MCP message: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`);
+      throw new Error(`Failed to deserialize MCP message: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

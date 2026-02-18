@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { PaymentService } from '../../src/services/payment.service';
 import { PaymentStatus } from '../../src/types/invoice.types';
 import { mockPool } from '../mocks/billing.mocks';

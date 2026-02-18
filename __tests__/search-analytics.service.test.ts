@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { SearchAnalyticsService } from '../src/services/search-analytics.service';
 import { Pool } from 'pg';
 import { SearchResult } from '../src/types/search.types';

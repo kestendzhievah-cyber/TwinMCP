@@ -129,7 +129,7 @@ class ApiKeysClient {
   }
 
   async revokeApiKey(keyId: string): Promise<void> {
-    await this.makeRequest(`/api-keys/${keyId}`, {
+    await this.makeRequest(`/api-keys?id=${encodeURIComponent(keyId)}`, {
       method: 'DELETE',
     });
   }

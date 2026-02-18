@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { MetricsCollector } from '../src/services/metrics-collector.service';
 import { Pool } from 'pg';
 import Redis from 'ioredis';

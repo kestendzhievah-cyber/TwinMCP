@@ -61,7 +61,7 @@ export async function canCreateMcpServer(userId: string): Promise<{
       currentCount,
       limit,
       plan,
-      suggestedUpgrade: !allowed ? 'professional' : null
+      suggestedUpgrade: !allowed ? 'pro' : null
     };
   } catch (error) {
     console.error('Error checking MCP server creation limits:', error);
@@ -130,7 +130,7 @@ export async function canMakeRequest(userId: string): Promise<{
       currentCount,
       limit,
       plan,
-      suggestedUpgrade: !allowed ? 'professional' : null
+      suggestedUpgrade: !allowed ? 'pro' : null
     };
   } catch (error) {
     console.error('Error checking request limits:', error);

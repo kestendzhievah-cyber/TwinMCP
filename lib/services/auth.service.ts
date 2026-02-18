@@ -42,16 +42,12 @@ export class AuthService {
         }
       }
 
-      // Extraire le préfixe pour la recherche
-      const keyPrefix = apiKey.slice(0, 20) // twinmcp_live_ ou twinmcp_test_
-      
-      // Rechercher la clé API dans la base de données
-      const apiKeyRecord = await this.db.apiKey.findFirst({
-        where: {
-          keyPrefix: keyPrefix,
-          revokedAt: null,
-          isActive: true
-        },
+      // Lookup by SHA-256 hash (primary method — used by new key generation)
+      const { createHash } = await import('crypto')
+      const keyHash = createHash('sha256').update(apiKey).digest('hex')
+
+      let apiKeyRecord = await this.db.apiKey.findUnique({
+        where: { keyHash },
         include: {
           user: {
             select: {
@@ -63,21 +59,43 @@ export class AuthService {
         }
       })
 
+      // Fallback: lookup by prefix + bcrypt compare (legacy keys)
       if (!apiKeyRecord) {
-        return {
-          success: false,
-          error: 'API key not found or revoked',
-          errorCode: 'INVALID_API_KEY',
-          statusCode: 401
+        const keyPrefix = apiKey.substring(0, 20)
+        const candidates = await this.db.apiKey.findMany({
+          where: {
+            keyPrefix,
+            revokedAt: null,
+            isActive: true
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                clientId: true
+              }
+            }
+          }
+        })
+
+        for (const candidate of candidates) {
+          try {
+            const isValid = await bcrypt.compare(apiKey, candidate.keyHash)
+            if (isValid) {
+              apiKeyRecord = candidate
+              break
+            }
+          } catch {
+            // Not a bcrypt hash, skip
+          }
         }
       }
 
-      // Vérifier le hash
-      const isValid = await bcrypt.compare(apiKey, apiKeyRecord.keyHash)
-      if (!isValid) {
+      if (!apiKeyRecord || !apiKeyRecord.isActive || apiKeyRecord.revokedAt) {
         return {
           success: false,
-          error: 'Invalid API key',
+          error: 'API key not found or revoked',
           errorCode: 'INVALID_API_KEY',
           statusCode: 401
         }
@@ -173,31 +191,33 @@ export class AuthService {
     return { allowed: true }
   }
 
-  async generateApiKey(userId: string, name?: string): Promise<{ apiKey: string; prefix: string }> {
+  async generateApiKey(userId: string, name?: string): Promise<{ apiKey: string; prefix: string; id: string }> {
+    const { createHash, randomBytes } = await import('crypto')
     const prefix = 'twinmcp_live_'
-    const randomPart = this.generateRandomString(32)
+    const randomPart = randomBytes(24).toString('hex')
     const apiKey = prefix + randomPart
 
-    // Hasher la clé
-    const saltRounds = 12
-    const keyHash = await bcrypt.hash(apiKey, saltRounds)
+    // Hash with SHA-256 (consistent with route-level key generation)
+    const keyHash = createHash('sha256').update(apiKey).digest('hex')
+    const keyPrefix = apiKey.substring(0, 20)
 
     // Sauvegarder dans la base de données
-    await this.db.apiKey.create({
+    const record = await this.db.apiKey.create({
       data: {
         userId,
         keyHash,
-        keyPrefix: prefix + randomPart.slice(0, 12),
+        keyPrefix,
         name: name || `API Key ${new Date().toISOString()}`,
         tier: 'free',
-        quotaDaily: 100,
-        quotaMonthly: 3000
+        quotaDaily: 200,
+        quotaMonthly: 6000
       }
     })
 
     return {
       apiKey,
-      prefix: prefix + randomPart.slice(0, 12)
+      prefix: keyPrefix,
+      id: record.id
     }
   }
 
@@ -210,6 +230,7 @@ export class AuthService {
           revokedAt: null
         },
         data: {
+          isActive: false,
           revokedAt: new Date()
         }
       })

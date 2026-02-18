@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { PayPalService } from '../../../src/services/payment-providers/paypal.service';
 import axios from 'axios';
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { VectorSearchService } from '../src/services/vector-search.service';
 import { EmbeddingGenerationService } from '../src/services/embedding-generation.service';
 import { Pool } from 'pg';

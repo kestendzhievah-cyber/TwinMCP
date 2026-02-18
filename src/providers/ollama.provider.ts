@@ -127,7 +127,7 @@ export class OllamaProvider {
       },
       cost: 0, // Local models are free
       latency,
-      metadata: { local: true },
+      metadata: { cacheHit: false },
       createdAt: new Date(),
     }
   }

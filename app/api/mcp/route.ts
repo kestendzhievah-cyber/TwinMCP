@@ -46,7 +46,7 @@ async function validateApiKey(apiKey: string): Promise<{ valid: boolean; userId?
       where: { keyHash }
     });
     
-    if (!key || !key.isActive) return { valid: false };
+    if (!key || !key.isActive || key.revokedAt) return { valid: false };
     
     // Update last used
     await prisma.apiKey.update({
@@ -67,8 +67,8 @@ async function validateApiKey(apiKey: string): Promise<{ valid: boolean; userId?
 // Rate limiting check
 async function checkRateLimit(userId: string, plan: string): Promise<{ allowed: boolean; remaining: number }> {
   const limits: Record<string, number> = {
-    free: 100,
-    professional: 10000,
+    free: 200,
+    pro: 10000,
     enterprise: 100000
   };
   
@@ -101,7 +101,8 @@ async function trackUsage(userId: string, tool: string, tokens: number) {
         userId,
         toolName: tool,
         tokensReturned: tokens,
-        createdAt: new Date()
+        success: true,
+        responseTimeMs: 0
       }
     });
   } catch (e) {

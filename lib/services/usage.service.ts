@@ -41,7 +41,7 @@ export const PLAN_LIMITS = {
   free: {
     dailyLimit: 200,
     monthlyLimit: 6000,
-    maxKeys: 2,
+    maxKeys: 3,
     rateLimit: 20 // per minute
   },
   pro: {

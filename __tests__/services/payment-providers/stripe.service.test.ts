@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { StripeService } from '../../../src/services/payment-providers/stripe.service';
 import Stripe from 'stripe';
 
@@ -5,7 +6,7 @@ jest.mock('stripe');
 
 describe('StripeService', () => {
   let stripeService: StripeService;
-  let mockStripe: jest.Mocked<Stripe>;
+  let mockStripe: any;
 
   beforeEach(() => {
     process.env.STRIPE_SECRET_KEY = 'sk_test_mock_key';

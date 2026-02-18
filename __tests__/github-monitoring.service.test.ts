@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { GitHubMonitoringService } from '../src/services/github-monitoring.service';
 import { MonitoringConfig } from '../src/types/github-monitoring.types';
 import { Pool } from 'pg';

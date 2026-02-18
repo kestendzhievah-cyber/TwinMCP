@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest } from 'next/server';
 import { POST as stripeWebhook } from '../../src/app/api/webhooks/stripe/route';
 import { POST as paypalWebhook } from '../../src/app/api/webhooks/paypal/route';

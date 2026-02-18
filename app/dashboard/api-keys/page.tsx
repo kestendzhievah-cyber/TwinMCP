@@ -5,8 +5,6 @@ import {
   Key, 
   Plus, 
   Copy, 
-  Eye, 
-  EyeOff, 
   Trash2, 
   RefreshCw, 
   Shield, 
@@ -14,7 +12,8 @@ import {
   TrendingUp,
   Check,
   AlertTriangle,
-  BarChart3
+  BarChart3,
+  XCircle
 } from "lucide-react";
 import { apiClient } from "@/lib/client/api-client";
 
@@ -22,6 +21,7 @@ interface ApiKey {
   id: string;
   keyPrefix: string;
   name: string;
+  tier?: string;
   quotaRequestsPerMinute: number;
   quotaRequestsPerDay: number;
   lastUsedAt?: string;
@@ -42,89 +42,24 @@ export default function ApiKeysPage() {
   const [newApiKey, setNewApiKey] = useState<{ key: string; prefix: string } | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [revokingKey, setRevokingKey] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Simulation de chargement des clés API
+  // Chargement des clés API depuis le backend
   useEffect(() => {
     const loadApiKeys = async () => {
       setLoading(true);
       try {
-        // Appel API réel via notre client
         const result = await apiClient.getApiKeys();
         
-        if (result.success) {
+        if (result.success && Array.isArray(result.data)) {
           setApiKeys(result.data);
         } else {
           console.error('API Error:', result.error);
-          // En cas d'erreur, utiliser les données de test
-          const mockKeys: ApiKey[] = [
-            {
-              id: "1",
-              keyPrefix: "twinmcp_live_abc123def456",
-              name: "Clé de production",
-              quotaRequestsPerMinute: 100,
-              quotaRequestsPerDay: 10000,
-              lastUsedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-              usage: {
-                requestsToday: 245,
-                requestsThisHour: 12,
-                successRate: 98.5
-              }
-            },
-            {
-              id: "2",
-              keyPrefix: "twinmcp_test_xyz789uvw012",
-              name: "Clé de développement",
-              quotaRequestsPerMinute: 50,
-              quotaRequestsPerDay: 1000,
-              lastUsedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-              usage: {
-                requestsToday: 89,
-                requestsThisHour: 5,
-                successRate: 99.2
-              }
-            }
-          ];
-          
-          setApiKeys(mockKeys);
+          setApiKeys([]);
         }
-        
       } catch (error) {
         console.error("Error loading API keys:", error);
-        // En cas d'erreur critique, utiliser les données de test
-        const mockKeys: ApiKey[] = [
-          {
-            id: "1",
-            keyPrefix: "twinmcp_live_abc123def456",
-            name: "Clé de production",
-            quotaRequestsPerMinute: 100,
-            quotaRequestsPerDay: 10000,
-            lastUsedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-            usage: {
-              requestsToday: 245,
-              requestsThisHour: 12,
-              successRate: 98.5
-            }
-          },
-          {
-            id: "2",
-            keyPrefix: "twinmcp_test_xyz789uvw012",
-            name: "Clé de développement",
-            quotaRequestsPerMinute: 50,
-            quotaRequestsPerDay: 1000,
-            lastUsedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-            usage: {
-              requestsToday: 89,
-              requestsThisHour: 5,
-              successRate: 99.2
-            }
-          }
-        ];
-        
-        setApiKeys(mockKeys);
+        setApiKeys([]);
       } finally {
         setLoading(false);
       }
@@ -138,26 +73,27 @@ export default function ApiKeysPage() {
 
     setCreatingKey(true);
     try {
-      // Appel API réel via notre client
       const result = await apiClient.createApiKey(newKeyName.trim());
       
-      if (result.success) {
+      if (result.success && result.data) {
+        // result.data.key = the full raw API key (only shown once)
+        // result.data.id = the database record ID
         setNewApiKey({
-          key: result.data.id, // Utiliser l'ID généré comme clé complète pour la démo
+          key: result.data.key,
           prefix: result.data.keyPrefix
         });
         setShowCreateModal(false);
         setNewKeyName("");
         
-        // Ajouter la clé à la liste
+        // Ajouter la clé à la liste locale
         const newKey: ApiKey = {
           id: result.data.id,
           keyPrefix: result.data.keyPrefix,
-          name: newKeyName.trim(),
-          quotaRequestsPerMinute: result.data.quotaRequestsPerMinute,
-          quotaRequestsPerDay: result.data.quotaRequestsPerDay,
+          name: result.data.name || newKeyName.trim(),
+          quotaRequestsPerMinute: result.data.quotaRequestsPerMinute || 20,
+          quotaRequestsPerDay: result.data.quotaRequestsPerDay || 200,
           createdAt: result.data.createdAt,
-          usage: result.data.usage
+          usage: result.data.usage || { requestsToday: 0, requestsThisHour: 0, successRate: 100 }
         };
         
         setApiKeys(prev => [newKey, ...prev]);
@@ -167,7 +103,8 @@ export default function ApiKeysPage() {
       
     } catch (error) {
       console.error("Error creating API key:", error);
-      alert(`Erreur lors de la création de la clé: ${error instanceof Error ? error.message : String(error)}`);
+      setErrorMessage(error instanceof Error ? error.message : String(error));
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setCreatingKey(false);
     }
@@ -180,7 +117,6 @@ export default function ApiKeysPage() {
 
     setRevokingKey(keyId);
     try {
-      // Appel API réel via notre client
       const result = await apiClient.revokeApiKey(keyId);
       
       if (result.success) {
@@ -190,7 +126,8 @@ export default function ApiKeysPage() {
       }
     } catch (error) {
       console.error("Error revoking API key:", error);
-      alert(`Erreur lors de la révocation: ${error instanceof Error ? error.message : String(error)}`);
+      setErrorMessage(error instanceof Error ? error.message : String(error));
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setRevokingKey(null);
     }
@@ -220,6 +157,22 @@ export default function ApiKeysPage() {
 
   return (
     <div className="space-y-6">
+      {/* Error Toast */}
+      {errorMessage && (
+        <div className="fixed top-4 right-4 z-[60] max-w-md animate-in slide-in-from-top-2">
+          <div className="bg-red-500/20 border border-red-500/40 rounded-xl p-4 flex items-start gap-3 shadow-lg backdrop-blur-sm">
+            <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-300">Erreur</p>
+              <p className="text-sm text-red-400/80 mt-0.5">{errorMessage}</p>
+            </div>
+            <button onClick={() => setErrorMessage(null)} className="text-red-400 hover:text-red-300">
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -316,11 +269,11 @@ export default function ApiKeysPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-1 text-xs rounded-full ${
-                    apiKey.keyPrefix.includes('test')
+                    apiKey.tier === 'free' || apiKey.keyPrefix.includes('free')
                       ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                       : 'bg-green-500/20 text-green-400 border border-green-500/30'
                   }`}>
-                    {apiKey.keyPrefix.includes('test') ? 'Test' : 'Production'}
+                    {apiKey.tier === 'free' || apiKey.keyPrefix.includes('free') ? 'Free' : 'Production'}
                   </span>
                   <button
                     onClick={() => handleRevokeKey(apiKey.id)}
@@ -410,6 +363,7 @@ export default function ApiKeysPage() {
                 type="text"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && newKeyName.trim() && !creatingKey) handleCreateKey(); }}
                 placeholder="Ex: Production, Développement..."
                 className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 autoFocus

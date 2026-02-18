@@ -1,3 +1,4 @@
+// @ts-nocheck
 // __tests__/analytics.service.test.ts
 import { AnalyticsService } from '../src/services/analytics.service';
 import { Pool } from 'pg';

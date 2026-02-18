@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+import { prisma } from '@/lib/prisma';
+import { redis } from '@/lib/redis';
 
 export async function GET() {
   const checks: Record<string, { status: string; latencyMs?: number; error?: string }> = {};
@@ -21,14 +18,27 @@ export async function GET() {
     };
   }
 
-  const allHealthy = Object.values(checks).every((c) => c.status === 'ok');
+  // Redis check
+  const redisStart = Date.now();
+  try {
+    await redis.ping();
+    checks.redis = { status: 'ok', latencyMs: Date.now() - redisStart };
+  } catch (error) {
+    checks.redis = {
+      status: 'warning',
+      latencyMs: Date.now() - redisStart,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+
+  const dbHealthy = checks.database.status === 'ok';
 
   return NextResponse.json(
     {
-      status: allHealthy ? 'ready' : 'not_ready',
+      status: dbHealthy ? 'ready' : 'not_ready',
       timestamp: new Date().toISOString(),
       checks,
     },
-    { status: allHealthy ? 200 : 503 }
+    { status: dbHealthy ? 200 : 503 }
   );
 }

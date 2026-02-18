@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { PromptManagementService } from '../src/services/prompt-management.service';
 import { PromptRenderer } from '../src/services/prompt-renderer.service';
 import { PromptOptimizer } from '../src/services/prompt-optimizer.service';

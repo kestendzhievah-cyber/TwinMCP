@@ -29,7 +29,7 @@ export class AnthropicProvider {
   async generateStream(request: LLMRequest): Promise<AsyncIterable<LLMStreamChunk>> {
     const anthropicRequest = this.convertToAnthropicRequest(request, { stream: true });
     
-    const stream = await this.client.messages.create(anthropicRequest);
+    const stream = await this.client.messages.create(anthropicRequest) as unknown as AsyncIterable<any>;
     
     return this.convertFromAnthropicStream(stream, request);
   }

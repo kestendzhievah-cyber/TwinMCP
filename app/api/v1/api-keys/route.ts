@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { createHash, randomBytes } from 'crypto';
 
-// Singleton Prisma client
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
 const PLAN_LIMITS = {
-  free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 2, rateLimit: 20 },
+  free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
   pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10, rateLimit: 200 },
   enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 }
 };
@@ -165,7 +160,7 @@ export async function GET(request: NextRequest) {
 
     // Get API keys
     const apiKeys = await prisma.apiKey.findMany({
-      where: { userId: user.id, isActive: true },
+      where: { userId: user.id, isActive: true, revokedAt: null },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -207,8 +202,8 @@ export async function GET(request: NextRequest) {
           keyPrefix: key.keyPrefix,
           name: key.name || 'Sans nom',
           tier: key.tier,
-          quotaDaily: limits.dailyLimit,
-          quotaHourly: limits.rateLimit,
+          quotaRequestsPerDay: limits.dailyLimit,
+          quotaRequestsPerMinute: limits.rateLimit,
           createdAt: key.createdAt.toISOString(),
           lastUsedAt: key.lastUsedAt?.toISOString() || null,
           usage: {
@@ -269,7 +264,7 @@ export async function POST(request: NextRequest) {
 
     // Check key limit
     const existingKeys = await prisma.apiKey.count({
-      where: { userId: user.id, isActive: true }
+      where: { userId: user.id, isActive: true, revokedAt: null }
     });
 
     if (existingKeys >= limits.maxKeys) {
@@ -328,8 +323,10 @@ export async function POST(request: NextRequest) {
         keyPrefix: apiKey.keyPrefix,
         name: apiKey.name,
         tier: apiKey.tier,
-        quotaDaily: limits.dailyLimit,
-        createdAt: apiKey.createdAt.toISOString()
+        quotaRequestsPerDay: limits.dailyLimit,
+        quotaRequestsPerMinute: limits.rateLimit,
+        createdAt: apiKey.createdAt.toISOString(),
+        usage: { requestsToday: 0, requestsThisHour: 0, successRate: 100 }
       },
       warning: 'Sauvegardez cette clé maintenant. Elle ne sera plus affichée.'
     });

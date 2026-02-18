@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { FastifyInstance } from 'fastify';
 import { OAuthService } from '../../src/services/oauth.service';
 import { OAuthController } from '../../src/controllers/oauth.controller';

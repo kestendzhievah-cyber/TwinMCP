@@ -154,7 +154,7 @@ export class VectorSearchService {
       }
 
     } catch (error) {
-      throw new Error(`Document search failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`)
+      throw new Error(`Document search failed: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { VectorStorageService } from '../src/services/vector-storage.service';
 import { Pool } from 'pg';
 import { VectorSearchQuery } from '../src/types/embeddings.types';

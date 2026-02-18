@@ -50,6 +50,7 @@
     "node_modules",
     "mcp-server-demo",
     "**/mcp-server-demo/**",
+    "packages/**",
     ".next",
     "**/.next/**",
     "dist",

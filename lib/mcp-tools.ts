@@ -245,7 +245,7 @@ export const executeTool = async (toolName: string, args: any): Promise<string> 
     }
   } catch (error) {
     console.error(`Error executing tool ${toolName}:`, error)
-    return `Error: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`
+    return `Error: ${error instanceof Error ? error.message : String(error)}`
   }
 }
 

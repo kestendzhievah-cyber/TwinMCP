@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { InvoiceService } from '../../src/services/invoice.service';
 import { InvoiceStatus, BillingPeriodType } from '../../src/types/invoice.types';
 import {

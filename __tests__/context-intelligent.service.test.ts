@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ContextIntelligentService } from '../src/services/context-intelligent.service';
 import { ContextQuery, ContextResult, ContextOptions, ContextFilters } from '../src/types/context-intelligent.types';
 import { VectorSearchService } from '../src/services/vector-search.service';

@@ -26,8 +26,26 @@ export const PLAN_CONFIG: PlanConfig = {
     price: 0,
     priceAnnual: 0
   },
-  professional: {
+  pro: {
     mcpServers: -1, // Illimité
+    requestsPerDay: 10000,
+    privateServers: true,
+    features: [
+      'Serveurs MCP illimités',
+      '10 000 requêtes/jour',
+      'Serveurs privés',
+      'Support prioritaire 24/7',
+      'Analytics avancés',
+      'API complète',
+      'Webhooks & intégrations'
+    ],
+    support: 'Prioritaire 24/7',
+    price: 14.99,
+    priceAnnual: 11.24
+  },
+  // Backward compatibility alias
+  professional: {
+    mcpServers: -1,
     requestsPerDay: 10000,
     privateServers: true,
     features: [
@@ -72,13 +90,14 @@ export function getPlanConfig(plan: keyof PlanConfig) {
 export function getSuggestedUpgrade(currentPlan: keyof PlanConfig): keyof PlanConfig | null {
   switch (currentPlan) {
     case 'free':
-      return 'professional';
+      return 'pro';
+    case 'pro':
     case 'professional':
       return 'enterprise';
     case 'enterprise':
       return null;
     default:
-      return 'professional';
+      return 'pro';
   }
 }
 

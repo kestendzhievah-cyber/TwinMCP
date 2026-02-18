@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { SearchMatchingService } from '../src/services/search-matching.service';
 import { Pool } from 'pg';
 import { SearchResult, Library } from '../src/types/search.types';

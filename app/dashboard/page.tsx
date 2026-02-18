@@ -227,11 +227,13 @@ export default function DashboardPage() {
         setNewKeyName('');
         fetchDashboardData();
       } else {
-        alert(result.error || 'Erreur lors de la création');
+        setError(result.error || 'Erreur lors de la création');
+        setTimeout(() => setError(null), 6000);
       }
     } catch (err) {
       console.error('Create key error:', err);
-      alert('Erreur lors de la création de la clé');
+      setError('Erreur lors de la création de la clé');
+      setTimeout(() => setError(null), 6000);
     } finally {
       setCreatingKey(false);
     }
@@ -260,11 +262,13 @@ export default function DashboardPage() {
       if (result.success) {
         fetchDashboardData();
       } else {
-        alert(result.error || 'Erreur lors de la révocation');
+        setError(result.error || 'Erreur lors de la révocation');
+        setTimeout(() => setError(null), 6000);
       }
     } catch (err) {
       console.error('Revoke key error:', err);
-      alert('Erreur lors de la révocation');
+      setError('Erreur lors de la révocation');
+      setTimeout(() => setError(null), 6000);
     } finally {
       setRevokingKey(null);
     }

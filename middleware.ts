@@ -31,6 +31,12 @@ const SELF_AUTH_ROUTES = [
   '/api/auth/session',
   '/api/auth/logout',
   '/api/auth/validate-key',
+  '/api/api-keys',
+  '/api/v1/api-keys',
+  '/api/v1/dashboard',
+  '/api/v1/analytics',
+  '/api/v1/billing',
+  '/api/v1/usage',
 ];
 
 const PUBLIC_PREFIXES = [
@@ -91,7 +97,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Allow self-authenticating routes (they verify Firebase tokens at route level)
-  if (SELF_AUTH_ROUTES.includes(pathname)) {
+  if (SELF_AUTH_ROUTES.some((route) => pathname === route || pathname.startsWith(route + '/'))) {
     return NextResponse.next();
   }
 

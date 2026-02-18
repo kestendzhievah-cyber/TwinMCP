@@ -1,15 +1,25 @@
 // Client API pour communiquer avec le backend TwinMCP
+// Utilise le Firebase ID token pour l'authentification dashboard
+
+import { auth } from '@/lib/firebase'
 
 class ApiClient {
-  private baseUrl: string;
   private apiKey: string | null = null;
 
-  constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_APP_URL 
-      || (process.env.NODE_ENV === 'production' ? 'https://api.twinmcp.com' : 'http://localhost:3000');
+  // Obtenir le token Firebase de l'utilisateur connecté
+  private async getFirebaseToken(): Promise<string | null> {
+    try {
+      const currentUser = auth?.currentUser;
+      if (currentUser) {
+        return await currentUser.getIdToken();
+      }
+    } catch {
+      // Firebase not ready or user not logged in
+    }
+    return null;
   }
 
-  // Méthodes pour gérer l'authentification
+  // Méthodes pour gérer l'authentification par API key (fallback)
   setApiKey(apiKey: string) {
     this.apiKey = apiKey;
     if (typeof window !== 'undefined') {
@@ -51,16 +61,23 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const apiKey = this.getApiKey();
+    const url = endpoint;
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
 
-    if (apiKey) {
-      headers['x-api-key'] = apiKey;
+    // Priorité 1: Firebase token (dashboard users)
+    const firebaseToken = await this.getFirebaseToken();
+    if (firebaseToken) {
+      headers['Authorization'] = `Bearer ${firebaseToken}`;
+    } else {
+      // Priorité 2: API key (programmatic access)
+      const apiKey = this.getApiKey();
+      if (apiKey) {
+        headers['x-api-key'] = apiKey;
+      }
     }
 
     const config: RequestInit = {
@@ -91,7 +108,7 @@ class ApiClient {
   }
 
   async revokeApiKey(keyId: string) {
-    return this.request(`/api/api-keys/${keyId}`, {
+    return this.request(`/api/api-keys?id=${encodeURIComponent(keyId)}`, {
       method: 'DELETE',
     });
   }

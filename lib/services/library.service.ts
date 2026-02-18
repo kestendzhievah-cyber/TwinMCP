@@ -61,7 +61,7 @@ export class LibraryService {
       }
     } catch (error) {
       console.error(`Error fetching library ${libraryId}:`, error)
-      throw new Error(`Failed to fetch library: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`)
+      throw new Error(`Failed to fetch library: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -107,7 +107,7 @@ export class LibraryService {
       }))
     } catch (error) {
       console.error(`Error searching libraries with query "${query}":`, error)
-      throw new Error(`Failed to search libraries: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`)
+      throw new Error(`Failed to search libraries: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -145,7 +145,7 @@ export class LibraryService {
       }))
     } catch (error) {
       console.error('Error fetching popular libraries:', error)
-      throw new Error(`Failed to fetch popular libraries: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`)
+      throw new Error(`Failed to fetch popular libraries: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -160,7 +160,7 @@ export class LibraryService {
       return versions.map((v: typeof versions[number]) => v.version)
     } catch (error) {
       console.error(`Error fetching versions for library ${libraryId}:`, error)
-      throw new Error(`Failed to fetch library versions: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`)
+      throw new Error(`Failed to fetch library versions: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -174,7 +174,7 @@ export class LibraryService {
       return aliases.map((a: typeof aliases[number]) => a.alias)
     } catch (error) {
       console.error(`Error fetching aliases for library ${libraryId}:`, error)
-      throw new Error(`Failed to fetch library aliases: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`)
+      throw new Error(`Failed to fetch library aliases: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -188,7 +188,7 @@ export class LibraryService {
       return libraryAlias?.libraryId || null
     } catch (error) {
       console.error(`Error resolving alias "${alias}":`, error)
-      throw new Error(`Failed to resolve alias: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`)
+      throw new Error(`Failed to resolve alias: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 }

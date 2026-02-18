@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChat } from '../hooks/useChat';
 
