@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 // GET /api/mcp-configurations/[id] - Récupérer une configuration spécifique
 export async function GET(
@@ -8,18 +9,13 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Temporairement retourner une configuration mockée
-    // TODO: Implémenter avec le vrai client Prisma quand il sera disponible
-    const configuration = {
-      id,
-      name: `Configuration ${id}`,
-      description: 'Configuration MCP mockée',
-      configData: '{}',
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      product: { name: 'Produit Test' },
-      user: { email: 'test@example.com' }
-    };
+    const configuration = await prisma.mCPConfiguration.findUnique({
+      where: { id },
+    });
+
+    if (!configuration) {
+      return NextResponse.json({ error: 'Configuration non trouvée' }, { status: 404 });
+    }
 
     return NextResponse.json(configuration);
   } catch (error) {
@@ -38,17 +34,16 @@ export async function PUT(
     const body = await request.json();
     const { name, description, configData, status } = body;
 
-    // Temporairement retourner une configuration mise à jour mockée
-    // TODO: Implémenter avec le vrai client Prisma quand il sera disponible
-    const configuration = {
-      id,
-      name: name || `Configuration ${id}`,
-      description: description || 'Configuration MCP mise à jour',
-      configData: configData || '{}',
-      status: status || 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      product: { name: 'Produit Test' }
-    };
+    const data: any = {};
+    if (name !== undefined) data.name = name;
+    if (description !== undefined) data.description = description;
+    if (configData !== undefined) data.configData = typeof configData === 'string' ? JSON.parse(configData) : configData;
+    if (status !== undefined) data.status = status;
+
+    const configuration = await prisma.mCPConfiguration.update({
+      where: { id },
+      data,
+    });
 
     return NextResponse.json(configuration);
   } catch (error) {
@@ -65,9 +60,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Temporairement simuler la suppression
-    // TODO: Implémenter avec le vrai client Prisma quand il sera disponible
-    console.log(`Suppression de la configuration ${id}`);
+    await prisma.mCPConfiguration.delete({ where: { id } });
 
     return NextResponse.json({ message: 'Configuration supprimée avec succès' });
   } catch (error) {

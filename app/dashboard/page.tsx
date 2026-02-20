@@ -105,6 +105,10 @@ export default function DashboardPage() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [revokingKey, setRevokingKey] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [githubUrl, setGithubUrl] = useState('');
+  const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [importTaskId, setImportTaskId] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
@@ -175,19 +179,22 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  // Check MCP status
+  // Check MCP status via the v1 health endpoint
   const checkMCPStatus = useCallback(async () => {
     const startTime = Date.now();
     try {
-      const response = await fetch('/api/mcp');
+      const response = await fetch('/api/v1/mcp/health');
       if (!response.ok) throw new Error(`Status ${response.status}`);
       const data = await response.json();
+      const toolsList = data.services?.registry?.categories
+        ? data.services.registry.categories.map((cat: string) => ({ name: cat, description: cat }))
+        : [];
       setMcpStatus({
-        isOnline: true,
-        serverInfo: { name: data.name || 'TwinMCP', version: data.version || '1.0.0' },
-        tools: data.tools || [],
+        isOnline: data.status === 'healthy' || data.status === 'degraded',
+        serverInfo: { name: 'TwinMCP', version: data.version || '1.0.0' },
+        tools: toolsList,
         lastChecked: new Date(),
-        responseTime: Date.now() - startTime,
+        responseTime: data.metadata?.executionTime || (Date.now() - startTime),
       });
     } catch (error) {
       setMcpStatus({
@@ -271,6 +278,43 @@ export default function DashboardPage() {
       setTimeout(() => setError(null), 6000);
     } finally {
       setRevokingKey(null);
+    }
+  };
+
+  // Import from GitHub
+  const handleImportFromGitHub = async () => {
+    if (!githubUrl.trim()) return;
+
+    const match = githubUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+    if (!match) {
+      setImportError('URL GitHub invalide. Format attendu : https://github.com/owner/repo');
+      setTimeout(() => setImportError(null), 5000);
+      return;
+    }
+
+    setImportStatus('loading');
+    setImportError(null);
+    setImportTaskId(null);
+
+    try {
+      const res = await fetch('/api/downloads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ githubUrl: githubUrl.trim() }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setImportTaskId(data.taskId);
+        setImportStatus('success');
+        setGithubUrl('');
+      } else {
+        setImportError(data.error || 'Erreur lors de l\'import');
+        setImportStatus('error');
+      }
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Erreur réseau');
+      setImportStatus('error');
     }
   };
 
@@ -494,6 +538,47 @@ export default function DashboardPage() {
               <p className="text-xs text-gray-400 mb-1">Latence</p>
               <p className="font-semibold">{mcpStatus.responseTime}ms</p>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* GitHub Import */}
+      <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6">
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+          <ExternalLink className="w-5 h-5 text-purple-400" />
+          Importer depuis GitHub
+        </h2>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            placeholder="https://github.com/owner/repo"
+            value={githubUrl}
+            onChange={(e) => setGithubUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleImportFromGitHub()}
+            className="flex-1 px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-sm"
+          />
+          <button
+            onClick={handleImportFromGitHub}
+            disabled={importStatus === 'loading' || !githubUrl.trim()}
+            className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          >
+            {importStatus === 'loading' ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Import...</>
+            ) : (
+              <><ExternalLink className="w-4 h-4" /> Importer</>
+            )}
+          </button>
+        </div>
+        {importTaskId && (
+          <div className="mt-3 flex items-center gap-2 text-green-400 text-sm">
+            <CheckCircle className="w-4 h-4" />
+            <span>Tâche créée — ID : <code className="bg-[#0f1020] px-1.5 py-0.5 rounded text-xs">{importTaskId}</code></span>
+          </div>
+        )}
+        {importError && (
+          <div className="mt-3 flex items-center gap-2 text-red-400 text-sm">
+            <XCircle className="w-4 h-4" />
+            <span>{importError}</span>
           </div>
         )}
       </div>

@@ -23,28 +23,10 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthenticatedUserId(request);
 
-    // Temporairement retourner des configurations mockées
-    // TODO: Implémenter avec le vrai client Prisma quand il sera disponible
-    const configurations = [
-      {
-        id: '1',
-        name: 'Configuration Test 1',
-        description: 'Première configuration MCP',
-        configData: '{"test": "data"}',
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString(),
-        product: { name: 'Produit Test' }
-      },
-      {
-        id: '2',
-        name: 'Configuration Test 2',
-        description: 'Deuxième configuration MCP',
-        configData: '{"test": "data2"}',
-        status: 'INACTIVE',
-        createdAt: new Date().toISOString(),
-        product: { name: 'Produit Test 2' }
-      }
-    ];
+    const configurations = await prisma.mCPConfiguration.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
     return NextResponse.json(configurations);
   } catch (error) {
@@ -68,17 +50,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nom et données de configuration requis' }, { status: 400 });
     }
 
-    // Temporairement retourner une configuration créée mockée
-    // TODO: Implémenter avec le vrai client Prisma quand il sera disponible
-    const configuration = {
-      id: Date.now().toString(),
-      name,
-      description,
-      configData,
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      product: { name: 'Produit Test' }
-    };
+    const configuration = await prisma.mCPConfiguration.create({
+      data: {
+        name,
+        description: description || null,
+        configData: typeof configData === 'string' ? JSON.parse(configData) : configData,
+        userId,
+      },
+    });
 
     return NextResponse.json(configuration, { status: 201 });
   } catch (error) {

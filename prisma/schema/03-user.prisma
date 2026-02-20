@@ -25,6 +25,7 @@ model User {
   personalizationAnalytics PersonalizationAnalytics[]
   conversationShares ConversationShare[]
   profile           UserProfile?
+  externalMcpServers ExternalMcpServer[] @relation("ExternalMcpServers")
 
   @@map("users")
 }

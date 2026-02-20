@@ -13,3 +13,58 @@ model MCPConfiguration {
 
   @@map("mcp_configurations")
 }
+
+// ─── External MCP Server Models ──────────────────────────────────
+
+enum ExternalMcpAuthType {
+  NONE
+  API_KEY
+  BEARER
+  BASIC
+}
+
+enum ExternalMcpStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+  UNKNOWN
+}
+
+model ExternalMcpServer {
+  id              String              @id @default(cuid())
+  name            String
+  baseUrl         String
+  authType        ExternalMcpAuthType @default(NONE)
+  encryptedSecret String?
+  status          ExternalMcpStatus   @default(UNKNOWN)
+  errorMessage    String?
+  lastCheckedAt   DateTime?
+  lastLatencyMs   Int?
+  toolsDiscovered Json?
+  ownerId         String
+  owner           User                @relation("ExternalMcpServers", fields: [ownerId], references: [id])
+  usageLogs       ExternalMcpUsageLog[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([ownerId, name])
+  @@map("external_mcp_servers")
+}
+
+model ExternalMcpUsageLog {
+  id         String            @id @default(cuid())
+  serverId   String
+  server     ExternalMcpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  userId     String
+  toolName   String?
+  statusCode Int?
+  latencyMs  Int?
+  tokensIn   Int?
+  tokensOut  Int?
+  success    Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([serverId, createdAt])
+  @@map("external_mcp_usage_logs")
+}

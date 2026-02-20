@@ -78,6 +78,7 @@ const mainNavItems: NavItem[] = [
   { name: "Clés API", href: "/dashboard/api-keys", icon: Key },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Serveur MCP", href: "/dashboard/mcp-guide", icon: Server, badge: "Live", badgeColor: "bg-green-500" },
+  { name: "MCP Externes", href: "/dashboard/external-mcp", icon: Globe },
 ];
 
 const secondaryNavItems: NavItem[] = [

@@ -43,8 +43,8 @@ next-env.d.ts
 mcp-server-demo
 **/mcp-server-demo/**
 
-# local downloads cache
-downloads/
+# local downloads cache (only root-level, not app/api/downloads/)
+/downloads/
 
 # Environment files
 *.env

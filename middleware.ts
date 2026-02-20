@@ -37,7 +37,10 @@ const SELF_AUTH_ROUTES = [
   '/api/v1/analytics',
   '/api/v1/billing',
   '/api/v1/usage',
+  '/api/v1/external-mcp',
   '/api/libraries',
+  '/api/mcp-configurations',
+  '/api/downloads',
 ];
 
 const PUBLIC_PREFIXES = [
