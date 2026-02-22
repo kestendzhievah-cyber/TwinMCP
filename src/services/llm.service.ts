@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import { EventEmitter } from 'events';
@@ -327,7 +328,7 @@ export class LLMService extends EventEmitter {
     
     for (const fallbackProvider of fallbackProviders) {
       try {
-        console.log(`Trying fallback provider: ${fallbackProvider}`);
+        logger.info(`Trying fallback provider: ${fallbackProvider}`);
         
         const fallbackRequest = { ...request, provider: fallbackProvider };
         const response = await this.generateResponse(fallbackRequest);
@@ -337,7 +338,7 @@ export class LLMService extends EventEmitter {
         return response;
         
       } catch (fallbackError) {
-        console.error(`Fallback provider ${fallbackProvider} also failed:`, fallbackError);
+        logger.error(`Fallback provider ${fallbackProvider} also failed:`, fallbackError);
       }
     }
     

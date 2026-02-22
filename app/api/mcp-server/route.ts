@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { mcpTools, serverInfo, executeTool, validateToolArgs } from '@/lib/mcp-tools'
 
@@ -15,7 +16,7 @@ export async function GET() {
       }
     })
   } catch (error) {
-    console.error('Error initializing MCP server:', error)
+    logger.error('Error initializing MCP server:', error)
     return NextResponse.json(
       { error: 'Failed to initialize MCP server' },
       { status: 500 }
@@ -92,9 +93,9 @@ export async function POST(request: NextRequest) {
     }, { status: 400 })
 
   } catch (error) {
-    console.error('Error in MCP server:', error)
+    logger.error('Error in MCP server:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

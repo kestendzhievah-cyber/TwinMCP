@@ -1,8 +1,9 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/firebase-admin';
 
-// Fonction helper pour vérifier le token d'authentification
+// Fonction helper pour vÃ©rifier le token d'authentification
 async function getAuthenticatedUserId(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -18,7 +19,7 @@ async function getAuthenticatedUserId(request: NextRequest) {
   }
 }
 
-// GET /api/mcp-configurations - Récupérer toutes les configurations de l'utilisateur
+// GET /api/mcp-configurations - RÃ©cupÃ©rer toutes les configurations de l'utilisateur
 export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthenticatedUserId(request);
@@ -30,15 +31,15 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(configurations);
   } catch (error) {
-    console.error('Erreur lors de la récupération des configurations:', error);
+    logger.error('Erreur lors de la rÃ©cupÃ©ration des configurations:', error);
     if (error instanceof Error && error.message.includes('Token')) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      return NextResponse.json({ error: 'Non autorisÃ©' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
 
-// POST /api/mcp-configurations - Créer une nouvelle configuration
+// POST /api/mcp-configurations - CrÃ©er une nouvelle configuration
 export async function POST(request: NextRequest) {
   try {
     const userId = await getAuthenticatedUserId(request);
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     const { name, description, configData, productId } = body;
 
     if (!name || !configData) {
-      return NextResponse.json({ error: 'Nom et données de configuration requis' }, { status: 400 });
+      return NextResponse.json({ error: 'Nom et donnÃ©es de configuration requis' }, { status: 400 });
     }
 
     const configuration = await prisma.mCPConfiguration.create({
@@ -61,9 +62,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(configuration, { status: 201 });
   } catch (error) {
-    console.error('Erreur lors de la création de la configuration:', error);
+    logger.error('Erreur lors de la crÃ©ation de la configuration:', error);
     if (error instanceof Error && error.message.includes('Token')) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      return NextResponse.json({ error: 'Non autorisÃ©' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }

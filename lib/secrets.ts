@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger'
+
 /**
  * Centralized Secrets Management
  *
@@ -174,7 +176,7 @@ export function validateSecrets(): void {
 
   if (result.warnings.length > 0) {
     for (const w of result.warnings) {
-      console.warn(`[secrets] WARNING: ${w.message}`)
+      logger.warn(`[secrets] ${w.message}`)
     }
   }
 

@@ -1,22 +1,16 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { ConversationService } from '@/src/services/conversation.service';
-
-// Initialisation du service (à adapter avec votre configuration DB/Redis)
-const conversationService = new ConversationService(
-  // @ts-ignore - Pool PostgreSQL
-  null,
-  // @ts-ignore - Redis
-  null
-);
+import { getConversationService } from '../../_shared';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const conversationService = await getConversationService();
   try {
     const body = await request.json();
     const { userId, role, content, metadata, attachments } = body;
-    const conversationId = params.id;
+    const conversationId = (await params).id;
 
     if (!userId || !role || !content) {
       return NextResponse.json(
@@ -36,7 +30,7 @@ export async function POST(
 
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
-    console.error('Error adding message:', error);
+    logger.error('Error adding message:', error);
     return NextResponse.json(
       { error: 'Failed to add message' },
       { status: 500 }
@@ -46,12 +40,13 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const conversationService = await getConversationService();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    const conversationId = params.id;
+    const conversationId = (await params).id;
 
     const conversation = await conversationService.getConversation(conversationId, userId || undefined);
     
@@ -64,7 +59,7 @@ export async function GET(
 
     return NextResponse.json({ messages: conversation.messages });
   } catch (error) {
-    console.error('Error fetching messages:', error);
+    logger.error('Error fetching messages:', error);
     return NextResponse.json(
       { error: 'Failed to fetch messages' },
       { status: 500 }

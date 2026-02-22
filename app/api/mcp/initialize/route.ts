@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { mcpTools, serverInfo } from '@/lib/mcp-tools';
 import { loadClientConfig } from '@/lib/loadClientConfig';
@@ -24,14 +25,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `MCP Server initialisé pour le client ${config.name}`,
+      message: `MCP Server initialisÃ© pour le client ${config.name}`,
       data: initializedServer,
     });
   } catch (error) {
-    console.error('Erreur lors de l\'initialisation du serveur MCP:', error);
+    logger.error('Erreur lors de l\'initialisation du serveur MCP:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Erreur inconnue',
+      error: error instanceof Error ? error.message : 'Erreur inconnue',
     }, { status: 500 });
   }
 }
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     // Charger la configuration du client
     const config = await loadClientConfig(clientName || 'Axe Wash');
 
-    // Initialiser le serveur MCP avec configuration complète
+    // Initialiser le serveur MCP avec configuration complÃ¨te
     const initializedServer = {
       ...serverInfo,
       client: {
@@ -59,14 +60,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `MCP Server initialisé avec succès pour ${config.name}`,
+      message: `MCP Server initialisÃ© avec succÃ¨s pour ${config.name}`,
       data: initializedServer,
     });
   } catch (error) {
-    console.error('Erreur lors de l\'initialisation du serveur MCP:', error);
+    logger.error('Erreur lors de l\'initialisation du serveur MCP:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Erreur inconnue',
+      error: error instanceof Error ? error.message : 'Erreur inconnue',
     }, { status: 500 });
   }
 }

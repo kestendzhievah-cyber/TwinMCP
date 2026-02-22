@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import crypto from 'crypto';
 import { KeyManagementService } from './kms.service';
 
@@ -119,7 +120,7 @@ export class EncryptionService {
       }, 60000);
       
     } catch (error) {
-      console.error('Key rotation failed:', error);
+      logger.error('Key rotation failed:', error);
     }
   }
 }

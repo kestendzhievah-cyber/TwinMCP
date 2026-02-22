@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { mcpTools, serverInfo } from '@/lib/mcp-tools';
 
@@ -15,9 +16,9 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error listing MCP tools:', error);
+    logger.error('Error listing MCP tools:', error);
     return NextResponse.json({
-      error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error',
+      error: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 });
   }
 }

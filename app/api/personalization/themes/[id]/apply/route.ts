@@ -1,18 +1,15 @@
-import { pool as db } from '@/lib/prisma';
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { PersonalizationService } from '@/src/services/personalization.service';
-
-// Initialisation des services
-const personalizationService = new PersonalizationService(db, redis);
+import { getPersonalizationService } from '../../../_shared';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const personalizationService = await getPersonalizationService();
     const userId = request.headers.get('x-user-id');
-    const themeId = params.id;
+    const themeId = (await params).id;
 
     if (!userId) {
       return NextResponse.json(
@@ -36,7 +33,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Error applying theme:', error);
+    logger.error('Error applying theme:', error);
     
     // Gestion des erreurs spécifiques
     if (error instanceof Error && error.message.includes('not found')) {
@@ -49,7 +46,7 @@ export async function POST(
     return NextResponse.json(
       { 
         error: 'Failed to apply theme',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

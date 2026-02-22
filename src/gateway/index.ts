@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { APIGateway } from './api-gateway';
 import { gatewayConfig } from '../config/gateway.config';
 
@@ -6,13 +7,13 @@ async function startGateway() {
 
   // Handle graceful shutdown
   process.on('SIGTERM', async () => {
-    console.log('SIGTERM received, shutting down gracefully...');
+    logger.info('SIGTERM received, shutting down gracefully...');
     await gateway.stop();
     process.exit(0);
   });
 
   process.on('SIGINT', async () => {
-    console.log('SIGINT received, shutting down gracefully...');
+    logger.info('SIGINT received, shutting down gracefully...');
     await gateway.stop();
     process.exit(0);
   });
@@ -20,7 +21,7 @@ async function startGateway() {
   try {
     await gateway.start();
   } catch (error) {
-    console.error('Failed to start gateway:', error);
+    logger.error('Failed to start gateway:', error);
     process.exit(1);
   }
 }

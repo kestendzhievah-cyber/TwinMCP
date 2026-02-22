@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Redis from 'ioredis';
+import { logger } from '@/lib/logger';
 
 // Rate limit configuration
 export interface RateLimitConfig {
@@ -119,7 +120,7 @@ export async function checkRateLimit(
     };
     
   } catch (error) {
-    console.error('[RateLimit] Redis error:', error);
+    logger.error('[RateLimit] Redis error:', error);
     // On error, allow the request (fail open)
     return { success: true, remaining: config.maxRequests, resetTime: now + config.windowMs, limit: config.maxRequests };
   }

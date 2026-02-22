@@ -11,8 +11,6 @@ import {
   CheckCircle,
   RefreshCw,
   Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
   AlertTriangle,
   Loader2,
 } from 'lucide-react';
@@ -104,8 +102,6 @@ export default function AnalyticsPage() {
     {
       label: 'Requêtes totales',
       value: formatNumber(data.summary.totalRequests),
-      change: data.summary.totalRequests > 0 ? '+12.5%' : '0%',
-      trend: 'up' as const,
       icon: Activity,
       color: 'text-blue-400',
       bg: 'from-blue-500/20 to-blue-600/10',
@@ -113,8 +109,6 @@ export default function AnalyticsPage() {
     {
       label: 'Tokens consommés',
       value: formatNumber(data.summary.totalTokens),
-      change: data.summary.totalTokens > 0 ? '+8.3%' : '0%',
-      trend: 'up' as const,
       icon: Zap,
       color: 'text-purple-400',
       bg: 'from-purple-500/20 to-purple-600/10',
@@ -122,8 +116,6 @@ export default function AnalyticsPage() {
     {
       label: 'Temps de réponse',
       value: data.summary.avgResponseTime > 0 ? `${data.summary.avgResponseTime}ms` : '-',
-      change: data.summary.avgResponseTime > 0 ? '-5.2%' : '0%',
-      trend: 'down' as const,
       icon: Clock,
       color: 'text-green-400',
       bg: 'from-green-500/20 to-green-600/10',
@@ -131,8 +123,6 @@ export default function AnalyticsPage() {
     {
       label: 'Taux de succès',
       value: `${data.summary.successRate}%`,
-      change: '+0.3%',
-      trend: 'up' as const,
       icon: CheckCircle,
       color: 'text-emerald-400',
       bg: 'from-emerald-500/20 to-emerald-600/10',
@@ -238,18 +228,6 @@ export default function AnalyticsPage() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                  {data.summary.totalRequests > 0 && (
-                    <span className={`flex items-center gap-1 text-sm font-medium ${
-                      stat.trend === 'up' ? 'text-green-400' : 'text-red-400'
-                    }`}>
-                      {stat.trend === 'up' ? (
-                        <ArrowUpRight className="w-4 h-4" />
-                      ) : (
-                        <ArrowDownRight className="w-4 h-4" />
-                      )}
-                      {stat.change}
-                    </span>
-                  )}
                 </div>
                 <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
                 <p className="text-gray-400 text-sm mt-1">{stat.label}</p>

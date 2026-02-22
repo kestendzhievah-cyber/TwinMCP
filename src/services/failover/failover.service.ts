@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { Pool } from 'pg';
 
 export interface HealthCheck {
@@ -22,7 +23,7 @@ export class FailoverService {
   }
 
   async initiateFailover(targetRegion: string): Promise<void> {
-    console.warn(`Initiating failover to ${targetRegion}`);
+    logger.warn(`Initiating failover to ${targetRegion}`);
 
     await this.updateDNS(targetRegion);
     await this.promoteReplica(targetRegion);
@@ -93,15 +94,15 @@ export class FailoverService {
   }
 
   private async updateDNS(targetRegion: string): Promise<void> {
-    console.log(`Updating DNS to point to ${targetRegion}`);
+    logger.info(`Updating DNS to point to ${targetRegion}`);
   }
 
   private async promoteReplica(targetRegion: string): Promise<void> {
-    console.log(`Promoting replica in ${targetRegion} to primary`);
+    logger.info(`Promoting replica in ${targetRegion} to primary`);
   }
 
   private async updateConfig(targetRegion: string): Promise<void> {
-    console.log(`Updating application config for ${targetRegion}`);
+    logger.info(`Updating application config for ${targetRegion}`);
   }
 
   private async verifyRegion(region: string): Promise<boolean> {

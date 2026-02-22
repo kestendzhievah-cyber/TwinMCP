@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { EnhancedSearchController } from '../../controllers/enhanced-search.controller';
 import { SearchMatchingService } from '../../services/search-matching.service';
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('Search API error:', error);
+    logger.error('Search API error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('Search API error:', error);
+    logger.error('Search API error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

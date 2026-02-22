@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { VectorSearchQuery, VectorSearchResult, DocumentChunk } from '../types/embeddings.types';
 
@@ -368,7 +369,7 @@ export class VectorStorageService {
       WHERE tablename = 'document_embeddings'
     `);
 
-    console.log('Index stats:', indexStats.rows);
+    logger.info('Index stats:', indexStats.rows);
   }
 
   async cleanupOldEmbeddings(daysToKeep: number = 90): Promise<{

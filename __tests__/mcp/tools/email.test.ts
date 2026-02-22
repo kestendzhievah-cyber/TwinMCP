@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, jest } from '@jest/globals'
 import { EmailTool } from '../../../lib/mcp/tools/communication/email'
+import { logger } from '../../../lib/logger'
 
 describe('EmailTool', () => {
   let emailTool: EmailTool
@@ -141,20 +142,20 @@ describe('EmailTool', () => {
         rateLimit: { requests: 100, period: '1h', strategy: 'sliding' }
       }
 
-      const consoleSpy = jest
-        .spyOn(console, 'log')
+      const loggerSpy = jest
+        .spyOn(logger, 'debug')
         .mockImplementation((..._args: unknown[]) => undefined)
 
       await emailTool.execute(args, config)
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('📧 Preparing to send email')
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Preparing to send email')
       )
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✅ Email sent successfully')
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Email sent successfully')
       )
 
-      consoleSpy.mockRestore()
+      loggerSpy.mockRestore()
     })
   })
 })

@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '../utils/logger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -117,7 +118,7 @@ export default function MonitoringDashboard() {
       setAlerts(alertsData.alerts || []);
       setHealthChecks(healthData.services || []);
     } catch (error) {
-      console.error('Error fetching monitoring data:', error);
+      logger.error('Error fetching monitoring data:', error);
     } finally {
       setLoading(false);
     }

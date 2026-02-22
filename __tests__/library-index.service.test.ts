@@ -47,7 +47,8 @@ describe('LibraryIndexService', () => {
         licenses: [{ name: 'MIT', count: 300 }]
       };
 
-      mockDb.query = jest.fn()
+      mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
+      (mockDb.query as jest.Mock)
         .mockResolvedValueOnce({ rows: mockLibraries })
         .mockResolvedValueOnce({ rows: mockFacets.tags })
         .mockResolvedValueOnce({ rows: mockFacets.languages })
@@ -143,7 +144,9 @@ describe('LibraryIndexService', () => {
       mockRedis.get = jest.fn().mockResolvedValue(JSON.stringify(mockLibrary));
       
       const library2 = await service.getLibraryByName('react');
-      expect(library2).toEqual(library1);
+      // Cache returns JSON-parsed data where Dates become strings
+      expect(library2?.name).toEqual(library1?.name);
+      expect(library2?.id).toEqual(library1?.id);
     });
 
     it('should return null when library not found', async () => {
@@ -190,7 +193,7 @@ describe('LibraryIndexService', () => {
       
       expect(versions).toHaveLength(2);
       expect(versions[0]?.version).toBe('18.2.0');
-      expect(versions[0]?.isLatest).toBe(true);
+      expect((versions[0] as any)?.is_latest).toBe(true);
       expect(mockRedis.setex).toHaveBeenCalledWith('library:versions:1', 1800, JSON.stringify(mockVersions));
     });
   });
@@ -216,8 +219,8 @@ describe('LibraryIndexService', () => {
       const dependencies = await service.getLibraryDependencies('1');
       
       expect(dependencies).toHaveLength(1);
-      expect(dependencies[0]?.dependencyName).toBe('lodash');
-      expect(dependencies[0]?.dependencyType).toBe('dependencies');
+      expect((dependencies[0] as any)?.dependency_name).toBe('lodash');
+      expect((dependencies[0] as any)?.dependency_type).toBe('dependencies');
     });
   });
 
@@ -268,7 +271,7 @@ describe('LibraryIndexService', () => {
       const maintainers = await service.getLibraryMaintainers('1');
       
       expect(maintainers).toHaveLength(1);
-      expect(maintainers[0]?.githubUsername).toBe('facebook');
+      expect((maintainers[0] as any)?.github_username).toBe('facebook');
       expect(maintainers[0]?.role).toBe('owner');
     });
   });

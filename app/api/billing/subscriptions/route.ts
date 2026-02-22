@@ -1,13 +1,10 @@
-import { pool as db } from '@/lib/prisma';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { SubscriptionService } from '@/src/services/subscription.service';
-import { KeyManagementService } from '@/src/services/security/kms.service';
-
-const kms = new KeyManagementService();
-const subscriptionService = new SubscriptionService(db);
+import { getBillingServices } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const { subscriptionService } = await getBillingServices();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
@@ -25,11 +22,11 @@ export async function GET(request: NextRequest) {
       data: { subscriptions }
     });
   } catch (error) {
-    console.error('Error fetching subscriptions:', error);
+    logger.error('Error fetching subscriptions:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -38,6 +35,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { subscriptionService } = await getBillingServices();
     const body = await request.json();
     const { 
       userId, 
@@ -66,11 +64,11 @@ export async function POST(request: NextRequest) {
       message: 'Subscription created successfully'
     });
   } catch (error) {
-    console.error('Error creating subscription:', error);
+    logger.error('Error creating subscription:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

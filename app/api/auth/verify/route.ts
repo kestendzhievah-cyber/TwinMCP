@@ -3,6 +3,7 @@
  * Verify Firebase token and return/create user session
  */
 
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Auth Verify] Error:', error);
+    logger.error('[Auth Verify] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
       { status: 500 }

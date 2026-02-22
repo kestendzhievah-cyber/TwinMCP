@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { mcpTools, executeTool, validateToolArgs } from '@/lib/mcp-tools';
 
@@ -35,8 +36,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Execute the tool (simulation)
-    const result = getToolResult(name, args);
+    // Execute the tool
+    const result = await getToolResult(name, args);
 
     return NextResponse.json({
       content: [
@@ -48,9 +49,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error executing MCP tool:', error);
+    logger.error('Error executing MCP tool:', error);
     return NextResponse.json({
-      error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error',
+      error: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import OpenAI from 'openai';
+import { logger } from '@/lib/logger';
 
 // Configuration
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
@@ -109,13 +110,13 @@ export class QdrantVectorService {
           field_schema: 'keyword',
         });
 
-        console.log(`[Qdrant] Created collection: ${COLLECTION_NAME}`);
+        logger.info(`[Qdrant] Created collection: ${COLLECTION_NAME}`);
       }
 
       this.initialized = true;
-      console.log('[Qdrant] Initialized successfully');
+      logger.info('[Qdrant] Initialized successfully');
     } catch (error) {
-      console.error('[Qdrant] Initialization failed:', error);
+      logger.error('[Qdrant] Initialization failed:', error);
       throw error;
     }
   }
@@ -131,7 +132,7 @@ export class QdrantVectorService {
 
       return response.data[0].embedding;
     } catch (error) {
-      console.error('[Qdrant] Embedding generation failed:', error);
+      logger.error('[Qdrant] Embedding generation failed:', error);
       throw error;
     }
   }
@@ -166,7 +167,7 @@ export class QdrantVectorService {
       ],
     });
 
-    console.log(`[Qdrant] Indexed document: ${doc.id}`);
+    logger.debug(`[Qdrant] Indexed document: ${doc.id}`);
   }
 
   // Batch index multiple documents
@@ -207,7 +208,7 @@ export class QdrantVectorService {
         points,
       });
 
-      console.log(`[Qdrant] Indexed batch ${i / batchSize + 1}/${Math.ceil(docs.length / batchSize)}`);
+      logger.debug(`[Qdrant] Indexed batch ${i / batchSize + 1}/${Math.ceil(docs.length / batchSize)}`);
     }
   }
 
@@ -291,7 +292,7 @@ export class QdrantVectorService {
       },
     });
 
-    console.log(`[Qdrant] Deleted documents for library: ${libraryId}`);
+    logger.info(`[Qdrant] Deleted documents for library: ${libraryId}`);
   }
 
   // Get collection stats

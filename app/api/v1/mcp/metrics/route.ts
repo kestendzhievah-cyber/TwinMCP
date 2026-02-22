@@ -1,14 +1,15 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { authService } from '@/lib/mcp/middleware/auth'
 import { getMetrics } from '@/lib/mcp/utils/metrics'
 import { getQueue } from '@/lib/mcp/utils/queue'
 
-// GET /api/v1/mcp/metrics - Métriques système et outils
+// GET /api/v1/mcp/metrics - MÃ©triques systÃ¨me et outils
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
 
   try {
-    // Authentification (seulement pour les utilisateurs authentifiés)
+    // Authentification (seulement pour les utilisateurs authentifiÃ©s)
     const authContext = await authService.authenticate(request)
     if (!authContext.isAuthenticated) {
       return NextResponse.json(
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     let metrics
 
     if (toolId) {
-      // Métriques pour un outil spécifique
+      // MÃ©triques pour un outil spÃ©cifique
       const toolStats = await getMetrics().getToolStats(toolId)
       const systemStats = await getMetrics().getSystemStats()
 
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
         }
       }
     } else {
-      // Métriques système globales
+      // MÃ©triques systÃ¨me globales
       const systemStats = await getMetrics().getSystemStats()
       const topTools = await getMetrics().getTopTools(10)
       const errorAnalysis = await getMetrics().getErrorAnalysis()
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(metrics)
 
   } catch (error: any) {
-    console.error('Metrics error:', error)
+    logger.error('Metrics error:', error)
     return NextResponse.json(
       {
         error: error.message || 'Failed to retrieve metrics',

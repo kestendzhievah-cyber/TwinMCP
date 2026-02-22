@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ChatState, ChatMessage, ChatConversation, MessageAttachment, ChatSettings } from '../types/chat.types';
 import { ContextQuery, ContextResult, ContextOptions, ContextFilters } from '../types/context-intelligent.types';
@@ -69,7 +70,7 @@ export const useChat = () => {
       
       return result;
     } catch (error) {
-      console.error('Context processing error:', error);
+      logger.error('Context processing error:', error);
       return null;
     }
   }, [contextEnabled]);
@@ -212,7 +213,7 @@ export const useChat = () => {
                 break;
               }
             } catch (parseError) {
-              console.error('Error parsing stream data:', parseError);
+              logger.error('Error parsing stream data:', parseError);
             }
           }
         }

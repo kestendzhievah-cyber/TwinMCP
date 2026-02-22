@@ -1,14 +1,10 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { PersonalizationService } from '@/src/services/personalization.service';
-
-// Initialisation des services
-import { pool as db } from '@/lib/prisma'
-
-const personalizationService = new PersonalizationService(db, redis);
+import { getPersonalizationService } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const personalizationService = await getPersonalizationService();
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
@@ -26,11 +22,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error getting analytics:', error);
+    logger.error('Error getting analytics:', error);
     return NextResponse.json(
       { 
         error: 'Failed to get analytics',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

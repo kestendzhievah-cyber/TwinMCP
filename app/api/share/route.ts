@@ -1,12 +1,19 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { ShareService } from '@/src/services/collaboration/share.service';
 
-import { pool as db } from '@/lib/prisma'
-
-const shareService = new ShareService(db);
+let _shareService: any = null;
+async function getShareService() {
+  if (!_shareService) {
+    const { pool: db } = await import('@/lib/prisma');
+    const { ShareService } = await import('@/src/services/collaboration/share.service');
+    _shareService = new ShareService(db);
+  }
+  return _shareService;
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const shareService = await getShareService();
     const { conversationId, userId, options } = await req.json();
 
     if (!conversationId || !userId) {
@@ -20,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(share, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating share:', error);
+    logger.error('Error creating share:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create share' },
       { status: 500 }
@@ -30,6 +37,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const shareService = await getShareService();
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
 
@@ -44,7 +52,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(shares);
   } catch (error: any) {
-    console.error('Error fetching shares:', error);
+    logger.error('Error fetching shares:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch shares' },
       { status: 500 }

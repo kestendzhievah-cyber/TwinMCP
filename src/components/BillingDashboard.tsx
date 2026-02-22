@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '../utils/logger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,7 +56,7 @@ export default function BillingDashboard({ userId }: BillingDashboardProps) {
         setSubscriptions(subscriptionsData.data.subscriptions);
       }
     } catch (error) {
-      console.error('Error fetching billing data:', error);
+      logger.error('Error fetching billing data:', error);
     } finally {
       setLoading(false);
     }
@@ -296,6 +297,6 @@ export default function BillingDashboard({ userId }: BillingDashboardProps) {
 
   function handleCancelSubscription(subscriptionId: string) {
     // Implementation for subscription cancellation
-    console.log('Cancelling subscription:', subscriptionId);
+    logger.info('Cancelling subscription:', subscriptionId);
   }
 }

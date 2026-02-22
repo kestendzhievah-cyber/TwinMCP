@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { registry } from '@/lib/mcp/tools'
 import { authService } from '@/lib/mcp/middleware/auth'
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
       checkRedis()
     ])
 
-    // Vérifications de santé internes
+    // VÃ©rifications de santÃ© internes
     const registryStats = registry.getStats()
     const queue = getQueue()
     const queueStats = queue.getStats()
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(health, { status: statusCode })
 
   } catch (error: any) {
-    console.error('Health check error:', error)
+    logger.error('Health check error:', error)
     return NextResponse.json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),

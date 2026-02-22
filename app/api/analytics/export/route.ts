@@ -1,17 +1,12 @@
 // src/app/api/analytics/export/route.ts
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { AnalyticsService } from '@/src/services/analytics.service';
+import { getAnalyticsServices } from '../_shared';
 import { AnalyticsQuery } from '@/src/types/analytics.types';
-
-import { pool } from '@/lib/prisma'
-import { redis } from '@/lib/redis'
-
-const db = pool;
-
-const analyticsService = new AnalyticsService(db, redis);
 
 export async function POST(request: NextRequest) {
   try {
+    const { analyticsService } = await getAnalyticsServices();
     const body = await request.json();
     
     // Validate required fields
@@ -29,6 +24,14 @@ export async function POST(request: NextRequest) {
     if (!validFormats.includes(format)) {
       return NextResponse.json(
         { error: `Invalid format. Must be one of: ${validFormats.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate timeRange presence
+    if (!query.timeRange?.start || !query.timeRange?.end) {
+      return NextResponse.json(
+        { error: 'Missing required field: query.timeRange with start and end' },
         { status: 400 }
       );
     }
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Error creating export job:', error);
+    logger.error('Error creating export job:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -75,6 +78,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { analyticsService } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
     const exportId = searchParams.get('exportId');
     
@@ -98,7 +102,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(exportStatus);
     
   } catch (error) {
-    console.error('Error fetching export status:', error);
+    logger.error('Error fetching export status:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,28 +1,10 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { ReportingService } from '@/src/services/reporting.service';
-import { ReportGenerator } from '@/src/services/report-generator.service';
-import { InsightEngine } from '@/src/services/insight-engine.service';
-import { DashboardRenderer } from '@/src/services/dashboard-renderer.service';
-import { StreamingBillingService } from '@/src/services/streaming-billing.service';
-
-import { pool as db } from '@/lib/prisma'
-const reportGenerator = new ReportGenerator();
-const insightEngine = new InsightEngine();
-const dashboardRenderer = new DashboardRenderer();
-const billingService = new StreamingBillingService(db);
-
-const reportingService = new ReportingService(
-  db,
-  redis,
-  reportGenerator,
-  insightEngine,
-  dashboardRenderer,
-  billingService
-);
+import { getReportingServices } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const { reportingService, db } = await getReportingServices();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     const category = searchParams.get('category');
@@ -36,9 +18,9 @@ export async function GET(request: NextRequest) {
       if (category) filters.category = category;
       if (status) filters.status = status;
 
-      reports = await getReportsByFilters(filters);
+      reports = await getReportsByFilters(db, filters);
     } else {
-      reports = await getAllReports();
+      reports = await getAllReports(db);
     }
 
     return NextResponse.json({
@@ -47,7 +29,7 @@ export async function GET(request: NextRequest) {
       filters: { type, category, status }
     });
   } catch (error) {
-    console.error('Error fetching reports:', error);
+    logger.error('Error fetching reports:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -57,6 +39,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { reportingService } = await getReportingServices();
     const body = await request.json();
 
     if (!body.name || !body.type || !body.category) {
@@ -98,7 +81,7 @@ export async function POST(request: NextRequest) {
       report
     });
   } catch (error) {
-    console.error('Error creating report:', error);
+    logger.error('Error creating report:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -106,13 +89,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getAllReports() {
+async function getAllReports(db: any) {
   const result = await db.query(`
     SELECT * FROM reports 
     ORDER BY created_at DESC
   `);
 
-  return result.rows.map(row => ({
+  return result.rows.map((row: any) => ({
     id: row.id,
     name: row.name,
     description: row.description,
@@ -128,7 +111,7 @@ async function getAllReports() {
   }));
 }
 
-async function getReportsByFilters(filters: any) {
+async function getReportsByFilters(db: any, filters: any) {
   let whereClause = 'WHERE 1=1';
   const params: any[] = [];
   let paramIndex = 1;
@@ -157,7 +140,7 @@ async function getReportsByFilters(filters: any) {
     ORDER BY created_at DESC
   `, params);
 
-  return result.rows.map(row => ({
+  return result.rows.map((row: any) => ({
     id: row.id,
     name: row.name,
     description: row.description,

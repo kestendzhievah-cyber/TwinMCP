@@ -1,32 +1,10 @@
-import { pool as db } from '@/lib/prisma';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { PaymentService } from '@/src/services/payment.service';
-import { SubscriptionService } from '@/src/services/subscription.service';
-import { InvoiceService } from '@/src/services/invoice.service';
-import { EncryptionService } from '@/src/services/security/encryption.service';
-import { AuditService } from '@/src/services/security/audit.service';
-import { GDPRService } from '@/src/services/security/gdpr.service';
-import { DataMaskingService } from '@/src/services/security/data-masking.service';
-import { KeyManagementService } from '@/src/services/security/kms.service';
-
-const kms = new KeyManagementService();
-const encryptionService = new EncryptionService(kms);
-const maskingService = new DataMaskingService();
-const auditService = new AuditService(db, maskingService);
-const gdprService = new GDPRService(db, encryptionService, auditService);
-
-const paymentService = new PaymentService(db);
-const subscriptionService = new SubscriptionService(db);
-const invoiceService = new InvoiceService(
-  db,
-  encryptionService,
-  auditService,
-  gdprService,
-  maskingService
-);
+import { getBillingServices } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const { paymentService } = await getBillingServices();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -51,11 +29,11 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error fetching payments:', error);
+    logger.error('Error fetching payments:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -64,6 +42,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { paymentService } = await getBillingServices();
     const body = await request.json();
     const { 
       invoiceId, 
@@ -96,11 +75,11 @@ export async function POST(request: NextRequest) {
       message: 'Payment created successfully'
     });
   } catch (error) {
-    console.error('Error creating payment:', error);
+    logger.error('Error creating payment:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

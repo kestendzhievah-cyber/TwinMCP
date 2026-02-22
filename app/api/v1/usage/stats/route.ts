@@ -1,8 +1,7 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { createHash } from 'crypto';
-
-const prisma = new PrismaClient();
 
 // Validate Firebase token or API key
 async function validateAuth(request: NextRequest) {
@@ -238,7 +237,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Usage stats error:', error);
+    logger.error('Usage stats error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

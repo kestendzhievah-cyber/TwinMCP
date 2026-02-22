@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import crypto from 'crypto';
@@ -92,7 +93,7 @@ export class ContextIntelligentService {
       return result;
 
     } catch (error) {
-      console.error('Error processing context query:', error);
+      logger.error('Error processing context query:', error);
       throw new Error(`Context query failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`);
     }
   }

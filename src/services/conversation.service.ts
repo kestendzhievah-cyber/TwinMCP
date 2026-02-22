@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
+import { logger } from '../utils/logger';
 import { 
   Conversation, 
   ConversationMessage, 
@@ -436,7 +437,7 @@ export class ConversationService {
     await this.saveExport(exportRecord);
 
     // Traitement asynchrone
-    this.processExport(exportRecord.id, conversation).catch(console.error);
+    this.processExport(exportRecord.id, conversation).catch((err: unknown) => logger.error('Export processing failed', { error: err }));
 
     return exportRecord;
   }

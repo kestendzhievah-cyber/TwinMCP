@@ -44,37 +44,44 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Mock data - replace with API calls
   useEffect(() => {
-    // Load chatbot info
     const loadChatbot = async () => {
       try {
-        // TODO: Call API to get chatbot info
+        const res = await fetch(`/api/chatbots/${chatbotId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setChatbot(data);
+        } else {
+          setChatbot({
+            id: chatbotId,
+            name: 'Assistant',
+            description: 'Votre assistant IA.',
+            isActive: true,
+          });
+        }
+      } catch {
         setChatbot({
           id: chatbotId,
-          name: 'Assistant Support',
-          description: 'Je réponds aux questions sur notre produit et fournis un support technique.',
+          name: 'Assistant',
+          description: 'Votre assistant IA.',
           isActive: true,
         });
-      } catch (error) {
-        console.error('Error loading chatbot:', error);
       }
     };
 
-    // Load initial messages
-    const loadInitialMessages = () => {
-      const welcomeMessage: Message = {
+    loadChatbot();
+  }, [chatbotId]);
+
+  useEffect(() => {
+    if (chatbot && messages.length === 0) {
+      setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: `Bonjour ! Je suis ${chatbot?.name || 'votre assistant'}. Comment puis-je vous aider aujourd'hui ?`,
+        content: `Bonjour ! Je suis ${chatbot.name}. Comment puis-je vous aider aujourd'hui ?`,
         timestamp: new Date(),
-      };
-      setMessages([welcomeMessage]);
-    };
-
-    loadChatbot();
-    loadInitialMessages();
-  }, [chatbotId, chatbot?.name]);
+      }]);
+    }
+  }, [chatbot, messages.length]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -99,19 +106,32 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      // TODO: Call API to send message and get response
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+      const res = await fetch('/api/chat/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessage.content,
+          chatbotId,
+        }),
+      });
+
+      let content: string;
+      if (res.ok) {
+        const data = await res.json();
+        content = data.response || data.message || data.content || 'Réponse reçue.';
+      } else {
+        content = 'Désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.';
+      }
 
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `Merci pour votre question : "${userMessage.content}". Je suis ${chatbot?.name || 'votre assistant IA'} et je suis là pour vous aider. Comment puis-je vous assister davantage ?`,
+        content,
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
+    } catch {
       // Add error message
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
@@ -131,8 +151,8 @@ export default function ChatPage() {
       await navigator.clipboard.writeText(content);
       setCopiedMessageId(messageId);
       setTimeout(() => setCopiedMessageId(null), 2000);
-    } catch (error) {
-      console.error('Error copying message:', error);
+    } catch {
+      // Clipboard API not available
     }
   };
 

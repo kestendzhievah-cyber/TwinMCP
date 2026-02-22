@@ -1,5 +1,9 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+
+const ALLOW_INSECURE_DEV_AUTH =
+  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
 
 // Extract user ID from Firebase JWT token
 function extractUserIdFromToken(token: string): { userId: string; email?: string } | null {
@@ -42,14 +46,17 @@ async function validateAuth(request: NextRequest) {
         const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
         return { valid: true, userId: decodedToken.uid, email: decodedToken.email };
       } catch (firebaseError) {
-        console.warn('Firebase Admin verification failed, trying JWT extraction');
+        logger.warn('Firebase Admin verification failed, trying JWT extraction');
       }
     }
     
-    // Fallback: Extract user ID from JWT payload
-    const extracted = extractUserIdFromToken(token);
-    if (extracted) {
-      return { valid: true, userId: extracted.userId, email: extracted.email };
+    // Fallback is explicitly allowed only in non-production development flows
+    if (ALLOW_INSECURE_DEV_AUTH) {
+      const extracted = extractUserIdFromToken(token);
+      if (extracted) {
+        logger.warn('Using insecure dev auth fallback (unverified JWT payload).');
+        return { valid: true, userId: extracted.userId, email: extracted.email };
+      }
     }
   }
 
@@ -62,21 +69,21 @@ const PLAN_DETAILS = {
     price: 0,
     currency: 'EUR',
     interval: 'month',
-    features: ['3 serveurs MCP', '200 requêtes/jour', 'Support communauté']
+    features: ['3 serveurs MCP', '200 requÃªtes/jour', 'Support communautÃ©']
   },
   pro: {
     name: 'Professional',
     price: 14.99,
     currency: 'EUR',
     interval: 'month',
-    features: ['Serveurs illimités', '10 000 requêtes/jour', 'Support prioritaire', 'Analytics avancés']
+    features: ['Serveurs illimitÃ©s', '10 000 requÃªtes/jour', 'Support prioritaire', 'Analytics avancÃ©s']
   },
   enterprise: {
     name: 'Enterprise',
     price: 0, // Custom pricing
     currency: 'EUR',
     interval: 'month',
-    features: ['Tout du Pro', 'Requêtes illimitées', 'SLA 99.9%', 'Account manager dédié']
+    features: ['Tout du Pro', 'RequÃªtes illimitÃ©es', 'SLA 99.9%', 'Account manager dÃ©diÃ©']
   }
 };
 
@@ -112,7 +119,7 @@ export async function GET(request: NextRequest) {
         });
       }
     } catch (dbError) {
-      console.error('Database error:', dbError);
+      logger.error('Database error:', dbError);
       return NextResponse.json({
         success: true,
         data: getEmptyBillingData()
@@ -144,7 +151,7 @@ export async function GET(request: NextRequest) {
         payments = userProfile.payments || [];
       }
     } catch (e) {
-      console.warn('Could not fetch billing data:', e);
+      logger.warn('Could not fetch billing data:', e);
     }
 
     // Get active subscription
@@ -225,7 +232,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Billing API error:', error);
+    logger.error('Billing API error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

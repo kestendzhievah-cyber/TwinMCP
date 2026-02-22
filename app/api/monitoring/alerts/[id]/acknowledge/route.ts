@@ -1,28 +1,14 @@
-import { pool as db } from '@/lib/prisma';
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { MonitoringService } from '@/src/services/monitoring.service';
-import { MetricsCollector } from '@/src/services/metrics-collector.service';
-import { AlertManager } from '@/src/services/alert-manager.service';
-import { HealthChecker } from '@/src/services/health-checker.service';
-
-// Initialize services
-const metricsCollector = new MetricsCollector(db, redis);
-const alertManager = new AlertManager(db, redis, { enabled: true, channels: [], escalation: [] });
-const healthChecker = new HealthChecker(db, redis);
-const monitoringConfig = {
-  collection: { interval: 30, retention: 30, batchSize: 100 },
-  alerts: { enabled: true, channels: [], escalation: [] },
-  dashboards: { refreshInterval: 300, autoSave: true }
-};
-const monitoringService = new MonitoringService(db, redis, metricsCollector, alertManager, healthChecker, monitoringConfig);
+import { getMonitoringService } from '../../../_shared';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const alertId = params.id;
+    const monitoringService = await getMonitoringService();
+    const alertId = (await params).id;
     const body = await request.json();
     
     if (!body.userId) {
@@ -39,7 +25,7 @@ export async function POST(
       alert
     });
   } catch (error) {
-    console.error('Error acknowledging alert:', error);
+    logger.error('Error acknowledging alert:', error);
     
     if ((error as Error).message.includes('not found')) {
       return NextResponse.json(

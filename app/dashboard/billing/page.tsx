@@ -108,6 +108,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<BillingData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const fetchBillingData = useCallback(async () => {
     if (!user) return;
@@ -155,6 +156,36 @@ export default function BillingPage() {
       fetchBillingData();
     }
   }, [user, authLoading, router, fetchBillingData]);
+
+  const handleDownloadPDF = async (invoice: BillingData['invoices'][number]) => {
+    if (!user) return;
+
+    setDownloadingId(invoice.id);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/billing/invoices/${invoice.id}/pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error('Échec du téléchargement');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `facture-${invoice.number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('PDF download error:', err);
+      setError('Échec du téléchargement du PDF');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('fr-FR', {
@@ -376,8 +407,17 @@ export default function BillingPage() {
                           </span>
                         </td>
                         <td className="py-4">
-                          <button className="p-2 text-gray-400 hover:text-purple-400 transition">
-                            <Download className="w-4 h-4" />
+                          <button
+                            onClick={() => handleDownloadPDF(invoice)}
+                            disabled={downloadingId === invoice.id}
+                            className="p-2 text-gray-400 hover:text-purple-400 transition disabled:opacity-50"
+                            title="Télécharger le PDF"
+                          >
+                            {downloadingId === invoice.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
                           </button>
                         </td>
                       </tr>

@@ -105,7 +105,7 @@ describe('RateLimitingService', () => {
     });
 
     it('should consume tokens correctly', async () => {
-      mockRedis.hmget.mockResolvedValue(['5', '0']);
+      mockRedis.hmget.mockResolvedValue(['5', Date.now().toString()]);
 
       const result = await service.checkRateLimit('user1');
       

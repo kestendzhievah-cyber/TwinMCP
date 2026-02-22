@@ -1,4 +1,5 @@
 import { MCPTool } from '../../core/types'
+import { logger } from '@/lib/logger'
 
 // Interface de base pour tous les outils MCP
 export abstract class BaseTool implements MCPTool {
@@ -43,6 +44,6 @@ export abstract class BaseTool implements MCPTool {
   }
 
   async onError?(error: Error): Promise<void> {
-    console.error(`Error in ${this.name}:`, error)
+    logger.error(`Error in ${this.name}:`, error)
   }
 }

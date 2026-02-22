@@ -5,6 +5,7 @@ import {
   ValidationResult,
   ExecutionResult
 } from './types'
+import { logger } from '@/lib/logger'
 
 export class MCPRegistry {
   private tools: Map<string, MCPTool> = new Map()
@@ -33,7 +34,7 @@ export class MCPRegistry {
     }
     this.toolsByCategory.get(tool.category)!.add(tool.id)
 
-    console.log(`✅ Tool registered: ${tool.id} (${tool.category})`)
+    logger.debug(`Tool registered: ${tool.id} (${tool.category})`)
   }
 
   // Hot-reload: register or replace an existing tool (version conflict detection)
@@ -56,12 +57,12 @@ export class MCPRegistry {
       }
 
       replaced = true
-      console.log(`🔄 Tool hot-reloaded: ${tool.id} (${previousVersion} → ${tool.version})`)
+      logger.info(`Tool hot-reloaded: ${tool.id} (${previousVersion} → ${tool.version})`)
     } else {
       if (this.tools.size >= this.maxTools) {
         throw new Error(`Registry is full (max ${this.maxTools} tools).`)
       }
-      console.log(`✅ Tool registered: ${tool.id} (${tool.category})`)
+      logger.debug(`Tool registered: ${tool.id} (${tool.category})`)
     }
 
     this.tools.set(tool.id, tool)
@@ -93,7 +94,7 @@ export class MCPRegistry {
         this.toolsByCategory.delete(tool.category)
       }
 
-      console.log(`❌ Tool unregistered: ${toolId}`)
+      logger.debug(`Tool unregistered: ${toolId}`)
     }
   }
 
@@ -102,7 +103,7 @@ export class MCPRegistry {
     this.tools.clear()
     this.toolsByCategory.clear()
     this.plugins.clear()
-    console.log(`🧹 Registry cleared`)
+    logger.debug('Registry cleared')
   }
 
   // Obtenir un outil par ID
@@ -263,7 +264,7 @@ export class MCPRegistry {
     // Stocker le plugin
     this.plugins.set(plugin.id, plugin)
 
-    console.log(`🔌 Plugin loaded: ${plugin.id} (${plugin.tools.length} tools)`)
+    logger.info(`Plugin loaded: ${plugin.id} (${plugin.tools.length} tools)`)
   }
 
   // Décharger un plugin
@@ -276,7 +277,7 @@ export class MCPRegistry {
       // Supprimer le plugin
       this.plugins.delete(pluginId)
 
-      console.log(`🔌 Plugin unloaded: ${pluginId}`)
+      logger.info(`Plugin unloaded: ${pluginId}`)
     }
   }
 

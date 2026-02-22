@@ -1,3 +1,142 @@
+// @ts-nocheck
+
+// ── In-memory stores ──
+let users: any[] = [];
+let clients: any[] = [];
+let apiKeys: any[] = [];
+let libraries: any[] = [];
+let usageLogs: any[] = [];
+let oauthTokens: any[] = [];
+let idSeq = 0;
+const nextId = () => `id-${++idSeq}`;
+
+// ── In-memory Redis store ──
+let redisStore: Record<string, string> = {};
+
+// ── Mock Prisma ──
+const mockPrisma = {
+  $connect: jest.fn(),
+  $disconnect: jest.fn(),
+  $queryRaw: jest.fn().mockResolvedValue([{ test: 1 }]),
+  $on: jest.fn(),
+  user: {
+    create: jest.fn().mockImplementation(async ({ data }) => {
+      const u = { id: nextId(), ...data, apiKeys: [] };
+      users.push(u);
+      return u;
+    }),
+    findUnique: jest.fn().mockImplementation(async ({ where }) => {
+      return users.find(u => u.email === where.email || u.id === where.id) || null;
+    }),
+  },
+  client: {
+    create: jest.fn().mockImplementation(async ({ data }) => {
+      const c = { id: nextId(), ...data };
+      clients.push(c);
+      return c;
+    }),
+    findUnique: jest.fn(),
+  },
+  apiKey: {
+    create: jest.fn().mockImplementation(async ({ data }) => {
+      const k = { id: nextId(), ...data };
+      apiKeys.push(k);
+      return k;
+    }),
+    findUnique: jest.fn(),
+  },
+  library: {
+    create: jest.fn().mockImplementation(async ({ data }) => {
+      const lib = { id: data.id || nextId(), ...data, popularityScore: 0, totalSnippets: 0 };
+      libraries.push(lib);
+      return lib;
+    }),
+    findMany: jest.fn().mockImplementation(async ({ where }) => {
+      const q = where?.OR?.[0]?.name?.contains?.toLowerCase() || '';
+      return libraries.filter(l =>
+        l.name.toLowerCase().includes(q) ||
+        l.displayName.toLowerCase().includes(q)
+      );
+    }),
+  },
+  usageLog: {
+    create: jest.fn().mockImplementation(async ({ data }) => {
+      const log = { id: nextId(), ...data };
+      usageLogs.push(log);
+      return log;
+    }),
+  },
+  oAuthToken: {
+    create: jest.fn().mockImplementation(async ({ data }) => {
+      const t = { id: nextId(), ...data };
+      oauthTokens.push(t);
+      return t;
+    }),
+    findUnique: jest.fn().mockImplementation(async ({ where }) => {
+      const { userId, provider } = where.userId_provider || {};
+      return oauthTokens.find(t => t.userId === userId && t.provider === provider) || null;
+    }),
+  },
+};
+
+jest.mock('../../generated/prisma', () => ({
+  PrismaClient: jest.fn().mockImplementation(() => mockPrisma),
+}));
+
+jest.mock('../config/database', () => ({
+  prisma: mockPrisma,
+  connectDatabase: jest.fn(),
+  disconnectDatabase: jest.fn(),
+  databaseHealthCheck: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../config/redis', () => ({
+  redisClient: {
+    get: jest.fn().mockImplementation(async (key: string) => redisStore[key] ?? null),
+    set: jest.fn().mockImplementation(async (key: string, val: string) => { redisStore[key] = val; return 'OK'; }),
+    setex: jest.fn().mockImplementation(async (key: string, _ttl: number, val: string) => { redisStore[key] = val; return 'OK'; }),
+    del: jest.fn().mockImplementation(async (key: string) => { delete redisStore[key]; return 1; }),
+    exists: jest.fn().mockImplementation(async (key: string) => key in redisStore ? 1 : 0),
+    incr: jest.fn().mockImplementation(async (key: string) => {
+      const v = parseInt(redisStore[key] || '0') + 1;
+      redisStore[key] = v.toString();
+      return v;
+    }),
+    expire: jest.fn().mockResolvedValue(1),
+    ping: jest.fn().mockResolvedValue('PONG'),
+    connect: jest.fn(),
+    quit: jest.fn(),
+    on: jest.fn().mockReturnThis(),
+  },
+  redisSessionClient: {
+    ping: jest.fn().mockResolvedValue('PONG'),
+    connect: jest.fn(),
+    quit: jest.fn(),
+    on: jest.fn().mockReturnThis(),
+  },
+  connectRedis: jest.fn(),
+  disconnectRedis: jest.fn(),
+  redisHealthCheck: jest.fn().mockResolvedValue(true),
+  CacheService: {
+    get: jest.fn().mockImplementation(async (key: string) => {
+      const v = redisStore[key];
+      return v ? JSON.parse(v) : null;
+    }),
+    set: jest.fn().mockImplementation(async (key: string, value: any) => {
+      redisStore[key] = JSON.stringify(value);
+    }),
+    del: jest.fn().mockImplementation(async (key: string) => {
+      delete redisStore[key];
+    }),
+    exists: jest.fn().mockImplementation(async (key: string) => key in redisStore),
+    increment: jest.fn().mockResolvedValue(1),
+  },
+}));
+
+jest.mock('../utils/logger', () => ({
+  logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+}));
+
 import { connectDatabase, disconnectDatabase, databaseHealthCheck } from '../config/database';
 import { connectRedis, disconnectRedis, redisHealthCheck, CacheService } from '../config/redis';
 import { DatabaseService } from '../services/database.service';
@@ -11,6 +150,17 @@ describe('Database Configuration', () => {
   afterAll(async () => {
     await disconnectDatabase();
     await disconnectRedis();
+  });
+
+  beforeEach(() => {
+    users = [];
+    clients = [];
+    apiKeys = [];
+    libraries = [];
+    usageLogs = [];
+    oauthTokens = [];
+    redisStore = {};
+    idSeq = 0;
   });
 
   describe('PostgreSQL Connection', () => {
@@ -37,7 +187,6 @@ describe('Database Configuration', () => {
       await redisClient.set('test:key', 'test:value');
       const value = await redisClient.get('test:key');
       expect(value).toBe('test:value');
-      
       await redisClient.del('test:key');
     });
   });
@@ -45,12 +194,9 @@ describe('Database Configuration', () => {
   describe('Cache Service', () => {
     it('should cache and retrieve objects', async () => {
       const testData = { id: 1, name: 'test' };
-      
       await CacheService.set('test:object', testData);
       const cached = await CacheService.get('test:object');
-      
       expect(cached).toEqual(testData);
-      
       await CacheService.del('test:object');
     });
 
@@ -61,23 +207,18 @@ describe('Database Configuration', () => {
 
     it('should check existence', async () => {
       await CacheService.set('test:exists', true);
-      
       const exists = await CacheService.exists('test:exists');
       expect(exists).toBe(true);
-      
       const notExists = await CacheService.exists('not:exists');
       expect(notExists).toBe(false);
-      
       await CacheService.del('test:exists');
     });
   });
 
   describe('Database Service', () => {
     let testClientId: string;
-    let testUserId: string;
 
     beforeEach(async () => {
-      // Créer un client de test
       const client = await DatabaseService.createClient({
         name: 'Test Client',
         domain: 'test.example.com',
@@ -98,7 +239,6 @@ describe('Database Configuration', () => {
       const user = await DatabaseService.createUser(userData);
       expect(user.email).toBe(userData.email);
       expect(user.id).toBeDefined();
-      testUserId = user.id;
 
       const retrieved = await DatabaseService.getUserByEmail(userData.email) as any;
       expect(retrieved?.email).toBe(userData.email);
@@ -163,7 +303,7 @@ describe('Database Configuration', () => {
         userId: user.id,
         provider: 'github',
         accessToken: 'access_token',
-        expiresAt: new Date(Date.now() + 3600000), // 1 hour from now
+        expiresAt: new Date(Date.now() + 3600000),
       };
 
       const token = await DatabaseService.createOAuthToken(tokenData);

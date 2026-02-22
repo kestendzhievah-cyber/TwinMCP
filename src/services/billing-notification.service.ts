@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import nodemailer, { Transporter } from 'nodemailer';
 import { Invoice, InvoiceStatus } from '../types/invoice.types';
 import { Payment, PaymentStatus } from '../types/payment.types';
@@ -193,7 +194,7 @@ export class BillingNotificationService {
         attachments: options.attachments,
       });
     } catch (error) {
-      console.error('Failed to send email:', error);
+      logger.error('Failed to send email:', error);
       throw new Error(`Email sending failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`);
     }
   }

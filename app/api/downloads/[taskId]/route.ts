@@ -1,15 +1,23 @@
-import { pool as db } from '@/lib/prisma';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { DownloadManagerService } from '../../../../src/services/download-manager.service';
-import { DOWNLOAD_CONFIG, STORAGE_CONFIG } from '../../../../src/config/download.config';
 
-const downloadManager = new DownloadManagerService(db, STORAGE_CONFIG, DOWNLOAD_CONFIG);
+let _services: { downloadManager: any; db: any } | null = null;
+async function getServices() {
+  if (!_services) {
+    const { pool: db } = await import('@/lib/prisma');
+    const { DownloadManagerService } = await import('../../../../src/services/download-manager.service');
+    const { DOWNLOAD_CONFIG, STORAGE_CONFIG } = await import('../../../../src/config/download.config');
+    _services = { downloadManager: new DownloadManagerService(db, STORAGE_CONFIG, DOWNLOAD_CONFIG), db };
+  }
+  return _services;
+}
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
+    const { downloadManager } = await getServices();
     const { taskId } = await params;
     const task = await downloadManager.getDownloadStatus(taskId);
 
@@ -22,7 +30,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, task });
   } catch (error) {
-    console.error('Error fetching download task:', error);
+    logger.error('Error fetching download task:', error);
     return NextResponse.json(
       {
         success: false,
@@ -38,6 +46,7 @@ export async function DELETE(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
+    const { downloadManager, db } = await getServices();
     const { taskId } = await params;
     const task = await downloadManager.getDownloadStatus(taskId);
 
@@ -63,7 +72,7 @@ export async function DELETE(
       message: 'Task deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting download task:', error);
+    logger.error('Error deleting download task:', error);
     return NextResponse.json(
       {
         success: false,

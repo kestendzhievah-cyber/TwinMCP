@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextResponse } from 'next/server';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getFirebaseAdminApp } from '@/lib/firebase/admin';
@@ -19,10 +20,10 @@ function getDb(): Firestore {
 // GET /api/chatbot/[id]
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -60,7 +61,7 @@ export async function GET(
 
     return NextResponse.json(chatbot);
   } catch (error) {
-    console.error('Erreur lors de la récupération du chatbot:', error);
+    logger.error('Erreur lors de la récupération du chatbot:', error);
     return NextResponse.json(
       { error: 'Erreur interne du serveur' },
       { status: 500 }
@@ -71,10 +72,10 @@ export async function GET(
 // PUT /api/chatbot/[id]
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     
     if (!id) {
@@ -132,7 +133,7 @@ export async function PUT(
 
     return NextResponse.json(updatedChatbot);
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du chatbot:', error);
+    logger.error('Erreur lors de la mise à jour du chatbot:', error);
     return NextResponse.json(
       { error: 'Erreur lors de la mise à jour du chatbot' },
       { status: 500 }

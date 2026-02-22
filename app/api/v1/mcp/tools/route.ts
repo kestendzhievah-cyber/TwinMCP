@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { registry } from '@/lib/mcp/tools'
 import { authenticateMcpRequest } from '@/lib/mcp/middleware/api-key-auth'
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Obtenir les outils (filtrés selon les permissions)
+    // Obtenir les outils (filtrÃ©s selon les permissions)
     const tools = registry.getAll().filter(tool => {
       return authContext.permissions.some(permission => {
         if (permission.resource === 'global') {
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       })
     })
 
-    // Tracker les métriques
+    // Tracker les mÃ©triques
     getMetrics().track({
       toolId: 'tools_list',
       userId: authContext.userId,
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
           type: 'object',
           properties: {},
           required: []
-        } : tool.inputSchema // Simplifié pour l'API
+        } : tool.inputSchema // SimplifiÃ© pour l'API
       })),
       totalCount: tools.length,
       apiVersion: 'v1',
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
       estimatedCost: 0
     })
 
-    console.error('Tools list error:', error)
+    logger.error('Tools list error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to list tools', code: error.code },
       { status: error.statusCode || 500 }

@@ -1,5 +1,6 @@
 import { MCPTool, ValidationResult, ExecutionResult } from '../core/types'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 export class QueryDocsTool implements MCPTool {
   id = 'query-docs'
@@ -81,12 +82,12 @@ export class QueryDocsTool implements MCPTool {
         const redisModule = await import('@/lib/redis')
         redisClient = redisModule.redis
       } catch {
-        console.warn('[QueryDocs] Redis unavailable — running without cache')
+        logger.warn('[QueryDocs] Redis unavailable — running without cache')
       }
       const { VectorSearchService } = await import('../../services/vector-search.service')
       this.vectorSearchService = new VectorSearchService(prisma, redisClient)
     } catch (error) {
-      console.error('[QueryDocs] Failed to initialize service:', (error as Error).message)
+      logger.error('[QueryDocs] Failed to initialize service:', (error as Error).message)
       throw new Error('QueryDocs service initialization failed')
     }
   }
@@ -148,7 +149,7 @@ export class QueryDocsTool implements MCPTool {
         const cached = await cache.get(cacheKey)
         if (cached) {
           cacheHit = true
-          console.log(`[QueryDocs] Cache hit for "${validatedInput.library_id}": "${validatedInput.query}"`)
+          logger.debug(`[QueryDocs] Cache hit for "${validatedInput.library_id}": "${validatedInput.query}"`)
           return {
             success: true,
             data: cached,
@@ -165,7 +166,7 @@ export class QueryDocsTool implements MCPTool {
       }
 
       // Log de la requête
-      console.log(`[QueryDocs] Processing query for library "${validatedInput.library_id}": "${validatedInput.query}"`)
+      logger.debug(`[QueryDocs] Processing query for library "${validatedInput.library_id}": "${validatedInput.query}"`)
       
       // Rechercher les documents
       const result = await this.vectorSearchService.searchDocuments(validatedInput)
@@ -179,7 +180,7 @@ export class QueryDocsTool implements MCPTool {
       }
 
       // Log du résultat
-      console.log(`[QueryDocs] Found ${result.results.length} results in ${Date.now() - startTime}ms`)
+      logger.debug(`[QueryDocs] Found ${result.results.length} results in ${Date.now() - startTime}ms`)
       
       return {
         success: true,
@@ -193,7 +194,7 @@ export class QueryDocsTool implements MCPTool {
       }
       
     } catch (error) {
-      console.error(`[QueryDocs] Error: ${(error as Error).message}`, (error as Error).stack)
+      logger.error(`[QueryDocs] Error: ${(error as Error).message}`)
       
       return {
         success: false,
@@ -209,13 +210,13 @@ export class QueryDocsTool implements MCPTool {
 
   async beforeExecute(args: any): Promise<any> {
     // Log avant exécution
-    console.log(`[QueryDocs] Starting execution with args:`, args)
+    logger.debug(`[QueryDocs] Starting execution with args:`, args)
     return args
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     // Log après exécution
-    console.log(`[QueryDocs] Execution completed:`, {
+    logger.debug(`[QueryDocs] Execution completed:`, {
       success: result.success,
       executionTime: result.metadata?.executionTime,
       tokensReturned: (result.metadata as any)?.tokensReturned
@@ -224,7 +225,7 @@ export class QueryDocsTool implements MCPTool {
   }
 
   async onError(error: Error, args: any): Promise<void> {
-    console.error(`[QueryDocs] Error in execution:`, {
+    logger.error(`[QueryDocs] Error in execution:`, {
       error: error.message,
       stack: error.stack,
       args

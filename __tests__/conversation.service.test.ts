@@ -290,18 +290,19 @@ describe('ConversationService', () => {
 
       const mockConversation = {
         id: conversationId,
-        userId,
+        user_id: userId,
         title: 'Shareable Conversation',
         messages: [],
-        metadata: {},
-        settings: {},
-        analytics: {}
+        metadata: JSON.stringify({}),
+        settings: JSON.stringify({}),
+        analytics: JSON.stringify({})
       };
 
       mockDb.query
-        .mockResolvedValueOnce({ rows: [mockConversation] }) // getConversation
+        .mockResolvedValueOnce({ rows: [mockConversation] }) // getConversation (in shareConversation)
         .mockResolvedValueOnce({ rows: [] }) // saveShare
-        .mockResolvedValueOnce({ rows: [] }); // updateConversation
+        .mockResolvedValueOnce({ rows: [mockConversation] }) // getConversation (in updateConversation)
+        .mockResolvedValueOnce({ rows: [] }); // UPDATE query (in updateConversation)
 
       const share = await service.shareConversation(conversationId, userId, options);
 
@@ -342,12 +343,12 @@ describe('ConversationService', () => {
 
       const mockConversation = {
         id: conversationId,
-        userId,
+        user_id: userId,
         title: 'Exportable Conversation',
         messages: [],
-        metadata: {},
-        settings: {},
-        analytics: {}
+        metadata: JSON.stringify({}),
+        settings: JSON.stringify({}),
+        analytics: JSON.stringify({})
       };
 
       mockDb.query
@@ -371,12 +372,12 @@ describe('ConversationService', () => {
 
       const mockConversation = {
         id: conversationId,
-        userId,
+        user_id: userId,
         title: 'Test',
         messages: [],
-        metadata: {},
-        settings: {},
-        analytics: {}
+        metadata: JSON.stringify({}),
+        settings: JSON.stringify({}),
+        analytics: JSON.stringify({})
       };
 
       mockDb.query.mockResolvedValue({ rows: [mockConversation] });
@@ -410,12 +411,12 @@ describe('ConversationService', () => {
 
       const mockConversation = {
         id: 'conv123',
-        userId: 'user123',
+        user_id: 'user123',
         title: 'Shared Conversation',
         messages: [],
-        metadata: {},
-        settings: {},
-        analytics: {}
+        metadata: JSON.stringify({}),
+        settings: JSON.stringify({}),
+        analytics: JSON.stringify({})
       };
 
       mockDb.query

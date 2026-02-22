@@ -1,17 +1,14 @@
-import { pool as db } from '@/lib/prisma';
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { PersonalizationService } from '@/src/services/personalization.service';
-
-// Initialisation des services
-const personalizationService = new PersonalizationService(db, redis);
+import { getPersonalizationService } from '../../_shared';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const themeId = params.id;
+    const personalizationService = await getPersonalizationService();
+    const themeId = (await params).id;
 
     if (!themeId) {
       return NextResponse.json(
@@ -35,11 +32,11 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error getting theme:', error);
+    logger.error('Error getting theme:', error);
     return NextResponse.json(
       { 
         error: 'Failed to get theme',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -48,11 +45,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const personalizationService = await getPersonalizationService();
     const userId = request.headers.get('x-user-id');
-    const themeId = params.id;
+    const themeId = (await params).id;
 
     if (!userId) {
       return NextResponse.json(
@@ -83,7 +81,7 @@ export async function PUT(
     });
 
   } catch (error) {
-    console.error('Error updating theme:', error);
+    logger.error('Error updating theme:', error);
     
     // Gestion des erreurs spécifiques
     if (error instanceof Error) {
@@ -104,7 +102,7 @@ export async function PUT(
     return NextResponse.json(
       { 
         error: 'Failed to update theme',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -113,11 +111,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const personalizationService = await getPersonalizationService();
     const userId = request.headers.get('x-user-id');
-    const themeId = params.id;
+    const themeId = (await params).id;
 
     if (!userId) {
       return NextResponse.json(
@@ -141,7 +140,7 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error('Error deleting theme:', error);
+    logger.error('Error deleting theme:', error);
     
     // Gestion des erreurs spécifiques
     if (error instanceof Error && error.message.includes('not found or access denied')) {
@@ -154,7 +153,7 @@ export async function DELETE(
     return NextResponse.json(
       { 
         error: 'Failed to delete theme',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

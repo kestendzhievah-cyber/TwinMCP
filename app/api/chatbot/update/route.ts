@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase-admin';
 import { updateChatbot } from '@/lib/chatbot';
@@ -41,10 +42,10 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Chatbot mis à jour avec succès'
+      message: 'Chatbot mis Ã  jour avec succÃ¨s'
     });
   } catch (error) {
-    console.error('Error updating chatbot:', error);
+    logger.error('Error updating chatbot:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

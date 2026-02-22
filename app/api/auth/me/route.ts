@@ -3,6 +3,7 @@
  * Get current authenticated user profile
  */
 
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/middleware/auth-middleware';
 
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('[Auth Me] Error:', error);
+    logger.error('[Auth Me] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
       { status: 500 }

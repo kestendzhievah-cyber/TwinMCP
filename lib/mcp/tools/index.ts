@@ -13,6 +13,7 @@ export { QueryDocsTool } from './query-docs.tool'
 // Import du registry pour l'enregistrement automatique
 import { registry } from '../core/registry'
 import { validator } from '../core/validator'
+import { logger } from '@/lib/logger'
 import { EmailTool } from './communication/email'
 import { SlackTool } from './communication/slack'
 import { CalendarTool } from './productivity/calendar'
@@ -35,7 +36,7 @@ export const allTools = [
 
 // Fonction d'initialisation - enregistre tous les outils
 export async function initializeTools(services: any = {}): Promise<void> {
-  console.log('🔧 Initializing MCP Tools...')
+  logger.info('Initializing MCP Tools...')
 
   // Initialiser les services TwinMCP
   const { libraryResolutionService, vectorSearchService } = services
@@ -45,12 +46,12 @@ export async function initializeTools(services: any = {}): Promise<void> {
     try {
       const resolveLibraryTool = new ResolveLibraryIdTool(libraryResolutionService)
       registry.register(resolveLibraryTool)
-      console.log(`✅ Registered TwinMCP tool: ${resolveLibraryTool.name} (${resolveLibraryTool.category})`)
+      logger.info(`Registered TwinMCP tool: ${resolveLibraryTool.name} (${resolveLibraryTool.category})`)
     } catch (error) {
-      console.error(`❌ Failed to register ResolveLibraryIdTool:`, error)
+      logger.error('Failed to register ResolveLibraryIdTool:', error)
     }
   } else {
-    console.log(`ℹ️  Skipping ResolveLibraryIdTool registration (service not provided)`)
+    logger.debug('Skipping ResolveLibraryIdTool registration (service not provided)')
   }
 
   // QueryDocsTool crée ses propres connexions - skip en mode test
@@ -58,12 +59,12 @@ export async function initializeTools(services: any = {}): Promise<void> {
     try {
       const queryDocsTool = new QueryDocsTool()
       registry.register(queryDocsTool)
-      console.log(`✅ Registered TwinMCP tool: ${queryDocsTool.name} (${queryDocsTool.category})`)
+      logger.info(`Registered TwinMCP tool: ${queryDocsTool.name} (${queryDocsTool.category})`)
     } catch (error) {
-      console.error(`❌ Failed to register QueryDocsTool:`, error)
+      logger.error('Failed to register QueryDocsTool:', error)
     }
   } else {
-    console.log(`ℹ️  Skipping QueryDocsTool registration (test mode)`)
+    logger.debug('Skipping QueryDocsTool registration (test mode)')
   }
 
   // Enregistrer les autres outils
@@ -79,9 +80,9 @@ export async function initializeTools(services: any = {}): Promise<void> {
   for (const tool of otherTools) {
     try {
       registry.register(tool)
-      console.log(`✅ Registered tool: ${tool.name} (${tool.category})`)
+      logger.info(`Registered tool: ${tool.name} (${tool.category})`)
     } catch (error) {
-      console.error(`❌ Failed to register tool ${tool.name}:`, error)
+      logger.error(`Failed to register tool ${tool.name}:`, error)
     }
   }
 
@@ -93,19 +94,13 @@ export async function initializeTools(services: any = {}): Promise<void> {
         validator.registerSchema(tool.id, tool.inputSchema)
         schemasRegistered++
       } catch (error) {
-        console.warn(`⚠️ Failed to register schema for tool ${tool.id}:`, error)
+        logger.warn(`Failed to register schema for tool ${tool.id}:`, error)
       }
     }
   }
 
   const stats = registry.getStats()
-  console.log(`📊 Registry initialized with ${stats.totalTools} tools`)
-  console.log(`   📋 Validation schemas registered: ${schemasRegistered}`)
-  console.log(`   📁 Categories: ${Object.entries(stats.toolsByCategory).map(([cat, count]) => `${cat}(${count})`).join(', ')}`)
-  console.log(`   ⚡ Async tools: ${stats.asyncTools}`)
-  console.log(`   🎯 Tools with rate limits: ${stats.toolsWithRateLimit}`)
-  console.log(`   💾 Tools with cache: ${stats.toolsWithCache}`)
-  console.log(`   🔗 Tools with webhooks: ${stats.toolsWithWebhooks}`)
+  logger.info(`Registry initialized: ${stats.totalTools} tools, ${schemasRegistered} schemas, ${stats.asyncTools} async`)
 }
 
 // Fonction pour obtenir un outil par ID

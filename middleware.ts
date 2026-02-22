@@ -41,6 +41,16 @@ const SELF_AUTH_ROUTES = [
   '/api/libraries',
   '/api/mcp-configurations',
   '/api/downloads',
+  '/api/chatbot',
+  '/api/user/limits',
+  '/api/billing',
+  '/api/conversations',
+  '/api/chat',
+  '/api/personalization',
+  '/api/context',
+  '/api/monitoring',
+  '/api/analytics',
+  '/api/github-monitoring',
 ];
 
 const PUBLIC_PREFIXES = [

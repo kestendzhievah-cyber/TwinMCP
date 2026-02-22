@@ -2,6 +2,7 @@ import { Octokit } from '@octokit/rest';
 import { prisma } from '@/lib/prisma';
 import { getQdrantService, DocumentChunk } from './qdrant-vector.service';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '@/lib/logger';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
@@ -48,7 +49,7 @@ export class GitHubCrawlerService {
     let filesProcessed = 0;
     let chunksIndexed = 0;
 
-    console.log(`[Crawler] Starting crawl for ${config.libraryId}`);
+    logger.info(`[Crawler] Starting crawl for ${config.libraryId}`);
 
     try {
       // Get repository info
@@ -62,7 +63,7 @@ export class GitHubCrawlerService {
 
       // Get documentation files
       const files = await this.getDocumentationFiles(config, branch, docsPath);
-      console.log(`[Crawler] Found ${files.length} documentation files`);
+      logger.info(`[Crawler] Found ${files.length} documentation files`);
 
       // Process each file
       const chunks: DocumentChunk[] = [];
@@ -90,7 +91,7 @@ export class GitHubCrawlerService {
         version: config.version,
       });
 
-      console.log(`[Crawler] Completed crawl for ${config.libraryId}: ${filesProcessed} files, ${chunksIndexed} chunks`);
+      logger.info(`[Crawler] Completed crawl for ${config.libraryId}: ${filesProcessed} files, ${chunksIndexed} chunks`);
 
       return {
         success: true,
@@ -101,7 +102,7 @@ export class GitHubCrawlerService {
         duration: Date.now() - startTime,
       };
     } catch (error) {
-      console.error(`[Crawler] Crawl failed for ${config.libraryId}:`, error);
+      logger.error(`[Crawler] Crawl failed for ${config.libraryId}:`, error);
       errors.push((error as Error).message);
 
       return {
@@ -137,7 +138,7 @@ export class GitHubCrawlerService {
       }
     } catch {
       // Docs folder doesn't exist, try README
-      console.log(`[Crawler] No docs folder found, checking for README`);
+      logger.debug(`[Crawler] No docs folder found, checking for README`);
     }
 
     // Always include README
@@ -366,7 +367,7 @@ export class GitHubCrawlerService {
         },
       });
     } catch (error) {
-      console.error('[Crawler] Failed to update library metadata:', error);
+      logger.error('[Crawler] Failed to update library metadata:', error);
     }
   }
 

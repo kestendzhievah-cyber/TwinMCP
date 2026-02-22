@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 
 import { pool as db } from '@/lib/prisma'
@@ -33,11 +34,11 @@ export async function GET(request: NextRequest) {
       data: monitoringData,
     });
   } catch (error) {
-    console.error('Error in GitHub monitoring:', error);
+    logger.error('Error in GitHub monitoring:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -76,11 +77,11 @@ export async function POST(request: NextRequest) {
       message: 'GitHub monitoring configured successfully',
     });
   } catch (error) {
-    console.error('Error configuring GitHub monitoring:', error);
+    logger.error('Error configuring GitHub monitoring:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

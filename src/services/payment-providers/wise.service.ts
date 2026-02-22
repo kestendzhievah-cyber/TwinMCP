@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { Payment, PaymentStatus } from '../../types/invoice.types';
 
 interface WiseQuote {
@@ -32,7 +33,7 @@ export class WiseService {
       : 'https://api.sandbox.transferwise.tech';
 
     if (!this.apiKey || !this.profileId) {
-      console.warn('⚠️ Wise credentials are not configured — Wise features will be unavailable');
+      logger.warn('⚠️ Wise credentials are not configured — Wise features will be unavailable');
     }
   }
 
@@ -60,7 +61,7 @@ export class WiseService {
 
       return await response.json() as T;
     } catch (error) {
-      console.error('Wise API request failed:', error);
+      logger.error('Wise API request failed:', error);
       throw error;
     }
   }
@@ -81,7 +82,7 @@ export class WiseService {
         }
       });
     } catch (error) {
-      console.error('Wise quote creation failed:', error);
+      logger.error('Wise quote creation failed:', error);
       throw error;
     }
   }
@@ -101,7 +102,7 @@ export class WiseService {
         }
       });
     } catch (error) {
-      console.error('Wise transfer creation failed:', error);
+      logger.error('Wise transfer creation failed:', error);
       throw error;
     }
   }
@@ -112,7 +113,7 @@ export class WiseService {
         type: 'BALANCE'
       });
     } catch (error) {
-      console.error('Wise transfer funding failed:', error);
+      logger.error('Wise transfer funding failed:', error);
       throw error;
     }
   }
@@ -121,7 +122,7 @@ export class WiseService {
     try {
       return await this.makeRequest<WiseTransfer>('GET', `/v1/transfers/${transferId}`);
     } catch (error) {
-      console.error('Wise transfer status retrieval failed:', error);
+      logger.error('Wise transfer status retrieval failed:', error);
       throw error;
     }
   }
@@ -178,7 +179,7 @@ export class WiseService {
     try {
       await this.makeRequest('PUT', `/v1/transfers/${transferId}/cancel`, {});
     } catch (error) {
-      console.error('Wise transfer cancellation failed:', error);
+      logger.error('Wise transfer cancellation failed:', error);
       throw error;
     }
   }

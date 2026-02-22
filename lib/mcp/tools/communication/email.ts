@@ -5,6 +5,7 @@ import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
 import { getCache } from '../../core'
 import { rateLimiter } from '../../middleware'
 import { getMetrics } from '../../utils'
+import { logger } from '@/lib/logger'
 
 const sendEmailSchema = z.object({
   to: z.string().email('Invalid email format'),
@@ -78,19 +79,19 @@ export class EmailTool implements MCPTool {
   }
 
   async beforeExecute(args: any): Promise<any> {
-    console.log(`📧 Preparing to send email to ${args.to}`)
+    logger.debug(`Preparing to send email to ${args.to}`)
     return args
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
-      console.log(`✅ Email sent successfully to ${result.data?.to}`)
+      logger.debug(`Email sent successfully to ${result.data?.to}`)
     }
     return result
   }
 
   async onError(error: Error): Promise<void> {
-    console.error(`❌ Email error: ${error.message}`)
+    logger.error(`Email error: ${error.message}`)
   }
 
   async execute(args: any, config: any): Promise<ExecutionResult> {
@@ -118,7 +119,7 @@ export class EmailTool implements MCPTool {
       const cachedResult = await cache.get(cacheKey)
 
       if (cachedResult) {
-        console.log(`📧 Email cache hit for ${args.to}`)
+        logger.debug(`Email cache hit for ${args.to}`)
         getMetrics().track({
           toolId: this.id,
           userId: config.userId || 'anonymous',
@@ -258,7 +259,7 @@ export class EmailTool implements MCPTool {
           }
         };
       } catch (error: any) {
-        console.error('Erreur lors de l\'envoi de l\'email:', error);
+        logger.error('Erreur lors de l\'envoi de l\'email:', error);
         throw new Error(`Échec de l'envoi de l'email: ${error.message}`);
       }
     }

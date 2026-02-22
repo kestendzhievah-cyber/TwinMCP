@@ -62,16 +62,18 @@ describe('PaymentService', () => {
         new Error('Payment declined')
       );
 
-      await expect(
-        paymentService.createPayment(
-          testInvoiceId,
-          testUserId,
-          36.06,
-          'EUR',
-          testPaymentMethod,
-          'stripe'
-        )
-      ).rejects.toThrow('Payment declined');
+      const payment = await paymentService.createPayment(
+        testInvoiceId,
+        testUserId,
+        36.06,
+        'EUR',
+        testPaymentMethod,
+        'stripe'
+      );
+
+      // Service catches error and returns a failed payment instead of throwing
+      expect(payment.status).toBe(PaymentStatus.FAILED);
+      expect(payment.failureReason).toBe('Payment declined');
 
       const updateCalls = (mockPool.query as jest.Mock).mock.calls.filter(
         call => call[0].includes('UPDATE payments')

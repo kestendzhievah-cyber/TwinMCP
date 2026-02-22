@@ -1,5 +1,9 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+
+const ALLOW_INSECURE_DEV_AUTH =
+  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
 
 const PLAN_LIMITS = {
   free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
@@ -48,14 +52,17 @@ async function validateAuth(request: NextRequest) {
         const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
         return { valid: true, userId: decodedToken.uid, email: decodedToken.email };
       } catch (firebaseError) {
-        console.warn('Firebase Admin verification failed, trying JWT extraction');
+        logger.warn('Firebase Admin verification failed, trying JWT extraction');
       }
     }
     
-    // Fallback: Extract user ID from JWT payload
-    const extracted = extractUserIdFromToken(token);
-    if (extracted) {
-      return { valid: true, userId: extracted.userId, email: extracted.email };
+    // Fallback is explicitly allowed only in non-production development flows
+    if (ALLOW_INSECURE_DEV_AUTH) {
+      const extracted = extractUserIdFromToken(token);
+      if (extracted) {
+        logger.warn('Using insecure dev auth fallback (unverified JWT payload).');
+        return { valid: true, userId: extracted.userId, email: extracted.email };
+      }
     }
   }
 
@@ -96,7 +103,7 @@ export async function GET(request: NextRequest) {
         });
       }
     } catch (dbError) {
-      console.error('Database error:', dbError);
+      logger.error('Database error:', dbError);
       return NextResponse.json({
         success: true,
         data: getEmptyAnalytics(period)
@@ -253,7 +260,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Analytics API error:', error);
+    logger.error('Analytics API error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

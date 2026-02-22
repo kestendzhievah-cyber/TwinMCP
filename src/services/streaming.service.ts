@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
@@ -264,7 +265,7 @@ export class StreamingService extends EventEmitter {
       await this.updateBuffer(buffer);
 
     } catch (error) {
-      console.error(`Error flushing buffer for connection ${connectionId}:`, error);
+      logger.error(`Error flushing buffer for connection ${connectionId}:`, error);
     }
   }
 
@@ -287,7 +288,7 @@ export class StreamingService extends EventEmitter {
       await this.updateConnection(connection);
 
     } catch (error) {
-      console.error(`Error sending event to connection ${connectionId}:`, error);
+      logger.error(`Error sending event to connection ${connectionId}:`, error);
     }
   }
 

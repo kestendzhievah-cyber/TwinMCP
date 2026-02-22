@@ -1,17 +1,11 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { ConversationService } from '@/src/services/conversation.service';
+import { getConversationService } from './_shared';
 import { Conversation, ConversationSearch } from '@/src/types/conversation.types';
-
-// Initialisation du service (à adapter avec votre configuration DB/Redis)
-const conversationService = new ConversationService(
-  // @ts-ignore - Pool PostgreSQL
-  null,
-  // @ts-ignore - Redis
-  null
-);
 
 export async function GET(request: NextRequest) {
   try {
+    const conversationService = await getConversationService();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     
@@ -22,7 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Paramètres de recherche
+    // ParamÃ¨tres de recherche
     const search: ConversationSearch = {
       query: searchParams.get('query') || '',
       filters: {
@@ -50,7 +44,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching conversations:', error);
+    logger.error('Error fetching conversations:', error);
     return NextResponse.json(
       { error: 'Failed to fetch conversations' },
       { status: 500 }
@@ -60,6 +54,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const conversationService = await getConversationService();
     const body = await request.json();
     const { userId, title, provider, model, systemPrompt, settings } = body;
 
@@ -80,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ conversation }, { status: 201 });
   } catch (error) {
-    console.error('Error creating conversation:', error);
+    logger.error('Error creating conversation:', error);
     return NextResponse.json(
       { error: 'Failed to create conversation' },
       { status: 500 }

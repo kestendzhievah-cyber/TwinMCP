@@ -1,24 +1,10 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { MonitoringService } from '@/src/services/monitoring.service';
-import { MetricsCollector } from '@/src/services/metrics-collector.service';
-import { AlertManager } from '@/src/services/alert-manager.service';
-import { HealthChecker } from '@/src/services/health-checker.service';
-
-// Initialize services (in production, use dependency injection)
-import { pool as db } from '@/lib/prisma'
-const metricsCollector = new MetricsCollector(db, redis);
-const alertManager = new AlertManager(db, redis, { enabled: true, channels: [], escalation: [] });
-const healthChecker = new HealthChecker(db, redis);
-const monitoringConfig = {
-  collection: { interval: 30, retention: 30, batchSize: 100 },
-  alerts: { enabled: true, channels: [], escalation: [] },
-  dashboards: { refreshInterval: 300, autoSave: true }
-};
-const monitoringService = new MonitoringService(db, redis, metricsCollector, alertManager, healthChecker, monitoringConfig);
+import { getMonitoringService } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const monitoringService = await getMonitoringService();
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period');
     const interval = searchParams.get('interval') as '1m' | '5m' | '15m' | '1h' | '6h' | '1d' | undefined;
@@ -77,7 +63,7 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error fetching metrics:', error);
+    logger.error('Error fetching metrics:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -87,6 +73,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const monitoringService = await getMonitoringService();
     const body = await request.json();
     
     // Trigger manual metrics collection
@@ -98,7 +85,7 @@ export async function POST(request: NextRequest) {
       metrics
     });
   } catch (error) {
-    console.error('Error collecting metrics:', error);
+    logger.error('Error collecting metrics:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

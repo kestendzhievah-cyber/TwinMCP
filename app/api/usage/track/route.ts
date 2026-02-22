@@ -1,9 +1,7 @@
+import { logger } from '@/lib/logger'
 import { redis } from '@/lib/redis';
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import Redis from 'ioredis'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 // Internal key for server-to-server communication
 const INTERNAL_KEY = process.env.TWINMCP_INTERNAL_KEY || ''
 
@@ -98,7 +96,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error tracking usage:', error)
+    logger.error('Error tracking usage:', error)
     return NextResponse.json({
       success: false,
       error: 'Failed to track usage',
@@ -200,7 +198,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error getting usage stats:', error)
+    logger.error('Error getting usage stats:', error)
     return NextResponse.json({
       success: false,
       error: 'Failed to get usage statistics',

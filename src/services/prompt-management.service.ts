@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import { EventEmitter } from 'events';
@@ -240,7 +241,7 @@ export class PromptManagementService extends EventEmitter {
       await this.updateTemplateStats(templateId, execution);
 
       // Évaluation de la qualité (async)
-      this.evaluateQuality(execution).catch(console.error);
+      this.evaluateQuality(execution).catch((err: unknown) => logger.error('Quality evaluation failed', { error: err }));
 
       return {
         execution,
@@ -594,7 +595,7 @@ export class PromptManagementService extends EventEmitter {
     try {
       await this.optimizeTemplate(templateId);
     } catch (error) {
-      console.error(`Optimization failed for template ${templateId}:`, error);
+      logger.error(`Optimization failed for template ${templateId}:`, error);
       this.optimizationQueue.push(templateId);
     }
   }

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { OAuthConfig } from '../types/oauth.types';
 
 export const oauthConfig: OAuthConfig = {
@@ -130,17 +131,17 @@ export const validateOAuthConfig = (): void => {
 
   // Validation des durées de vie des tokens
   if (oauthConfig.tokenConfig.accessTokenLifetime < 300) {
-    console.warn('OAUTH_ACCESS_TOKEN_LIFETIME est trop court (minimum 300 secondes)');
+    logger.warn('OAUTH_ACCESS_TOKEN_LIFETIME est trop court (minimum 300 secondes)');
   }
 
   if (oauthConfig.tokenConfig.refreshTokenLifetime < 86400) {
-    console.warn('OAUTH_REFRESH_TOKEN_LIFETIME est trop court (minimum 86400 secondes)');
+    logger.warn('OAUTH_REFRESH_TOKEN_LIFETIME est trop court (minimum 86400 secondes)');
   }
 
   // Validation de l'issuer
   if (!oauthConfig.authorizationServer.issuer.startsWith('https://') && 
       !oauthConfig.authorizationServer.issuer.startsWith('http://localhost')) {
-    console.warn('OAUTH_ISSUER devrait utiliser HTTPS en production');
+    logger.warn('OAUTH_ISSUER devrait utiliser HTTPS en production');
   }
 };
 

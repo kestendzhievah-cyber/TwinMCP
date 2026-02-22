@@ -269,6 +269,7 @@ export class SearchMatchingService {
   }
 
   async generateSuggestions(query: string): Promise<string[]> {
+    if (query.length < 2) return [];
     const sqlQuery = `
       SELECT name, similarity(name, $1) as similarity
       FROM libraries

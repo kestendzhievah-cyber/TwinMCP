@@ -6,6 +6,7 @@
  * Update user profile
  */
 
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Auth Profile GET] Error:', error);
+    logger.error('[Auth Profile GET] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
       { status: 500 }
@@ -142,7 +143,7 @@ export async function PUT(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Auth Profile PUT] Error:', error);
+    logger.error('[Auth Profile PUT] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
       { status: 500 }

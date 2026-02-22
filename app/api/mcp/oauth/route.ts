@@ -1,8 +1,13 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'twinmcp-oauth-secret';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is required in production');
+  }
+  return secret || 'dev-only-secret-not-for-production';
+}
 const OAUTH_CLIENT_ID = process.env.TWINMCP_OAUTH_CLIENT_ID || 'twinmcp-mcp-client';
 
 // OAuth 2.0 token validation
@@ -10,8 +15,10 @@ async function validateOAuthToken(token: string): Promise<{ valid: boolean; user
   if (!token) return { valid: false };
   
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; scope: string };
+    const jwtModule = await import('jsonwebtoken');
+    const decoded = jwtModule.default.verify(token, getJwtSecret()) as { userId: string; scope: string };
     
+    const { prisma } = await import('@/lib/prisma');
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId }
     });
@@ -173,7 +180,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('MCP OAuth Error:', error);
+    logger.error('MCP OAuth Error:', error);
     return NextResponse.json({
       jsonrpc: '2.0',
       id: null,

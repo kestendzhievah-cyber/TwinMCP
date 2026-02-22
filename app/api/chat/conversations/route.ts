@@ -1,32 +1,6 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-
-interface ChatConversation {
-  id: string;
-  title: string;
-  messages: any[];
-  metadata: {
-    userId: string;
-    provider: string;
-    model: string;
-    createdAt: Date;
-    updatedAt: Date;
-    messageCount: number;
-    totalTokens: number;
-    totalCost: number;
-  };
-  settings: {
-    temperature: number;
-    maxTokens: number;
-    streamResponse: boolean;
-    includeContext: boolean;
-    contextSources: string[];
-    autoSave: boolean;
-    shareEnabled: boolean;
-  };
-}
-
-// Mock database - remplacer avec une vraie base de données
-const conversations: Map<string, ChatConversation> = new Map();
+import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,14 +11,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
-    // Récupérer les conversations de l'utilisateur
-    const userConversations = Array.from(conversations.values())
-      .filter(conv => conv.metadata.userId === userId)
-      .sort((a, b) => b.metadata.updatedAt.getTime() - a.metadata.updatedAt.getTime());
+    const conversations = await prisma.conversation.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        _count: { select: { messages: true } },
+      },
+    });
 
-    return NextResponse.json({ conversations: userConversations });
+    const formatted = conversations.map((conv: any) => ({
+      id: conv.id,
+      title: conv.title,
+      metadata: {
+        userId: conv.userId,
+        ...(conv.metadata as object),
+        createdAt: conv.createdAt,
+        updatedAt: conv.updatedAt,
+        messageCount: conv._count.messages,
+      },
+      settings: conv.settings,
+    }));
+
+    return NextResponse.json({ conversations: formatted });
   } catch (error) {
-    console.error('Error fetching conversations:', error);
+    logger.error('Error fetching conversations:', error);
     return NextResponse.json(
       { error: 'Failed to fetch conversations' },
       { status: 500 }
@@ -64,36 +54,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newConversation: ChatConversation = {
-      id: crypto.randomUUID(),
-      title,
-      messages: [],
-      metadata: {
+    const conversation = await prisma.conversation.create({
+      data: {
+        title,
         userId,
-        provider,
-        model,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        messageCount: 0,
-        totalTokens: 0,
-        totalCost: 0
+        metadata: {
+          provider,
+          model,
+          totalTokens: 0,
+          totalCost: 0,
+        },
+        settings: {
+          temperature: 0.7,
+          maxTokens: 2048,
+          streamResponse: true,
+          includeContext: false,
+          contextSources: [],
+          autoSave: true,
+          shareEnabled: false,
+        },
       },
-      settings: {
-        temperature: 0.7,
-        maxTokens: 2048,
-        streamResponse: true,
-        includeContext: false,
-        contextSources: [],
-        autoSave: true,
-        shareEnabled: false
-      }
-    };
+    });
 
-    conversations.set(newConversation.id, newConversation);
-
-    return NextResponse.json({ conversation: newConversation });
+    return NextResponse.json({ conversation });
   } catch (error) {
-    console.error('Error creating conversation:', error);
+    logger.error('Error creating conversation:', error);
     return NextResponse.json(
       { error: 'Failed to create conversation' },
       { status: 500 }

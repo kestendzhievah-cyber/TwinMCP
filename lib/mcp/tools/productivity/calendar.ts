@@ -3,6 +3,7 @@ import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
 import { getCache } from '../../core'
 import { rateLimiter } from '../../middleware'
 import { getMetrics } from '../../utils'
+import { logger } from '@/lib/logger'
 
 const calendarReadSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
@@ -91,7 +92,7 @@ export class CalendarTool implements MCPTool {
       const cachedResult = await cache.get(cacheKey)
 
       if (cachedResult) {
-        console.log(`📅 Calendar cache hit for ${args.startDate} to ${args.endDate}`)
+        logger.debug(`Calendar cache hit for ${args.startDate} to ${args.endDate}`)
         getMetrics().track({
           toolId: this.id,
           userId: config.userId || 'anonymous',
@@ -212,18 +213,18 @@ export class CalendarTool implements MCPTool {
   }
 
   async beforeExecute(args: any): Promise<any> {
-    console.log(`📅 Fetching calendar events from ${args.startDate} to ${args.endDate}`)
+    logger.debug(`Fetching calendar events from ${args.startDate} to ${args.endDate}`)
     return args
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
-      console.log(`✅ Retrieved ${result.data?.events?.length || 0} calendar events`)
+      logger.debug(`Retrieved ${result.data?.events?.length || 0} calendar events`)
     }
     return result
   }
 
   async onError(error: Error): Promise<void> {
-    console.error(`❌ Calendar error: ${error.message}`)
+    logger.error(`Calendar error: ${error.message}`)
   }
 }

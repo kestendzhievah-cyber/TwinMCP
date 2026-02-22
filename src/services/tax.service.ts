@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import axios from 'axios';
 
 export interface TaxRate {
@@ -143,7 +144,7 @@ export class TaxService {
           return stripeTaxRate;
         }
       } catch (error) {
-        console.error('Failed to fetch Stripe tax rate:', error);
+        logger.error('Failed to fetch Stripe tax rate:', error);
       }
     }
 
@@ -193,7 +194,7 @@ export class TaxService {
         };
       }
     } catch (error) {
-      console.error('Stripe Tax API error:', error);
+      logger.error('Stripe Tax API error:', error);
     }
 
     return null;
@@ -229,7 +230,7 @@ export class TaxService {
       try {
         return await this.validateVATWithVIES(cleanVAT);
       } catch (error) {
-        console.error('VIES validation error:', error);
+        logger.error('VIES validation error:', error);
       }
     }
 
@@ -250,7 +251,7 @@ export class TaxService {
 
       return response.data?.valid === true;
     } catch (error) {
-      console.error('VIES API error:', error);
+      logger.error('VIES API error:', error);
       return false;
     }
   }

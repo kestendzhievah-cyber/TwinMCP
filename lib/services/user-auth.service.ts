@@ -6,6 +6,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
+import { logger } from '@/lib/logger';
 import * as admin from 'firebase-admin';
 
 // Types
@@ -99,15 +100,15 @@ export class UserAuthService {
             }),
           });
           this.firebaseAdmin = admin;
-          console.log('[Auth] Firebase Admin initialized successfully');
+          logger.info('[Auth] Firebase Admin initialized successfully');
         } else {
-          console.warn('[Auth] Firebase Admin credentials not fully configured');
+          logger.warn('[Auth] Firebase Admin credentials not fully configured');
         }
       } else {
         this.firebaseAdmin = admin;
       }
     } catch (error) {
-      console.error('[Auth] Firebase Admin initialization error:', error);
+      logger.error('[Auth] Firebase Admin initialization error:', error);
     }
   }
 
@@ -171,7 +172,7 @@ export class UserAuthService {
       };
 
     } catch (error) {
-      console.error('[Auth] Token verification error:', error);
+      logger.error('[Auth] Token verification error:', error);
       return { success: false, error: 'Authentication failed', code: 'UNAUTHORIZED' };
     }
   }
@@ -220,7 +221,7 @@ export class UserAuthService {
           return JSON.parse(cachedUser);
         }
       } catch (cacheError) {
-        console.warn('[Auth] Redis cache read failed, continuing without cache');
+        logger.warn('[Auth] Redis cache read failed, continuing without cache');
       }
 
       // Find existing user
@@ -288,7 +289,7 @@ export class UserAuthService {
           }
         });
 
-        console.log(`[Auth] New user created: ${email}`);
+        logger.info(`[Auth] New user created: ${email}`);
       } else if (name || avatar) {
         // Update user info if changed
         const updateData: any = {};
@@ -307,13 +308,13 @@ export class UserAuthService {
       try {
         await this.redis.setex(cacheKey, USER_CACHE_TTL, JSON.stringify(user));
       } catch (cacheError) {
-        console.warn('[Auth] Redis cache write failed, continuing without cache');
+        logger.warn('[Auth] Redis cache write failed, continuing without cache');
       }
 
       return user;
 
     } catch (error) {
-      console.error('[Auth] Get or create user error:', error);
+      logger.error('[Auth] Get or create user error:', error);
       return null;
     }
   }
@@ -353,7 +354,7 @@ export class UserAuthService {
       const sessionKey = `session:${user.id}`;
       await this.redis.setex(sessionKey, SESSION_TTL, JSON.stringify(session));
     } catch (redisError) {
-      console.warn('[Auth] Redis session write failed, session not persisted');
+      logger.warn('[Auth] Redis session write failed, session not persisted');
     }
 
     // Log login
@@ -417,7 +418,7 @@ export class UserAuthService {
           return JSON.parse(cached);
         }
       } catch (cacheError) {
-        console.warn('[Auth] Redis auth cache read failed, continuing without cache');
+        logger.warn('[Auth] Redis auth cache read failed, continuing without cache');
       }
 
       // Get user with relations
@@ -486,13 +487,13 @@ export class UserAuthService {
       try {
         await this.redis.setex(cacheKey, USER_CACHE_TTL, JSON.stringify(authenticatedUser));
       } catch (cacheError) {
-        console.warn('[Auth] Redis auth cache write failed, continuing without cache');
+        logger.warn('[Auth] Redis auth cache write failed, continuing without cache');
       }
 
       return authenticatedUser;
 
     } catch (error) {
-      console.error('[Auth] Get authenticated user error:', error);
+      logger.error('[Auth] Get authenticated user error:', error);
       return null;
     }
   }
@@ -523,12 +524,12 @@ export class UserAuthService {
       try {
         await this.redis.del(`auth:user:${userId}`);
       } catch (cacheError) {
-        console.warn('[Auth] Redis cache clear failed');
+        logger.warn('[Auth] Redis cache clear failed');
       }
       
       return true;
     } catch (error) {
-      console.error('[Auth] Update profile error:', error);
+      logger.error('[Auth] Update profile error:', error);
       return false;
     }
   }

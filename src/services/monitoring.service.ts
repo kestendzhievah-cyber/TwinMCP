@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
@@ -50,11 +51,11 @@ export class MonitoringService extends EventEmitter {
 
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.log('Monitoring service is already running');
+      logger.info('Monitoring service is already running');
       return;
     }
 
-    console.log('Starting monitoring service...');
+    logger.info('Starting monitoring service...');
     this.isRunning = true;
 
     // Load existing data
@@ -68,16 +69,16 @@ export class MonitoringService extends EventEmitter {
     this.startCleanup();
 
     this.emit('started');
-    console.log('Monitoring service started successfully');
+    logger.info('Monitoring service started successfully');
   }
 
   async stop(): Promise<void> {
     if (!this.isRunning) {
-      console.log('Monitoring service is not running');
+      logger.info('Monitoring service is not running');
       return;
     }
 
-    console.log('Stopping monitoring service...');
+    logger.info('Stopping monitoring service...');
     this.isRunning = false;
 
     // Clear all intervals
@@ -85,7 +86,7 @@ export class MonitoringService extends EventEmitter {
     this.intervals = [];
 
     this.emit('stopped');
-    console.log('Monitoring service stopped');
+    logger.info('Monitoring service stopped');
   }
 
   private startMetricsCollection(): void {
@@ -96,7 +97,7 @@ export class MonitoringService extends EventEmitter {
         const metrics = await this.collectMetrics();
         this.emit('metrics_collected', metrics);
       } catch (error) {
-        console.error('Error collecting metrics:', error);
+        logger.error('Error collecting metrics:', error);
         this.emit('error', { type: 'metrics_collection', error });
       }
     }, this.config.collection.interval * 1000);
@@ -112,7 +113,7 @@ export class MonitoringService extends EventEmitter {
         const healthChecks = await this.performHealthChecks();
         this.emit('health_checks_completed', healthChecks);
       } catch (error) {
-        console.error('Error performing health checks:', error);
+        logger.error('Error performing health checks:', error);
         this.emit('error', { type: 'health_checks', error });
       }
     }, 60000); // Every minute
@@ -127,7 +128,7 @@ export class MonitoringService extends EventEmitter {
       try {
         await this.evaluateSLOs();
       } catch (error) {
-        console.error('Error evaluating SLOs:', error);
+        logger.error('Error evaluating SLOs:', error);
         this.emit('error', { type: 'slo_evaluation', error });
       }
     }, 300000); // Every 5 minutes
@@ -142,7 +143,7 @@ export class MonitoringService extends EventEmitter {
       try {
         await this.cleanupOldMetrics();
       } catch (error) {
-        console.error('Error cleaning up old metrics:', error);
+        logger.error('Error cleaning up old metrics:', error);
       }
     }, 3600000); // Every hour
 
@@ -197,7 +198,7 @@ export class MonitoringService extends EventEmitter {
       return metrics;
 
     } catch (error) {
-      console.error('Error collecting metrics:', error);
+      logger.error('Error collecting metrics:', error);
       throw error;
     }
   }
@@ -239,7 +240,7 @@ export class MonitoringService extends EventEmitter {
     };
     
     const currentMetrics = await this.getCurrentMetrics();
-    const triggeredAlerts = await this.alertManager.evaluateRules(currentMetrics);
+    const triggeredAlerts = await this.alertManager.evaluateRules(currentMetrics) || [];
     
     // Find or create the specific alert
     let targetAlert = triggeredAlerts.find(a => a.name === alert.name);
@@ -365,7 +366,7 @@ export class MonitoringService extends EventEmitter {
         await this.updateSLO(slo);
 
       } catch (error) {
-        console.error(`Error evaluating SLO ${sloId}:`, error);
+        logger.error(`Error evaluating SLO ${sloId}:`, error);
       }
     }
   }
@@ -389,14 +390,14 @@ export class MonitoringService extends EventEmitter {
 
   private async checkAlerts(metrics: PerformanceMetrics): Promise<void> {
     try {
-      const triggeredAlerts = await this.alertManager.evaluateRules(metrics);
+      const triggeredAlerts = await this.alertManager.evaluateRules(metrics) || [];
       
       for (const alert of triggeredAlerts) {
         this.activeAlerts.set(alert.id, alert);
         this.emit('alert', alert);
       }
     } catch (error) {
-      console.error('Error checking alerts:', error);
+      logger.error('Error checking alerts:', error);
     }
   }
 
@@ -413,7 +414,7 @@ export class MonitoringService extends EventEmitter {
         burnRate
       };
     } catch (error) {
-      console.error(`Error calculating SLO current for ${slo.name}:`, error);
+      logger.error(`Error calculating SLO current for ${slo.name}:`, error);
       return {
         availability: 0,
         errorBudget: 100,
@@ -502,7 +503,7 @@ export class MonitoringService extends EventEmitter {
         this.activeAlerts.set(alert.id, alert);
       }
     } catch (error) {
-      console.error('Error loading active alerts:', error);
+      logger.error('Error loading active alerts:', error);
     }
   }
 
@@ -524,7 +525,7 @@ export class MonitoringService extends EventEmitter {
         this.sloMonitors.set(slo.id, slo);
       }
     } catch (error) {
-      console.error('Error loading SLOs:', error);
+      logger.error('Error loading SLOs:', error);
     }
   }
 

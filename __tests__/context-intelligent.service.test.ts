@@ -223,7 +223,8 @@ describe('ContextIntelligentService', () => {
 
       expect(result).toEqual(cachedResult);
       expect(mockRedis.get).toHaveBeenCalled();
-      expect(mockRedis.setex).not.toHaveBeenCalled(); // Pas de mise en cache si déjà en cache
+      // setex is called by updateCacheAccess to refresh hit count
+      expect(mockRedis.setex).toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
@@ -324,7 +325,7 @@ describe('ContextIntelligentService', () => {
       expect(injection.context).toBe(context);
       expect(injection.template).toBe(template.id);
       expect(injection.injectedPrompt).toContain('React hooks are functions');
-      expect(injection.metadata.originalLength).toBe(19); // "How do I use useState?"
+      expect(injection.metadata.originalLength).toBe(22); // "How do I use useState?"
       expect(injection.metadata.injectedLength).toBeGreaterThan(19);
       expect(injection.metadata.compressionRatio).toBeLessThan(1);
       expect(injection.metadata.relevanceScore).toBe(0.85);
@@ -339,9 +340,9 @@ describe('ContextIntelligentService', () => {
     it('should calculate average relevance score correctly', () => {
       const results = {
         sources: [
-          { metadata: { relevanceScore: 0.9 } },
-          { metadata: { relevanceScore: 0.7 } },
-          { metadata: { relevanceScore: 0.8 } }
+          { id: 'source1', metadata: { relevanceScore: 0.9 } },
+          { id: 'source2', metadata: { relevanceScore: 0.7 } },
+          { id: 'source3', metadata: { relevanceScore: 0.8 } }
         ],
         chunks: [
           { sourceId: 'source1' },

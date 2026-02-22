@@ -1,4 +1,5 @@
 import { RateLimitConfig } from './auth-types'
+import { logger } from '@/lib/logger'
 
 // Lazy-loaded to avoid Firebase initialization in test environments
 let _userLimits: typeof import('@/lib/user-limits') | null = null
@@ -67,7 +68,7 @@ class RedisRateLimitStore implements RateLimitStore {
       }
       return count
     } catch (error) {
-      console.error('[RateLimiter] Redis increment failed:', error)
+      logger.error('[RateLimiter] Redis increment failed:', error)
       throw error
     }
   }
@@ -76,7 +77,7 @@ class RedisRateLimitStore implements RateLimitStore {
     try {
       await this.redisClient.del(this.keyPrefix + key)
     } catch (error) {
-      console.error('[RateLimiter] Redis reset failed:', error)
+      logger.error('[RateLimiter] Redis reset failed:', error)
     }
   }
 
@@ -180,10 +181,10 @@ export class RateLimiter {
       const { redis } = await import('@/lib/redis')
       if (redis) {
         this.redisStore = new RedisRateLimitStore(redis)
-        console.log('✅ RateLimiter: using Redis store (shared across instances)')
+        logger.info('RateLimiter: using Redis store (shared across instances)')
       }
     } catch {
-      console.log('⚠️ RateLimiter: Redis unavailable, using memory store (per-instance)')
+      logger.info('RateLimiter: Redis unavailable, using memory store (per-instance)')
     }
   }
 
@@ -310,7 +311,7 @@ export class RateLimiter {
         current: result.currentCount
       }
     } catch (error) {
-      console.error('Error checking plan limits:', error)
+      logger.error('Error checking plan limits:', error)
       // En cas d'erreur, on autorise par défaut pour ne pas bloquer
       return { allowed: true }
     }
@@ -388,5 +389,19 @@ export class RateLimiter {
   }
 }
 
-// Instance globale
-export const rateLimiter = new RateLimiter()
+// Lazy-init singleton — avoids starting setInterval + Redis connection at import time
+let _rateLimiter: RateLimiter | null = null
+
+export function getRateLimiter(): RateLimiter {
+  if (!_rateLimiter) {
+    _rateLimiter = new RateLimiter()
+  }
+  return _rateLimiter
+}
+
+// Backward-compatible named export via getter proxy
+export const rateLimiter: RateLimiter = new Proxy({} as RateLimiter, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getRateLimiter(), prop, receiver)
+  }
+})

@@ -140,7 +140,7 @@ describe('EmbeddingGenerationService', () => {
       const mockOpenAI = {
         embeddings: {
           create: jest.fn()
-            .mockRejectedValueOnce(new Error('Rate limit exceeded'))
+            .mockRejectedValueOnce(new Error('rate limit exceeded'))
             .mockResolvedValueOnce({
               data: [{ embedding: new Array(1536).fill(0.1) }]
             })
@@ -289,10 +289,10 @@ describe('EmbeddingGenerationService', () => {
 
   describe('private methods', () => {
     it('should count tokens correctly', () => {
-      const text = 'This is a test text with 32 characters';
+      const text = 'This is a test text with 32 characters'; // 38 chars
       const service = new EmbeddingGenerationService(mockDb, mockRedis, mockConfig);
       const tokens = (service as any).countTokens(text);
-      expect(tokens).toBe(8);
+      expect(tokens).toBe(Math.ceil(38 / 4)); // 10
     });
 
     it('should calculate cost correctly', () => {
@@ -301,11 +301,11 @@ describe('EmbeddingGenerationService', () => {
       expect(cost).toBe(0.00002);
     });
 
-    it('should generate cache key correctly', () => {
+    it('should generate cache key correctly via CACHE_KEYS config', () => {
+      const { CACHE_KEYS } = require('../src/config/embeddings.config');
       const content = 'test content';
       const model = 'text-embedding-3-small';
-      const service = new EmbeddingGenerationService(mockDb, mockRedis, mockConfig);
-      const cacheKey = (service as any).generateCacheKey(content, model);
+      const cacheKey = CACHE_KEYS.embedding(content, model);
       expect(cacheKey).toMatch(/^embedding:text-embedding-3-small:[a-f0-9]{64}$/);
     });
   });

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { EventEmitter } from 'events';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
@@ -42,7 +43,7 @@ export class AlertManager extends EventEmitter {
     
     // Start cleanup interval
     setInterval(() => {
-      this.cleanupOldAlerts().catch(console.error);
+      this.cleanupOldAlerts().catch((err: unknown) => logger.error('Alert cleanup failed', { error: err }));
     }, 60000); // Every minute
   }
 
@@ -99,7 +100,7 @@ export class AlertManager extends EventEmitter {
           triggeredAlerts.push(alert);
         }
       } catch (error) {
-        console.error(`Error evaluating rule ${ruleId}:`, error);
+        logger.error(`Error evaluating rule ${ruleId}:`, error);
       }
     }
 
@@ -326,7 +327,7 @@ export class AlertManager extends EventEmitter {
 
     const notifications = channels.map(channel => 
       this.sendNotification(channel, alert).catch(error => {
-        console.error(`Failed to send notification via ${channel.name}:`, error);
+        logger.error(`Failed to send notification via ${channel.name}:`, error);
       })
     );
 
@@ -355,7 +356,7 @@ export class AlertManager extends EventEmitter {
 
   private async sendEmailNotification(channel: NotificationChannel, alert: Alert): Promise<void> {
     // Placeholder implementation
-    console.log(`Email notification sent to ${channel.config.recipients}: ${alert.name}`);
+    logger.info(`Email notification sent to ${channel.config.recipients}: ${alert.name}`);
   }
 
   private async sendSlackNotification(channel: NotificationChannel, alert: Alert): Promise<void> {
@@ -377,7 +378,7 @@ export class AlertManager extends EventEmitter {
     };
 
     // Send to Slack webhook
-    console.log(`Slack notification sent to ${webhook}:`, payload);
+    logger.info(`Slack notification sent to ${webhook}:`, payload);
   }
 
   private async sendWebhookNotification(channel: NotificationChannel, alert: Alert): Promise<void> {
@@ -388,12 +389,12 @@ export class AlertManager extends EventEmitter {
     };
 
     // Send to webhook
-    console.log(`Webhook notification sent to ${url}:`, payload);
+    logger.info(`Webhook notification sent to ${url}:`, payload);
   }
 
   private async sendSMSNotification(channel: NotificationChannel, alert: Alert): Promise<void> {
     // Placeholder implementation
-    console.log(`SMS notification sent to ${channel.config.phoneNumber}: ${alert.name}`);
+    logger.info(`SMS notification sent to ${channel.config.phoneNumber}: ${alert.name}`);
   }
 
   private getSeverityColor(severity: Alert['severity']): string {
@@ -460,7 +461,7 @@ export class AlertManager extends EventEmitter {
         this.alertRules.set(rule.id, rule);
       }
     } catch (error) {
-      console.error('Error loading alert rules:', error);
+      logger.error('Error loading alert rules:', error);
     }
   }
 
@@ -478,7 +479,7 @@ export class AlertManager extends EventEmitter {
         this.notificationChannels.set(channel.id, channel);
       }
     } catch (error) {
-      console.error('Error loading notification channels:', error);
+      logger.error('Error loading notification channels:', error);
     }
   }
 
@@ -495,7 +496,7 @@ export class AlertManager extends EventEmitter {
         this.escalationPolicies.set(policy.id, policy);
       }
     } catch (error) {
-      console.error('Error loading escalation policies:', error);
+      logger.error('Error loading escalation policies:', error);
     }
   }
 
@@ -528,7 +529,7 @@ export class AlertManager extends EventEmitter {
         this.activeAlerts.set(alert.id, alert);
       }
     } catch (error) {
-      console.error('Error loading active alerts:', error);
+      logger.error('Error loading active alerts:', error);
     }
   }
 

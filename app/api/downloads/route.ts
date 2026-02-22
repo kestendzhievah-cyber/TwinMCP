@@ -1,13 +1,20 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { DownloadManagerService } from '../../../src/services/download-manager.service';
-import { DOWNLOAD_CONFIG, STORAGE_CONFIG } from '../../../src/config/download.config';
 
-import { pool as db } from '@/lib/prisma'
-
-const downloadManager = new DownloadManagerService(db, STORAGE_CONFIG, DOWNLOAD_CONFIG);
+let _downloadManager: any = null;
+async function getDownloadManager() {
+  if (!_downloadManager) {
+    const { pool: db } = await import('@/lib/prisma');
+    const { DownloadManagerService } = await import('../../../src/services/download-manager.service');
+    const { DOWNLOAD_CONFIG, STORAGE_CONFIG } = await import('../../../src/config/download.config');
+    _downloadManager = new DownloadManagerService(db, STORAGE_CONFIG, DOWNLOAD_CONFIG);
+  }
+  return _downloadManager;
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const downloadManager = await getDownloadManager();
     const body = await request.json();
 
     // Support both formats: { githubUrl } or { type, source }
@@ -63,7 +70,7 @@ export async function POST(request: NextRequest) {
       message: 'Download task created successfully',
     });
   } catch (error) {
-    console.error('Error creating download task:', error);
+    logger.error('Error creating download task:', error);
     return NextResponse.json(
       {
         success: false,
@@ -76,6 +83,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const downloadManager = await getDownloadManager();
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get('taskId');
 
@@ -95,7 +103,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, queue });
     }
   } catch (error) {
-    console.error('Error fetching download status:', error);
+    logger.error('Error fetching download status:', error);
     return NextResponse.json(
       {
         success: false,

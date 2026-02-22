@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { QueueJob, ExecutionResult } from '../core/types'
 import { registry } from '../core/registry'
+import { logger } from '@/lib/logger'
 
 interface QueueWorker {
   id: string
@@ -45,7 +46,7 @@ export class MCPQueue {
       })
     }
 
-    console.log(`🚀 Queue initialized with ${this.maxWorkers} workers`)
+    logger.info(`Queue initialized with ${this.maxWorkers} workers`)
   }
 
   async enqueue(job: Omit<QueueJob, 'id' | 'status' | 'createdAt' | 'retries'>): Promise<string> {
@@ -65,7 +66,7 @@ export class MCPQueue {
       await this.persistenceCallback(queueJob)
     }
 
-    console.log(`📝 Job enqueued: ${jobId} (${job.toolId})`)
+    logger.debug(`Job enqueued: ${jobId} (${job.toolId})`)
     this.notifyWorkers()
 
     return jobId
@@ -105,7 +106,7 @@ export class MCPQueue {
       await this.persistenceCallback(job)
     }
 
-    console.log(`❌ Job cancelled: ${jobId}`)
+    logger.info(`Job cancelled: ${jobId}`)
     return true
   }
 
@@ -113,7 +114,7 @@ export class MCPQueue {
     const startTime = Date.now()
 
     try {
-      console.log(`⚡ Processing job: ${job.id} (${job.toolId})`)
+      logger.debug(`Processing job: ${job.id} (${job.toolId})`)
 
       // Vérifier si l'outil existe
       const tool = registry.get(job.toolId)
@@ -134,7 +135,7 @@ export class MCPQueue {
       job.result = result
       job.completedAt = new Date()
 
-      console.log(`✅ Job completed: ${job.id} (${Date.now() - startTime}ms)`)
+      logger.debug(`Job completed: ${job.id} (${Date.now() - startTime}ms)`)
 
       // Envoyer le webhook si configuré
       if (this.webhookCallback && tool.capabilities.webhook) {
@@ -142,12 +143,12 @@ export class MCPQueue {
       }
 
     } catch (error) {
-      console.error(`❌ Job failed: ${job.id}`, error)
+      logger.error(`Job failed: ${job.id}`, error)
 
       if (job.retries < job.maxRetries) {
         job.retries++
         job.status = 'pending'
-        console.log(`🔄 Retrying job: ${job.id} (attempt ${job.retries})`)
+        logger.info(`Retrying job: ${job.id} (attempt ${job.retries})`)
 
         // Attendre avant de retenter (backoff exponentiel)
         const timer = setTimeout(() => {
@@ -263,11 +264,11 @@ export class MCPQueue {
       }
     }
 
-    console.log('🧹 Queue cleared')
+    logger.info('Queue cleared')
   }
 
   async close(): Promise<void> {
-    console.log('🛑 Queue shutting down...')
+    logger.info('Queue shutting down...')
 
     // 1. Mark all pending jobs as failed so no new work starts
     for (const job of this.jobs.values()) {
@@ -284,12 +285,12 @@ export class MCPQueue {
     const busyWorkers = () => this.workers.filter(w => w.isBusy)
 
     while (busyWorkers().length > 0 && (Date.now() - startTime) < maxWait) {
-      console.log(`   ⏳ Waiting for ${busyWorkers().length} worker(s) to finish...`)
+      logger.debug(`Waiting for ${busyWorkers().length} worker(s) to finish...`)
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
     if (busyWorkers().length > 0) {
-      console.warn(`   ⚠️ ${busyWorkers().length} worker(s) still busy after ${maxWait}ms timeout`)
+      logger.warn(`${busyWorkers().length} worker(s) still busy after ${maxWait}ms timeout`)
     }
 
     // 3. Clear retry timers
@@ -302,7 +303,7 @@ export class MCPQueue {
     this.jobs.clear()
     this.workers = []
 
-    console.log('🛑 Queue closed')
+    logger.info('Queue closed')
   }
 }
 
@@ -318,7 +319,7 @@ export function getQueue(): MCPQueue {
 
 export async function initializeQueue(): Promise<void> {
   const queue = getQueue()
-  console.log('🔄 Queue system initialized')
+  logger.info('Queue system initialized')
 }
 
 export async function closeQueue(): Promise<void> {

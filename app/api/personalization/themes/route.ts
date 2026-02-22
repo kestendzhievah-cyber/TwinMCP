@@ -1,14 +1,10 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { PersonalizationService } from '@/src/services/personalization.service';
-
-// Initialisation des services
-import { pool as db } from '@/lib/prisma'
-
-const personalizationService = new PersonalizationService(db, redis);
+import { getPersonalizationService } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const personalizationService = await getPersonalizationService();
     const userId = request.headers.get('x-user-id') || 
                    request.nextUrl.searchParams.get('userId');
 
@@ -21,11 +17,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error getting themes:', error);
+    logger.error('Error getting themes:', error);
     return NextResponse.json(
       { 
         error: 'Failed to get themes',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -34,6 +30,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const personalizationService = await getPersonalizationService();
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
@@ -45,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const themeData = await request.json();
 
-    // Validation des données requises
+    // Validation des donnÃ©es requises
     if (!themeData.name || !themeData.colors || !themeData.typography) {
       return NextResponse.json(
         { error: 'Missing required theme data: name, colors, typography' },
@@ -62,11 +59,11 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error creating theme:', error);
+    logger.error('Error creating theme:', error);
     return NextResponse.json(
       { 
         error: 'Failed to create theme',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

@@ -3,6 +3,7 @@
  * Invalidate user session
  */
 
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Auth Logout] Error:', error);
+    logger.error('[Auth Logout] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
       { status: 500 }

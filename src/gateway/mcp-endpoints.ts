@@ -11,7 +11,7 @@ export class MCPEndpoints {
           type: 'object',
           properties: {
             jsonrpc: { type: 'string', const: '2.0' },
-            id: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+            id: { },
             method: { type: 'string' },
             params: { type: 'object' }
           },
@@ -22,7 +22,7 @@ export class MCPEndpoints {
             type: 'object',
             properties: {
               jsonrpc: { type: 'string' },
-              id: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+              id: { },
               result: { type: 'object' },
               error: { type: 'object' }
             }
@@ -36,13 +36,16 @@ export class MCPEndpoints {
       schema: {
         description: 'MCP OAuth endpoint',
         headers: {
-          Authorization: { type: 'string' }
+          type: 'object',
+          properties: {
+            authorization: { type: 'string' }
+          }
         },
         body: {
           type: 'object',
           properties: {
             jsonrpc: { type: 'string', const: '2.0' },
-            id: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+            id: { },
             method: { type: 'string' },
             params: { type: 'object' }
           },

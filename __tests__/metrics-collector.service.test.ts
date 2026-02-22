@@ -10,6 +10,9 @@ jest.mock('pg');
 jest.mock('ioredis');
 jest.mock('os');
 jest.mock('child_process');
+jest.mock('../src/utils/logger', () => ({
+  logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() }
+}));
 
 describe('MetricsCollector', () => {
   let metricsCollector: MetricsCollector;

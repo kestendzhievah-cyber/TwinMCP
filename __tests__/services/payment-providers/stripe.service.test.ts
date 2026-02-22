@@ -53,21 +53,24 @@ describe('StripeService', () => {
 
       mockStripe.paymentIntents.create.mockResolvedValue(mockPaymentIntent as any);
 
-      const result = await stripeService.createPaymentIntent({
-        amount: 100,
-        currency: 'EUR',
-        metadata: { invoiceId: 'inv_123' },
-      });
+      const result = await stripeService.createPaymentIntent(
+        100,
+        'EUR',
+        'pm_test_card',
+        { invoiceId: 'inv_123' }
+      );
 
-      expect(result).toEqual({
-        id: 'pi_test_123',
-        clientSecret: 'pi_test_123_secret',
-        status: 'requires_payment_method',
-      });
+      expect(result).toEqual(mockPaymentIntent);
 
       expect(mockStripe.paymentIntents.create).toHaveBeenCalledWith({
         amount: 10000,
         currency: 'eur',
+        payment_method: 'pm_test_card',
+        confirm: true,
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'never'
+        },
         metadata: { invoiceId: 'inv_123' },
       });
     });
@@ -78,61 +81,58 @@ describe('StripeService', () => {
       );
 
       await expect(
-        stripeService.createPaymentIntent({
-          amount: 100,
-          currency: 'EUR',
-        })
+        stripeService.createPaymentIntent(100, 'EUR', 'pm_test_card')
       ).rejects.toThrow('Stripe API error');
     });
   });
 
   describe('processPayment', () => {
     it('should process payment successfully', async () => {
-      const mockPaymentIntent = {
+      const mockPaymentIntentResult = {
         id: 'pi_test_123',
         status: 'succeeded',
         amount: 10000,
         currency: 'eur',
       };
 
-      mockStripe.paymentIntents.confirm.mockResolvedValue(mockPaymentIntent as any);
+      mockStripe.paymentIntents.create.mockResolvedValue(mockPaymentIntentResult as any);
 
-      const result = await stripeService.processPayment('pi_test_123', 'pm_test_card');
+      const payment = {
+        id: 'pay_1',
+        invoiceId: 'inv_1',
+        userId: 'user_1',
+        amount: 100,
+        currency: 'eur',
+        method: { id: 'pm_test_card' },
+        metadata: {},
+      };
 
-      expect(result).toEqual({
-        success: true,
-        transactionId: 'pi_test_123',
-        status: 'succeeded',
-      });
+      const result = await stripeService.processPayment(payment as any);
 
-      expect(mockStripe.paymentIntents.confirm).toHaveBeenCalledWith('pi_test_123', {
-        payment_method: 'pm_test_card',
-      });
+      expect(result.providerTransactionId).toBe('pi_test_123');
     });
 
     it('should handle failed payment', async () => {
-      const mockPaymentIntent = {
-        id: 'pi_test_123',
-        status: 'requires_payment_method',
-        last_payment_error: {
-          message: 'Card declined',
-        },
+      mockStripe.paymentIntents.create.mockRejectedValue(new Error('Card declined'));
+
+      const payment = {
+        id: 'pay_1',
+        invoiceId: 'inv_1',
+        userId: 'user_1',
+        amount: 100,
+        currency: 'eur',
+        method: { id: 'pm_test_card' },
+        metadata: {},
       };
 
-      mockStripe.paymentIntents.confirm.mockResolvedValue(mockPaymentIntent as any);
+      const result = await stripeService.processPayment(payment as any);
 
-      const result = await stripeService.processPayment('pi_test_123', 'pm_test_card');
-
-      expect(result).toEqual({
-        success: false,
-        transactionId: 'pi_test_123',
-        status: 'requires_payment_method',
-        error: 'Card declined',
-      });
+      expect(result.status).toBe('FAILED');
+      expect(result.failureReason).toBe('Card declined');
     });
   });
 
-  describe('refundPayment', () => {
+  describe('createRefund', () => {
     it('should refund payment successfully', async () => {
       const mockRefund = {
         id: 're_test_123',
@@ -142,17 +142,14 @@ describe('StripeService', () => {
 
       mockStripe.refunds.create.mockResolvedValue(mockRefund as any);
 
-      const result = await stripeService.refundPayment('pi_test_123', 100);
+      const result = await stripeService.createRefund('pi_test_123', 100);
 
-      expect(result).toEqual({
-        success: true,
-        refundId: 're_test_123',
-        status: 'succeeded',
-      });
+      expect(result).toEqual(mockRefund);
 
       expect(mockStripe.refunds.create).toHaveBeenCalledWith({
         payment_intent: 'pi_test_123',
         amount: 10000,
+        reason: 'requested_by_customer',
       });
     });
 
@@ -165,11 +162,12 @@ describe('StripeService', () => {
 
       mockStripe.refunds.create.mockResolvedValue(mockRefund as any);
 
-      const result = await stripeService.refundPayment('pi_test_123', 50);
+      const result = await stripeService.createRefund('pi_test_123', 50);
 
       expect(mockStripe.refunds.create).toHaveBeenCalledWith({
         payment_intent: 'pi_test_123',
         amount: 5000,
+        reason: 'requested_by_customer',
       });
     });
   });
@@ -183,21 +181,18 @@ describe('StripeService', () => {
 
       mockStripe.customers.create.mockResolvedValue(mockCustomer as any);
 
-      const result = await stripeService.createCustomer({
-        email: 'test@example.com',
-        name: 'Test User',
-        metadata: { userId: 'user_123' },
-      });
+      const result = await stripeService.createCustomer(
+        'test@example.com',
+        'Test User',
+        { userId: 'user_123' }
+      );
 
-      expect(result).toEqual({
-        id: 'cus_test_123',
-        email: 'test@example.com',
-      });
+      expect(result).toEqual(mockCustomer);
     });
   });
 
-  describe('verifyWebhookSignature', () => {
-    it('should verify webhook signature successfully', () => {
+  describe('constructWebhookEvent', () => {
+    it('should verify webhook signature successfully', async () => {
       const mockEvent = {
         id: 'evt_test_123',
         type: 'payment_intent.succeeded',
@@ -206,10 +201,9 @@ describe('StripeService', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent as any);
 
-      const result = stripeService.verifyWebhookSignature(
+      const result = await stripeService.constructWebhookEvent(
         'payload',
-        'signature',
-        'whsec_mock_secret'
+        'signature'
       );
 
       expect(result).toEqual(mockEvent);
@@ -220,14 +214,14 @@ describe('StripeService', () => {
       );
     });
 
-    it('should throw error for invalid signature', () => {
+    it('should throw error for invalid signature', async () => {
       mockStripe.webhooks.constructEvent.mockImplementation(() => {
         throw new Error('Invalid signature');
       });
 
-      expect(() =>
-        stripeService.verifyWebhookSignature('payload', 'invalid', 'secret')
-      ).toThrow('Invalid signature');
+      await expect(
+        stripeService.constructWebhookEvent('payload', 'invalid')
+      ).rejects.toThrow('Invalid signature');
     });
   });
 });

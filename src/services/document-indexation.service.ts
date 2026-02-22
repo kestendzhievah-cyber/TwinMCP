@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import fs from 'fs/promises';
@@ -83,7 +84,7 @@ export class DocumentIndexationService {
     this.activeTasks.set(taskId, task);
 
     this.processIndexingTask(task).catch(error => {
-      console.error(`Indexing task ${taskId} failed:`, error);
+      logger.error(`Indexing task ${taskId} failed:`, error);
       this.handleTaskError(task, error);
     });
 
@@ -129,7 +130,7 @@ export class DocumentIndexationService {
         } catch (error: any) {
           const errorMsg = `Error parsing ${file}: ${error.message}`;
           task.results.errors.push(errorMsg);
-          console.error(errorMsg);
+          logger.error(errorMsg);
         }
 
         await this.updateTaskProgress(task, 'parsing', i + 1, files.length);
@@ -190,7 +191,7 @@ export class DocumentIndexationService {
         } catch (error: any) {
           const errorMsg = `Error generating embeddings for batch ${Math.floor(i / batchSize) + 1}: ${error.message}`;
           task.results.errors.push(errorMsg);
-          console.error(errorMsg);
+          logger.error(errorMsg);
         }
 
         task.progress.completed = Math.min(i + batchSize, allChunks.length);
@@ -205,7 +206,7 @@ export class DocumentIndexationService {
       task.progress.percentage = 100;
       await this.updateTaskStatus(task);
 
-      console.log(`Indexing completed for task ${task.id}: ${task.results.documentsParsed} documents, ${task.results.chunksCreated} chunks`);
+      logger.info(`Indexing completed for task ${task.id}: ${task.results.documentsParsed} documents, ${task.results.chunksCreated} chunks`);
 
     } catch (error) {
       await this.handleTaskError(task, error as Error);
@@ -241,7 +242,7 @@ export class DocumentIndexationService {
           }
         }
       } catch (error) {
-        console.error(`Error scanning directory ${dirPath}:`, error);
+        logger.error(`Error scanning directory ${dirPath}:`, error);
       }
     };
 
@@ -269,7 +270,7 @@ export class DocumentIndexationService {
     const parser = this.getParserForExtension(ext);
 
     if (!parser) {
-      console.warn(`No parser found for file: ${filePath}`);
+      logger.warn(`No parser found for file: ${filePath}`);
       return null;
     }
 
@@ -295,7 +296,7 @@ export class DocumentIndexationService {
       };
 
     } catch (error) {
-      console.error(`Error parsing document ${filePath}:`, error);
+      logger.error(`Error parsing document ${filePath}:`, error);
       return null;
     }
   }
@@ -465,7 +466,7 @@ export class DocumentIndexationService {
     task.completedAt = new Date();
     
     await this.updateTaskStatus(task);
-    console.error(`Indexing task ${task.id} failed:`, error);
+    logger.error(`Indexing task ${task.id} failed:`, error);
   }
 
   async getIndexingStats(libraryId?: string): Promise<IndexingStats> {

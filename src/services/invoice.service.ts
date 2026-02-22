@@ -169,7 +169,7 @@ export class InvoiceService {
       try {
         invoice.metadata.customerInfo = await this.encryptionService.decryptPII(invoice.metadata.customerInfo);
       } catch (error) {
-        console.error('Failed to decrypt customer info:', error);
+        logger.error('Failed to decrypt customer info:', error);
       }
     }
 
@@ -264,7 +264,7 @@ export class InvoiceService {
     const fromAddress = process.env.INVOICE_EMAIL_FROM || process.env.SMTP_FROM;
 
     if (!smtpHost || !smtpUser || !smtpPass || !fromAddress) {
-      console.warn('SMTP configuration missing. Invoice email was not sent.');
+      logger.warn('SMTP configuration missing. Invoice email was not sent.');
       await this.updateInvoiceStatus(invoice.id, InvoiceStatus.SENT, {
         ...(invoice.metadata || {}),
         emailStatus: 'skipped_missing_smtp'

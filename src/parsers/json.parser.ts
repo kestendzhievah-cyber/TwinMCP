@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { ParserInterface } from '../interfaces/chunker.interface';
 import { 
   DocumentSection, 
@@ -21,7 +22,7 @@ export class JSONParser implements ParserInterface {
       parsedContent = JSON.parse(content);
     } catch (error) {
       isValidJSON = false;
-      console.error('Invalid JSON content:', error);
+      logger.error('Invalid JSON content:', error);
     }
 
     if (isValidJSON && parsedContent) {

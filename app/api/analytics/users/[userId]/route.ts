@@ -1,17 +1,15 @@
 // src/app/api/analytics/users/[userId]/route.ts
-import { pool as db } from '@/lib/prisma';
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { AnalyticsService } from '@/src/services/analytics.service';
-
-const analyticsService = new AnalyticsService(db, redis);
+import { getAnalyticsServices } from '../../_shared';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const { userId } = params;
+    const { analyticsService } = await getAnalyticsServices();
+    const { userId } = await params;
     const { searchParams } = new URL(request.url);
     
     // Parse period parameters
@@ -44,7 +42,7 @@ export async function GET(
     return NextResponse.json(userAnalytics);
     
   } catch (error) {
-    console.error('Error fetching user analytics:', error);
+    logger.error('Error fetching user analytics:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,17 +1,12 @@
 // src/app/api/analytics/events/route.ts
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { AnalyticsService } from '@/src/services/analytics.service';
+import { getAnalyticsServices } from '../_shared';
 import { SessionEvent, EventType, EventCategory, PageContext, UserContext } from '@/src/types/analytics.types';
-
-import { pool } from '@/lib/prisma'
-import { redis } from '@/lib/redis'
-
-const db = pool;
-
-const analyticsService = new AnalyticsService(db, redis);
 
 export async function POST(request: NextRequest) {
   try {
+    const { analyticsService } = await getAnalyticsServices();
     const body = await request.json();
     
     // Validate required fields
@@ -24,12 +19,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build proper EventType object — the service accesses event.type.name
+    const eventType: EventType = typeof type === 'string'
+      ? { name: type, category: 'interaction', schema: { required: [], optional: [], types: {} } }
+      : type;
+
+    // Build proper EventCategory object — the service accesses event.category.id
+    const eventCategory: EventCategory = typeof category === 'string'
+      ? { id: category, name: category, description: '', metrics: [] }
+      : category;
+
     // Construct event object
     const event: Omit<SessionEvent, 'id'> = {
       sessionId,
       timestamp: new Date(body.timestamp || Date.now()),
-      type: type as EventType,
-      category: category as EventCategory,
+      type: eventType,
+      category: eventCategory,
       action,
       label: body.label,
       value: body.value,
@@ -44,7 +49,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'Event tracked successfully' });
     
   } catch (error) {
-    console.error('Error tracking event:', error);
+    logger.error('Error tracking event:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -54,6 +59,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { db } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
     const userId = searchParams.get('userId');
@@ -61,62 +67,61 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let query = `
-      SELECT 
-        id,
-        session_id,
-        timestamp,
-        event_type,
-        event_category,
-        action,
-        label,
-        value,
-        properties,
-        page_url,
-        page_title,
-        user_id,
-        created_at
-      FROM session_events
-      WHERE 1=1
-    `;
-    
-    const params: any[] = [];
+    // Build WHERE clause with parameterized filters
+    let whereClause = 'WHERE 1=1';
+    const filterParams: any[] = [];
     let paramIndex = 1;
 
     if (sessionId) {
-      query += ` AND session_id = $${paramIndex}`;
-      params.push(sessionId);
+      whereClause += ` AND session_id = $${paramIndex}`;
+      filterParams.push(sessionId);
       paramIndex++;
     }
 
     if (userId) {
-      query += ` AND user_id = $${paramIndex}`;
-      params.push(userId);
+      whereClause += ` AND user_id = $${paramIndex}`;
+      filterParams.push(userId);
       paramIndex++;
     }
 
     if (eventType) {
-      query += ` AND event_type = $${paramIndex}`;
-      params.push(eventType);
+      whereClause += ` AND event_type = $${paramIndex}`;
+      filterParams.push(eventType);
       paramIndex++;
     }
 
-    query += ` ORDER BY timestamp DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(limit, offset);
+    // Count total matching rows (before LIMIT/OFFSET)
+    const countResult = await db.query(
+      `SELECT COUNT(*) as total FROM session_events ${whereClause}`,
+      filterParams
+    );
+    const total = parseInt(countResult.rows[0]?.total || '0');
 
-    const result = await db.query(query, params);
+    // Fetch paginated results
+    const dataQuery = `
+      SELECT 
+        id, session_id, timestamp, event_type, event_category,
+        action, label, value, properties, page_url, page_title,
+        user_id, created_at
+      FROM session_events
+      ${whereClause}
+      ORDER BY timestamp DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
+    const result = await db.query(dataQuery, [...filterParams, limit, offset]);
 
     return NextResponse.json({
       events: result.rows,
       pagination: {
         limit,
         offset,
-        total: result.rowCount
+        total
       }
     });
     
   } catch (error) {
-    console.error('Error fetching events:', error);
+    logger.error('Error fetching events:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

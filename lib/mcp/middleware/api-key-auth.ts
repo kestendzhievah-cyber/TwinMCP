@@ -1,7 +1,5 @@
-import { AuthService as DbAuthService, ApiKeyData } from '@/lib/services/auth.service'
+import type { ApiKeyData } from '@/lib/services/auth.service'
 import { authService as legacyAuthService } from '@/lib/mcp/middleware/auth'
-import { prisma } from '@/lib/prisma'
-import { redis } from '@/lib/redis'
 
 export interface McpAuthContext {
   userId: string
@@ -19,7 +17,29 @@ export interface McpAuthContext {
   }
 }
 
-export const mcpDbAuthService = new DbAuthService(prisma, redis)
+// Lazy-init singleton — avoids DB/Redis connections at import time
+let _mcpDbAuthService: any = null
+async function getMcpDbAuthService() {
+  if (!_mcpDbAuthService) {
+    const { prisma } = await import('@/lib/prisma')
+    const { redis } = await import('@/lib/redis')
+    const { AuthService: DbAuthService } = await import('@/lib/services/auth.service')
+    _mcpDbAuthService = new DbAuthService(prisma, redis)
+  }
+  return _mcpDbAuthService
+}
+
+// Backward-compatible export (callers must await before using)
+export const mcpDbAuthService = {
+  async validateApiKey(key: string) {
+    const svc = await getMcpDbAuthService()
+    return svc.validateApiKey(key)
+  },
+  async logUsage(...args: any[]) {
+    const svc = await getMcpDbAuthService()
+    return svc.logUsage(...args)
+  }
+}
 
 export async function authenticateMcpRequest(request: Request): Promise<McpAuthContext> {
   const apiKey = getApiKeyFromRequest(request)

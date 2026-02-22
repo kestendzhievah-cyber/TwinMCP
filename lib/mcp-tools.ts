@@ -1,7 +1,6 @@
 // MCP Tools Configuration
 // Centralized definition of all available MCP tools
-
-import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export interface MCPTool {
   name: string
@@ -21,7 +20,7 @@ async function getRedisClient(): Promise<any> {
     const { redis } = await import('@/lib/redis')
     return redis
   } catch {
-    console.warn('[mcp-tools] Redis unavailable — services will run without cache')
+    logger.warn('[mcp-tools] Redis unavailable — services will run without cache')
     return null
   }
 }
@@ -29,20 +28,22 @@ async function getRedisClient(): Promise<any> {
 async function initializeServices() {
   if (!libraryResolutionService) {
     try {
+      const { prisma } = await import('@/lib/prisma')
       const redisClient = await getRedisClient()
       const { LibraryResolutionService } = await import('./services/library-resolution.service')
       libraryResolutionService = new LibraryResolutionService(prisma, redisClient)
     } catch (e) {
-      console.warn('LibraryResolutionService not available:', e)
+      logger.warn('LibraryResolutionService not available:', e)
     }
   }
   if (!vectorSearchService) {
     try {
+      const { prisma } = await import('@/lib/prisma')
       const redisClient = await getRedisClient()
       const { VectorSearchService } = await import('./services/vector-search.service')
       vectorSearchService = new VectorSearchService(prisma, redisClient)
     } catch (e) {
-      console.warn('VectorSearchService not available:', e)
+      logger.warn('VectorSearchService not available:', e)
     }
   }
 }
@@ -244,7 +245,7 @@ export const executeTool = async (toolName: string, args: any): Promise<string> 
         throw new Error(`Unknown tool: ${toolName}`)
     }
   } catch (error) {
-    console.error(`Error executing tool ${toolName}:`, error)
+    logger.error(`Error executing tool ${toolName}:`, error)
     return `Error: ${error instanceof Error ? error.message : String(error)}`
   }
 }

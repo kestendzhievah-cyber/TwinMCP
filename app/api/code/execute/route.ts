@@ -1,10 +1,18 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { CodeExecutionService } from '@/src/services/execution/code-execution.service';
 
-const codeExecutionService = new CodeExecutionService();
+let _codeExecutionService: any = null;
+async function getCodeExecutionService() {
+  if (!_codeExecutionService) {
+    const { CodeExecutionService } = await import('@/src/services/execution/code-execution.service');
+    _codeExecutionService = new CodeExecutionService();
+  }
+  return _codeExecutionService;
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const codeExecutionService = await getCodeExecutionService();
     const { code, language, timeout } = await req.json();
 
     if (!code || !language) {
@@ -22,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('Error executing code:', error);
+    logger.error('Error executing code:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to execute code' },
       { status: 500 }

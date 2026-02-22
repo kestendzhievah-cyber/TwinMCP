@@ -1,29 +1,17 @@
-import { pool } from '@/lib/prisma';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { InvoiceService } from '@/src/services/invoice.service';
-import { EncryptionService } from '@/src/services/security/encryption.service';
-import { AuditService } from '@/src/services/security/audit.service';
-import { GDPRService } from '@/src/services/security/gdpr.service';
-import { DataMaskingService } from '@/src/services/security/data-masking.service';
-import { KeyManagementService } from '@/src/services/security/kms.service';
+import { getBillingServices } from '../../_shared';
 import { InvoiceStatus } from '@/src/types/invoice.types';
-
-
-const kms = new KeyManagementService();
-const maskingService = new DataMaskingService();
-const encryptionService = new EncryptionService(kms);
-const auditService = new AuditService(pool, maskingService);
-const gdprService = new GDPRService(pool, encryptionService, auditService);
-const invoiceService = new InvoiceService(pool, encryptionService, auditService, gdprService, maskingService);
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { invoiceService } = await getBillingServices();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    const invoiceId = params.id;
+    const invoiceId = (await params).id;
 
     if (!invoiceId) {
       return NextResponse.json(
@@ -51,9 +39,9 @@ export async function GET(
       data: { invoice }
     });
   } catch (error) {
-    console.error('Error fetching invoice:', error);
+    logger.error('Error fetching invoice:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch invoice', message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' },
+      { error: 'Failed to fetch invoice', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -61,12 +49,13 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { invoiceService } = await getBillingServices();
     const body = await request.json();
     const { status, metadata } = body;
-    const invoiceId = params.id;
+    const invoiceId = (await params).id;
 
     if (!invoiceId) {
       return NextResponse.json(
@@ -91,9 +80,9 @@ export async function PATCH(
       data: { invoice: updatedInvoice }
     });
   } catch (error) {
-    console.error('Error updating invoice:', error);
+    logger.error('Error updating invoice:', error);
     return NextResponse.json(
-      { error: 'Failed to update invoice', message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' },
+      { error: 'Failed to update invoice', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

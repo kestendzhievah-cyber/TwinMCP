@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { randomUUID } from 'crypto';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
@@ -88,7 +89,7 @@ export class ReportingService {
 
     this.activeGenerations.set(generationId, generation);
 
-    this.processReportGeneration(generationId).catch(console.error);
+    this.processReportGeneration(generationId).catch((err: unknown) => logger.error('Report generation failed', { error: err }));
 
     return generation;
   }
@@ -131,7 +132,7 @@ export class ReportingService {
         );
         insights.push(...typeInsights);
       } catch (error) {
-        console.error(`Error generating insights for type ${insightType.id}:`, error);
+        logger.error(`Error generating insights for type ${insightType.id}:`, error);
       }
     }
 
@@ -492,7 +493,7 @@ export class ReportingService {
       await this.generateReport(report.id, { email: true });
       this.scheduleReport(report);
     } catch (error) {
-      console.error(`Error executing scheduled report ${report.id}:`, error);
+      logger.error(`Error executing scheduled report ${report.id}:`, error);
       
       if (report.schedule?.retryPolicy?.maxRetries && report.schedule.retryPolicy.maxRetries > 0) {
         const retryDelay = report.schedule.retryPolicy.retryDelay || 5000;
@@ -536,11 +537,11 @@ export class ReportingService {
   }
 
   private async sendEmailNotification(email: string, data: any): Promise<void> {
-    console.log(`Sending email to ${email}:`, data);
+    logger.info(`Sending email to ${email}:`, data);
   }
 
   private initializeScheduledReports(): void {
-    this.loadScheduledReports().catch(console.error);
+    this.loadScheduledReports().catch((err: unknown) => logger.error('Failed to load scheduled reports', { error: err }));
   }
 
   private async loadScheduledReports(): Promise<void> {

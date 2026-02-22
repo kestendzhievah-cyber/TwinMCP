@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -19,7 +20,7 @@ export async function GET(
 
     return NextResponse.json(configuration);
   } catch (error) {
-    console.error('Erreur lors de la récupération de la configuration:', error);
+    logger.error('Erreur lors de la récupération de la configuration:', error);
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
@@ -47,7 +48,7 @@ export async function PUT(
 
     return NextResponse.json(configuration);
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de la configuration:', error);
+    logger.error('Erreur lors de la mise à jour de la configuration:', error);
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
@@ -64,7 +65,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Configuration supprimée avec succès' });
   } catch (error) {
-    console.error('Erreur lors de la suppression de la configuration:', error);
+    logger.error('Erreur lors de la suppression de la configuration:', error);
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }

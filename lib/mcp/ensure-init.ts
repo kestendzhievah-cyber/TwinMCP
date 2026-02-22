@@ -2,6 +2,7 @@
 // Ensures initializeMCP() is called exactly once before any MCP route is processed
 
 import { initializeMCP } from './init'
+import { logger } from '@/lib/logger'
 
 let initialized = false
 let initPromise: Promise<void> | null = null
@@ -19,14 +20,14 @@ export async function ensureMCPInitialized(): Promise<void> {
   if (initPromise) return initPromise
 
   // Start initialization
-  console.log('🔄 Lazy initializing MCP system...')
+  logger.info('Lazy initializing MCP system...')
   initPromise = initializeMCP()
     .then(() => {
       initialized = true
-      console.log('✅ MCP system lazy initialization complete')
+      logger.info('MCP system lazy initialization complete')
     })
     .catch((error) => {
-      console.error('❌ MCP lazy initialization failed:', error)
+      logger.error('MCP lazy initialization failed:', error)
       // Reset so next request can retry
       initPromise = null
       throw error

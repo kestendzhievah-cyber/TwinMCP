@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { SearchMatchingService } from '../services/search-matching.service';
 import { SearchAnalyticsService } from '../services/search-analytics.service';
@@ -73,7 +74,7 @@ export class EnhancedSearchController {
         data: results
       });
     } catch (error) {
-      console.error('Search error:', error);
+      logger.error('Search error:', error);
       return NextResponse.json(
         { success: false, error: 'Invalid search parameters' },
         { status: 400 }
@@ -114,7 +115,7 @@ export class EnhancedSearchController {
         message: 'Click logged'
       });
     } catch (error) {
-      console.error('Click logging error:', error);
+      logger.error('Click logging error:', error);
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }
@@ -141,7 +142,7 @@ export class EnhancedSearchController {
         data: suggestions
       });
     } catch (error) {
-      console.error('Suggestions error:', error);
+      logger.error('Suggestions error:', error);
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }
@@ -161,7 +162,7 @@ export class EnhancedSearchController {
         data: analytics
       });
     } catch (error) {
-      console.error('Analytics error:', error);
+      logger.error('Analytics error:', error);
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }
@@ -181,7 +182,7 @@ export class EnhancedSearchController {
         data: popularQueries
       });
     } catch (error) {
-      console.error('Popular queries error:', error);
+      logger.error('Popular queries error:', error);
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }
@@ -198,7 +199,7 @@ export class EnhancedSearchController {
         data: zeroResultQueries
       });
     } catch (error) {
-      console.error('Zero result queries error:', error);
+      logger.error('Zero result queries error:', error);
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }
@@ -226,7 +227,7 @@ export class EnhancedSearchController {
         data: stats
       });
     } catch (error) {
-      console.error('Library stats error:', error);
+      logger.error('Library stats error:', error);
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }
@@ -255,7 +256,7 @@ export class EnhancedSearchController {
         data: history
       });
     } catch (error) {
-      console.error('User history error:', error);
+      logger.error('User history error:', error);
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }
@@ -282,7 +283,7 @@ export class EnhancedSearchController {
         data: scores
       });
     } catch (error) {
-      console.error('Relevance scores error:', error);
+      logger.error('Relevance scores error:', error);
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }

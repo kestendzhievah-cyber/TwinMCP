@@ -1,6 +1,12 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+
+// Lazy-init prisma to avoid DB connection at import time
+async function db() {
+  const { prisma } = await import('@/lib/prisma');
+  return prisma;
+}
 
 // MCP Protocol Types
 interface MCPRequest {
@@ -42,6 +48,7 @@ async function validateApiKey(apiKey: string): Promise<{ valid: boolean; userId?
   try {
     const { createHash } = await import('crypto');
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
+    const prisma = await db();
     const key = await prisma.apiKey.findUnique({
       where: { keyHash }
     });
@@ -77,6 +84,7 @@ async function checkRateLimit(userId: string, plan: string): Promise<{ allowed: 
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
   try {
+    const prisma = await db();
     const usage = await prisma.usageLog.count({
       where: {
         userId,
@@ -96,6 +104,7 @@ async function checkRateLimit(userId: string, plan: string): Promise<{ allowed: 
 // Track API usage
 async function trackUsage(userId: string, tool: string, tokens: number) {
   try {
+    const prisma = await db();
     await prisma.usageLog.create({
       data: {
         userId,
@@ -106,7 +115,7 @@ async function trackUsage(userId: string, tool: string, tokens: number) {
       }
     });
   } catch (e) {
-    console.error('Failed to track usage:', e);
+    logger.error('Failed to track usage:', e);
   }
 }
 
@@ -125,7 +134,7 @@ async function resolveLibraryId(params: z.infer<typeof ResolveLibraryIdSchema>) 
       return result;
     }
   } catch (error) {
-    console.warn('[MCP Route] LibraryResolutionService unavailable, using fallback:', error);
+    logger.warn('[MCP Route] LibraryResolutionService unavailable, using fallback:', error);
   }
 
   // Fallback: return empty results with guidance
@@ -153,7 +162,7 @@ async function queryDocs(params: z.infer<typeof QueryDocsSchema>) {
       return result;
     }
   } catch (error) {
-    console.warn('[MCP Route] VectorSearchService unavailable, using fallback:', error);
+    logger.warn('[MCP Route] VectorSearchService unavailable, using fallback:', error);
   }
 
   // Fallback: return empty results with guidance
@@ -348,7 +357,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('MCP Error:', error);
+    logger.error('MCP Error:', error);
     
     if (error instanceof z.ZodError) {
       return NextResponse.json({

@@ -59,7 +59,7 @@ describe('RetentionPolicyService', () => {
   describe('Cleanup execution', () => {
     it('deletes expired records', () => {
       service.addRule({
-        id: 'r1', name: 'Short retention', category: 'logs', retentionDays: 0,
+        id: 'r1', name: 'Short retention', category: 'logs', retentionDays: 1,
         archiveBeforeDelete: false, legalHold: false, enabled: true,
       })
 

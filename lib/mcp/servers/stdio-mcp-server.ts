@@ -1,5 +1,6 @@
 import { Readable, Writable } from 'stream';
 import { MCPMessage, MCPErrorCodes, MCPMethods, MCPInitializeResponse, MCPServerTool } from '../types';
+import { logger } from '@/lib/logger';
 
 export class StdioMCPServer {
   private tools: Map<string, MCPServerTool> = new Map();
@@ -195,22 +196,22 @@ export class StdioMCPServer {
   }
 
   private handleError(context: string, error: Error): void {
-    console.error(`[${context}] ${error.message}`, error.stack);
+    logger.error(`[${context}] ${error.message}`);
   }
 
   private gracefulShutdown(): void {
-    console.error('TwinMCP Server shutting down gracefully...');
+    logger.info('TwinMCP Server shutting down gracefully...');
     this.stop().then(() => {
       process.exit(0);
     }).catch((error) => {
-      console.error('Error during shutdown:', error);
+      logger.error('Error during shutdown:', error);
       process.exit(1);
     });
   }
 
   async start(): Promise<void> {
-    console.error('TwinMCP Server started in stdio mode');
-    console.error(`Registered tools: ${Array.from(this.tools.keys()).join(', ')}`);
+    logger.info('TwinMCP Server started in stdio mode');
+    logger.info(`Registered tools: ${Array.from(this.tools.keys()).join(', ')}`);
     // Le serveur est maintenant à l'écoute sur stdin/stdout
   }
 
@@ -218,7 +219,7 @@ export class StdioMCPServer {
     try {
       this.input.destroy();
       this.output.destroy();
-      console.error('TwinMCP Server stopped');
+      logger.info('TwinMCP Server stopped');
     } catch (error) {
       this.handleError('Error during shutdown', error instanceof Error ? error : new Error(String(error)));
     }
@@ -227,14 +228,14 @@ export class StdioMCPServer {
   // Méthode pour ajouter des outils dynamiquement
   addTool(tool: MCPServerTool): void {
     this.tools.set(tool.name, tool);
-    console.error(`Added tool: ${tool.name}`);
+    logger.debug(`Added tool: ${tool.name}`);
   }
 
   // Méthode pour supprimer des outils
   removeTool(name: string): boolean {
     const removed = this.tools.delete(name);
     if (removed) {
-      console.error(`Removed tool: ${name}`);
+      logger.debug(`Removed tool: ${name}`);
     }
     return removed;
   }

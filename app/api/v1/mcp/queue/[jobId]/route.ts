@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { authService } from '@/lib/mcp/middleware/auth'
 import { getQueue } from '@/lib/mcp/utils/queue'
@@ -5,7 +6,7 @@ import { getQueue } from '@/lib/mcp/utils/queue'
 // GET /api/v1/mcp/queue/[jobId] - Status d'un job
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   const startTime = Date.now()
 
@@ -18,7 +19,7 @@ export async function GET(
       )
     }
 
-    const { jobId } = params
+    const { jobId } = await params
     const queue = getQueue()
     const job = await queue.getStatus(jobId)
 
@@ -57,7 +58,7 @@ export async function GET(
     })
 
   } catch (error: any) {
-    console.error('Queue job status error:', error)
+    logger.error('Queue job status error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to get job status' },
       { status: error.statusCode || 500 }
@@ -68,7 +69,7 @@ export async function GET(
 // DELETE /api/v1/mcp/queue/[jobId] - Annuler un job
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   const startTime = Date.now()
 
@@ -81,7 +82,7 @@ export async function DELETE(
       )
     }
 
-    const { jobId } = params
+    const { jobId } = await params
     const queue = getQueue()
     const cancelled = await queue.cancelJob(jobId, authContext.userId)
 
@@ -103,7 +104,7 @@ export async function DELETE(
     })
 
   } catch (error: any) {
-    console.error('Queue job cancel error:', error)
+    logger.error('Queue job cancel error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to cancel job' },
       { status: error.statusCode || 500 }

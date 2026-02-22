@@ -10,57 +10,31 @@ export default function DocsPage() {
 
   const sections = [
     {
-      title: 'Introduction',
+      title: 'Démarrage',
       icon: <Book className="w-5 h-5" />,
       items: [
         { title: 'Installation', href: '/dashboard/docs/installation', icon: <Terminal className="w-4 h-4" /> },
-        { title: 'Plans et Tarification', href: '/dashboard/docs/pricing', icon: <BarChart className="w-4 h-4" /> },
-        { title: 'Propriétaires de Bibliothèques', href: '/dashboard/docs/library-owners', icon: <Users className="w-4 h-4" /> },
         { title: 'Guide API', href: '/dashboard/docs/api-guide', icon: <Code className="w-4 h-4" /> },
-        { title: 'Bonnes Pratiques', href: '/dashboard/docs/best-practices', icon: <CheckCircle className="w-4 h-4" /> },
+        { title: 'Dépannage', href: '/dashboard/docs/troubleshooting', icon: <AlertCircle className="w-4 h-4" /> },
       ]
     },
     {
-      title: 'Comment Faire',
+      title: 'Dashboard',
       icon: <Settings className="w-5 h-5" />,
       items: [
-        { title: 'Gérer les Clés API', href: '/dashboard/docs/api-keys', icon: <Key className="w-4 h-4" /> },
-        { title: 'Revendiquer Votre Bibliothèque', href: '/dashboard/docs/claim-library', icon: <Shield className="w-4 h-4" /> },
-        { title: 'Ajouter des Dépôts Privés', href: '/dashboard/docs/private-repos', icon: <Lock className="w-4 h-4" /> },
-        { title: 'Gérer Votre Équipe', href: '/dashboard/docs/team-management', icon: <Users className="w-4 h-4" /> },
-        { title: 'Surveiller l\'Utilisation', href: '/dashboard/docs/monitoring', icon: <BarChart className="w-4 h-4" /> },
+        { title: 'Gérer les Clés API', href: '/dashboard/api-keys', icon: <Key className="w-4 h-4" /> },
+        { title: 'Bibliothèques', href: '/dashboard/library', icon: <Database className="w-4 h-4" /> },
+        { title: 'Serveurs MCP Externes', href: '/dashboard/external-mcp', icon: <Globe className="w-4 h-4" /> },
+        { title: 'Paramètres', href: '/dashboard/settings', icon: <Settings className="w-4 h-4" /> },
       ]
     },
     {
-      title: 'SDKs',
+      title: 'Guides Avancés',
       icon: <Code className="w-5 h-5" />,
       items: [
-        { title: 'TypeScript', href: '/dashboard/docs/typescript-sdk', icon: <Code className="w-4 h-4" /> },
-      ]
-    },
-    {
-      title: 'Référence API',
-      icon: <Terminal className="w-5 h-5" />,
-      items: [
-        { title: 'Recherche', href: '/dashboard/docs/api/search', icon: <Search className="w-4 h-4" /> },
-        { title: 'Contexte', href: '/dashboard/docs/api/context', icon: <Database className="w-4 h-4" /> },
-      ]
-    },
-    {
-      title: 'Intégrations',
-      icon: <Globe className="w-5 h-5" />,
-      items: [
-        { title: 'CodeRabbit', href: '/dashboard/docs/integrations/coderabbit', icon: <Zap className="w-4 h-4" /> },
-      ]
-    },
-    {
-      title: 'Ressources',
-      icon: <Book className="w-5 h-5" />,
-      items: [
-        { title: 'Tous les Clients MCP', href: '/dashboard/docs/clients', icon: <Globe className="w-4 h-4" /> },
-        { title: 'Guide du Développeur', href: '/dashboard/docs/developer-guide', icon: <Code className="w-4 h-4" /> },
-        { title: 'Sécurité', href: '/dashboard/docs/security', icon: <Shield className="w-4 h-4" /> },
-        { title: 'Dépannage', href: '/dashboard/docs/troubleshooting', icon: <AlertCircle className="w-4 h-4" /> },
+        { title: 'Guide Agent MCP', href: '/dashboard/mcp-guide', icon: <Code className="w-4 h-4" /> },
+        { title: 'Démo Agent MCP', href: '/dashboard/agent-mcp-demo', icon: <Zap className="w-4 h-4" /> },
+        { title: 'Créer un Chatbot', href: '/dashboard/create-chatbot', icon: <Users className="w-4 h-4" /> },
       ]
     },
   ];

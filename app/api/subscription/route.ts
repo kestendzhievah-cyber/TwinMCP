@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
       clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
     })
   } catch (error) {
-    console.error('Erreur lors de la création de l\'abonnement:', error)
+    logger.error('Erreur lors de la crÃ©ation de l\'abonnement:', error)
     return NextResponse.json(
       { error: 'Erreur interne du serveur' },
       { status: 500 }

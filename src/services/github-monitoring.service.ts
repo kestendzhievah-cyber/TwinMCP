@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Octokit } from '@octokit/rest';
 import { Webhooks } from '@octokit/webhooks';
 import Redis from 'ioredis';
@@ -35,11 +36,11 @@ export class GitHubMonitoringService {
       timeZone: 'UTC',
       throttle: {
         onRateLimit: (retryAfter: number, _options: any) => {
-          console.warn(`Rate limit exceeded, retrying after ${retryAfter} seconds`);
+          logger.warn(`Rate limit exceeded, retrying after ${retryAfter} seconds`);
           return true;
         },
         onAbuseLimit: () => {
-          console.warn('Abuse limit detected');
+          logger.warn('Abuse limit detected');
           return false;
         }
       }
@@ -54,7 +55,7 @@ export class GitHubMonitoringService {
   }
 
   async startMonitoring(config: MonitoringConfig): Promise<void> {
-    console.log(`Starting monitoring for ${config.repository.owner}/${config.repository.name}`);
+    logger.info(`Starting monitoring for ${config.repository.owner}/${config.repository.name}`);
 
     // 1. Vérification que le repository existe
     const repository = await this.getRepository(config.repository.owner, config.repository.name);
@@ -126,7 +127,7 @@ export class GitHubMonitoringService {
         topics: repo.topics || []
       } as GitHubRepository;
     } catch (error) {
-      console.error(`Error fetching repository ${owner}/${name}:`, error);
+      logger.error(`Error fetching repository ${owner}/${name}:`, error);
       return null;
     }
   }
@@ -167,7 +168,7 @@ export class GitHubMonitoringService {
         targetCommitish: release.target_commitish
       }));
     } catch (error) {
-      console.error(`Error fetching releases for ${owner}/${name}:`, error);
+      logger.error(`Error fetching releases for ${owner}/${name}:`, error);
       return [];
     }
   }
@@ -235,7 +236,7 @@ export class GitHubMonitoringService {
 
       return commits;
     } catch (error) {
-      console.error(`Error fetching commits for ${owner}/${name}:`, error);
+      logger.error(`Error fetching commits for ${owner}/${name}:`, error);
       return [];
     }
   }
@@ -293,7 +294,7 @@ export class GitHubMonitoringService {
         updatedDependencies
       };
     } catch (error) {
-      console.error(`Error checking dependencies for ${owner}/${name}:`, error);
+      logger.error(`Error checking dependencies for ${owner}/${name}:`, error);
       return { dependenciesChanged: false, newDependencies: [], removedDependencies: [], updatedDependencies: [] };
     }
   }
@@ -326,7 +327,7 @@ export class GitHubMonitoringService {
         errorCount
       };
     } catch (error) {
-      console.error('Health check failed:', error);
+      logger.error('Health check failed:', error);
       return {
         apiStatus: 'unhealthy',
         rateLimitRemaining: 0,
@@ -347,7 +348,7 @@ export class GitHubMonitoringService {
 
       const webhookUrl = process.env['GITHUB_WEBHOOK_URL'];
       if (!webhookUrl) {
-        console.warn('GitHub webhook URL not configured, skipping webhook setup');
+        logger.warn('GitHub webhook URL not configured, skipping webhook setup');
         return;
       }
 
@@ -371,10 +372,10 @@ export class GitHubMonitoringService {
           }
         });
 
-        console.log(`Webhook created for ${repository.fullName}`);
+        logger.info(`Webhook created for ${repository.fullName}`);
       }
     } catch (error) {
-      console.error(`Error setting up webhooks for ${repository.fullName}:`, error);
+      logger.error(`Error setting up webhooks for ${repository.fullName}:`, error);
     }
   }
 
@@ -403,7 +404,7 @@ export class GitHubMonitoringService {
 
   private async performFullScan(config: MonitoringConfig): Promise<void> {
     const { owner, name } = config.repository;
-    console.log(`Performing full scan for ${owner}/${name}`);
+    logger.info(`Performing full scan for ${owner}/${name}`);
 
     try {
       const repository = await this.getRepository(owner, name);
@@ -457,10 +458,10 @@ export class GitHubMonitoringService {
       // Sauvegarde des stats
       await this.saveMonitoringStats(config.repository.owner, config.repository.name, stats);
 
-      console.log(`Scan completed for ${owner}/${name}:`, stats);
+      logger.info(`Scan completed for ${owner}/${name}:`, stats);
 
     } catch (error) {
-      console.error(`Error during full scan for ${owner}/${name}:`, error);
+      logger.error(`Error during full scan for ${owner}/${name}:`, error);
       await this.logMonitoringError(config.repository.owner, config.repository.name, (error as Error).message);
     }
   }
@@ -489,7 +490,7 @@ export class GitHubMonitoringService {
   private async notifyNewReleases(owner: string, name: string, releases: GitHubRelease[]): Promise<void> {
     // Implémentation des notifications (Slack, email, webhook)
     for (const release of releases) {
-      console.log(`New release for ${owner}/${name}: ${release.tagName}`);
+      logger.info(`New release for ${owner}/${name}: ${release.tagName}`);
       
       // Envoi des notifications selon la configuration
       // TODO: Implémenter les différents canaux de notification
@@ -497,7 +498,7 @@ export class GitHubMonitoringService {
   }
 
   private async notifyDependencyChanges(config: MonitoringConfig, changes: DependencyChanges): Promise<void> {
-    console.log(`Dependency changes detected for ${config.repository.owner}/${config.repository.name}:`, changes);
+    logger.info(`Dependency changes detected for ${config.repository.owner}/${config.repository.name}:`, changes);
     
     // TODO: Implémenter les notifications de changements de dépendances
   }
@@ -549,11 +550,11 @@ export class GitHubMonitoringService {
 
       if (remaining < 100) {
         const waitTime = reset.getTime() - Date.now() + 60000; // +1min de buffer
-        console.warn(`Rate limit low (${remaining} remaining), waiting ${waitTime}ms`);
+        logger.warn(`Rate limit low (${remaining} remaining), waiting ${waitTime}ms`);
         await this.delay(waitTime);
       }
     } catch (error) {
-      console.error('Error checking rate limit:', error);
+      logger.error('Error checking rate limit:', error);
     }
   }
 
@@ -563,7 +564,7 @@ export class GitHubMonitoringService {
 
   // Méthodes pour les webhooks
   async handleWebhookEvent(event: GitHubWebhookEvent): Promise<WebhookProcessingResult> {
-    console.log(`Processing webhook event: ${event.type} for ${event.repository.fullName}`);
+    logger.info(`Processing webhook event: ${event.type} for ${event.repository.fullName}`);
 
     try {
       switch (event.type) {
@@ -577,7 +578,7 @@ export class GitHubMonitoringService {
           await this.handleIssuesEvent(event);
           break;
         default:
-          console.log(`Unhandled webhook event type: ${event.type}`);
+          logger.info(`Unhandled webhook event type: ${event.type}`);
       }
 
       // Marquer l'événement comme traité
@@ -590,7 +591,7 @@ export class GitHubMonitoringService {
       };
 
     } catch (error) {
-      console.error(`Error processing webhook event ${event.id}:`, error);
+      logger.error(`Error processing webhook event ${event.id}:`, error);
       return {
         success: false,
         eventId: event.id,
@@ -602,7 +603,7 @@ export class GitHubMonitoringService {
 
   private async handleReleaseEvent(event: GitHubWebhookEvent): Promise<void> {
     const release = event.payload.release;
-    console.log(`New release: ${release.tag_name} for ${event.repository.fullName}`);
+    logger.info(`New release: ${release.tag_name} for ${event.repository.fullName}`);
     
     // Traitement de la release
     await this.processNewRelease(event.repository, release);
@@ -612,7 +613,7 @@ export class GitHubMonitoringService {
     const push = event.payload;
     const branch = push.ref.replace('refs/heads/', '');
     
-    console.log(`New push to ${branch} in ${event.repository.fullName}`);
+    logger.info(`New push to ${branch} in ${event.repository.fullName}`);
     
     // Vérification des changements de dépendances
     if (push.commits.some((commit: any) => 
@@ -644,7 +645,7 @@ export class GitHubMonitoringService {
     const issue = event.payload.issue;
     const action = event.payload.action;
     
-    console.log(`Issue ${action}: #${issue.number} in ${event.repository.fullName}`);
+    logger.info(`Issue ${action}: #${issue.number} in ${event.repository.fullName}`);
     
     // Traitement des événements d'issues
   }
@@ -652,7 +653,7 @@ export class GitHubMonitoringService {
   private async processNewRelease(_repository: GitHubRepository, _release: any): Promise<void> {
     // Implémentation du traitement des nouvelles releases
     // Indexation de la documentation, mise à jour de la base, etc.
-    console.log('Processing new release...');
+    logger.info('Processing new release...');
   }
 
   private async markWebhookEventProcessed(eventId: string): Promise<void> {

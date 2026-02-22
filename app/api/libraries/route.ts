@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -74,7 +75,7 @@ const DEFAULT_LIBRARY_CATALOG = [
   {
     id: '/fastapi/fastapi',
     name: 'FastAPI',
-    vendor: 'Sebastián Ramírez',
+    vendor: 'SebastiÃ¡n RamÃ­rez',
     ecosystem: 'pip',
     language: 'Python',
     description: 'FastAPI framework, high performance, easy to learn, fast to code, ready for production',
@@ -195,7 +196,7 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
     });
 
   } catch (dbError) {
-    console.warn('Database unavailable, using client libraries and defaults');
+    logger.warn('Database unavailable, using client libraries and defaults');
   }
 
   // Process client-side libraries

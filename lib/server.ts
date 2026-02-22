@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express'
 import cors from 'cors'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { logger } from '@/lib/logger'
 
 // Configuration pour ES modules
 const __filename = fileURLToPath(import.meta.url)
@@ -72,7 +73,5 @@ app.post('/api/agents', (req: Request, res: Response): void => {
 
 // Démarrage du serveur
 app.listen(PORT, () => {
-  console.log(`🚀 TwinMCP Express Server running on http://localhost:${PORT}`)
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
-  console.log(`🤖 Agents API: http://localhost:${PORT}/api/agents`)
+  logger.info(`TwinMCP Express Server running on http://localhost:${PORT}`)
 })

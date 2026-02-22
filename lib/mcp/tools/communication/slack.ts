@@ -3,6 +3,7 @@ import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
 import { getCache } from '../../core'
 import { rateLimiter } from '../../middleware'
 import { getMetrics } from '../../utils'
+import { logger } from '@/lib/logger'
 
 const slackSendSchema = z.object({
   channel: z.string().min(1, 'Channel is required'),
@@ -106,7 +107,7 @@ export class SlackTool implements MCPTool {
       const cachedResult = await cache.get(cacheKey)
 
       if (cachedResult) {
-        console.log(`💬 Slack cache hit for channel ${args.channel}`)
+        logger.debug(`Slack cache hit for channel ${args.channel}`)
         getMetrics().track({
           toolId: this.id,
           userId: config.userId || 'anonymous',
@@ -238,18 +239,18 @@ export class SlackTool implements MCPTool {
   }
 
   async beforeExecute(args: any): Promise<any> {
-    console.log(`💬 Sending Slack message to ${args.channel}`)
+    logger.debug(`Sending Slack message to ${args.channel}`)
     return args
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
-      console.log(`✅ Slack message sent to ${result.data?.channel}: ${result.data?.ts}`)
+      logger.debug(`Slack message sent to ${result.data?.channel}: ${result.data?.ts}`)
     }
     return result
   }
 
   async onError(error: Error): Promise<void> {
-    console.error(`❌ Slack error: ${error.message}`)
+    logger.error(`Slack error: ${error.message}`)
   }
 }

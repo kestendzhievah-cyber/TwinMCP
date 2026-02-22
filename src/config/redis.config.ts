@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import Redis from 'ioredis';
 
 export interface RedisConfig {
@@ -43,19 +44,19 @@ export class RedisManager {
 
   private setupErrorHandling(): void {
     this.client.on('error', (error: any) => {
-      console.error('Redis Client Error:', error);
+      logger.error('Redis Client Error:', error);
     });
 
     this.client.on('connect', () => {
-      console.log('Redis Client Connected');
+      logger.info('Redis Client Connected');
     });
 
     this.client.on('ready', () => {
-      console.log('Redis Client Ready');
+      logger.info('Redis Client Ready');
     });
 
     this.client.on('end', () => {
-      console.log('Redis Client Connection Ended');
+      logger.info('Redis Client Connection Ended');
     });
   }
 
@@ -63,7 +64,7 @@ export class RedisManager {
     try {
       await this.client.connect();
     } catch (error) {
-      console.error('Failed to connect to Redis:', error);
+      logger.error('Failed to connect to Redis:', error);
       throw error;
     }
   }
@@ -72,7 +73,7 @@ export class RedisManager {
     try {
       await this.client.quit();
     } catch (error) {
-      console.error('Failed to disconnect from Redis:', error);
+      logger.error('Failed to disconnect from Redis:', error);
       throw error;
     }
   }
@@ -86,7 +87,7 @@ export class RedisManager {
       const result = await this.client.ping();
       return result === 'PONG';
     } catch (error) {
-      console.error('Redis health check failed:', error);
+      logger.error('Redis health check failed:', error);
       return false;
     }
   }

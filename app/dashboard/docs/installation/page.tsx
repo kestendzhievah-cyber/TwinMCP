@@ -175,7 +175,7 @@ export default function InstallationPage() {
       <div className="bg-gradient-to-r from-fuchsia-600/20 to-purple-600/20 border border-fuchsia-500/30 rounded-xl p-6">
         <h3 className="text-xl font-semibold text-fuchsia-300 mb-4">Prochaines étapes</h3>
         <div className="space-y-3">
-          <Link href="/dashboard/docs/api-keys" className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors">
+          <Link href="/dashboard/api-keys" className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors">
             <ArrowRight className="w-4 h-4" />
             <span>Gérer vos clés API</span>
           </Link>
@@ -183,9 +183,9 @@ export default function InstallationPage() {
             <ArrowRight className="w-4 h-4" />
             <span>Explorer la documentation API</span>
           </Link>
-          <Link href="/dashboard/docs/best-practices" className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors">
+          <Link href="/dashboard/docs/troubleshooting" className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors">
             <ArrowRight className="w-4 h-4" />
-            <span>Bonnes pratiques de configuration</span>
+            <span>Dépannage et résolution de problèmes</span>
           </Link>
         </div>
       </div>

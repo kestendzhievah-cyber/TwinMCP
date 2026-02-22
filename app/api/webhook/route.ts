@@ -1,18 +1,19 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-// Vérification des variables d'environnement (déférée au runtime)
+// VÃ©rification des variables d'environnement (dÃ©fÃ©rÃ©e au runtime)
 function getStripeClient(): { stripe: Stripe; endpointSecret: string } {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
 
   if (!stripeSecretKey) {
-    console.error('❌ STRIPE_SECRET_KEY is not set in environment variables')
+    logger.error('âŒ STRIPE_SECRET_KEY is not set in environment variables')
     throw new Error('STRIPE_SECRET_KEY is not configured')
   }
 
   if (!endpointSecret) {
-    console.error('❌ STRIPE_WEBHOOK_SECRET is not set in environment variables')
+    logger.error('âŒ STRIPE_WEBHOOK_SECRET is not set in environment variables')
     throw new Error('STRIPE_WEBHOOK_SECRET is not configured')
   }
 
@@ -23,7 +24,7 @@ function getStripeClient(): { stripe: Stripe; endpointSecret: string } {
   return { stripe, endpointSecret }
 }
 
-// Interface pour les métadonnées de journalisation
+// Interface pour les mÃ©tadonnÃ©es de journalisation
 interface WebhookLog {
   eventId: string
   type: string
@@ -40,14 +41,14 @@ const logWebhookEvent = (log: Omit<WebhookLog, 'timestamp'>) => {
     timestamp: new Date().toISOString(),
   }
   
-  // En production, vous pourriez envoyer ces logs à un service comme Sentry, LogRocket, etc.
+  // En production, vous pourriez envoyer ces logs Ã  un service comme Sentry, LogRocket, etc.
   if (log.status === 'error') {
-    console.error('🔴 Webhook Error:', logEntry)
+    logger.error('ðŸ”´ Webhook Error:', logEntry)
   } else {
-    console.log('🟢 Webhook Log:', logEntry)
+    logger.info('ðŸŸ¢ Webhook Log:', logEntry)
   }
   
-  // Ici, vous pourriez également enregistrer dans une base de données
+  // Ici, vous pourriez Ã©galement enregistrer dans une base de donnÃ©es
   // await db.webhookLogs.create({ data: logEntry })
 }
 
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
     try {
       event = stripe.webhooks.constructEvent(body, sig!, endpointSecret)
       
-      // Type guard pour vérifier si l'event a un objet de type Subscription
+      // Type guard pour vÃ©rifier si l'event a un objet de type Subscription
       const isSubscriptionEvent = (
         event.type === 'customer.subscription.created' ||
         event.type === 'customer.subscription.updated' ||
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
           eventId: event.id,
           type: event.type,
           apiVersion: event.api_version,
-          // Inclure des métadonnées spécifiques au type d'événement
+          // Inclure des mÃ©tadonnÃ©es spÃ©cifiques au type d'Ã©vÃ©nement
           ...(isSubscriptionEvent ? {
             subscriptionId: (event.data.object as Stripe.Subscription).id,
             customerId: (event.data.object as Stripe.Subscription).customer
@@ -121,14 +122,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Traitement des événements
+    // Traitement des Ã©vÃ©nements
     try {
       switch (event.type) {
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
         case 'customer.subscription.deleted': {
           const subscription = event.data.object as Stripe.Subscription
-          // Mettez à jour la base de données avec les informations d'abonnement
+          // Mettez Ã  jour la base de donnÃ©es avec les informations d'abonnement
           
           logWebhookEvent({
             eventId: requestId,
@@ -139,7 +140,7 @@ export async function POST(req: NextRequest) {
               subscriptionId: subscription.id,
               customerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id || 'unknown',
               status: subscription.status,
-              // Utilisation de la propriété current_period_end du type Stripe.Subscription
+              // Utilisation de la propriÃ©tÃ© current_period_end du type Stripe.Subscription
               currentPeriodEnd: 'current_period_end' in subscription ? 
                 (subscription as any).current_period_end?.toString() || 'unknown' : 'unknown',
             },
@@ -149,9 +150,9 @@ export async function POST(req: NextRequest) {
           
         case 'invoice.payment_succeeded': {
           const invoice = event.data.object as Stripe.Invoice
-          // Mettez à jour la base de données pour refléter le paiement réussi
+          // Mettez Ã  jour la base de donnÃ©es pour reflÃ©ter le paiement rÃ©ussi
           
-          // Récupérer l'ID d'abonnement à partir des lignes de facture
+          // RÃ©cupÃ©rer l'ID d'abonnement Ã  partir des lignes de facture
           const subscriptionId = invoice.lines.data[0]?.subscription || null
           
           logWebhookEvent({
@@ -171,9 +172,9 @@ export async function POST(req: NextRequest) {
           
         case 'invoice.payment_failed': {
           const failedInvoice = event.data.object as Stripe.Invoice
-          // Notifiez l'utilisateur ou effectuez d'autres actions en cas d'échec de paiement
+          // Notifiez l'utilisateur ou effectuez d'autres actions en cas d'Ã©chec de paiement
           
-          // Récupérer l'ID d'abonnement à partir des lignes de facture
+          // RÃ©cupÃ©rer l'ID d'abonnement Ã  partir des lignes de facture
           const subscriptionId = failedInvoice.lines.data[0]?.subscription || null
           
           logWebhookEvent({

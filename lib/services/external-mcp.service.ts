@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto'
+import { logger } from '@/lib/logger'
 
 const ENCRYPTION_KEY = process.env.EXTERNAL_MCP_ENCRYPTION_KEY || randomBytes(32).toString('hex')
 const ALGORITHM = 'aes-256-gcm'
@@ -312,7 +313,7 @@ export class ExternalMcpService {
     } catch (e: any) {
       if (e.statusCode === 429) throw e
       // If user-limits module fails, allow by default
-      console.warn('Could not check usage limits:', e.message)
+      logger.warn('Could not check usage limits:', e.message)
     }
   }
 

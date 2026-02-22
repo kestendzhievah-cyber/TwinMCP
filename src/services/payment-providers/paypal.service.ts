@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import axios, { AxiosInstance } from 'axios';
 import { Payment, PaymentStatus } from '../../types/invoice.types';
 
@@ -34,7 +35,7 @@ export class PayPalService {
       : 'https://api-m.sandbox.paypal.com';
 
     if (!this.clientId || !this.clientSecret) {
-      console.warn('⚠️ PayPal credentials are not configured — PayPal features will be unavailable');
+      logger.warn('⚠️ PayPal credentials are not configured — PayPal features will be unavailable');
     }
 
     this.client = axios.create({
@@ -77,7 +78,7 @@ export class PayPalService {
       
       return token;
     } catch (error) {
-      console.error('PayPal authentication failed:', error);
+      logger.error('PayPal authentication failed:', error);
       throw error;
     }
   }
@@ -113,7 +114,7 @@ export class PayPalService {
 
       return response.data;
     } catch (error) {
-      console.error('PayPal order creation failed:', error);
+      logger.error('PayPal order creation failed:', error);
       throw error;
     }
   }
@@ -134,7 +135,7 @@ export class PayPalService {
 
       return response.data;
     } catch (error) {
-      console.error('PayPal order capture failed:', error);
+      logger.error('PayPal order capture failed:', error);
       throw error;
     }
   }
@@ -202,7 +203,7 @@ export class PayPalService {
 
       return response.data;
     } catch (error) {
-      console.error('PayPal refund creation failed:', error);
+      logger.error('PayPal refund creation failed:', error);
       throw error;
     }
   }
@@ -235,7 +236,7 @@ export class PayPalService {
 
       return response.data.verification_status === 'SUCCESS';
     } catch (error) {
-      console.error('PayPal webhook verification failed:', error);
+      logger.error('PayPal webhook verification failed:', error);
       return false;
     }
   }

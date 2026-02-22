@@ -2,7 +2,18 @@
 import { PayPalService } from '../../../src/services/payment-providers/paypal.service';
 import axios from 'axios';
 
-jest.mock('axios');
+// Mock axios.create to return a mock instance
+const mockPost = jest.fn();
+jest.mock('axios', () => ({
+  __esModule: true,
+  default: {
+    create: jest.fn(() => ({
+      post: mockPost,
+    })),
+    post: jest.fn(),
+  },
+}));
+
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('PayPalService', () => {
@@ -14,40 +25,31 @@ describe('PayPalService', () => {
     process.env.PAYPAL_MODE = 'sandbox';
     process.env.PAYPAL_WEBHOOK_ID = 'test_webhook_id';
 
-    paypalService = new PayPalService();
     jest.clearAllMocks();
+    paypalService = new PayPalService();
   });
 
-  describe('authenticate', () => {
+  describe('getAccessToken', () => {
     it('should authenticate successfully', async () => {
       const mockResponse = {
         data: {
           access_token: 'test_access_token',
+          token_type: 'Bearer',
           expires_in: 3600,
         },
       };
 
       mockedAxios.post.mockResolvedValue(mockResponse);
 
-      const token = await (paypalService as any).authenticate();
+      const token = await (paypalService as any).getAccessToken();
 
       expect(token).toBe('test_access_token');
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/v1/oauth2/token'),
-        'grant_type=client_credentials',
-        expect.objectContaining({
-          auth: {
-            username: 'test_client_id',
-            password: 'test_client_secret',
-          },
-        })
-      );
     });
 
     it('should handle authentication errors', async () => {
       mockedAxios.post.mockRejectedValue(new Error('Authentication failed'));
 
-      await expect((paypalService as any).authenticate()).rejects.toThrow(
+      await expect((paypalService as any).getAccessToken()).rejects.toThrow(
         'Authentication failed'
       );
     });
@@ -55,28 +57,25 @@ describe('PayPalService', () => {
 
   describe('createOrder', () => {
     it('should create an order successfully', async () => {
-      const mockAuthResponse = {
-        data: { access_token: 'test_token' },
-      };
+      // Mock getAccessToken
+      mockedAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'test_token', token_type: 'Bearer', expires_in: 3600 },
+      });
+
       const mockOrderResponse = {
         data: {
           id: 'ORDER_123',
           status: 'CREATED',
+          purchase_units: [{ amount: { currency_code: 'EUR', value: '100.00' } }],
         },
       };
 
-      mockedAxios.post
-        .mockResolvedValueOnce(mockAuthResponse)
-        .mockResolvedValueOnce(mockOrderResponse);
+      mockPost.mockResolvedValueOnce(mockOrderResponse);
 
-      const result = await paypalService.createOrder({
-        amount: 100,
-        currency: 'EUR',
-        description: 'Test payment',
-      });
+      const result = await paypalService.createOrder(100, 'EUR', 'inv_123', 'user_123');
 
-      expect(result).toEqual({
-        orderId: 'ORDER_123',
+      expect(result).toMatchObject({
+        id: 'ORDER_123',
         status: 'CREATED',
       });
     });
@@ -84,62 +83,48 @@ describe('PayPalService', () => {
 
   describe('captureOrder', () => {
     it('should capture an order successfully', async () => {
-      const mockAuthResponse = {
-        data: { access_token: 'test_token' },
-      };
+      // Mock getAccessToken
+      mockedAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'test_token', token_type: 'Bearer', expires_in: 3600 },
+      });
+
       const mockCaptureResponse = {
         data: {
           id: 'ORDER_123',
           status: 'COMPLETED',
           purchase_units: [
-            {
-              payments: {
-                captures: [
-                  {
-                    id: 'CAPTURE_123',
-                    status: 'COMPLETED',
-                  },
-                ],
-              },
-            },
+            { amount: { currency_code: 'EUR', value: '100.00' } },
           ],
         },
       };
 
-      mockedAxios.post
-        .mockResolvedValueOnce(mockAuthResponse)
-        .mockResolvedValueOnce(mockCaptureResponse);
+      mockPost.mockResolvedValueOnce(mockCaptureResponse);
 
       const result = await paypalService.captureOrder('ORDER_123');
 
-      expect(result).toEqual({
-        success: true,
-        transactionId: 'CAPTURE_123',
+      expect(result).toMatchObject({
+        id: 'ORDER_123',
         status: 'COMPLETED',
       });
     });
 
     it('should handle capture failure', async () => {
-      const mockAuthResponse = {
-        data: { access_token: 'test_token' },
-      };
+      mockedAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'test_token', token_type: 'Bearer', expires_in: 3600 },
+      });
 
-      mockedAxios.post
-        .mockResolvedValueOnce(mockAuthResponse)
-        .mockRejectedValueOnce(new Error('Capture failed'));
+      mockPost.mockRejectedValueOnce(new Error('Capture failed'));
 
-      const result = await paypalService.captureOrder('ORDER_123');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Capture failed');
+      await expect(paypalService.captureOrder('ORDER_123')).rejects.toThrow('Capture failed');
     });
   });
 
-  describe('refundPayment', () => {
+  describe('createRefund', () => {
     it('should refund payment successfully', async () => {
-      const mockAuthResponse = {
-        data: { access_token: 'test_token' },
-      };
+      mockedAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'test_token', token_type: 'Bearer', expires_in: 3600 },
+      });
+
       const mockRefundResponse = {
         data: {
           id: 'REFUND_123',
@@ -147,64 +132,60 @@ describe('PayPalService', () => {
         },
       };
 
-      mockedAxios.post
-        .mockResolvedValueOnce(mockAuthResponse)
-        .mockResolvedValueOnce(mockRefundResponse);
+      mockPost.mockResolvedValueOnce(mockRefundResponse);
 
-      const result = await paypalService.refundPayment('CAPTURE_123', 50);
+      const result = await paypalService.createRefund('CAPTURE_123', 50, 'EUR');
 
-      expect(result).toEqual({
-        success: true,
-        refundId: 'REFUND_123',
+      expect(result).toMatchObject({
+        id: 'REFUND_123',
         status: 'COMPLETED',
       });
     });
   });
 
-  describe('verifyWebhookSignature', () => {
+  describe('verifyWebhook', () => {
     it('should verify webhook signature successfully', async () => {
-      const mockAuthResponse = {
-        data: { access_token: 'test_token' },
-      };
+      mockedAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'test_token', token_type: 'Bearer', expires_in: 3600 },
+      });
+
       const mockVerifyResponse = {
         data: {
           verification_status: 'SUCCESS',
         },
       };
 
-      mockedAxios.post
-        .mockResolvedValueOnce(mockAuthResponse)
-        .mockResolvedValueOnce(mockVerifyResponse);
+      mockPost.mockResolvedValueOnce(mockVerifyResponse);
 
-      const result = await paypalService.verifyWebhookSignature(
-        { event_type: 'PAYMENT.CAPTURE.COMPLETED' },
+      const result = await paypalService.verifyWebhook(
+        'test_webhook_id',
         {
           'paypal-transmission-id': 'test_id',
           'paypal-transmission-time': 'test_time',
           'paypal-transmission-sig': 'test_sig',
           'paypal-cert-url': 'test_url',
           'paypal-auth-algo': 'test_algo',
-        }
+        },
+        { event_type: 'PAYMENT.CAPTURE.COMPLETED' }
       );
 
       expect(result).toBe(true);
     });
 
     it('should return false for invalid signature', async () => {
-      const mockAuthResponse = {
-        data: { access_token: 'test_token' },
-      };
+      mockedAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'test_token', token_type: 'Bearer', expires_in: 3600 },
+      });
+
       const mockVerifyResponse = {
         data: {
           verification_status: 'FAILURE',
         },
       };
 
-      mockedAxios.post
-        .mockResolvedValueOnce(mockAuthResponse)
-        .mockResolvedValueOnce(mockVerifyResponse);
+      mockPost.mockResolvedValueOnce(mockVerifyResponse);
 
-      const result = await paypalService.verifyWebhookSignature({}, {});
+      const result = await paypalService.verifyWebhook('test_webhook_id', {}, {});
 
       expect(result).toBe(false);
     });

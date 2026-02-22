@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { logger } from '@/lib/logger';
 
 // Vérifier si les variables d'environnement nécessaires sont définies
 const serviceAccount = {
@@ -36,7 +37,7 @@ export function getFirebaseAdminApp(): App | null {
   // During build time, return null gracefully instead of throwing
   if (!hasServiceAccount) {
     if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
-      console.error('Firebase Admin initialization error', new Error('Les informations d\'identification Firebase Admin sont manquantes'));
+      logger.error('Firebase Admin initialization error: Les informations d\'identification Firebase Admin sont manquantes');
       return null;
     }
     throw new Error('Les informations d\'identification Firebase Admin sont manquantes');
@@ -57,10 +58,10 @@ export function getFirebaseAdminApp(): App | null {
       databaseURL: `https://${process.env['NEXT_PUBLIC_FIREBASE_PROJECT_ID']}.firebaseio.com`,
     });
     
-    console.log('Firebase Admin initialisé avec succès');
+    logger.info('Firebase Admin initialisé avec succès');
     return firebaseAdminApp;
   } catch (error) {
-    console.error('Erreur lors de l\'initialisation de Firebase Admin:', error);
+    logger.error('Erreur lors de l\'initialisation de Firebase Admin:', error);
     // During build time, return null gracefully instead of throwing
     if (process.env.NODE_ENV === 'production') {
       initializationError = error as Error;

@@ -1,19 +1,20 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-// Fonction de vérification reCAPTCHA
+// Fonction de vÃ©rification reCAPTCHA
 async function verifyRecaptcha(token: string): Promise<boolean> {
   const secretKey = process.env.RECAPTCHA_SECRET_KEY;
   
-  // En développement, saute la vérification si la clé commence par 'dev-skip'
+  // En dÃ©veloppement, saute la vÃ©rification si la clÃ© commence par 'dev-skip'
   if (process.env.NODE_ENV === 'development' && secretKey?.startsWith('dev-skip')) {
-    console.log('[DEV] reCAPTCHA verification skipped');
+    logger.info('[DEV] reCAPTCHA verification skipped');
     return true;
   }
 
   if (!secretKey) {
-    console.error('RECAPTCHA_SECRET_KEY is not configured');
+    logger.error('RECAPTCHA_SECRET_KEY is not configured');
     return false;
   }
 
@@ -34,11 +35,11 @@ async function verifyRecaptcha(token: string): Promise<boolean> {
     if (data.success && data.score >= 0.5) {
       return true;
     } else {
-      console.error('reCAPTCHA verification failed:', data['error-codes']);
+      logger.error('reCAPTCHA verification failed:', data['error-codes']);
       return false;
     }
   } catch (error) {
-    console.error('Error verifying reCAPTCHA:', error);
+    logger.error('Error verifying reCAPTCHA:', error);
     return false;
   }
 }
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password, confirmPassword, recaptchaToken } = body;
 
-    // Vérifier que les champs obligatoires sont présents
+    // VÃ©rifier que les champs obligatoires sont prÃ©sents
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email et mot de passe sont requis' },
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier que les mots de passe correspondent (si confirmPassword fourni)
+    // VÃ©rifier que les mots de passe correspondent (si confirmPassword fourni)
     if (confirmPassword && password !== confirmPassword) {
       return NextResponse.json(
         { error: 'Les mots de passe ne correspondent pas' },
@@ -64,26 +65,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier la longueur du mot de passe
+    // VÃ©rifier la longueur du mot de passe
     if (password.length < 6) {
       return NextResponse.json(
-        { error: 'Le mot de passe doit contenir au moins 6 caractères' },
+        { error: 'Le mot de passe doit contenir au moins 6 caractÃ¨res' },
         { status: 400 }
       );
     }
 
-    // Vérifier le token reCAPTCHA si fourni
+    // VÃ©rifier le token reCAPTCHA si fourni
     if (recaptchaToken) {
       const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
       if (!isRecaptchaValid) {
         return NextResponse.json(
-          { error: 'Vérification reCAPTCHA échouée' },
+          { error: 'VÃ©rification reCAPTCHA Ã©chouÃ©e' },
           { status: 400 }
         );
       }
     }
 
-    // Créer l'utilisateur avec Firebase
+    // CrÃ©er l'utilisateur avec Firebase
     if (!auth) {
       return NextResponse.json(
         { error: 'Service d\'authentification non disponible' },
@@ -92,11 +93,11 @@ export async function POST(request: NextRequest) {
     }
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-    // Retourner les informations de l'utilisateur créé
+    // Retourner les informations de l'utilisateur crÃ©Ã©
     const user = userCredential.user;
 
     return NextResponse.json({
-      message: 'Compte créé avec succès',
+      message: 'Compte crÃ©Ã© avec succÃ¨s',
       user: {
         uid: user.uid,
         email: user.email,
@@ -106,20 +107,20 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Erreur lors de l\'inscription:', error);
+    logger.error('Erreur lors de l\'inscription:', error);
 
     // Gestion des erreurs Firebase
     let errorMessage = 'Erreur lors de l\'inscription';
 
     switch (error.code) {
       case 'auth/email-already-in-use':
-        errorMessage = 'Cette adresse email est déjà utilisée';
+        errorMessage = 'Cette adresse email est dÃ©jÃ  utilisÃ©e';
         break;
       case 'auth/invalid-email':
         errorMessage = 'Adresse email invalide';
         break;
       case 'auth/operation-not-allowed':
-        errorMessage = 'L\'inscription par email n\'est pas activée';
+        errorMessage = 'L\'inscription par email n\'est pas activÃ©e';
         break;
       case 'auth/weak-password':
         errorMessage = 'Le mot de passe est trop faible';

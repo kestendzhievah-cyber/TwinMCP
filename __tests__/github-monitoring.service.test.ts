@@ -1,4 +1,28 @@
 // @ts-nocheck
+jest.mock('@octokit/rest', () => ({
+  Octokit: jest.fn().mockImplementation(() => ({
+    repos: {
+      get: jest.fn(),
+      listReleases: jest.fn(),
+      listCommits: jest.fn(),
+      listForOrg: jest.fn(),
+    },
+    issues: { listForRepo: jest.fn() },
+    pulls: { list: jest.fn() },
+    actions: { listWorkflowRunsForRepo: jest.fn() },
+  })),
+}));
+jest.mock('@octokit/webhooks', () => ({
+  Webhooks: jest.fn().mockImplementation(() => ({
+    on: jest.fn(),
+    verify: jest.fn(),
+    receive: jest.fn(),
+  })),
+}));
+jest.mock('../src/utils/logger', () => ({
+  logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+}));
+
 import { GitHubMonitoringService } from '../src/services/github-monitoring.service';
 import { MonitoringConfig } from '../src/types/github-monitoring.types';
 import { Pool } from 'pg';

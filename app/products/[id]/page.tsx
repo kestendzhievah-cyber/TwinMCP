@@ -8,18 +8,29 @@ interface ProductDetailPageProps {
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { id } = await params;
 
-  // Temporairement retourner un produit mocké
-  // TODO: Implémenter avec le vrai client Prisma quand il sera disponible
-  const product = {
-    id,
-    name: `Produit ${id}`,
-    description: 'Description du produit mocké pour le développement.',
-    price: 99.99,
-    image: null,
-    status: 'ACTIVE',
-    category: { name: 'Catégorie Test' },
-    seller: { name: 'Vendeur Test', email: 'vendeur@test.com' }
-  };
+  let product: any = null;
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    product = await (prisma as any).product.findUnique({
+      where: { id },
+      include: { category: true, seller: true },
+    });
+  } catch {
+    // Prisma model may not exist yet — fallback to null
+  }
+
+  if (!product) {
+    product = {
+      id,
+      name: `Produit ${id}`,
+      description: 'Ce produit n\'est pas encore disponible.',
+      price: 0,
+      image: null,
+      status: 'ACTIVE',
+      category: { name: 'Non catégorisé' },
+      seller: { name: 'Inconnu', email: '' }
+    };
+  }
 
   if (!product || product.status !== 'ACTIVE') {
     notFound();

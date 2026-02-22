@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       paymentIntentId: paymentIntent.id,
     })
   } catch (error) {
-    console.error('Erreur lors de la création du Payment Intent:', error)
+    logger.error('Erreur lors de la crÃ©ation du Payment Intent:', error)
     return NextResponse.json(
       { error: 'Erreur interne du serveur' },
       { status: 500 }

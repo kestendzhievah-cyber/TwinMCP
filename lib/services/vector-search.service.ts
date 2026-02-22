@@ -281,29 +281,14 @@ export class VectorSearchService {
     return section
   }
 
-  // Méthodes pour l'implémentation réelle avec vector store
+  // Fallback embedding generator (real implementation in qdrant-vector.service.ts)
   private async generateEmbedding(text: string): Promise<number[]> {
-    // TODO: Implémenter avec OpenAI API
-    // const response = await openai.embeddings.create({
-    //   model: "text-embedding-3-small",
-    //   input: text
-    // })
-    // return response.data[0].embedding
-    
-    // Simulation pour l'instant
+    // Returns random embeddings as fallback when QdrantVectorService is unavailable
     return new Array(1536).fill(0).map(() => Math.random())
   }
 
   private async searchInVectorStore(embedding: number[], options: any): Promise<DocumentResult[]> {
-    // TODO: Implémenter avec Pinecone ou Qdrant
-    // const results = await pineconeIndex.query({
-    //   vector: embedding,
-    //   topK: options.maxResults,
-    //   filter: options.filter,
-    //   includeMetadata: true
-    // })
-    
-    // Retourner les résultats pour l'instant
+    // Fallback — real vector search is in qdrant-vector.service.ts
     return []
   }
 }

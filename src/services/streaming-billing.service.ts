@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
 import { 
@@ -84,7 +85,7 @@ export class StreamingBillingService implements BillingService {
         const config = await this.getBillingConfig(record.provider, record.model);
         
         if (!config) {
-          console.error(`No billing config found for ${record.provider}/${record.model}`);
+          logger.error(`No billing config found for ${record.provider}/${record.model}`);
           record.billingStatus = 'failed';
           continue;
         }
@@ -112,7 +113,7 @@ export class StreamingBillingService implements BillingService {
         await this.updateUsageReport(record);
 
       } catch (error) {
-        console.error(`Error processing billing record ${record.id}:`, error);
+        logger.error(`Error processing billing record ${record.id}:`, error);
         record.billingStatus = 'failed';
         await this.saveBillingRecord(record);
       }

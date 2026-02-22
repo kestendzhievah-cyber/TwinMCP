@@ -1,22 +1,11 @@
-import { pool } from '@/lib/prisma';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { InvoiceService } from '@/src/services/invoice.service';
-import { EncryptionService } from '@/src/services/security/encryption.service';
-import { AuditService } from '@/src/services/security/audit.service';
-import { GDPRService } from '@/src/services/security/gdpr.service';
-import { DataMaskingService } from '@/src/services/security/data-masking.service';
-import { KeyManagementService } from '@/src/services/security/kms.service';
+import { getBillingServices } from '../_shared';
 import { InvoiceStatus, BillingPeriod, BillingPeriodType } from '@/src/types/invoice.types';
-
-const kms = new KeyManagementService();
-const maskingService = new DataMaskingService();
-const encryptionService = new EncryptionService(kms);
-const auditService = new AuditService(pool, maskingService);
-const gdprService = new GDPRService(pool, encryptionService, auditService);
-const invoiceService = new InvoiceService(pool, encryptionService, auditService, gdprService, maskingService);
 
 export async function GET(request: NextRequest) {
   try {
+    const { invoiceService } = await getBillingServices();
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const status = searchParams.get('status') as InvoiceStatus | null;
@@ -47,9 +36,9 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error fetching invoices:', error);
+    logger.error('Error fetching invoices:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch invoices', message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' },
+      { error: 'Failed to fetch invoices', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -57,6 +46,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { invoiceService } = await getBillingServices();
     const body = await request.json();
     const { userId, period, options } = body;
 
@@ -97,9 +87,9 @@ export async function POST(request: NextRequest) {
       data: { invoice }
     }, { status: 201 });
   } catch (error) {
-    console.error('Error generating invoice:', error);
+    logger.error('Error generating invoice:', error);
     return NextResponse.json(
-      { error: 'Failed to generate invoice', message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' },
+      { error: 'Failed to generate invoice', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

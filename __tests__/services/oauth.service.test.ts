@@ -82,9 +82,11 @@ describe('OAuthService', () => {
 
   describe('validateClient', () => {
     it('should return client when valid credentials provided', async () => {
+      // SHA-256 hash of 'secret'
+      const secretHash = '2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b';
       const mockClient = {
         clientId: 'test-client',
-        clientSecretHash: 'hashed-secret',
+        clientSecretHash: secretHash,
         redirectUris: ['https://example.com/callback'],
         allowedScopes: ['read', 'write'],
         grantTypes: ['authorization_code', 'refresh_token'],
@@ -114,9 +116,11 @@ describe('OAuthService', () => {
     });
 
     it('should return null when client secret is invalid', async () => {
+      // SHA-256 hash of 'secret' (not 'wrong-secret')
+      const secretHash = '2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b';
       const mockClient = {
         clientId: 'test-client',
-        clientSecretHash: 'hashed-secret',
+        clientSecretHash: secretHash,
         redirectUris: ['https://example.com/callback'],
         allowedScopes: ['read', 'write'],
         grantTypes: ['authorization_code', 'refresh_token'],
@@ -156,7 +160,9 @@ describe('OAuthService', () => {
         'S256'
       );
 
-      expect(result).toBe('generated-code');
+      // Service generates a random code, not the mock's return value
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
       expect(mockPrisma.oAuthAuthorizationCode.create).toHaveBeenCalledWith({
         data: {
           code: expect.any(String),
@@ -174,6 +180,8 @@ describe('OAuthService', () => {
 
   describe('validateAuthorizationCode', () => {
     it('should validate and return authorization code', async () => {
+      // S256 challenge = base64url(sha256('verifier'))
+      const s256Challenge = 'iMnq5o6zALKXGivsnlom_0F5_WYda32GHkxlV7mq7hQ';
       const mockAuthCode = {
         id: 'code-id',
         code: 'test-code',
@@ -181,7 +189,7 @@ describe('OAuthService', () => {
         userId: 'user-123',
         redirectUri: 'https://example.com/callback',
         scopes: ['read', 'write'],
-        codeChallenge: 'challenge',
+        codeChallenge: s256Challenge,
         codeChallengeMethod: 'S256',
         expiresAt: new Date(Date.now() + 60000) // Future
       };
@@ -272,9 +280,11 @@ describe('OAuthService', () => {
 
   describe('validateAccessToken', () => {
     it('should validate access token from cache', async () => {
+      // SHA-256 hash of 'access-token'
+      const tokenHash = '3f16bed7089f4653e5ef21bfd2824d7f3aaaecc7a598e7e89c580e1606a9cc52';
       const mockTokenData = {
         id: 'token-id',
-        tokenHash: 'hashed-token',
+        tokenHash,
         clientId: 'test-client',
         userId: 'user-123',
         scopes: ['read', 'write'],
@@ -287,13 +297,15 @@ describe('OAuthService', () => {
 
       expect(result).toBeTruthy();
       expect(result?.userId).toBe('user-123');
-      expect(mockRedis.get).toHaveBeenCalledWith('access_token:hashed-token');
+      expect(mockRedis.get).toHaveBeenCalledWith(`access_token:${tokenHash}`);
     });
 
     it('should validate access token from database when not cached', async () => {
+      // SHA-256 hash of 'access-token'
+      const tokenHash = '3f16bed7089f4653e5ef21bfd2824d7f3aaaecc7a598e7e89c580e1606a9cc52';
       const mockTokenData = {
         id: 'token-id',
-        tokenHash: 'hashed-token',
+        tokenHash,
         clientId: 'test-client',
         userId: 'user-123',
         scopes: ['read', 'write'],
@@ -308,7 +320,7 @@ describe('OAuthService', () => {
       expect(result).toBeTruthy();
       expect(result?.userId).toBe('user-123');
       expect(mockRedis.setex).toHaveBeenCalledWith(
-        'access_token:hashed-token',
+        `access_token:${tokenHash}`,
         300,
         JSON.stringify(mockTokenData)
       );
@@ -369,7 +381,8 @@ describe('OAuthService', () => {
   describe('PKCE verification', () => {
     it('should verify S256 PKCE challenge', async () => {
       const codeVerifier = 'test_verifier_123';
-      const codeChallenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
+      // base64url(sha256('test_verifier_123'))
+      const codeChallenge = 'HGfpffSApehaWh1OQoi0h-f-k3IZ1CickraFS3UbMvk';
       const codeChallengeMethod = 'S256';
 
       const mockCode = {

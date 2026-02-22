@@ -856,13 +856,22 @@ Voir `INVOICE_IMPLEMENTATION.md` pour:
 - ✅ **Secrets management**: `lib/secrets.ts` (validation, masking, diagnostics, 11 tests) + secrets rotation (`src/services/production/security-scanning.service.ts`)
 - Manque: GitOps workflow (ArgoCD/Flux)
 
-### ⚠️ Qualité du Code (80%) ↑ était 40%
+### ✅ Qualité du Code (95%) ↑ était 80%
 - ✅ **Coding standards**: ESLint + Prettier configurés
 - ✅ **Pre-commit hooks**: Husky + lint-staged
 - ✅ **TypeScript strict**: 0 erreurs source (résolu dans audit précédent)
 - ✅ **Security best practices**: Input validation, XSS/SQLi protection, encryption services
 - ✅ **Refactoring MCP**: ToolExecutor pipeline unifié, memory bounds, hot-reload registry
 - ✅ **Performance testing**: Load tests MCP (`__tests__/mcp/load/`), payment load tests (`src/services/billing/payment-testing.service.ts`)
+- ✅ **Logging standardisé** (2026-02-21): 545 `console.log/error/warn` → logger across 181 files
+  - `lib/mcp/` (16 files, ~80 instances) → `lib/logger.ts` (lightweight, level-aware)
+  - `lib/` server-side (14 files, ~56 instances) → `lib/logger.ts`
+  - `app/api/` (102 files, ~200 instances) → `lib/logger.ts`
+  - `src/` (49 files, ~209 instances) → `src/utils/logger.ts` (Winston)
+  - Client-side files (`lib/firebase.ts`, `lib/auth-context.tsx`, etc.) intentionally kept with `console.*`
+- ✅ **Dead code removal** (2026-02-21): Removed backup page, 8 tsc debug dumps, 2 .bak files, 5 debug scripts, .npmrc_backup, stale zip archive
+- ✅ **Stale TODO cleanup** (2026-02-21): 3 stale TODOs fixed in `vector-search.service.ts`, `resolve-library-id.tool.ts`
+- ✅ **Hardcoded secrets fix** (2026-02-21): JWT_SECRET in `mcp/oauth/route.ts` → lazy getter with production guard
 - Manque: Code review process formalisé (process, pas du code)
 - Manque: Performance profiling continu (nécessite clinic.js/0x — tooling externe)
 

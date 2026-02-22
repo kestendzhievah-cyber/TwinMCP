@@ -21,7 +21,7 @@ export default function MCPAgentGuide() {
         </div>
 
         {/* Introduction */}
-        <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl mb-8">
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Introduction</h2>
           <p className="text-gray-300 mb-4">
             Cet exemple montre comment créer un agent intelligent qui utilise plusieurs outils MCP
@@ -35,20 +35,20 @@ export default function MCPAgentGuide() {
         </div>
 
         {/* Architecture */}
-        <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl mb-8">
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Architecture MCP</h2>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="p-4 bg-slate-700/50 rounded-lg">
+            <div className="p-4 bg-[#0f1020] rounded-lg">
               <CreditCard className="w-8 h-8 text-green-400 mb-3" />
               <h3 className="font-bold text-white mb-2">Stripe MCP</h3>
               <p className="text-sm text-gray-400">Gestion des paiements, abonnements et factures</p>
             </div>
-            <div className="p-4 bg-slate-700/50 rounded-lg">
+            <div className="p-4 bg-[#0f1020] rounded-lg">
               <Mail className="w-8 h-8 text-blue-400 mb-3" />
               <h3 className="font-bold text-white mb-2">SendGrid MCP</h3>
               <p className="text-sm text-gray-400">Envoi d'emails transactionnels et marketing</p>
             </div>
-            <div className="p-4 bg-slate-700/50 rounded-lg">
+            <div className="p-4 bg-[#0f1020] rounded-lg">
               <Github className="w-8 h-8 text-purple-400 mb-3" />
               <h3 className="font-bold text-white mb-2">GitHub MCP</h3>
               <p className="text-sm text-gray-400">Gestion des repositories et issues</p>
@@ -57,7 +57,7 @@ export default function MCPAgentGuide() {
         </div>
 
         {/* Exemple de code */}
-        <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl mb-8">
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
             <Code className="w-6 h-6 mr-2" />
             Exemple d'implémentation
@@ -66,7 +66,7 @@ export default function MCPAgentGuide() {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-bold text-white mb-3">1. Configuration des outils MCP</h3>
-              <pre className="bg-slate-900 p-4 rounded-lg overflow-x-auto text-sm">
+              <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
                 <code className="text-green-400">{`// Configuration des outils MCP
 const mcpTools = {
   stripe: {
@@ -87,7 +87,7 @@ const mcpTools = {
 
             <div>
               <h3 className="text-lg font-bold text-white mb-3">2. Création de l'agent</h3>
-              <pre className="bg-slate-900 p-4 rounded-lg overflow-x-auto text-sm">
+              <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
                 <code className="text-green-400">{`// Agent avec outils MCP intégrés
 class EcommerceAgent {
   constructor(mcpTools) {
@@ -126,7 +126,7 @@ class EcommerceAgent {
 
             <div>
               <h3 className="text-lg font-bold text-white mb-3">3. Utilisation de l'agent</h3>
-              <pre className="bg-slate-900 p-4 rounded-lg overflow-x-auto text-sm">
+              <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
                 <code className="text-green-400">{`// Utilisation de l'agent
 const agent = new EcommerceAgent(mcpTools);
 
@@ -150,7 +150,7 @@ console.log('Commande traitée:', result);
         </div>
 
         {/* Fonctionnalités disponibles */}
-        <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl mb-8">
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Fonctionnalités disponibles</h2>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -213,13 +213,13 @@ console.log('Commande traitée:', result);
         </div>
 
         {/* Guide d'installation */}
-        <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl mb-8">
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Installation et configuration</h2>
 
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-bold text-white mb-3">1. Variables d'environnement</h3>
-              <div className="bg-slate-900 p-4 rounded-lg">
+              <div className="bg-[#0a0a14] p-4 rounded-lg">
                 <pre className="text-sm text-gray-300">
 {`# Fichier .env
 STRIPE_SECRET_KEY=sk_test_...
@@ -232,7 +232,7 @@ GITHUB_TOKEN=ghp_...`}
 
             <div>
               <h3 className="text-lg font-bold text-white mb-3">2. Installation des dépendances</h3>
-              <div className="bg-slate-900 p-4 rounded-lg">
+              <div className="bg-[#0a0a14] p-4 rounded-lg">
                 <pre className="text-sm text-green-400">
 {`npm install stripe @sendgrid/mail octokit
 npm install --save-dev @types/node`}
@@ -242,7 +242,7 @@ npm install --save-dev @types/node`}
 
             <div>
               <h3 className="text-lg font-bold text-white mb-3">3. Configuration des outils MCP</h3>
-              <div className="bg-slate-900 p-4 rounded-lg">
+              <div className="bg-[#0a0a14] p-4 rounded-lg">
                 <pre className="text-sm text-green-400">
 {`// lib/mcp-tools.ts
 export const loadMCPTools = async () => {
@@ -259,11 +259,11 @@ export const loadMCPTools = async () => {
         </div>
 
         {/* Cas d'usage */}
-        <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl mb-8">
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Cas d'usage pratiques</h2>
 
           <div className="space-y-4">
-            <div className="p-4 bg-slate-700/50 rounded-lg">
+            <div className="p-4 bg-[#0f1020] rounded-lg">
               <h3 className="font-bold text-white mb-2">E-commerce automatisé</h3>
               <p className="text-sm text-gray-400 mb-3">
                 L'agent traite automatiquement les commandes : paiement → email → suivi GitHub
@@ -274,7 +274,7 @@ export const loadMCPTools = async () => {
               </div>
             </div>
 
-            <div className="p-4 bg-slate-700/50 rounded-lg">
+            <div className="p-4 bg-[#0f1020] rounded-lg">
               <h3 className="font-bold text-white mb-2">Support client intelligent</h3>
               <p className="text-sm text-gray-400 mb-3">
                 Analyse des demandes clients et création automatique d'issues GitHub
@@ -285,7 +285,7 @@ export const loadMCPTools = async () => {
               </div>
             </div>
 
-            <div className="p-4 bg-slate-700/50 rounded-lg">
+            <div className="p-4 bg-[#0f1020] rounded-lg">
               <h3 className="font-bold text-white mb-2">Marketing automation</h3>
               <p className="text-sm text-gray-400 mb-3">
                 Envoi automatique d'emails de bienvenue et suivi des interactions
@@ -299,13 +299,13 @@ export const loadMCPTools = async () => {
         </div>
 
         {/* Ressources */}
-        <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl">
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl">
           <h2 className="text-2xl font-bold text-white mb-4">Ressources et documentation</h2>
 
           <div className="grid md:grid-cols-2 gap-4">
             <a
               href="https://docs.stripe.com/api"
-              className="p-4 bg-slate-700/50 rounded-lg hover:bg-slate-700/70 transition flex items-center"
+              className="p-4 bg-[#0f1020] rounded-lg hover:bg-purple-500/10 transition flex items-center"
             >
               <ExternalLink className="w-5 h-5 mr-3 text-green-400" />
               <div>
@@ -316,7 +316,7 @@ export const loadMCPTools = async () => {
 
             <a
               href="https://docs.sendgrid.com/api-reference"
-              className="p-4 bg-slate-700/50 rounded-lg hover:bg-slate-700/70 transition flex items-center"
+              className="p-4 bg-[#0f1020] rounded-lg hover:bg-purple-500/10 transition flex items-center"
             >
               <ExternalLink className="w-5 h-5 mr-3 text-blue-400" />
               <div>
@@ -327,7 +327,7 @@ export const loadMCPTools = async () => {
 
             <a
               href="https://docs.github.com/rest"
-              className="p-4 bg-slate-700/50 rounded-lg hover:bg-slate-700/70 transition flex items-center"
+              className="p-4 bg-[#0f1020] rounded-lg hover:bg-purple-500/10 transition flex items-center"
             >
               <ExternalLink className="w-5 h-5 mr-3 text-purple-400" />
               <div>
@@ -337,12 +337,12 @@ export const loadMCPTools = async () => {
             </a>
 
             <a
-              href="/dashboard/marketplace"
-              className="p-4 bg-slate-700/50 rounded-lg hover:bg-slate-700/70 transition flex items-center"
+              href="/dashboard/library"
+              className="p-4 bg-[#0f1020] rounded-lg hover:bg-purple-500/10 transition flex items-center"
             >
               <ExternalLink className="w-5 h-5 mr-3 text-orange-400" />
               <div>
-                <div className="font-bold text-white">Marketplace MCP</div>
+                <div className="font-bold text-white">Bibliothèques MCP</div>
                 <div className="text-sm text-gray-400">Découvrez plus d'outils</div>
               </div>
             </a>
@@ -364,10 +364,10 @@ export const loadMCPTools = async () => {
               Voir la démonstration
             </a>
             <a
-              href="/dashboard/marketplace"
-              className="px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition flex items-center"
+              href="/dashboard/library"
+              className="px-6 py-3 bg-[#1a1b2e] border border-purple-500/20 text-white font-semibold rounded-lg hover:bg-purple-500/10 transition flex items-center"
             >
-              Explorer la marketplace
+              Explorer les bibliothèques
             </a>
           </div>
         </div>

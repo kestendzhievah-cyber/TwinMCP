@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -35,7 +36,7 @@ export async function POST(
 
     return NextResponse.json(testResult);
   } catch (error) {
-    console.error('Erreur lors du test de la configuration:', error);
+    logger.error('Erreur lors du test de la configuration:', error);
 
     return NextResponse.json({
       success: false,

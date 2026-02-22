@@ -278,6 +278,17 @@ export class SearchAnalyticsService {
     };
   }
 
+  async cleanupOldLogs(daysToKeep: number = 90): Promise<void> {
+    await this.db.query(`
+      DELETE FROM search_logs
+      WHERE created_at < NOW() - INTERVAL '${daysToKeep} days'
+    `);
+    await this.db.query(`
+      DELETE FROM search_clicks
+      WHERE created_at < NOW() - INTERVAL '${daysToKeep} days'
+    `);
+  }
+
   async logExport(data: {
     userId?: string;
     query: string;

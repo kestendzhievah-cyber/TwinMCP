@@ -1,19 +1,20 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-// Fonction de vérification reCAPTCHA
+// Fonction de vÃ©rification reCAPTCHA
 async function verifyRecaptcha(token: string): Promise<boolean> {
   const secretKey = process.env.RECAPTCHA_SECRET_KEY;
   
-  // En développement, saute la vérification si la clé commence par 'dev-skip'
+  // En dÃ©veloppement, saute la vÃ©rification si la clÃ© commence par 'dev-skip'
   if (process.env.NODE_ENV === 'development' && secretKey?.startsWith('dev-skip')) {
-    console.log('[DEV] reCAPTCHA verification skipped');
+    logger.info('[DEV] reCAPTCHA verification skipped');
     return true;
   }
 
   if (!secretKey) {
-    console.error('RECAPTCHA_SECRET_KEY is not configured');
+    logger.error('RECAPTCHA_SECRET_KEY is not configured');
     return false;
   }
 
@@ -34,11 +35,11 @@ async function verifyRecaptcha(token: string): Promise<boolean> {
     if (data.success && data.score >= 0.5) {
       return true;
     } else {
-      console.error('reCAPTCHA verification failed:', data['error-codes']);
+      logger.error('reCAPTCHA verification failed:', data['error-codes']);
       return false;
     }
   } catch (error) {
-    console.error('Error verifying reCAPTCHA:', error);
+    logger.error('Error verifying reCAPTCHA:', error);
     return false;
   }
 }
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password, recaptchaToken } = body;
 
-    // Vérifier que les champs obligatoires sont présents
+    // VÃ©rifier que les champs obligatoires sont prÃ©sents
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email et mot de passe sont requis' },
@@ -56,12 +57,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier le token reCAPTCHA si fourni
+    // VÃ©rifier le token reCAPTCHA si fourni
     if (recaptchaToken) {
       const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
       if (!isRecaptchaValid) {
         return NextResponse.json(
-          { error: 'Vérification reCAPTCHA échouée' },
+          { error: 'VÃ©rification reCAPTCHA Ã©chouÃ©e' },
           { status: 400 }
         );
       }
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     const user = userCredential.user;
 
     return NextResponse.json({
-      message: 'Connexion réussie',
+      message: 'Connexion rÃ©ussie',
       user: {
         uid: user.uid,
         email: user.email,
@@ -90,14 +91,14 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Erreur lors de la connexion:', error);
+    logger.error('Erreur lors de la connexion:', error);
 
     // Gestion des erreurs Firebase
     let errorMessage = 'Erreur lors de la connexion';
 
     switch (error.code) {
       case 'auth/user-not-found':
-        errorMessage = 'Aucun compte trouvé avec cette adresse email';
+        errorMessage = 'Aucun compte trouvÃ© avec cette adresse email';
         break;
       case 'auth/wrong-password':
         errorMessage = 'Mot de passe incorrect';
@@ -106,10 +107,10 @@ export async function POST(request: NextRequest) {
         errorMessage = 'Adresse email invalide';
         break;
       case 'auth/user-disabled':
-        errorMessage = 'Ce compte a été désactivé';
+        errorMessage = 'Ce compte a Ã©tÃ© dÃ©sactivÃ©';
         break;
       case 'auth/too-many-requests':
-        errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
+        errorMessage = 'Trop de tentatives. Veuillez rÃ©essayer plus tard';
         break;
       default:
         errorMessage = error.message || 'Erreur lors de la connexion';

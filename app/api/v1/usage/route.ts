@@ -1,5 +1,9 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+
+const ALLOW_INSECURE_DEV_AUTH =
+  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
 
 // Extract user ID from Firebase JWT token
 function extractUserIdFromToken(token: string): { userId: string; email?: string } | null {
@@ -46,10 +50,13 @@ async function validateAuthHeader(request: NextRequest): Promise<{ userId: strin
     }
   }
 
-  // Fallback: Extract user ID from JWT payload
-  const extracted = extractUserIdFromToken(token);
-  if (extracted) {
-    return { userId: extracted.userId };
+  // Fallback is explicitly allowed only in non-production development flows
+  if (ALLOW_INSECURE_DEV_AUTH) {
+    const extracted = extractUserIdFromToken(token);
+    if (extracted) {
+      logger.warn('Using insecure dev auth fallback (unverified JWT payload).');
+      return { userId: extracted.userId };
+    }
   }
 
   return null;
@@ -195,7 +202,7 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error('Failed to fetch usage:', error);
+    logger.error('Failed to fetch usage:', error);
     return NextResponse.json(
       { error: 'Failed to fetch usage statistics' },
       { status: 500 }
@@ -206,14 +213,36 @@ export async function GET(request: NextRequest) {
 // POST - Log a usage event (internal use)
 export async function POST(request: NextRequest) {
   try {
+    const auth = await validateAuthHeader(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { apiKeyId, userId, toolName, libraryId, query, tokensReturned, responseTimeMs, success, errorMessage } = body;
+
+    // Prevent forging usage logs for other users
+    const effectiveUserId = auth.userId;
+    if (userId && userId !== effectiveUserId) {
+      return NextResponse.json({ error: 'Forbidden: userId mismatch' }, { status: 403 });
+    }
+
+    // Ensure apiKey belongs to authenticated user before logging/updating counters
+    if (apiKeyId) {
+      const ownedKey = await prisma.apiKey.findFirst({
+        where: { id: apiKeyId, userId: effectiveUserId, isActive: true, revokedAt: null },
+        select: { id: true },
+      });
+      if (!ownedKey) {
+        return NextResponse.json({ error: 'Forbidden: invalid apiKeyId' }, { status: 403 });
+      }
+    }
 
     // Create usage log
     const log = await prisma.usageLog.create({
       data: {
         apiKeyId,
-        userId,
+        userId: effectiveUserId,
         toolName,
         libraryId,
         query,
@@ -238,7 +267,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ logged: true, id: log.id });
   } catch (error) {
-    console.error('Failed to log usage:', error);
+    logger.error('Failed to log usage:', error);
     return NextResponse.json(
       { error: 'Failed to log usage' },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { registry } from '@/lib/mcp/tools'
 import { authenticateMcpRequest, mcpDbAuthService } from '@/lib/mcp/middleware/api-key-auth'
@@ -7,7 +8,7 @@ import { getQueue } from '@/lib/mcp/utils/queue'
 import { getMetrics } from '@/lib/mcp/utils/metrics'
 import { ensureMCPInitialized } from '@/lib/mcp/ensure-init'
 
-// POST /api/v1/mcp/execute - Exécuter un outil
+// POST /api/v1/mcp/execute - ExÃ©cuter un outil
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { toolId, args, async: isAsync = false } = body
 
-    // Validation des paramètres de base
+    // Validation des paramÃ¨tres de base
     if (!toolId) {
       return NextResponse.json(
         { error: 'Tool ID is required' },
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validation de sécurité
+    // Validation de sÃ©curitÃ©
     const securityValidation = await validator.securityValidate(args)
     if (!securityValidation.success) {
       return NextResponse.json({
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Vérification des limites du plan d'abonnement
+    // VÃ©rification des limites du plan d'abonnement
     const planLimitCheck = await rateLimiter.checkPlanLimits(authContext.userId, `/api/v1/mcp/execute/${toolId}`)
     if (!planLimitCheck.allowed) {
       return NextResponse.json(
@@ -98,9 +99,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Exécution synchrone vs asynchrone
+    // ExÃ©cution synchrone vs asynchrone
     if (isAsync && tool.capabilities.async) {
-      // Mode asynchrone - ajouter à la queue
+      // Mode asynchrone - ajouter Ã  la queue
       const queue = getQueue()
       const jobId = await queue.enqueue({
         toolId,
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
         rateLimit: authContext.rateLimit
       })
 
-      // Tracker les métriques
+      // Tracker les mÃ©triques
       getMetrics().track({
         toolId,
         userId: authContext.userId,
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
       estimatedCost: 0
     })
 
-    console.error('Tool execution error:', error)
+    logger.error('Tool execution error:', error)
     return NextResponse.json(
       {
         error: error.message || 'Tool execution failed',

@@ -1,32 +1,14 @@
-import { pool as db } from '@/lib/prisma';
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { ReportingService } from '@/src/services/reporting.service';
-import { ReportGenerator } from '@/src/services/report-generator.service';
-import { InsightEngine } from '@/src/services/insight-engine.service';
-import { DashboardRenderer } from '@/src/services/dashboard-renderer.service';
-import { StreamingBillingService } from '@/src/services/streaming-billing.service';
-
-const reportGenerator = new ReportGenerator();
-const insightEngine = new InsightEngine();
-const dashboardRenderer = new DashboardRenderer();
-const billingService = new StreamingBillingService(db);
-
-const reportingService = new ReportingService(
-  db,
-  redis,
-  reportGenerator,
-  insightEngine,
-  dashboardRenderer,
-  billingService
-);
+import { getReportingServices } from '../../../_shared';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reportId = params.id;
+    const { reportingService } = await getReportingServices();
+    const reportId = (await params).id;
     const body = await request.json();
 
     const generation = await reportingService.generateReport(reportId, {
@@ -40,7 +22,7 @@ export async function POST(
       generation
     });
   } catch (error) {
-    console.error('Error generating report:', error);
+    logger.error('Error generating report:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -50,10 +32,11 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reportId = params.id;
+    const { reportingService, db } = await getReportingServices();
+    const reportId = (await params).id;
     const { searchParams } = new URL(request.url);
     const generationId = searchParams.get('generation');
 
@@ -87,7 +70,7 @@ export async function GET(
       return NextResponse.json({ generations });
     }
   } catch (error) {
-    console.error('Error fetching report generations:', error);
+    logger.error('Error fetching report generations:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

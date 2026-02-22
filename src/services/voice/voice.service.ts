@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { SpeechClient } from '@google-cloud/speech';
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 import OpenAI from 'openai';
@@ -97,7 +98,7 @@ export class VoiceService {
         }
         stream.end();
       } catch (error) {
-        console.error('Stream error:', error);
+        logger.error('Stream error:', error);
       }
     })();
 

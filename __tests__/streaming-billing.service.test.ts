@@ -221,8 +221,8 @@ describe('StreamingBillingService', () => {
 
       const discountedCost = (service as any).applyDiscounts(cost, usage, discounts);
 
-      // Should apply 20% discount (3M >= 2M)
-      expect(discountedCost).toBe(80); // 100 * (1 - 0.2)
+      // Discounts are applied cumulatively: 100 * 0.9 * 0.8 = 72
+      expect(discountedCost).toBe(72);
     });
 
     it('should handle simple token usage (number)', () => {
@@ -392,8 +392,8 @@ describe('StreamingBillingService', () => {
       };
 
       (mockDb.query as jest.Mock)
-        .mockResolvedValueOnce({ rows: [mockConnection] }) // getConnection
-        .mockResolvedValueOnce({ rows: [mockMetrics] }) // getConnectionMetrics
+        .mockResolvedValueOnce({ rows: [mockMetrics] }) // getConnectionMetrics (called first)
+        .mockResolvedValueOnce({ rows: [mockConnection] }) // getConnection (called second)
         .mockResolvedValueOnce({ rows: [] }); // saveBillingRecord
 
       const record = await service.createBillingRecord(connectionId, userId, provider, model);

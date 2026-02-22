@@ -1,32 +1,14 @@
-import { pool as db } from '@/lib/prisma';
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { ReportingService } from '@/src/services/reporting.service';
-import { ReportGenerator } from '@/src/services/report-generator.service';
-import { InsightEngine } from '@/src/services/insight-engine.service';
-import { DashboardRenderer } from '@/src/services/dashboard-renderer.service';
-import { StreamingBillingService } from '@/src/services/streaming-billing.service';
-
-const reportGenerator = new ReportGenerator();
-const insightEngine = new InsightEngine();
-const dashboardRenderer = new DashboardRenderer();
-const billingService = new StreamingBillingService(db);
-
-const reportingService = new ReportingService(
-  db,
-  redis,
-  reportGenerator,
-  insightEngine,
-  dashboardRenderer,
-  billingService
-);
+import { getReportingServices } from '../../_shared';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reportId = params.id;
+    const { reportingService } = await getReportingServices();
+    const reportId = (await params).id;
 
     const report = await reportingService.getReport(reportId);
     if (!report) {
@@ -38,7 +20,7 @@ export async function GET(
 
     return NextResponse.json({ report });
   } catch (error) {
-    console.error('Error fetching report:', error);
+    logger.error('Error fetching report:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -48,10 +30,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reportId = params.id;
+    const { reportingService } = await getReportingServices();
+    const reportId = (await params).id;
     const body = await request.json();
 
     const report = await reportingService.getReport(reportId);
@@ -79,7 +62,7 @@ export async function PUT(
       report: updatedReport
     });
   } catch (error) {
-    console.error('Error updating report:', error);
+    logger.error('Error updating report:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -89,10 +72,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reportId = params.id;
+    const { db } = await getReportingServices();
+    const reportId = (await params).id;
 
     const result = await db.query(
       'DELETE FROM reports WHERE id = $1',
@@ -111,7 +95,7 @@ export async function DELETE(
       message: 'Report deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting report:', error);
+    logger.error('Error deleting report:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

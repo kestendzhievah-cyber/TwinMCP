@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import { 
@@ -68,7 +69,7 @@ export class MetricsCollector {
         uptime
       };
     } catch (error) {
-      console.error('Error collecting system metrics:', error);
+      logger.error('Error collecting system metrics:', error);
       throw error;
     }
   }
@@ -109,7 +110,7 @@ export class MetricsCollector {
         }
       };
     } catch (error) {
-      console.error('Error collecting application metrics:', error);
+      logger.error('Error collecting application metrics:', error);
       throw error;
     }
   }
@@ -169,7 +170,7 @@ export class MetricsCollector {
         }
       };
     } catch (error) {
-      console.error('Error collecting database metrics:', error);
+      logger.error('Error collecting database metrics:', error);
       return {
         connections: {
           active: 0,
@@ -222,7 +223,7 @@ export class MetricsCollector {
         latency
       };
     } catch (error) {
-      console.error('Error collecting network metrics:', error);
+      logger.error('Error collecting network metrics:', error);
       return {
         interfaces: [],
         bandwidth: { incoming: 0, outgoing: 0 },
@@ -254,7 +255,7 @@ export class MetricsCollector {
         features: featureMetrics
       };
     } catch (error) {
-      console.error('Error collecting business metrics:', error);
+      logger.error('Error collecting business metrics:', error);
       return {
         users: { active: 0, total: 0, new: 0, returning: 0, churned: 0 },
         conversations: { total: 0, active: 0, completed: 0, averageDuration: 0 },

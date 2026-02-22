@@ -144,8 +144,17 @@ describe('DocumentIndexationService', () => {
   });
 
   describe('Configuration', () => {
+    let configService: DocumentIndexationService;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockDb.query.mockReset();
+      mockDb.query.mockResolvedValue({ rows: [] });
+      configService = new DocumentIndexationService(mockDb, mockRedis, mockEmbeddingService);
+    });
+
     it('should use default configuration when none provided', async () => {
-      const taskId = await service.startIndexing('test-library', './test-docs');
+      const taskId = await configService.startIndexing('test-library', './test-docs');
 
       expect(taskId).toBeDefined();
       
@@ -155,7 +164,7 @@ describe('DocumentIndexationService', () => {
       );
       
       expect(insertCall).toBeDefined();
-      const config = JSON.parse(insertCall![1][6]); // config parameter
+      const config = JSON.parse(insertCall![1][5]); // config is $6, index 5
       expect(config.chunkingStrategy).toBe('semantic');
       expect(config.maxChunkSize).toBe(1000);
     });
@@ -166,14 +175,14 @@ describe('DocumentIndexationService', () => {
         chunkingStrategy: 'fixed'
       };
 
-      await service.startIndexing('test-library', './test-docs', customConfig);
+      await configService.startIndexing('test-library', './test-docs', customConfig);
 
       const insertCall = mockDb.query.mock.calls.find((call: any) => 
         call[0].includes('INSERT INTO indexing_tasks')
       );
       
       expect(insertCall).toBeDefined();
-      const config = JSON.parse(insertCall![1][6]);
+      const config = JSON.parse(insertCall![1][5]); // config is $6, index 5
       expect(config.maxChunkSize).toBe(1500);
       expect(config.chunkingStrategy).toBe('fixed');
       expect(config.overlapSize).toBe(100); // Default value preserved

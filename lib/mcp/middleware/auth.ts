@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { AuthContext, AuthError, User, ApiKey, Permission } from './auth-types'
+import { logger } from '@/lib/logger'
 
 export class AuthService {
   private users: Map<string, User> = new Map()
@@ -19,7 +20,7 @@ export class AuthService {
   private initializeDefaultUsers(): void {
     // Only create default credentials in development/test environments
     if (process.env.NODE_ENV === 'production') {
-      console.log('🔐 Auth service initialized (production mode — no default credentials)')
+      logger.info('Auth service initialized (production mode)')
       return
     }
 
@@ -59,8 +60,8 @@ export class AuthService {
 
     this.apiKeys.set(defaultApiKey.key, defaultApiKey)
 
-    console.log('🔐 Auth service initialized (dev mode)')
-    console.log(`   � Dev API Key: ${devApiKey.substring(0, 12)}...`)
+    logger.info('Auth service initialized (dev mode)')
+    logger.info(`   Dev API Key: ${devApiKey.substring(0, 12)}...`)
   }
 
   // Authentification par API Key
@@ -325,5 +326,17 @@ export class AuthService {
   }
 }
 
-// Instance globale
-export const authService = new AuthService()
+// Instance globale (lazy-initialized to avoid build-time crashes when JWT_SECRET is not set)
+let _authService: AuthService | null = null
+export function getAuthService(): AuthService {
+  if (!_authService) {
+    _authService = new AuthService()
+  }
+  return _authService
+}
+// Keep backward-compatible named export via getter
+export const authService: AuthService = new Proxy({} as AuthService, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getAuthService(), prop, receiver)
+  }
+})

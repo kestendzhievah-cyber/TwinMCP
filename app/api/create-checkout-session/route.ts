@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -10,7 +11,7 @@ const getStripe = () => {
   return new Stripe(key);
 };
 
-// Plans et prix - Correspondant à la page pricing
+// Plans et prix - Correspondant Ã  la page pricing
 const PLANS = {
   free: {
     name: 'Free',
@@ -21,11 +22,11 @@ const PLANS = {
     name: 'Professional',
     monthly: {
       priceId: process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
-      amount: 1499, // 14.99€ en centimes
+      amount: 1499, // 14.99â‚¬ en centimes
     },
     yearly: {
       priceId: process.env.STRIPE_PRO_YEARLY_PRICE_ID,
-      amount: 13488, // 11.24€ x 12 = 134.88€ en centimes
+      amount: 13488, // 11.24â‚¬ x 12 = 134.88â‚¬ en centimes
     },
   },
   // Legacy plans for backwards compatibility
@@ -52,10 +53,10 @@ export async function POST(req: NextRequest) {
     const stripe = getStripe();
     
     if (!stripe) {
-      console.error('Stripe not configured - missing STRIPE_SECRET_KEY');
+      logger.error('Stripe not configured - missing STRIPE_SECRET_KEY');
       return NextResponse.json(
         { 
-          error: 'Service de paiement non configuré. Veuillez contacter le support.',
+          error: 'Service de paiement non configurÃ©. Veuillez contacter le support.',
           code: 'STRIPE_NOT_CONFIGURED'
         },
         { status: 503 }
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
     // Free plan - no payment needed
     if (planId === 'free') {
       return NextResponse.json(
-        { error: 'Le plan gratuit ne nécessite pas de paiement', code: 'FREE_PLAN' },
+        { error: 'Le plan gratuit ne nÃ©cessite pas de paiement', code: 'FREE_PLAN' },
         { status: 400 }
       )
     }
@@ -130,7 +131,7 @@ export async function POST(req: NextRequest) {
           product_data: {
             name: `TwinMCP ${plan.name}`,
             description: billingPeriod === 'yearly' 
-              ? 'Abonnement annuel - 25% de réduction' 
+              ? 'Abonnement annuel - 25% de rÃ©duction' 
               : 'Abonnement mensuel',
           },
           unit_amount: priceConfig.amount,
@@ -173,7 +174,7 @@ export async function POST(req: NextRequest) {
           sessionConfig.customer_email = userEmail;
         }
       } catch (customerError) {
-        console.warn('Customer lookup failed:', customerError);
+        logger.warn('Customer lookup failed:', customerError);
         sessionConfig.customer_email = userEmail;
       }
     }
@@ -187,9 +188,9 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Checkout session error:', error);
+    logger.error('Checkout session error:', error);
     
-    const errorMessage = error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Erreur inconnue';
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
     
     // Check for common Stripe errors
     if (errorMessage.includes('Invalid API Key')) {
@@ -200,7 +201,7 @@ export async function POST(req: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Erreur lors de la création de la session de paiement', details: errorMessage },
+      { error: 'Erreur lors de la crÃ©ation de la session de paiement', details: errorMessage },
       { status: 500 }
     );
   }
@@ -213,7 +214,7 @@ export async function GET(req: NextRequest) {
     
     if (!stripe) {
       return NextResponse.json(
-        { error: 'Service de paiement non configuré' },
+        { error: 'Service de paiement non configurÃ©' },
         { status: 503 }
       );
     }
@@ -241,9 +242,9 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Session retrieval error:', error);
+    logger.error('Session retrieval error:', error);
     return NextResponse.json(
-      { error: 'Impossible de récupérer les détails de la session' },
+      { error: 'Impossible de rÃ©cupÃ©rer les dÃ©tails de la session' },
       { status: 500 }
     );
   }

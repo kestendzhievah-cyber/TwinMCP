@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Router, Request, Response } from 'express';
 import { EmbeddingGenerationService } from '../services/embedding-generation.service';
 import { VectorSearchService } from '../services/vector-search.service';
@@ -69,7 +70,7 @@ const initializeServices = (req: Request, res: Response, next: any) => {
 
     next();
   } catch (error) {
-    console.error('Error initializing services:', error);
+    logger.error('Error initializing services:', error);
     res.status(500).json({
       error: 'Internal server error',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
@@ -124,7 +125,7 @@ router.post('/generate', initializeServices, async (req: Request, res: Response)
       }
     });
   } catch (error) {
-    console.error('Error generating embeddings:', error);
+    logger.error('Error generating embeddings:', error);
     
     if (error instanceof z.ZodError) {
       res.status(400).json({
@@ -170,7 +171,7 @@ router.post('/search', initializeServices, async (req: Request, res: Response) =
       }
     });
   } catch (error) {
-    console.error('Error performing vector search:', error);
+    logger.error('Error performing vector search:', error);
     
     if (error instanceof z.ZodError) {
       res.status(400).json({
@@ -206,7 +207,7 @@ router.get('/stats', initializeServices, async (req: Request, res: Response) => 
       }
     });
   } catch (error) {
-    console.error('Error fetching stats:', error);
+    logger.error('Error fetching stats:', error);
     res.status(500).json({
       error: 'Failed to fetch statistics',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
@@ -233,7 +234,7 @@ router.get('/forecast', initializeServices, async (req: Request, res: Response) 
       }
     });
   } catch (error) {
-    console.error('Error generating forecast:', error);
+    logger.error('Error generating forecast:', error);
     res.status(500).json({
       error: 'Failed to generate forecast',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
@@ -259,7 +260,7 @@ router.get('/alerts', initializeServices, async (req: Request, res: Response) =>
       }
     });
   } catch (error) {
-    console.error('Error fetching alerts:', error);
+    logger.error('Error fetching alerts:', error);
     res.status(500).json({
       error: 'Failed to fetch alerts',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
@@ -293,7 +294,7 @@ router.get('/library/:libraryId/stats', initializeServices, async (req: Request,
       }
     });
   } catch (error) {
-    console.error('Error fetching library stats:', error);
+    logger.error('Error fetching library stats:', error);
     res.status(500).json({
       error: 'Failed to fetch library statistics',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
@@ -318,7 +319,7 @@ router.get('/health', initializeServices, async (req: Request, res: Response) =>
       }
     });
   } catch (error) {
-    console.error('Error checking health:', error);
+    logger.error('Error checking health:', error);
     res.status(500).json({
       error: 'Failed to check health',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
@@ -355,7 +356,7 @@ router.get('/similar/:chunkId', initializeServices, async (req: Request, res: Re
       }
     });
   } catch (error) {
-    console.error('Error finding similar chunks:', error);
+    logger.error('Error finding similar chunks:', error);
     res.status(500).json({
       error: 'Failed to find similar chunks',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
@@ -382,7 +383,7 @@ router.get('/export', initializeServices, async (req: Request, res: Response) =>
     
     res.send(report);
   } catch (error) {
-    console.error('Error exporting analytics:', error);
+    logger.error('Error exporting analytics:', error);
     res.status(500).json({
       error: 'Failed to export analytics',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
@@ -416,7 +417,7 @@ router.delete('/chunk/:chunkId', initializeServices, async (req: Request, res: R
       }
     });
   } catch (error) {
-    console.error('Error deleting chunk embedding:', error);
+    logger.error('Error deleting chunk embedding:', error);
     res.status(500).json({
       error: 'Failed to delete chunk embedding',
       details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'

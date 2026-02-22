@@ -27,12 +27,14 @@ const mockPrisma = {
   oAuthAccessToken: {
     findFirst: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
     updateMany: jest.fn(),
     deleteMany: jest.fn()
   },
   oAuthRefreshToken: {
     findFirst: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
     updateMany: jest.fn(),
     deleteMany: jest.fn()
   }
@@ -95,9 +97,9 @@ describe('OAuth Flow Integration', () => {
     fastify.get('/oauth/userinfo', oauthController.userInfoEndpoint.bind(oauthController));
 
     // Route protégée pour tester
-    fastify.get('/api/protected', 
-      authMiddleware.auth,
-      async (request: any, reply: any) => {
+    fastify.get('/api/protected', {
+      preHandler: authMiddleware.auth,
+    }, async (request: any, reply: any) => {
         return { 
           message: 'Access granted',
           userId: request.oauthToken?.userId,
@@ -120,9 +122,12 @@ describe('OAuth Flow Integration', () => {
   });
 
   describe('Complete OAuth Authorization Code Flow', () => {
+    // SHA-256 hash of 'test-secret'
+    const testClientSecretHash = require('crypto').createHash('sha256').update('test-secret').digest('hex');
+
     const testClient = {
       clientId: 'test-client-id',
-      clientSecretHash: 'hashed-secret',
+      clientSecretHash: testClientSecretHash,
       name: 'Test Client',
       redirectUris: ['https://example.com/callback'],
       allowedScopes: ['read', 'write'],
@@ -195,7 +200,7 @@ describe('OAuth Flow Integration', () => {
           client_secret: 'test-secret'
         },
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       });
 
@@ -242,7 +247,7 @@ describe('OAuth Flow Integration', () => {
       };
 
       mockPrisma.oAuthRefreshToken.findFirst.mockResolvedValue(mockRefreshToken);
-      mockPrisma.oAuthRefreshToken.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.oAuthRefreshToken.update.mockResolvedValue({ ...mockRefreshToken, isRevoked: true });
 
       // Mock new access token generation
       const mockNewAccessToken = {
@@ -267,7 +272,7 @@ describe('OAuth Flow Integration', () => {
           client_secret: 'test-secret'
         },
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       });
 
@@ -293,7 +298,7 @@ describe('OAuth Flow Integration', () => {
           client_secret: 'test-secret'
         },
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       });
 
@@ -329,7 +334,7 @@ describe('OAuth Flow Integration', () => {
           client_secret: 'test-secret'
         },
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       });
 
@@ -406,7 +411,7 @@ describe('OAuth Flow Integration', () => {
           client_secret: 'test-secret'
         },
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       });
 
@@ -416,6 +421,10 @@ describe('OAuth Flow Integration', () => {
     });
 
     it('should handle unauthorized access to protected resources', async () => {
+      // Ensure validateAccessToken returns null for invalid tokens
+      mockRedis.get.mockResolvedValue(null);
+      mockPrisma.oAuthAccessToken.findFirst.mockResolvedValue(null);
+
       const protectedResponse = await app.inject({
         method: 'GET',
         url: '/api/protected',

@@ -38,11 +38,11 @@ describe('SearchAnalyticsService', () => {
 
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
 
-      await service.logSearch(query, userId, results);
+      await service.logSearch({ query, userId, resultCount: results.length });
 
       expect(mockDb.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO search_logs'),
-        [query, userId, 1, '1']
+        [query, userId, 1, undefined]
       );
     });
 
@@ -51,7 +51,7 @@ describe('SearchAnalyticsService', () => {
 
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
 
-      await service.logSearch(query);
+      await service.logSearch({ query, resultCount: 0 });
 
       expect(mockDb.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO search_logs'),
@@ -160,18 +160,16 @@ describe('SearchAnalyticsService', () => {
     });
 
     it('should handle different timeframes', async () => {
-      mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
+      mockDb.query = jest.fn().mockResolvedValue({ rows: [{ count: '0', avg: '0' }] });
 
       await service.getSearchAnalytics('day');
       await service.getSearchAnalytics('month');
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('1 day'),
-        []
+        expect.stringContaining('1 day')
       );
       expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('30 days'),
-        []
+        expect.stringContaining('30 days')
       );
     });
   });
@@ -303,12 +301,10 @@ describe('SearchAnalyticsService', () => {
 
       expect(mockDb.query).toHaveBeenCalledTimes(2);
       expect(mockDb.query).toHaveBeenNthCalledWith(1,
-        expect.stringContaining('DELETE FROM search_logs'),
-        []
+        expect.stringContaining('DELETE FROM search_logs')
       );
       expect(mockDb.query).toHaveBeenNthCalledWith(2,
-        expect.stringContaining('DELETE FROM search_clicks'),
-        []
+        expect.stringContaining('DELETE FROM search_clicks')
       );
     });
 
@@ -318,8 +314,7 @@ describe('SearchAnalyticsService', () => {
       await service.cleanupOldLogs();
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('90 days'),
-        []
+        expect.stringContaining('90 days')
       );
     });
   });

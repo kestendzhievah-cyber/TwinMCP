@@ -312,7 +312,15 @@ describe('MonitoringService', () => {
         }
       ];
 
-      mockHealthChecker.checkService.mockResolvedValue(mockHealthChecks[0] as any);
+      // Return unhealthy only for 'database', healthy for all others
+      mockHealthChecker.checkService.mockImplementation(async (service: string) => ({
+        service,
+        status: service === 'database' ? 'unhealthy' : 'healthy',
+        timestamp: new Date(),
+        responseTime: service === 'database' ? 5000 : 50,
+        details: service === 'database' ? { error: 'Connection failed' } : {},
+        dependencies: []
+      }));
       mockDb.query = jest.fn().mockResolvedValue({ rows: [] });
 
       // Mock alert creation

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
@@ -106,7 +107,7 @@ export class DownloadManagerService {
       this.activeDownloads.set(task.id, task);
 
       void this.downloadTask(task).catch((error: unknown) => {
-        console.error(`Download failed for task ${task.id}:`, error);
+        logger.error(`Download failed for task ${task.id}:`, error);
         this.handleDownloadError(task, error as Error);
       });
     }
@@ -145,7 +146,7 @@ export class DownloadManagerService {
       await this.updateTaskStatus(task.id, 'completed', task.metadata);
       await this.saveDownloadResult(task.id, result);
 
-      console.log(`Download completed for task ${task.id}: ${result.localPath}`);
+      logger.info(`Download completed for task ${task.id}: ${result.localPath}`);
     } catch (error) {
       await this.handleDownloadError(task, error as Error);
     } finally {
@@ -294,7 +295,7 @@ export class DownloadManagerService {
         
         await this.removeMatchingDirectories(localPath, cleanPattern);
       } catch (error) {
-        console.warn(`Failed to clean pattern ${pattern}:`, error);
+        logger.warn(`Failed to clean pattern ${pattern}:`, error);
       }
     }
   }
@@ -313,7 +314,7 @@ export class DownloadManagerService {
         if (entry.name === dirName) {
           // Remove this directory
           await fsPromises.rm(fullPath, { recursive: true, force: true });
-          console.log(`Cleaned: ${fullPath}`);
+          logger.info(`Cleaned: ${fullPath}`);
         } else {
           // Recurse into subdirectories
           await this.removeMatchingDirectories(fullPath, dirName, maxDepth - 1);
@@ -370,7 +371,7 @@ export class DownloadManagerService {
           }
         }
       } catch (error) {
-        console.error(`Error analyzing directory ${currentPath}:`, error);
+        logger.error(`Error analyzing directory ${currentPath}:`, error);
       }
     };
 
@@ -495,7 +496,7 @@ export class DownloadManagerService {
 
       await this.updateTaskStatus(task.id, 'failed', { error: error.message });
 
-      console.error(`Download failed permanently for task ${task.id}:`, error);
+      logger.error(`Download failed permanently for task ${task.id}:`, error);
     }
   }
 

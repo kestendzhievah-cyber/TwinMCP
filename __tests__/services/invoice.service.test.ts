@@ -1,4 +1,17 @@
 // @ts-nocheck
+jest.mock('../../src/services/pdf.service', () => ({
+  PDFService: jest.fn().mockImplementation(() => ({
+    generateInvoicePDF: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content'))
+  }))
+}));
+
+jest.mock('../../src/services/invoice-storage.service', () => ({
+  InvoiceStorageService: jest.fn().mockImplementation(() => ({
+    getPDF: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content')),
+    storePDF: jest.fn().mockResolvedValue(undefined)
+  }))
+}));
+
 import { InvoiceService } from '../../src/services/invoice.service';
 import { InvoiceStatus, BillingPeriodType } from '../../src/types/invoice.types';
 import {
@@ -135,6 +148,10 @@ describe('InvoiceService', () => {
   });
 
   describe('getInvoice', () => {
+    beforeEach(() => {
+      mockPool.query.mockReset();
+    });
+
     it('should retrieve invoice by id', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [mockDatabaseRows.invoice] });
 
@@ -188,6 +205,10 @@ describe('InvoiceService', () => {
   });
 
   describe('getUserInvoices', () => {
+    beforeEach(() => {
+      mockPool.query.mockReset();
+    });
+
     it('should retrieve all invoices for user', async () => {
       mockPool.query.mockResolvedValueOnce({
         rows: [mockDatabaseRows.invoice, mockDatabaseRows.invoice]
@@ -226,6 +247,10 @@ describe('InvoiceService', () => {
   });
 
   describe('updateInvoiceStatus', () => {
+    beforeEach(() => {
+      mockPool.query.mockReset();
+    });
+
     it('should update invoice status', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [] });
 
@@ -276,6 +301,10 @@ describe('InvoiceService', () => {
   });
 
   describe('generateInvoicePDF', () => {
+    beforeEach(() => {
+      mockPool.query.mockReset();
+    });
+
     it('should generate PDF for invoice', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [mockDatabaseRows.invoice] });
 

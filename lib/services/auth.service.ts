@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { Redis } from 'ioredis'
+import { logger } from '@/lib/logger'
 
 export interface ApiKeyData {
   id: string
@@ -145,7 +146,7 @@ export class AuthService {
       }
 
     } catch (error) {
-      console.error('Error validating API key:', error)
+      logger.error('Error validating API key:', error)
       return {
         success: false,
         error: 'Authentication failed',
@@ -237,7 +238,7 @@ export class AuthService {
 
       return result.count > 0
     } catch (error) {
-      console.error('Error revoking API key:', error)
+      logger.error('Error revoking API key:', error)
       return false
     }
   }
@@ -316,7 +317,7 @@ export class AuthService {
         })
       ])
     } catch (error) {
-      console.error('Error logging usage:', error)
+      logger.error('Error logging usage:', error)
     }
   }
 

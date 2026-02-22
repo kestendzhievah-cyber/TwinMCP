@@ -1,22 +1,16 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { ConversationService } from '@/src/services/conversation.service';
-
-// Initialisation du service (à adapter avec votre configuration DB/Redis)
-const conversationService = new ConversationService(
-  // @ts-ignore - Pool PostgreSQL
-  null,
-  // @ts-ignore - Redis
-  null
-);
+import { getConversationService } from '../_shared';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const conversationService = await getConversationService();
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    const conversationId = params.id;
+    const conversationId = (await params).id;
 
     const conversation = await conversationService.getConversation(conversationId, userId || undefined);
     
@@ -29,7 +23,7 @@ export async function GET(
 
     return NextResponse.json({ conversation });
   } catch (error) {
-    console.error('Error fetching conversation:', error);
+    logger.error('Error fetching conversation:', error);
     return NextResponse.json(
       { error: 'Failed to fetch conversation' },
       { status: 500 }
@@ -39,12 +33,13 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const conversationService = await getConversationService();
     const body = await request.json();
     const { userId, updates } = body;
-    const conversationId = params.id;
+    const conversationId = (await params).id;
 
     if (!userId) {
       return NextResponse.json(
@@ -61,7 +56,7 @@ export async function PUT(
 
     return NextResponse.json({ conversation });
   } catch (error) {
-    console.error('Error updating conversation:', error);
+    logger.error('Error updating conversation:', error);
     return NextResponse.json(
       { error: 'Failed to update conversation' },
       { status: 500 }
@@ -71,12 +66,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    const conversationId = params.id;
+    const conversationId = (await params).id;
 
     if (!userId) {
       return NextResponse.json(
@@ -90,7 +85,7 @@ export async function DELETE(
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting conversation:', error);
+    logger.error('Error deleting conversation:', error);
     return NextResponse.json(
       { error: 'Failed to delete conversation' },
       { status: 500 }

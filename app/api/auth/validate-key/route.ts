@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server'
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error validating API key:', error)
+    logger.error('Error validating API key:', error)
     return NextResponse.json({
       valid: false,
       error: 'Authentication failed',

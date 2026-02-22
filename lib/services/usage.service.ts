@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
+import { logger } from '@/lib/logger';
 
 export interface UsageStats {
   apiKeyId: string;
@@ -189,7 +190,7 @@ export class UsageService {
         remaining: limits.dailyLimit - currentDaily
       };
     } catch (error) {
-      console.error('Error tracking usage:', error);
+      logger.error('Error tracking usage:', error);
       return { allowed: true, remaining: 0 };
     }
   }

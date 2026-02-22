@@ -237,6 +237,20 @@ export class APIGateway {
     this.server.setErrorHandler(async (error, request, reply) => {
       request.log.error(error, 'Unhandled error');
       
+      // Handle Fastify schema validation errors as 400
+      if ((error as any).validation) {
+        reply.status(400).send({
+          jsonrpc: '2.0',
+          id: (request.body as any)?.id ?? null,
+          error: {
+            code: -32600,
+            message: 'Invalid Request',
+            data: (error as Error).message
+          }
+        });
+        return;
+      }
+
       // Ne pas exposer les erreurs internes en production
       const isDevelopment = process.env['NODE_ENV'] === 'development';
       

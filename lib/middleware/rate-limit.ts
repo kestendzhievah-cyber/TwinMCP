@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { PLAN_LIMITS } from '@/lib/services/usage.service';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -142,7 +143,7 @@ export async function validateAndTrackApiKey(
     };
 
   } catch (error) {
-    console.error('Rate limit check error:', error);
+    logger.error('Rate limit check error:', error);
     // Fail open in case of errors (or fail closed for stricter security)
     return {
       allowed: true,

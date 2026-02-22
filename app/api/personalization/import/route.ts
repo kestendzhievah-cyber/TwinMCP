@@ -1,14 +1,10 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { PersonalizationService } from '@/src/services/personalization.service';
-
-// Initialisation des services
-import { pool as db } from '@/lib/prisma'
-
-const personalizationService = new PersonalizationService(db, redis);
+import { getPersonalizationService } from '../_shared';
 
 export async function POST(request: NextRequest) {
   try {
+    const personalizationService = await getPersonalizationService();
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
@@ -27,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validation que data est une chaîne JSON
+    // Validation que data est une chaÃ®ne JSON
     if (typeof data !== 'string') {
       return NextResponse.json(
         { error: 'Import data must be a JSON string' },
@@ -47,9 +43,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error importing preferences:', error);
+    logger.error('Error importing preferences:', error);
     
-    // Gestion des erreurs spécifiques
+    // Gestion des erreurs spÃ©cifiques
     if (error instanceof Error) {
       if (error.message.includes('version')) {
         return NextResponse.json(
@@ -68,7 +64,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to import preferences',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

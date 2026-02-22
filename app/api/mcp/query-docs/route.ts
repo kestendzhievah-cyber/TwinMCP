@@ -1,17 +1,23 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { vectorSearchService } from '@/lib/mcp-tools'
-import { AuthService } from '@/lib/services/auth.service'
-import { PrismaClient } from '@prisma/client'
-import Redis from 'ioredis'
 
-const prisma = new PrismaClient()
-const authService = new AuthService(prisma, redis)
+let _authService: any = null;
+async function getAuthService() {
+  if (!_authService) {
+    const { prisma } = await import('@/lib/prisma');
+    const { redis } = await import('@/lib/redis');
+    const { AuthService } = await import('@/lib/services/auth.service');
+    _authService = new AuthService(prisma, redis);
+  }
+  return _authService;
+}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
 
   try {
+    const authService = await getAuthService();
     // Authentification via API Key
     const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '')
     
@@ -30,7 +36,7 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Parser le corps de la requête
+    // Parser le corps de la requÃªte
     const body = await request.json()
     const { library_id, query, version, max_results, include_code, context_limit } = body
 
@@ -49,7 +55,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Exécuter la recherche de documentation
+    // ExÃ©cuter la recherche de documentation
     const result = await vectorSearchService.searchDocuments({
       library_id,
       query,
@@ -75,12 +81,12 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error in query-docs:', error)
+    logger.error('Error in query-docs:', error)
     
     return NextResponse.json({
       error: 'Internal server error',
       code: 'INTERNAL_ERROR',
-      message: process.env.NODE_ENV === 'development' ? (error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)) : undefined
+      message: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
     }, { status: 500 })
   }
 }

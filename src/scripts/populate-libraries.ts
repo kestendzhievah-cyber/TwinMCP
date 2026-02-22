@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { LibraryIndexService } from '../services/library-index.service';
 import Redis from 'ioredis';
@@ -23,18 +24,18 @@ export class LibraryPopulator {
   ) {}
 
   async populateInitialLibraries(): Promise<void> {
-    console.log('Starting initial library population...');
+    logger.info('Starting initial library population...');
     
     for (const libraryName of POPULAR_LIBRARIES) {
       try {
         await this.populateLibrary(libraryName);
-        console.log(`✓ Populated ${libraryName}`);
+        logger.info(`✓ Populated ${libraryName}`);
       } catch (error) {
-        console.error(`✗ Failed to populate ${libraryName}:`, error);
+        logger.error(`✗ Failed to populate ${libraryName}:`, error);
       }
     }
     
-    console.log('Initial population completed');
+    logger.info('Initial population completed');
   }
 
   private async populateLibrary(name: string): Promise<void> {
@@ -230,7 +231,7 @@ if (require.main === module) {
   populator.populateInitialLibraries()
     .then(() => process.exit(0))
     .catch(error => {
-      console.error(error);
+      logger.error(error);
       process.exit(1);
     });
 }

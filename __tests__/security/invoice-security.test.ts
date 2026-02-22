@@ -1,4 +1,17 @@
 // @ts-nocheck
+jest.mock('../../src/services/pdf.service', () => ({
+  PDFService: jest.fn().mockImplementation(() => ({
+    generateInvoicePDF: jest.fn().mockResolvedValue(Buffer.from('mock-pdf'))
+  }))
+}));
+
+jest.mock('../../src/services/invoice-storage.service', () => ({
+  InvoiceStorageService: jest.fn().mockImplementation(() => ({
+    getPDF: jest.fn().mockResolvedValue(Buffer.from('mock-pdf')),
+    storePDF: jest.fn().mockResolvedValue(undefined)
+  }))
+}));
+
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { InvoiceService } from '../../src/services/invoice.service';
 import { EncryptionService } from '../../src/services/security/encryption.service';
@@ -115,7 +128,14 @@ describe('InvoiceService Security Tests', () => {
       };
 
       mockEncryptionService.encryptPII.mockResolvedValue(encryptedData);
-      (mockDb.query as jest.Mock).mockResolvedValue({ rows: [] });
+      // Provide proper mock data for all internal queries
+      (mockDb.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [] }) // getInvoiceByPeriod - no existing invoice
+        .mockResolvedValueOnce({ rows: [{ tool_name: 'query-docs', usage_count: '100', total_response_time: '1000', avg_response_time: '10', total_tokens: '5000' }] }) // getUsageData
+        .mockResolvedValueOnce({ rows: [{ id: userId, email: 'test@example.com', name: 'John Doe', tier: 'basic' }] }) // calculateInvoiceItems (user tier)
+        .mockResolvedValueOnce({ rows: [{ id: userId, email: 'test@example.com', name: 'John Doe', created_at: new Date() }] }) // getCustomerInfo
+        .mockResolvedValueOnce({ rows: [{ user_id: userId, first_name: 'John', last_name: 'Doe', email: 'test@example.com', address: '123 Main St', city: 'Paris', country: 'France', postal_code: '75001' }] }) // getBillingAddress
+        .mockResolvedValue({ rows: [] }); // saveInvoice + any other queries
 
       await invoiceService.generateInvoice(userId, period);
 
@@ -350,6 +370,13 @@ describe('InvoiceService Security Tests', () => {
       };
 
       mockEncryptionService.encryptPII.mockRejectedValue(new Error('Encryption failed'));
+      // Provide proper mock data so generateInvoice reaches encryptPII
+      (mockDb.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [] }) // getInvoiceByPeriod
+        .mockResolvedValueOnce({ rows: [{ tool_name: 'query-docs', usage_count: '100', total_response_time: '1000', avg_response_time: '10', total_tokens: '5000' }] }) // getUsageData
+        .mockResolvedValueOnce({ rows: [{ id: userId, email: 'test@example.com', name: 'Test', tier: 'basic' }] }) // calculateInvoiceItems
+        .mockResolvedValueOnce({ rows: [{ id: userId, email: 'test@example.com', name: 'Test', created_at: new Date() }] }) // getCustomerInfo
+        .mockResolvedValue({ rows: [] });
 
       await expect(
         invoiceService.generateInvoice(userId, period)

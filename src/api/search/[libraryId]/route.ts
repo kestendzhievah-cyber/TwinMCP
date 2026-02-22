@@ -1,3 +1,4 @@
+import { logger } from '../../../utils/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { EnhancedSearchController } from '../../../controllers/enhanced-search.controller';
 import { SearchMatchingService } from '../../../services/search-matching.service';
@@ -29,7 +30,7 @@ export async function GET(
         );
     }
   } catch (error) {
-    console.error('Library search API error:', error);
+    logger.error('Library search API error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

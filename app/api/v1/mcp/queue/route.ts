@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { authService } from '@/lib/mcp/middleware/auth'
 import { getQueue } from '@/lib/mcp/utils/queue'
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
         completedAt: job.completedAt,
         retries: job.retries,
         maxRetries: job.maxRetries
-        // Ne pas inclure result/error pour des raisons de sécurité
+        // Ne pas inclure result/error pour des raisons de sÃ©curitÃ©
       })),
       totalCount: jobs.length,
       limit,
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Queue list error:', error)
+    logger.error('Queue list error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to list queue jobs' },
       { status: error.statusCode || 500 }

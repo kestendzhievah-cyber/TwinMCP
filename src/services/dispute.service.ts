@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
 import { AuditService } from './security/audit.service';
@@ -434,9 +435,9 @@ export class DisputeService {
 
     for (const email of teamEmails) {
       try {
-        console.log(`Notifying ${email} about dispute ${dispute.id} - ${event}`);
+        logger.info(`Notifying ${email} about dispute ${dispute.id} - ${event}`);
       } catch (error) {
-        console.error('Failed to send dispute notification:', error);
+        logger.error('Failed to send dispute notification:', error);
       }
     }
   }

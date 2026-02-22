@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { crawlerService, LIBRARY_CRAWL_CONFIGS } from '@/lib/services/github-crawler.service';
 import { getQdrantService } from '@/lib/services/qdrant-vector.service';
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
       availableConfigs: LIBRARY_CRAWL_CONFIGS.length,
     });
   } catch (error) {
-    console.error('Failed to get crawl status:', error);
+    logger.error('Failed to get crawl status:', error);
     return NextResponse.json(
       { error: 'Failed to get crawl status' },
       { status: 500 }
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (runAsync) {
       // Start crawl in background
       crawlerService.crawlLibrary(config).then(result => {
-        console.log(`[Crawler] Async crawl completed:`, result);
+        logger.info(`[Crawler] Async crawl completed:`, result);
       });
 
       return NextResponse.json({
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Failed to start crawl:', error);
+    logger.error('Failed to start crawl:', error);
     return NextResponse.json(
       { error: 'Failed to start crawl' },
       { status: 500 }
@@ -137,7 +138,7 @@ export async function DELETE(request: NextRequest) {
       message: `Deleted indexed documents for ${libraryId}`,
     });
   } catch (error) {
-    console.error('Failed to delete documents:', error);
+    logger.error('Failed to delete documents:', error);
     return NextResponse.json(
       { error: 'Failed to delete documents' },
       { status: 500 }

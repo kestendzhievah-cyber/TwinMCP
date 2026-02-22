@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase-admin';
 import { getUserLimits, UserLimitsResponse } from '@/lib/user-limits';
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(limitsData);
   } catch (error) {
-    console.error('Error getting user limits:', error);
+    logger.error('Error getting user limits:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -31,6 +31,7 @@ describe('APIGateway', () => {
   let config: APIGatewayConfig;
 
   beforeEach(() => {
+    (process.env as any).NODE_ENV = 'development';
     config = {
       server: { host: 'localhost', port: 0, trustProxy: false },
       cors: { enabled: true, origins: ['*'], credentials: false },

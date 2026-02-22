@@ -1,3 +1,4 @@
+import { logger } from '../../../../utils/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { LibraryController } from '../../../../controllers/library.controller';
 import { LibraryIndexService } from '../../../../services/library-index.service';
@@ -19,7 +20,7 @@ export async function GET(
     const mockRequest = {
       params,
       log: {
-        error: console.error
+        error: (...args: unknown[]) => logger.error('Request error', { args })
       }
     } as any;
 
@@ -33,7 +34,7 @@ export async function GET(
     // Get library versions
     return libraryController.getLibraryVersions(mockRequest, mockReply);
   } catch (error) {
-    console.error('Library versions API error:', error);
+    logger.error('Library versions API error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

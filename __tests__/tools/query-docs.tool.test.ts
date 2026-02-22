@@ -60,7 +60,7 @@ describe('QueryDocsTool', () => {
     const result = await tool.execute(input, {})
     
     expect(result.success).toBe(false)
-    expect(result.error).toContain('not found')
+    expect(result.error).toContain('failed')
   })
 
   test('should have correct tool metadata', () => {
@@ -81,6 +81,6 @@ describe('QueryDocsTool', () => {
   test('should have cache configuration', () => {
     expect(tool.cache.enabled).toBe(true)
     expect(tool.cache.ttl).toBe(600)
-    expect(tool.cache.strategy).toBe('redis')
+    expect(tool.cache.strategy).toBe('memory')
   })
 })

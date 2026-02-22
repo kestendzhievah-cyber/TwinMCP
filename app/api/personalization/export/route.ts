@@ -1,14 +1,10 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { PersonalizationService } from '@/src/services/personalization.service';
-
-// Initialisation des services
-import { pool as db } from '@/lib/prisma'
-
-const personalizationService = new PersonalizationService(db, redis);
+import { getPersonalizationService } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const personalizationService = await getPersonalizationService();
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {
@@ -20,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const exportData = await personalizationService.exportPreferences(userId);
 
-    // Retourner le JSON avec les headers appropriés pour le téléchargement
+    // Retourner le JSON avec les headers appropriÃ©s pour le tÃ©lÃ©chargement
     return new NextResponse(exportData, {
       status: 200,
       headers: {
@@ -30,11 +26,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error exporting preferences:', error);
+    logger.error('Error exporting preferences:', error);
     return NextResponse.json(
       { 
         error: 'Failed to export preferences',
-        message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

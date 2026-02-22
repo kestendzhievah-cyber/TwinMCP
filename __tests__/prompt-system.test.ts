@@ -135,7 +135,8 @@ describe('PromptManagementService', () => {
   describe('renderPrompt', () => {
     it('should render prompt with variables', async () => {
       const templateId = 'test-template';
-      const template: PromptTemplate = {
+      // Mock DB row returns JSON strings for fields that get JSON.parsed in mapRowToTemplate
+      const templateRow = {
         id: templateId,
         name: 'Test',
         description: 'Test template',
@@ -143,7 +144,7 @@ describe('PromptManagementService', () => {
         version: '1.0.0',
         status: 'active',
         template: 'Hello {{name}}!',
-        variables: [
+        variables: JSON.stringify([
           {
             name: 'name',
             type: 'string',
@@ -151,9 +152,9 @@ describe('PromptManagementService', () => {
             required: true,
             examples: []
           }
-        ],
-        examples: [],
-        metadata: {
+        ]),
+        examples: JSON.stringify([]),
+        metadata: JSON.stringify({
           author: 'test',
           tags: [],
           optimizedFor: [],
@@ -164,26 +165,26 @@ describe('PromptManagementService', () => {
           usageCount: 0,
           successRate: 0,
           averageRating: 0
-        },
-        constraints: {
+        }),
+        constraints: JSON.stringify({
           requiredVariables: ['name'],
           forbiddenPatterns: [],
           allowedModels: []
-        },
-        optimization: {
+        }),
+        optimization: JSON.stringify({
           autoOptimize: false,
           targetMetrics: [],
           optimizationHistory: []
-        },
-        testing: {
+        }),
+        testing: JSON.stringify({
           abTests: [],
           testResults: []
-        },
-        createdAt: new Date(),
-        updatedAt: new Date()
+        }),
+        created_at: new Date(),
+        updated_at: new Date()
       };
 
-      mockDb.query.mockResolvedValue({ rows: [template] });
+      mockDb.query.mockResolvedValue({ rows: [templateRow] });
 
       const result = await service.renderPrompt(templateId, { name: 'World' });
 

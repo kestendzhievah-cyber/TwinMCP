@@ -6,6 +6,7 @@
  * Refresh session
  */
 
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Auth Session GET] Error:', error);
+    logger.error('[Auth Session GET] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
       { status: 500 }
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Auth Session POST] Error:', error);
+    logger.error('[Auth Session POST] Error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
 import { 
@@ -217,7 +218,7 @@ export class PaymentService {
       const processedPayment = await PaymentProviderFactory.processPayment(payment);
       return processedPayment;
     } catch (error) {
-      console.error('Payment provider processing failed:', error);
+      logger.error('Payment provider processing failed:', error);
       return {
         ...payment,
         status: PaymentStatus.FAILED,
@@ -250,7 +251,7 @@ export class PaymentService {
         reason: 'Customer requested refund'
       };
     } catch (error) {
-      console.error('Refund processing failed:', error);
+      logger.error('Refund processing failed:', error);
       throw error;
     }
   }

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import React, { useState, useEffect } from 'react';
 import { 
   UserPreferences, 
@@ -72,7 +73,7 @@ export const PersonalizationPanel: React.FC<PersonalizationPanelProps> = ({
         setThemes(result.data);
       }
     } catch (err) {
-      console.error('Failed to load themes:', err);
+      logger.error('Failed to load themes:', err);
     }
   };
 

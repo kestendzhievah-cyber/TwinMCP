@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '../utils/logger';
 import React, { useState, useEffect } from 'react';
 import {
   LineChart,
@@ -78,7 +79,7 @@ export default function EnhancedBillingDashboard() {
       setPaymentMethodData(paymentMethodDataRes);
       setInvoiceStatusData(invoiceStatusDataRes);
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      logger.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
     }
@@ -97,7 +98,7 @@ export default function EnhancedBillingDashboard() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('Failed to export data:', error);
+      logger.error('Failed to export data:', error);
     }
   };
 

@@ -150,11 +150,17 @@ export default function AgentMCPDemo() {
           </p>
         </div>
 
+        {/* Simulation banner */}
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+          <p className="text-yellow-300 text-sm">Cette page est une <strong>démonstration interactive</strong>. Les résultats affichés sont simulés localement et ne déclenchent aucun appel API réel.</p>
+        </div>
+
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Panel gauche - Contrôles */}
           <div className="space-y-6">
             {/* Informations sur l'agent */}
-            <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl">
+            <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl">
               <h2 className="text-xl font-bold text-white mb-4 flex items-center">
                 <Zap className="w-5 h-5 mr-2 text-yellow-400" />
                 Agent E-commerce Intelligent
@@ -176,7 +182,7 @@ export default function AgentMCPDemo() {
             </div>
 
             {/* Tâches de démonstration */}
-            <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl">
+            <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl">
               <h3 className="text-lg font-bold text-white mb-4">Tâches de démonstration</h3>
               <div className="space-y-3">
                 {demoTasks.map((task, index) => (
@@ -206,7 +212,7 @@ export default function AgentMCPDemo() {
           </div>
 
           {/* Panel droit - Journal des actions */}
-          <div className="p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl">
+          <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center">
               <MessageSquare className="w-5 h-5 mr-2" />
               Journal des Actions MCP
@@ -225,9 +231,9 @@ export default function AgentMCPDemo() {
                 const colorClass = getActionColor(action.type);
 
                 return (
-                  <div key={action.id} className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                  <div key={action.id} className="p-4 bg-[#0f1020] rounded-lg border border-purple-500/10">
                     <div className="flex items-start space-x-3">
-                      <div className={`p-2 rounded-lg bg-slate-600 ${colorClass}`}>
+                      <div className={`p-2 rounded-lg bg-purple-500/20 ${colorClass}`}>
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="flex-1">
@@ -248,7 +254,7 @@ export default function AgentMCPDemo() {
                         <p className="text-sm text-gray-400 mt-1">{action.description}</p>
 
                         {action.result && action.status === 'completed' && (
-                          <div className="mt-3 p-3 bg-slate-800/50 rounded border border-slate-600">
+                          <div className="mt-3 p-3 bg-[#0a0a14] rounded border border-purple-500/10">
                             <div className="text-xs text-gray-500 mb-2">Résultat MCP :</div>
                             <pre className="text-xs text-green-400 overflow-x-auto">
                               {JSON.stringify(action.result, null, 2)}
@@ -265,12 +271,12 @@ export default function AgentMCPDemo() {
         </div>
 
         {/* Code example */}
-        <div className="mt-8 p-6 bg-slate-800/50 backdrop-blur border border-purple-500/20 rounded-xl">
+        <div className="mt-8 p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center">
             <Code className="w-5 h-5 mr-2" />
             Exemple d'utilisation des outils MCP
           </h3>
-          <pre className="bg-slate-900 p-4 rounded-lg overflow-x-auto text-sm">
+          <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
             <code className="text-green-400">{`// Agent avec intégration MCP complète
 const agent = new MCAgent({
   tools: {

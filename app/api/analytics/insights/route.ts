@@ -1,16 +1,11 @@
 // src/app/api/analytics/insights/route.ts
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { AnalyticsService } from '@/src/services/analytics.service';
-
-import { pool } from '@/lib/prisma'
-import { redis } from '@/lib/redis'
-
-const db = pool;
-
-const analyticsService = new AnalyticsService(db, redis);
+import { getAnalyticsServices } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const { analyticsService } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
     
     // Parse period parameters
@@ -49,7 +44,7 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Error generating insights:', error);
+    logger.error('Error generating insights:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,4 +1,5 @@
 import { DocumentResult } from './vector-search.service'
+import { logger } from '@/lib/logger'
 
 export interface AssembledContext {
   context: string
@@ -27,7 +28,7 @@ export class ContextAssembler {
       const tiktokenModule = await import('tiktoken')
       this.encoder = tiktokenModule.get_encoding('cl100k_base')
     } catch (error) {
-      console.warn('Failed to initialize tiktoken, using fallback token counting')
+      logger.warn('Failed to initialize tiktoken, using fallback token counting')
       this.encoder = null
     }
   }
@@ -101,7 +102,7 @@ export class ContextAssembler {
         const tokens = this.encoder.encode(text)
         return tokens.length
       } catch (error) {
-        console.warn('Token counting failed, using fallback')
+        logger.warn('Token counting failed, using fallback')
       }
     }
     

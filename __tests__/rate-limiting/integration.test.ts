@@ -181,7 +181,7 @@ describe('Rate Limiting Integration', () => {
         (request as any).user = { id: 'test-user', plan: 'free' };
       });
 
-      mockRedis.get.mockResolvedValue('100'); // Daily quota exceeded
+      mockRedis.get.mockResolvedValue('200'); // Daily quota exceeded (free plan limit = 200)
 
       const response = await app.inject({
         method: 'GET',
@@ -228,7 +228,7 @@ describe('Rate Limiting Integration', () => {
       });
 
       mockRedis.get.mockResolvedValue('50');
-      mockRedis.scard.mockResolvedValue(2);
+      mockRedis.scard.mockResolvedValue(1);
 
       const response = await app.inject({
         method: 'GET',

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import OpenAI from 'openai';
 import { Redis } from 'ioredis';
 import { Pool } from 'pg';
@@ -58,7 +59,7 @@ export class EmbeddingGenerationService {
         }
         
       } catch (error) {
-        console.error(`Error processing batch ${Math.floor(i / batchSize) + 1}:`, error);
+        logger.error(`Error processing batch ${Math.floor(i / batchSize) + 1}:`, error);
       }
     }
     
@@ -72,12 +73,12 @@ export class EmbeddingGenerationService {
   private validateAndPrepareChunks(chunks: EmbeddingRequest['chunks']): EmbeddingRequest['chunks'] {
     return chunks.filter(chunk => {
       if (chunk.content.length > MAX_CONTENT_LENGTH) {
-        console.warn(`Chunk ${chunk.id} too long (${chunk.content.length} chars), truncating`);
+        logger.warn(`Chunk ${chunk.id} too long (${chunk.content.length} chars), truncating`);
         chunk.content = chunk.content.substring(0, MAX_CONTENT_LENGTH);
       }
       
       if (!chunk.content.trim()) {
-        console.warn(`Chunk ${chunk.id} is empty, skipping`);
+        logger.warn(`Chunk ${chunk.id} is empty, skipping`);
         return false;
       }
       
@@ -147,7 +148,7 @@ export class EmbeddingGenerationService {
       });
       
     } catch (error) {
-      console.error('OpenAI API error:', error);
+      logger.error('OpenAI API error:', error);
       
       if (error instanceof Error && error.message.includes('rate limit')) {
         await this.delay(this.config.retryDelay);
@@ -191,7 +192,7 @@ export class EmbeddingGenerationService {
       const waitTime = oldestRequest + window - now;
       
       if (waitTime > 0) {
-        console.log(`Rate limit reached for ${model}, waiting ${waitTime}ms`);
+        logger.info(`Rate limit reached for ${model}, waiting ${waitTime}ms`);
         await this.delay(waitTime);
       }
     }

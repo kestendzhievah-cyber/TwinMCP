@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { StreamingService } from '../services/streaming.service';
 import { StreamRequest } from '../types/streaming.types';
@@ -23,7 +24,7 @@ export class SSEController {
           try {
             reply.raw.write(event);
           } catch (error) {
-            console.error('Error writing to SSE stream:', error);
+            logger.error('Error writing to SSE stream:', error);
             this.streamingService.closeConnection(connectionId);
           }
         }
@@ -54,7 +55,7 @@ export class SSEController {
       });
 
     } catch (error) {
-      console.error('Stream setup error:', error);
+      logger.error('Stream setup error:', error);
       reply.code(500).send({
         success: false,
         error: (error as Error).message

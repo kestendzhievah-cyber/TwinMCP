@@ -196,7 +196,7 @@ describe('APIKeyService', () => {
       
       expect(result).toBe(true);
       expect(mockPool.query).toHaveBeenCalledWith(
-        'UPDATE api_keys SET is_active = false, updated_at = NOW() WHERE id = $1 AND user_id = $2',
+        expect.stringContaining('SET is_active = false'),
         [keyId, userId]
       );
     });

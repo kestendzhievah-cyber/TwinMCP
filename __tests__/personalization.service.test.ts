@@ -326,18 +326,20 @@ describe('PersonalizationService', () => {
 
       await service.applyTheme(userId, themeId);
 
-      expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO user_preferences'),
-        expect.arrayContaining([
-          expect.any(String),
-          expect.stringContaining('"primary":"#3b82f6"')
-        ])
+      // Verify that preferences were saved with the light theme's primary color
+      const insertCalls = (mockDb.query as jest.Mock).mock.calls.filter(
+        (call: any[]) => typeof call[0] === 'string' && call[0].includes('INSERT INTO user_preferences')
       );
+      expect(insertCalls.length).toBeGreaterThan(0);
+      const lastInsert = insertCalls[insertCalls.length - 1];
+      expect(lastInsert[1][1]).toContain('#3b82f6');
     });
 
     it('should throw error for non-existent theme', async () => {
       const userId = 'user123';
       const themeId = 'non-existent';
+
+      (mockDb.query as jest.Mock).mockResolvedValue({ rows: [] });
 
       await expect(service.applyTheme(userId, themeId))
         .rejects.toThrow('Theme non-existent not found');

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Pool } from 'pg';
 import { VectorStorageService } from './vector-storage.service';
 
@@ -40,7 +41,7 @@ export class VectorMaintenanceService {
       }
 
     } catch (error) {
-      console.error('Maintenance error:', error);
+      logger.error('Maintenance error:', error);
     }
 
     return results;
@@ -244,6 +245,6 @@ export class VectorMaintenanceService {
     //   SELECT cron.schedule('vector-maintenance', $1, 'SELECT perform_vector_maintenance()')
     // `, [schedule]);
     
-    console.log(`Maintenance scheduled with frequency: ${frequency} (${schedule})`);
+    logger.info(`Maintenance scheduled with frequency: ${frequency} (${schedule})`);
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
       const parsedUrl = new URL(trimmedUrl);
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
         return NextResponse.json(
-          { success: false, error: 'Seules les URLs HTTP et HTTPS sont acceptées' },
+          { success: false, error: 'Seules les URLs HTTP et HTTPS sont acceptÃ©es' },
           { status: 400 }
         );
       }
@@ -297,7 +298,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use real metadata if available, otherwise estimate
-    const repoDescription = repoMetadata?.description || `Documentation importée depuis ${source}`;
+    const repoDescription = repoMetadata?.description || `Documentation importÃ©e depuis ${source}`;
     const popularity = repoMetadata?.stars ? Math.min(100, Math.round(Math.log10(repoMetadata.stars + 1) * 25)) : 50;
     const language = repoMetadata?.language || determineLanguage(source, trimmedUrl);
     const ecosystem = determineEcosystem(source, trimmedUrl);
@@ -403,7 +404,7 @@ export async function POST(request: NextRequest) {
         savedToDb = true;
       }
     } catch (dbError) {
-      console.warn('Database not available, library will be stored client-side:', dbError);
+      logger.warn('Database not available, library will be stored client-side:', dbError);
     }
 
     // Return success with library data
@@ -411,8 +412,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: savedToDb 
-        ? 'Bibliothèque importée avec succès' 
-        : 'Bibliothèque importée (stockage local)',
+        ? 'BibliothÃ¨que importÃ©e avec succÃ¨s' 
+        : 'BibliothÃ¨que importÃ©e (stockage local)',
       savedToDb,
       data: {
         libraryId: libraryData.id,
@@ -428,9 +429,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Erreur lors de l\'import:', error);
+    logger.error('Erreur lors de l\'import:', error);
     return NextResponse.json(
-      { success: false, error: 'Erreur interne du serveur. Veuillez réessayer.' },
+      { success: false, error: 'Erreur interne du serveur. Veuillez rÃ©essayer.' },
       { status: 500 }
     );
   }
@@ -439,10 +440,10 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     sources: [
-      { id: 'github', name: 'GitHub', available: true, description: 'Importer depuis un dépôt GitHub' },
+      { id: 'github', name: 'GitHub', available: true, description: 'Importer depuis un dÃ©pÃ´t GitHub' },
       { id: 'gitlab', name: 'GitLab', available: true, description: 'Importer depuis GitLab' },
       { id: 'bitbucket', name: 'Bitbucket', available: true, description: 'Importer depuis Bitbucket' },
-      { id: 'openapi', name: 'OpenAPI', available: true, description: 'Spécification OpenAPI/Swagger' },
+      { id: 'openapi', name: 'OpenAPI', available: true, description: 'SpÃ©cification OpenAPI/Swagger' },
       { id: 'llms', name: 'LLMs.txt', available: true, description: 'Fichier LLMs.txt' },
       { id: 'website', name: 'Site Web', available: true, description: 'Extraire depuis un site web' }
     ]

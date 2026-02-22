@@ -1,26 +1,14 @@
-import { pool } from '@/lib/prisma';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { InvoiceService } from '@/src/services/invoice.service';
-import { EncryptionService } from '@/src/services/security/encryption.service';
-import { AuditService } from '@/src/services/security/audit.service';
-import { GDPRService } from '@/src/services/security/gdpr.service';
-import { DataMaskingService } from '@/src/services/security/data-masking.service';
-import { KeyManagementService } from '@/src/services/security/kms.service';
-
-
-const kms = new KeyManagementService();
-const maskingService = new DataMaskingService();
-const encryptionService = new EncryptionService(kms);
-const auditService = new AuditService(pool, maskingService);
-const gdprService = new GDPRService(pool, encryptionService, auditService);
-const invoiceService = new InvoiceService(pool, encryptionService, auditService, gdprService, maskingService);
+import { getBillingServices } from '../../../_shared';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const invoiceId = params.id;
+    const { invoiceService } = await getBillingServices();
+    const invoiceId = (await params).id;
 
     if (!invoiceId) {
       return NextResponse.json(
@@ -48,9 +36,9 @@ export async function GET(
       }
     });
   } catch (error) {
-    console.error('Error generating invoice PDF:', error);
+    logger.error('Error generating invoice PDF:', error);
     return NextResponse.json(
-      { error: 'Failed to generate invoice PDF', message: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' },
+      { error: 'Failed to generate invoice PDF', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase-admin';
 import { createAgent } from '@/lib/agents';
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error creating chatbot:', error);
+    logger.error('Error creating chatbot:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

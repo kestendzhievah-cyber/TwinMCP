@@ -1,4 +1,5 @@
 import { ToolMetrics } from '../core/types'
+import { logger } from '@/lib/logger'
 
 interface MetricsConfig {
   retentionDays: number
@@ -274,7 +275,7 @@ export class MetricsCollector {
     const removed = before - this.metrics.length
 
     if (removed > 0) {
-      console.log(`🧹 Metrics cleanup: removed ${removed} old entries, ${this.metrics.length} remaining`)
+      logger.debug(`Metrics cleanup: removed ${removed} old entries, ${this.metrics.length} remaining`)
     }
   }
 
@@ -288,7 +289,7 @@ export class MetricsCollector {
       //   body: JSON.stringify(metric)
       // })
     } catch (error) {
-      console.error('Failed to send analytics:', error)
+      logger.error('Failed to send analytics:', error)
     }
   }
 
@@ -308,14 +309,14 @@ export class MetricsCollector {
       })
     } catch (error) {
       // Non-blocking: log and continue — metrics persistence is best-effort
-      console.error('Failed to persist metric:', error)
+      logger.error('Failed to persist metric:', error)
     }
   }
 
   private async alertOnError(metric: ToolMetrics): Promise<void> {
     // Alerter en cas d'erreur (email, Slack, etc.)
     if (metric.errorType === 'RateLimitExceeded' || metric.errorType === 'AuthenticationFailed') {
-      console.error(`🚨 Critical error: ${metric.errorType} for tool ${metric.toolId}`)
+      logger.error(`Critical error: ${metric.errorType} for tool ${metric.toolId}`)
     }
   }
 }
@@ -332,5 +333,5 @@ export function getMetrics(): MetricsCollector {
 
 export async function initializeMetrics(): Promise<void> {
   const metrics = getMetrics()
-  console.log('📊 Metrics collector initialized')
+  logger.info('Metrics collector initialized')
 }

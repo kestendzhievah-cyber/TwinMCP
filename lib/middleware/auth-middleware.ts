@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { UserAuthService, AuthenticatedUser } from '@/lib/services/user-auth.service';
@@ -83,7 +84,7 @@ export async function authenticateRequest(
       }
     } catch (e) {
       // Continue on rate limit error (fail open)
-      console.warn('[Auth Middleware] Rate limit check failed:', e);
+      logger.warn('[Auth Middleware] Rate limit check failed:', e);
     }
   }
 
@@ -205,7 +206,7 @@ async function authenticateWithApiKey(
     };
     
   } catch (error) {
-    console.error('[Auth Middleware] API key auth error:', error);
+    logger.error('[Auth Middleware] API key auth error:', error);
     return { success: false };
   }
 }

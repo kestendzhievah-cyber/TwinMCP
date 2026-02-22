@@ -1,32 +1,33 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { ContextQuery, ContextResult } from '@/src/types/context-intelligent.types';
-import { ContextIntelligentService } from '@/src/services/context-intelligent.service';
-import { VectorSearchService } from '@/src/services/vector-search.service';
-import { NLPService } from '@/src/services/nlp.service';
-import { ContextTemplateEngine } from '@/src/services/context-template.service';
 
-// Initialisation des services (adapter avec la vraie configuration)
-import { pool as db } from '@/lib/prisma'
+let _svc: { contextService: any; db: any } | null = null;
+async function getContextServices() {
+  if (!_svc) {
+    const { pool: db } = await import('@/lib/prisma');
+    const { redis } = await import('@/lib/redis');
+    const { ContextIntelligentService } = await import('@/src/services/context-intelligent.service');
+    const { VectorSearchService } = await import('@/src/services/vector-search.service');
+    const { NLPService } = await import('@/src/services/nlp.service');
+    const { ContextTemplateEngine } = await import('@/src/services/context-template.service');
 
-const vectorSearch = new VectorSearchService(db, null as any); // Adapter avec EmbeddingGenerationService
-const nlp = new NLPService();
-const templateEngine = new ContextTemplateEngine();
-
-const contextService = new ContextIntelligentService(
-  db,
-  redis,
-  vectorSearch,
-  nlp,
-  templateEngine
-);
+    const vectorSearch = new VectorSearchService(db, null as any);
+    const nlp = new NLPService();
+    const templateEngine = new ContextTemplateEngine();
+    const contextService = new ContextIntelligentService(db, redis, vectorSearch, nlp, templateEngine);
+    _svc = { contextService, db };
+  }
+  return _svc;
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const { contextService } = await getContextServices();
     const body = await request.json();
     const contextQuery: ContextQuery = body;
 
-    // Validation des données
+    // Validation des donnÃ©es
     if (!contextQuery.query || !contextQuery.conversationId || !contextQuery.messageId) {
       return NextResponse.json(
         { error: 'Missing required fields: query, conversationId, messageId' },
@@ -39,12 +40,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Context processing error:', error);
+    logger.error('Context processing error:', error);
     
     return NextResponse.json(
       { 
         error: 'Failed to process context',
-        details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { db } = await getContextServices();
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get('conversationId');
 
@@ -63,7 +65,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Récupération des résultats de contexte pour une conversation
+    // RÃ©cupÃ©ration des rÃ©sultats de contexte pour une conversation
     const results = await db.query(
       `SELECT cq.*, cr.* 
        FROM context_queries cq
@@ -79,12 +81,12 @@ export async function GET(request: NextRequest) {
       total: results.rows.length
     });
   } catch (error) {
-    console.error('Context retrieval error:', error);
+    logger.error('Context retrieval error:', error);
     
     return NextResponse.json(
       { 
         error: 'Failed to retrieve context',
-        details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

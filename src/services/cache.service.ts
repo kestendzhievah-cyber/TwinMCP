@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { Redis } from 'ioredis';
 
 export class CacheService {
@@ -8,7 +9,7 @@ export class CacheService {
       const value = await this.redis.get(key);
       return value ? JSON.parse(value) : null;
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error('Cache get error:', error);
       return null;
     }
   }
@@ -22,7 +23,7 @@ export class CacheService {
         await this.redis.set(key, serialized);
       }
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error('Cache set error:', error);
     }
   }
 
@@ -30,7 +31,7 @@ export class CacheService {
     try {
       await this.redis.del(key);
     } catch (error) {
-      console.error('Cache delete error:', error);
+      logger.error('Cache delete error:', error);
     }
   }
 
@@ -39,7 +40,7 @@ export class CacheService {
       const result = await this.redis.exists(key);
       return result === 1;
     } catch (error) {
-      console.error('Cache exists error:', error);
+      logger.error('Cache exists error:', error);
       return false;
     }
   }
@@ -51,7 +52,7 @@ export class CacheService {
         await this.redis.del(...keys);
       }
     } catch (error) {
-      console.error('Cache invalidate pattern error:', error);
+      logger.error('Cache invalidate pattern error:', error);
     }
   }
 
@@ -59,7 +60,7 @@ export class CacheService {
     try {
       return await this.redis.incrby(key, amount);
     } catch (error) {
-      console.error('Cache increment error:', error);
+      logger.error('Cache increment error:', error);
       return 0;
     }
   }
@@ -68,7 +69,7 @@ export class CacheService {
     try {
       await this.redis.expire(key, ttlSeconds);
     } catch (error) {
-      console.error('Cache expire error:', error);
+      logger.error('Cache expire error:', error);
     }
   }
 
@@ -76,7 +77,7 @@ export class CacheService {
     try {
       return await this.redis.ttl(key);
     } catch (error) {
-      console.error('Cache TTL error:', error);
+      logger.error('Cache TTL error:', error);
       return -1;
     }
   }

@@ -1,17 +1,12 @@
 // src/app/api/analytics/usage/route.ts
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { AnalyticsService } from '@/src/services/analytics.service';
+import { getAnalyticsServices } from '../_shared';
 import { AnalyticsFilter } from '@/src/types/analytics.types';
-
-import { pool } from '@/lib/prisma'
-import { redis } from '@/lib/redis'
-
-const db = pool;
-
-const analyticsService = new AnalyticsService(db, redis);
 
 export async function GET(request: NextRequest) {
   try {
+    const { analyticsService } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
     
     // Parse period parameters
@@ -38,25 +33,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse optional filters
-    const filters: AnalyticsFilter = {
-      period,
-      userId: searchParams.get('userId') || undefined,
-      provider: searchParams.get('provider') || undefined,
-      model: searchParams.get('model') || undefined,
-      country: searchParams.get('country') || undefined,
-      device: searchParams.get('device') || undefined,
-      eventType: searchParams.get('eventType') || undefined,
-      conversion: searchParams.get('conversion') || undefined,
-    };
+    // Parse optional filters (period is passed separately to getUsageMetrics)
+    const filters: AnalyticsFilter = {};
+    const userId = searchParams.get('userId');
+    const provider = searchParams.get('provider');
+    const model = searchParams.get('model');
+    const country = searchParams.get('country');
+    const device = searchParams.get('device');
+
+    if (userId) filters.userId = userId;
+    if (provider) filters.provider = provider;
+    if (model) filters.model = model;
+    if (country) filters.country = country;
+    if (device) filters.device = device;
 
     // Get usage metrics
-    const usageMetrics = await analyticsService.getUsageMetrics(period, filters);
+    const usageMetrics = await analyticsService.getUsageMetrics(period, Object.keys(filters).length > 0 ? filters : undefined);
 
     return NextResponse.json(usageMetrics);
     
   } catch (error) {
-    console.error('Error fetching usage metrics:', error);
+    logger.error('Error fetching usage metrics:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,7 +1,8 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { docsGenerator } from '@/lib/mcp/utils/docs-generator'
 
-// GET /api/v1/mcp/docs - Générer la documentation
+// GET /api/v1/mcp/docs - GÃ©nÃ©rer la documentation
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
 
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('Documentation generation error:', error)
+    logger.error('Documentation generation error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to generate documentation' },
       { status: 500 }

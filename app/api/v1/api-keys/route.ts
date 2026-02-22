@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createHash, randomBytes } from 'crypto';
@@ -8,7 +9,10 @@ const PLAN_LIMITS = {
   enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 }
 };
 
-// Extract user ID from Firebase JWT token (without full verification for dev)
+const ALLOW_INSECURE_DEV_AUTH =
+  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
+
+// Extract user ID from JWT payload (development fallback only)
 function extractUserIdFromToken(token: string): { userId: string; email?: string } | null {
   try {
     const parts = token.split('.');
@@ -51,14 +55,17 @@ async function validateAuth(request: NextRequest): Promise<{ valid: boolean; use
         const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
         return { valid: true, userId: decodedToken.uid, email: decodedToken.email };
       } catch (firebaseError) {
-        console.warn('Firebase verification failed:', firebaseError);
+        logger.warn('Firebase verification failed:', firebaseError);
       }
     }
     
-    // Fallback: Extract user ID from JWT payload (for development)
-    const extracted = extractUserIdFromToken(token);
-    if (extracted) {
-      return { valid: true, userId: extracted.userId, email: extracted.email };
+    // Fallback is explicitly allowed only in non-production development flows
+    if (ALLOW_INSECURE_DEV_AUTH) {
+      const extracted = extractUserIdFromToken(token);
+      if (extracted) {
+        logger.warn('Using insecure dev auth fallback (unverified JWT payload).');
+        return { valid: true, userId: extracted.userId, email: extracted.email };
+      }
     }
     
     // Try as API key
@@ -87,7 +94,7 @@ async function validateApiKey(apiKey: string) {
 
     return { valid: true, userId: key.userId, tier: key.tier };
   } catch (error) {
-    console.error('API key validation error:', error);
+    logger.error('API key validation error:', error);
     return { valid: false, error: 'Database error' };
   }
 }
@@ -124,7 +131,7 @@ async function ensureUser(userId: string, email?: string) {
 
     return user;
   } catch (error) {
-    console.error('Error ensuring user:', error);
+    logger.error('Error ensuring user:', error);
     throw error;
   }
 }
@@ -225,7 +232,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('List API keys error:', error);
+    logger.error('List API keys error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', details: String(error) },
       { status: 500 }
@@ -271,7 +278,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `Limite de ${limits.maxKeys} clés atteinte pour le plan ${tier}. Passez au plan supérieur pour plus de clés.`,
+          error: `Limite de ${limits.maxKeys} clÃ©s atteinte pour le plan ${tier}. Passez au plan supÃ©rieur pour plus de clÃ©s.`,
           code: 'KEY_LIMIT_EXCEEDED'
         },
         { status: 400 }
@@ -328,11 +335,11 @@ export async function POST(request: NextRequest) {
         createdAt: apiKey.createdAt.toISOString(),
         usage: { requestsToday: 0, requestsThisHour: 0, successRate: 100 }
       },
-      warning: 'Sauvegardez cette clé maintenant. Elle ne sera plus affichée.'
+      warning: 'Sauvegardez cette clÃ© maintenant. Elle ne sera plus affichÃ©e.'
     });
 
   } catch (error) {
-    console.error('Create API key error:', error);
+    logger.error('Create API key error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error', details: String(error) },
       { status: 500 }
@@ -388,7 +395,7 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Revoke API key error:', error);
+    logger.error('Revoke API key error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

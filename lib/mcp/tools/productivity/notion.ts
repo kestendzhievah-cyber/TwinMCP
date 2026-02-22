@@ -3,6 +3,7 @@ import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
 import { getCache } from '../../core'
 import { rateLimiter } from '../../middleware'
 import { getMetrics } from '../../utils'
+import { logger } from '@/lib/logger'
 
 const notionCreateSchema = z.object({
   title: z.string().min(1, 'Title is required').max(2000, 'Title too long'),
@@ -201,18 +202,18 @@ export class NotionTool implements MCPTool {
   }
 
   async beforeExecute(args: any): Promise<any> {
-    console.log(`📝 Creating Notion page: ${args.title}`)
+    logger.debug(`Creating Notion page: ${args.title}`)
     return args
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
-      console.log(`✅ Notion page created: ${result.data?.url}`)
+      logger.debug(`Notion page created: ${result.data?.url}`)
     }
     return result
   }
 
   async onError(error: Error): Promise<void> {
-    console.error(`❌ Notion error: ${error.message}`)
+    logger.error(`Notion error: ${error.message}`)
   }
 }

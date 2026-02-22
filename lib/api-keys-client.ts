@@ -1,4 +1,5 @@
 // Client API pour la gestion des clés API TwinMCP
+import { logger } from '@/lib/logger'
 
 interface ApiKeyResponse {
   id: string;
@@ -105,7 +106,7 @@ class ApiKeysClient {
 
       return data;
     } catch (error) {
-      console.error('API request failed:', error);
+      logger.error('API request failed:', error);
       throw error;
     }
   }

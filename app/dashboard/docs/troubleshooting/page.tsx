@@ -207,9 +207,9 @@ VERBOSE=true`}
             <ArrowRight className="w-4 h-4" />
             <span>Consulter la documentation API</span>
           </Link>
-          <Link href="/dashboard/docs/best-practices" className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors">
+          <Link href="/dashboard/docs/installation" className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors">
             <ArrowRight className="w-4 h-4" />
-            <span>Vérifier les bonnes pratiques</span>
+            <span>Revoir le guide d'installation</span>
           </Link>
           <div className="flex items-center gap-3 text-gray-300">
             <ArrowRight className="w-4 h-4" />

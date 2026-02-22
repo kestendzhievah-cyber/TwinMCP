@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 import { FastifyRequest, FastifyReply } from 'fastify';
 
 export const authMiddleware = {
@@ -55,7 +56,7 @@ export const authMiddleware = {
       }
     } catch (error) {
       // L'authentification optionnelle ne doit pas bloquer la requête
-      console.error('Optional auth error:', error);
+      logger.error('Optional auth error:', error);
     }
   }
 };

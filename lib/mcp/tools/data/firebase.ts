@@ -3,6 +3,7 @@ import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
 import { getCache } from '../../core'
 import { rateLimiter } from '../../middleware'
 import { getMetrics } from '../../utils'
+import { logger } from '@/lib/logger'
 
 // Schema pour la lecture Firebase
 const firebaseReadSchema = z.object({
@@ -114,7 +115,7 @@ export class FirebaseTool implements MCPTool {
       const cachedResult = await cache.get(cacheKey)
 
       if (cachedResult && args.operation === 'read') {
-        console.log(`🔥 Firebase cache hit for ${args.collection}`)
+        logger.debug(`Firebase cache hit for ${args.collection}`)
         getMetrics().track({
           toolId: this.id,
           userId: config.userId || 'anonymous',
@@ -268,9 +269,9 @@ export class FirebaseTool implements MCPTool {
 
   async beforeExecute(args: any): Promise<any> {
     if (args.operation === 'write') {
-      console.log(`🔥 Writing to Firebase: ${args.collection}/${args.documentId || 'auto'}`)
+      logger.debug(`Writing to Firebase: ${args.collection}/${args.documentId || 'auto'}`)
     } else {
-      console.log(`🔥 Reading from Firebase: ${args.collection}${args.documentId ? `/${args.documentId}` : ''}`)
+      logger.debug(`Reading from Firebase: ${args.collection}${args.documentId ? `/${args.documentId}` : ''}`)
     }
     return args
   }
@@ -278,15 +279,15 @@ export class FirebaseTool implements MCPTool {
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
       if (result.data?.operation === 'merge' || result.data?.operation === 'create') {
-        console.log(`✅ Firebase write successful: ${result.data?.id}`)
+        logger.debug(`Firebase write successful: ${result.data?.id}`)
       } else {
-        console.log(`✅ Firebase read successful: ${result.data?.totalCount || 1} documents`)
+        logger.debug(`Firebase read successful: ${result.data?.totalCount || 1} documents`)
       }
     }
     return result
   }
 
   async onError(error: Error): Promise<void> {
-    console.error(`❌ Firebase error: ${error.message}`)
+    logger.error(`Firebase error: ${error.message}`)
   }
 }

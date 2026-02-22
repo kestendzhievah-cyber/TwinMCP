@@ -1,10 +1,9 @@
+import { logger } from '@/lib/logger'
 import { redis } from '@/lib/redis';
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { UsageService } from '@/lib/services/usage.service';
 import { createHash } from 'crypto';
-
-const prisma = new PrismaClient();
 
 // Helper to get Redis client (optional)
 async function getRedisClient() {
@@ -14,7 +13,7 @@ async function getRedisClient() {
       return new Redis(process.env.REDIS_URL);
     }
   } catch (error) {
-    console.warn('Redis not available');
+    logger.warn('Redis not available');
   }
   return null;
 }
@@ -88,7 +87,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Usage tracking error:', error);
+    logger.error('Usage tracking error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

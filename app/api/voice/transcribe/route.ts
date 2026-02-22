@@ -1,10 +1,18 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { VoiceService } from '@/src/services/voice/voice.service';
 
-const voiceService = new VoiceService();
+let _voiceService: any = null;
+async function getVoiceService() {
+  if (!_voiceService) {
+    const { VoiceService } = await import('@/src/services/voice/voice.service');
+    _voiceService = new VoiceService();
+  }
+  return _voiceService;
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const voiceService = await getVoiceService();
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File;
 
@@ -20,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ transcription });
   } catch (error: any) {
-    console.error('Error transcribing audio:', error);
+    logger.error('Error transcribing audio:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to transcribe audio' },
       { status: 500 }

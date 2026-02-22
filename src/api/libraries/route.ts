@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { LibraryController } from '../../controllers/library.controller';
 import { LibraryIndexService } from '../../services/library-index.service';
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     query,
     params: {},
     log: {
-      error: console.error
+      error: (...args: unknown[]) => logger.error('Request error', { args })
     }
   } as any;
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       return libraryController.searchLibraries(mockRequest, mockReply);
     }
   } catch (error) {
-    console.error('Library API error:', error);
+    logger.error('Library API error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
       data: result
     });
   } catch (error) {
-    console.error('Library index error:', error);
+    logger.error('Library index error:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to index library' },
       { status: 400 }

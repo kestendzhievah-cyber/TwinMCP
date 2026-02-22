@@ -1,8 +1,9 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createHash, randomBytes } from 'crypto'
 
-// ─── Plan limits ───
+// â”€â”€â”€ Plan limits â”€â”€â”€
 const PLAN_LIMITS = {
   free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
   pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10, rateLimit: 200 },
@@ -11,7 +12,10 @@ const PLAN_LIMITS = {
 
 type PlanTier = keyof typeof PLAN_LIMITS
 
-// ─── Auth: Firebase JWT or API key ───
+const ALLOW_INSECURE_DEV_AUTH =
+  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true'
+
+// â”€â”€â”€ Auth: Firebase JWT or API key â”€â”€â”€
 async function authenticateRequest(request: NextRequest): Promise<{ userId: string; email?: string } | null> {
   const authHeader = request.headers.get('authorization')
   const apiKeyHeader = request.headers.get('x-api-key')
@@ -42,18 +46,21 @@ async function authenticateRequest(request: NextRequest): Promise<{ userId: stri
         }
       }
 
-      // Fallback: decode JWT payload without verification (dev mode)
-      try {
-        const parts = token.split('.')
-        if (parts.length === 3) {
-          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'))
-          const userId = payload.user_id || payload.sub || payload.uid
-          if (userId) {
-            return { userId, email: payload.email }
+      // Fallback is explicitly allowed only in non-production development flows
+      if (ALLOW_INSECURE_DEV_AUTH) {
+        try {
+          const parts = token.split('.')
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'))
+            const userId = payload.user_id || payload.sub || payload.uid
+            if (userId) {
+              logger.warn('Using insecure dev auth fallback (unverified JWT payload).')
+              return { userId, email: payload.email }
+            }
           }
+        } catch {
+          // Invalid JWT
         }
-      } catch {
-        // Invalid JWT
       }
     }
   }
@@ -75,7 +82,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ userId: stri
   return null
 }
 
-// ─── Ensure user exists in DB ───
+// â”€â”€â”€ Ensure user exists in DB â”€â”€â”€
 async function ensureUser(userId: string, email?: string) {
   let user = await prisma.user.findFirst({
     where: { OR: [{ id: userId }, { oauthId: userId }] },
@@ -100,7 +107,7 @@ async function ensureUser(userId: string, email?: string) {
   return user
 }
 
-// ─── Get user plan tier ───
+// â”€â”€â”€ Get user plan tier â”€â”€â”€
 async function getUserTier(userId: string): Promise<PlanTier> {
   try {
     const profile = await prisma.userProfile.findUnique({
@@ -114,7 +121,7 @@ async function getUserTier(userId: string): Promise<PlanTier> {
   }
 }
 
-// ─── GET: List user's API keys with real usage stats ───
+// â”€â”€â”€ GET: List user's API keys with real usage stats â”€â”€â”€
 export async function GET(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request)
@@ -182,7 +189,7 @@ export async function GET(request: NextRequest) {
       subscription: { plan: tier, limits },
     })
   } catch (error) {
-    console.error('List API keys error:', error)
+    logger.error('List API keys error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error', details: process.env.NODE_ENV === 'development' ? String(error) : undefined },
       { status: 500 }
@@ -190,7 +197,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ─── POST: Create new API key ───
+// â”€â”€â”€ POST: Create new API key â”€â”€â”€
 export async function POST(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request)
@@ -208,7 +215,7 @@ export async function POST(request: NextRequest) {
     })
     if (existingCount >= limits.maxKeys) {
       return NextResponse.json(
-        { success: false, error: `Limite de ${limits.maxKeys} clés atteinte pour le plan ${tier}.`, code: 'KEY_LIMIT_EXCEEDED' },
+        { success: false, error: `Limite de ${limits.maxKeys} clÃ©s atteinte pour le plan ${tier}.`, code: 'KEY_LIMIT_EXCEEDED' },
         { status: 400 }
       )
     }
@@ -259,10 +266,10 @@ export async function POST(request: NextRequest) {
         createdAt: apiKey.createdAt.toISOString(),
         usage: { requestsToday: 0, requestsThisHour: 0, successRate: 100 },
       },
-      warning: 'Sauvegardez cette clé maintenant. Elle ne sera plus affichée.',
+      warning: 'Sauvegardez cette clÃ© maintenant. Elle ne sera plus affichÃ©e.',
     })
   } catch (error) {
-    console.error('Create API key error:', error)
+    logger.error('Create API key error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error', details: process.env.NODE_ENV === 'development' ? String(error) : undefined },
       { status: 500 }
@@ -270,7 +277,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ─── DELETE: Revoke API key (by ?id= query param) ───
+// â”€â”€â”€ DELETE: Revoke API key (by ?id= query param) â”€â”€â”€
 export async function DELETE(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request)
@@ -302,7 +309,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'API key revoked successfully' })
   } catch (error) {
-    console.error('Revoke API key error:', error)
+    logger.error('Revoke API key error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error', details: process.env.NODE_ENV === 'development' ? String(error) : undefined },
       { status: 500 }

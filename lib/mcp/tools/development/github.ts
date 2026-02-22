@@ -3,6 +3,7 @@ import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
 import { getCache } from '../../core'
 import { rateLimiter } from '../../middleware'
 import { getMetrics } from '../../utils'
+import { logger } from '@/lib/logger'
 
 const githubRepoSchema = z.object({
   owner: z.string().min(1, 'Owner is required'),
@@ -96,7 +97,7 @@ export class GitHubTool implements MCPTool {
       const cachedResult = args.action.startsWith('create_') ? null : await cache.get(cacheKey)
 
       if (cachedResult) {
-        console.log(`🐙 GitHub cache hit for ${args.owner}/${args.repo}/${args.action}`)
+        logger.debug(`GitHub cache hit for ${args.owner}/${args.repo}/${args.action}`)
         getMetrics().track({
           toolId: this.id,
           userId: config.userId || 'anonymous',
@@ -262,19 +263,19 @@ export class GitHubTool implements MCPTool {
   }
 
   async beforeExecute(args: any): Promise<any> {
-    console.log(`🐙 GitHub action: ${args.action} on ${args.owner}/${args.repo}`)
+    logger.debug(`GitHub action: ${args.action} on ${args.owner}/${args.repo}`)
     return args
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
       const action = result.data?.metadata?.created ? 'created' : 'retrieved'
-      console.log(`✅ GitHub ${action}: ${result.data?.total_count || 1} items`)
+      logger.debug(`GitHub ${action}: ${result.data?.total_count || 1} items`)
     }
     return result
   }
 
   async onError(error: Error): Promise<void> {
-    console.error(`❌ GitHub error: ${error.message}`)
+    logger.error(`GitHub error: ${error.message}`)
   }
 }

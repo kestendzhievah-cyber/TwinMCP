@@ -1,4 +1,5 @@
 import { CacheConfig } from './types'
+import { logger } from '@/lib/logger'
 
 interface CacheEntry {
   value: any
@@ -34,18 +35,18 @@ export class MCPCache {
         })
 
         this.redis.on('error', (err: Error) => {
-          console.error('Redis connection error:', err)
+          logger.error('Redis connection error:', err)
         })
 
-        console.log('🔴 Redis cache initialized')
+        logger.info('Redis cache initialized')
       } catch (error) {
-        console.error('Failed to initialize Redis:', error)
+        logger.error('Failed to initialize Redis:', error)
         if (this.config.strategy === 'redis') {
           throw new Error('Redis is required but not available')
         }
       }
     } else if (redisDisabled) {
-      console.log('⚠️ Redis disabled - using memory-only cache')
+      logger.info('Redis disabled - using memory-only cache')
     }
 
     // Nettoyage périodique du cache mémoire
@@ -76,7 +77,7 @@ export class MCPCache {
           }
         }
       } catch (error) {
-        console.error('Redis get error:', error)
+        logger.error('Redis get error:', error)
       }
     }
 
@@ -110,7 +111,7 @@ export class MCPCache {
       try {
         await this.redis.setex(key, ttl, JSON.stringify(entry))
       } catch (error) {
-        console.error('Redis set error:', error)
+        logger.error('Redis set error:', error)
       }
     }
   }
@@ -122,7 +123,7 @@ export class MCPCache {
       try {
         await this.redis.del(key)
       } catch (error) {
-        console.error('Redis delete error:', error)
+        logger.error('Redis delete error:', error)
       }
     }
   }
@@ -146,7 +147,7 @@ export class MCPCache {
           await this.redis.del(...keys)
         }
       } catch (error) {
-        console.error('Redis invalidate error:', error)
+        logger.error('Redis invalidate error:', error)
       }
     }
   }
@@ -158,7 +159,7 @@ export class MCPCache {
       try {
         await this.redis.flushdb()
       } catch (error) {
-        console.error('Redis clear error:', error)
+        logger.error('Redis clear error:', error)
       }
     }
   }
@@ -190,7 +191,7 @@ export class MCPCache {
     }
 
     if (cleaned > 0) {
-      console.log(`🧹 Cache cleanup: ${cleaned} expired entries removed`)
+      logger.debug(`Cache cleanup: ${cleaned} expired entries removed`)
     }
   }
 

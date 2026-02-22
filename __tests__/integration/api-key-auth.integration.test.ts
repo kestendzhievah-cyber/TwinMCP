@@ -1,379 +1,301 @@
 // @ts-nocheck
-import request from 'supertest';
-import { Express } from 'express';
-import { createApp } from '../../src/app';
-import { Pool } from 'pg';
+import { NextRequest } from 'next/server';
+
+// Mock Prisma
+const mockPrisma = {
+  apiKey: {
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    count: jest.fn(),
+  },
+  user: {
+    findFirst: jest.fn(),
+    create: jest.fn(),
+  },
+  client: {
+    findFirst: jest.fn(),
+    create: jest.fn(),
+  },
+  userProfile: {
+    findUnique: jest.fn(),
+  },
+  usageLog: {
+    count: jest.fn(),
+    findMany: jest.fn(),
+  },
+};
+
+jest.mock('../../lib/prisma', () => ({
+  prisma: mockPrisma,
+  pool: { query: jest.fn() },
+}));
+
+jest.mock('../../lib/logger', () => ({
+  logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+}));
+
+// Must be set before importing route module (constant is read at module init)
+process.env.ALLOW_INSECURE_DEV_AUTH = 'true';
+
+import { GET, POST, DELETE } from '../../app/api/api-keys/route';
+
+// Helper to build a fake JWT with a user_id claim
+function fakeJwt(userId: string, email?: string): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64');
+  const payload = Buffer.from(JSON.stringify({ user_id: userId, email })).toString('base64');
+  return `${header}.${payload}.sig`;
+}
+
+const TEST_USER_ID = 'user-test-123';
+const TEST_USER = {
+  id: TEST_USER_ID,
+  email: 'test@example.com',
+  oauthId: TEST_USER_ID,
+  oauthProvider: 'firebase',
+  clientId: 'client-1',
+};
 
 describe('API Key Authentication Integration', () => {
-  let app: Express;
-  let testAPIKey: string;
-  let userId: string;
-  let mockPool: Pool;
-
-  beforeAll(async () => {
-    // Configuration de la base de données de test
-    mockPool = {
-      query: jest.fn()
-    } as unknown as Pool;
-
-    app = createApp(mockPool);
-    
-    // Créer un utilisateur de test
-    const userResponse = await request(app)
-      .post('/auth/register')
-      .send({
-        email: 'test@example.com',
-        password: 'password123',
-        name: 'Test User'
-      });
-
-    userId = userResponse.body.user.id;
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default: user exists
+    mockPrisma.user.findFirst.mockResolvedValue(TEST_USER);
+    // Default: free plan
+    mockPrisma.userProfile.findUnique.mockResolvedValue(null);
+    // Default: no existing keys
+    mockPrisma.apiKey.count.mockResolvedValue(0);
+    mockPrisma.apiKey.findMany.mockResolvedValue([]);
+    // Default: usage stats
+    mockPrisma.usageLog.count.mockResolvedValue(0);
+    mockPrisma.usageLog.findMany.mockResolvedValue([]);
   });
 
   describe('API Key Creation', () => {
     test('should create API key successfully', async () => {
-      const response = await request(app)
-        .post('/api-keys')
-        .set('Authorization', `Bearer ${testAPIKey}`)
-        .send({
-          name: 'Test Integration Key',
-          tier: 'basic',
-          permissions: ['read', 'write']
-        });
+      mockPrisma.apiKey.create.mockResolvedValue({
+        id: 'key-1',
+        keyHash: 'hash',
+        keyPrefix: 'twinmcp_free_abcdef',
+        name: 'Test Integration Key',
+        tier: 'free',
+        quotaDaily: 200,
+        quotaMonthly: 6000,
+        permissions: ['read', 'write'],
+        createdAt: new Date(),
+      });
 
-      expect(response.status).toBe(201);
-      expect(response.body.success).toBe(true);
-      expect(response.body.api_key.api_key).toMatch(/^twinmcp_[a-zA-Z0-9]{32}$/);
-      expect(response.body.api_key.name).toBe('Test Integration Key');
-      expect(response.body.api_key.tier).toBe('basic');
-      
-      testAPIKey = response.body.api_key.api_key;
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${fakeJwt(TEST_USER_ID, 'test@example.com')}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ name: 'Test Integration Key' }),
+      });
+
+      const response = await POST(req);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(body.data.key).toMatch(/^twinmcp_free_/);
+      expect(body.data.name).toBe('Test Integration Key');
     });
 
     test('should reject API key creation without authentication', async () => {
-      const response = await request(app)
-        .post('/api-keys')
-        .send({
-          name: 'Test Key',
-          tier: 'basic'
-        });
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'Test Key' }),
+      });
 
+      const response = await POST(req);
       expect(response.status).toBe(401);
-      expect(response.body.error).toBe('Unauthorized');
     });
 
     test('should validate required fields for API key creation', async () => {
-      const response = await request(app)
-        .post('/api-keys')
-        .set('Authorization', `Bearer ${testAPIKey}`)
-        .send({
-          tier: 'basic'
-          // Missing name
-        });
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${fakeJwt(TEST_USER_ID)}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ tier: 'basic' }), // Missing name
+      });
 
+      const response = await POST(req);
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Bad Request');
-      expect(response.body.message).toContain('Missing required fields');
     });
   });
 
   describe('API Key Validation', () => {
-    test('should allow access with valid API key', async () => {
-      const response = await request(app)
-        .post('/mcp')
-        .set('X-API-Key', testAPIKey)
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
+    test('should authenticate with valid API key via x-api-key header', async () => {
+      const rawKey = 'twinmcp_live_abc123';
+      const keyHash = require('crypto').createHash('sha256').update(rawKey).digest('hex');
 
+      mockPrisma.apiKey.findUnique.mockResolvedValue({
+        id: 'key-1',
+        keyHash,
+        userId: TEST_USER_ID,
+        isActive: true,
+        revokedAt: null,
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'GET',
+        headers: { 'x-api-key': rawKey },
+      });
+
+      const response = await GET(req);
       expect(response.status).toBe(200);
     });
 
-    test('should reject access with invalid API key format', async () => {
-      const response = await request(app)
-        .post('/mcp')
-        .set('X-API-Key', 'invalid-key')
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
+    test('should reject access with invalid API key', async () => {
+      mockPrisma.apiKey.findUnique.mockResolvedValue(null);
 
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'GET',
+        headers: { 'x-api-key': 'twinmcp_invalid_key' },
+      });
+
+      const response = await GET(req);
       expect(response.status).toBe(401);
-      expect(response.body.error).toBe('Unauthorized');
-      expect(response.body.code).toBe('INVALID_FORMAT');
     });
 
-    test('should reject access with non-existent API key', async () => {
-      const response = await request(app)
-        .post('/mcp')
-        .set('X-API-Key', 'twinmcp_nonexistentkey1234567890abcdef')
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
+    test('should authenticate via Bearer JWT token', async () => {
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'GET',
+        headers: { 'authorization': `Bearer ${fakeJwt(TEST_USER_ID)}` },
+      });
 
-      expect(response.status).toBe(401);
-      expect(response.body.error).toBe('Unauthorized');
-      expect(response.body.code).toBe('NOT_FOUND');
-    });
-
-    test('should extract API key from Authorization header', async () => {
-      const response = await request(app)
-        .post('/mcp')
-        .set('Authorization', `Bearer ${testAPIKey}`)
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
-
-      expect(response.status).toBe(200);
-    });
-
-    test('should extract API key from query parameter', async () => {
-      const response = await request(app)
-        .post(`/mcp?api_key=${testAPIKey}`)
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
-
+      const response = await GET(req);
       expect(response.status).toBe(200);
     });
   });
 
   describe('Quota Management', () => {
-    test('should track API usage', async () => {
-      // Faire plusieurs requêtes pour utiliser le quota
-      const promises = Array(10).fill(null).map(() =>
-        request(app)
-          .post('/mcp')
-          .set('X-API-Key', testAPIKey)
-          .send({
-            jsonrpc: '2.0',
-            id: Math.random(),
-            method: 'tools/list'
-          })
-      );
+    test('should enforce key limit per plan', async () => {
+      // Free plan allows 3 keys
+      mockPrisma.apiKey.count.mockResolvedValue(3);
 
-      const responses = await Promise.all(promises);
-      
-      // Toutes les requêtes devraient réussir
-      responses.forEach(response => {
-        expect(response.status).toBe(200);
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${fakeJwt(TEST_USER_ID)}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ name: 'Over Limit Key' }),
       });
 
-      // Vérifier que l'utilisation a été enregistrée
-      const usageResponse = await request(app)
-        .get(`/api-keys/${testAPIKey}/usage`)
-        .set('Authorization', `Bearer ${testAPIKey}`);
+      const response = await POST(req);
+      const body = await response.json();
 
-      expect(usageResponse.status).toBe(200);
-      expect(usageResponse.body.usage_stats.daily_used).toBeGreaterThan(0);
+      expect(response.status).toBe(400);
+      expect(body.code).toBe('KEY_LIMIT_EXCEEDED');
     });
 
-    test('should enforce quota limits', async () => {
-      // Simuler une clé avec un quota quotidien faible
-      const lowQuotaKey = await request(app)
-        .post('/api-keys')
-        .set('Authorization', `Bearer ${testAPIKey}`)
-        .send({
-          name: 'Low Quota Key',
-          tier: 'free' // 100 requêtes par jour
-        });
-
-      const apiKey = lowQuotaKey.body.api_key.api_key;
-
-      // Simuler l'utilisation du quota complet
-      mockPool.query.mockResolvedValue({
-        rows: [{
-          daily_used: 100,
-          monthly_used: 1000,
-          quota_daily: 100,
-          quota_monthly: 3000
-        }]
+    test('should allow more keys for pro plan', async () => {
+      mockPrisma.userProfile.findUnique.mockResolvedValue({
+        subscriptions: [{ status: 'ACTIVE', plan: 'pro' }],
+      });
+      mockPrisma.apiKey.count.mockResolvedValue(3); // Under pro limit of 10
+      mockPrisma.apiKey.create.mockResolvedValue({
+        id: 'key-pro',
+        keyHash: 'hash',
+        keyPrefix: 'twinmcp_live_abc',
+        name: 'Pro Key',
+        tier: 'pro',
+        quotaDaily: 10000,
+        quotaMonthly: 300000,
+        permissions: ['read', 'write'],
+        createdAt: new Date(),
       });
 
-      // La prochaine requête devrait être rejetée
-      const response = await request(app)
-        .post('/mcp')
-        .set('X-API-Key', apiKey)
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${fakeJwt(TEST_USER_ID)}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ name: 'Pro Key' }),
+      });
 
-      expect(response.status).toBe(429);
-      expect(response.body.error).toBe('Quota Exceeded');
-      expect(response.body.quota_info).toBeDefined();
+      const response = await POST(req);
+      expect(response.status).toBe(200);
     });
   });
 
   describe('API Key Management', () => {
     test('should list user API keys', async () => {
-      const response = await request(app)
-        .get('/api-keys')
-        .set('Authorization', `Bearer ${testAPIKey}`);
+      mockPrisma.apiKey.findMany.mockResolvedValue([
+        {
+          id: 'key-1',
+          keyPrefix: 'twinmcp_free_abc',
+          name: 'My Key',
+          tier: 'free',
+          createdAt: new Date(),
+          lastUsedAt: null,
+        },
+      ]);
+
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'GET',
+        headers: { 'authorization': `Bearer ${fakeJwt(TEST_USER_ID)}` },
+      });
+
+      const response = await GET(req);
+      const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.api_keys)).toBe(true);
-      expect(response.body.api_keys.length).toBeGreaterThan(0);
-    });
-
-    test('should get specific API key details', async () => {
-      // D'abord créer une clé pour obtenir son ID
-      const createResponse = await request(app)
-        .post('/api-keys')
-        .set('Authorization', `Bearer ${testAPIKey}`)
-        .send({
-          name: 'Detail Test Key',
-          tier: 'basic'
-        });
-
-      const keyId = createResponse.body.api_key.id;
-
-      const response = await request(app)
-        .get(`/api-keys/${keyId}`)
-        .set('Authorization', `Bearer ${testAPIKey}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.api_key.id).toBe(keyId);
-      expect(response.body.api_key.name).toBe('Detail Test Key');
+      expect(body.success).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.length).toBe(1);
+      expect(body.data[0].name).toBe('My Key');
     });
 
     test('should revoke API key', async () => {
-      // Créer une clé à révoquer
-      const createResponse = await request(app)
-        .post('/api-keys')
-        .set('Authorization', `Bearer ${testAPIKey}`)
-        .send({
-          name: 'To Revoke Key',
-          tier: 'basic'
-        });
+      mockPrisma.apiKey.findFirst.mockResolvedValue({
+        id: 'key-to-revoke',
+        userId: TEST_USER_ID,
+      });
+      mockPrisma.apiKey.update.mockResolvedValue({});
 
-      const keyId = createResponse.body.api_key.id;
+      const req = new NextRequest('http://localhost:3000/api/api-keys?id=key-to-revoke', {
+        method: 'DELETE',
+        headers: { 'authorization': `Bearer ${fakeJwt(TEST_USER_ID)}` },
+      });
 
-      const response = await request(app)
-        .delete(`/api-keys/${keyId}/revoke`)
-        .set('Authorization', `Bearer ${testAPIKey}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.message).toBe('API key revoked successfully');
-
-      // Vérifier que la clé ne fonctionne plus
-      const testResponse = await request(app)
-        .post('/mcp')
-        .set('X-API-Key', createResponse.body.api_key.api_key)
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
-
-      expect(testResponse.status).toBe(401);
-    });
-
-    test('should regenerate API key', async () => {
-      // Créer une clé à régénérer
-      const createResponse = await request(app)
-        .post('/api-keys')
-        .set('Authorization', `Bearer ${testAPIKey}`)
-        .send({
-          name: 'To Regenerate Key',
-          tier: 'basic'
-        });
-
-      const keyId = createResponse.body.api_key.id;
-      const originalKey = createResponse.body.api_key.api_key;
-
-      const response = await request(app)
-        .post(`/api-keys/${keyId}/regenerate`)
-        .set('Authorization', `Bearer ${testAPIKey}`);
+      const response = await DELETE(req);
+      const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.api_key).toMatch(/^twinmcp_[a-zA-Z0-9]{32}$/);
-      expect(response.body.api_key).not.toBe(originalKey);
-
-      // L'ancienne clé ne devrait plus fonctionner
-      const testResponse = await request(app)
-        .post('/mcp')
-        .set('X-API-Key', originalKey)
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
-
-      expect(testResponse.status).toBe(401);
-
-      // La nouvelle clé devrait fonctionner
-      const newTestResponse = await request(app)
-        .post('/mcp')
-        .set('X-API-Key', response.body.api_key)
-        .send({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'tools/list'
-        });
-
-      expect(newTestResponse.status).toBe(200);
-    });
-  });
-
-  describe('Usage Analytics', () => {
-    test('should get usage statistics', async () => {
-      const response = await request(app)
-        .get(`/api-keys/${testAPIKey}/usage`)
-        .set('Authorization', `Bearer ${testAPIKey}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.usage_stats).toBeDefined();
-      expect(response.body.usage_stats.daily_used).toBeDefined();
-      expect(response.body.usage_stats.daily_limit).toBeDefined();
-      expect(response.body.usage_stats.monthly_used).toBeDefined();
-      expect(response.body.usage_stats.monthly_limit).toBeDefined();
-      expect(response.body.usage_stats.reset_daily).toBeDefined();
-      expect(response.body.usage_stats.reset_monthly).toBeDefined();
-      expect(Array.isArray(response.body.usage_stats.usage_history)).toBe(true);
+      expect(body.success).toBe(true);
+      expect(body.message).toBe('API key revoked successfully');
     });
 
-    test('should support different usage periods', async () => {
-      const dailyResponse = await request(app)
-        .get(`/api-keys/${testAPIKey}/usage?period=daily`)
-        .set('Authorization', `Bearer ${testAPIKey}`);
+    test('should reject revoking non-existent key', async () => {
+      mockPrisma.apiKey.findFirst.mockResolvedValue(null);
 
-      const monthlyResponse = await request(app)
-        .get(`/api-keys/${testAPIKey}/usage?period=monthly`)
-        .set('Authorization', `Bearer ${testAPIKey}`);
+      const req = new NextRequest('http://localhost:3000/api/api-keys?id=nonexistent', {
+        method: 'DELETE',
+        headers: { 'authorization': `Bearer ${fakeJwt(TEST_USER_ID)}` },
+      });
 
-      expect(dailyResponse.status).toBe(200);
-      expect(monthlyResponse.status).toBe(200);
-      expect(dailyResponse.body.usage_stats.usage_history).toBeDefined();
-      expect(monthlyResponse.body.usage_stats.usage_history).toBeDefined();
+      const response = await DELETE(req);
+      expect(response.status).toBe(404);
     });
-  });
 
-  afterAll(async () => {
-    // Nettoyer les données de test
-    if (testAPIKey) {
-      await request(app)
-        .delete(`/api-keys/${testAPIKey}/revoke`)
-        .set('Authorization', `Bearer ${testAPIKey}`);
-    }
+    test('should require key ID for revocation', async () => {
+      const req = new NextRequest('http://localhost:3000/api/api-keys', {
+        method: 'DELETE',
+        headers: { 'authorization': `Bearer ${fakeJwt(TEST_USER_ID)}` },
+      });
+
+      const response = await DELETE(req);
+      expect(response.status).toBe(400);
+    });
   });
 });

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationHistory } from '@/lib/conversation';
 
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
       conversation,
     });
   } catch (error) {
-    console.error('Error getting conversation history:', error);
+    logger.error('Error getting conversation history:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

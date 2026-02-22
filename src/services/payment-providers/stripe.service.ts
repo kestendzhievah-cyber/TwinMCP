@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 import Stripe from 'stripe';
 import { Payment, PaymentMethod, PaymentStatus } from '../../types/invoice.types';
 
@@ -7,7 +8,7 @@ export class StripeService {
   constructor() {
     const apiKey = process.env.STRIPE_SECRET_KEY;
     if (!apiKey) {
-      console.warn('⚠️ STRIPE_SECRET_KEY is not configured — Stripe features will be unavailable');
+      logger.warn('⚠️ STRIPE_SECRET_KEY is not configured — Stripe features will be unavailable');
     }
     this.stripe = new Stripe(apiKey || 'sk_not_configured', {
       apiVersion: '2025-09-30.clover'
@@ -41,7 +42,7 @@ export class StripeService {
 
       return paymentIntent;
     } catch (error) {
-      console.error('Stripe payment intent creation failed:', error);
+      logger.error('Stripe payment intent creation failed:', error);
       throw error;
     }
   }
@@ -97,7 +98,7 @@ export class StripeService {
 
       return refund;
     } catch (error) {
-      console.error('Stripe refund creation failed:', error);
+      logger.error('Stripe refund creation failed:', error);
       throw error;
     }
   }
@@ -116,7 +117,7 @@ export class StripeService {
 
       return customer;
     } catch (error) {
-      console.error('Stripe customer creation failed:', error);
+      logger.error('Stripe customer creation failed:', error);
       throw error;
     }
   }
@@ -133,7 +134,7 @@ export class StripeService {
 
       return paymentMethod;
     } catch (error) {
-      console.error('Stripe payment method attachment failed:', error);
+      logger.error('Stripe payment method attachment failed:', error);
       throw error;
     }
   }
@@ -147,7 +148,7 @@ export class StripeService {
 
       return setupIntent;
     } catch (error) {
-      console.error('Stripe setup intent creation failed:', error);
+      logger.error('Stripe setup intent creation failed:', error);
       throw error;
     }
   }
@@ -156,7 +157,7 @@ export class StripeService {
     try {
       return await this.stripe.paymentIntents.retrieve(paymentIntentId);
     } catch (error) {
-      console.error('Stripe payment intent retrieval failed:', error);
+      logger.error('Stripe payment intent retrieval failed:', error);
       throw error;
     }
   }
@@ -177,7 +178,7 @@ export class StripeService {
         webhookSecret
       );
     } catch (error) {
-      console.error('Stripe webhook verification failed:', error);
+      logger.error('Stripe webhook verification failed:', error);
       throw error;
     }
   }

@@ -7,7 +7,7 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(uuid|@types/uuid)/)'
+    'node_modules/(?!(uuid|@types/uuid|@octokit)/)'
   ],
   collectCoverageFrom: [
     'src/**/*.ts',
@@ -44,6 +44,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
+    '^@/src/(.*)$': '<rootDir>/src/$1',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^uuid$': '<rootDir>/__tests__/mocks/uuid.ts'
   },

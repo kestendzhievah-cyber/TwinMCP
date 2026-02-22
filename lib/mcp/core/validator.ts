@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ValidationResult } from '../core/types'
+import { logger } from '@/lib/logger'
 
 export class InputValidator {
   private schemas: Map<string, z.ZodSchema> = new Map()
@@ -8,13 +9,13 @@ export class InputValidator {
   // Enregistrer un schema pour un outil spécifique
   registerSchema(toolId: string, schema: z.ZodSchema): void {
     this.schemas.set(toolId, schema)
-    console.log(`📋 Schema registered for tool: ${toolId}`)
+    logger.debug(`Schema registered for tool: ${toolId}`)
   }
 
   // Enregistrer un schema global (ex: pour l'authentification)
   registerGlobalSchema(name: string, schema: z.ZodSchema): void {
     this.globalSchemas.set(name, schema)
-    console.log(`📋 Global schema registered: ${name}`)
+    logger.debug(`Global schema registered: ${name}`)
   }
 
   // Valider les arguments d'un outil
@@ -252,7 +253,7 @@ export class InputValidator {
   clearSchemas(): void {
     this.schemas.clear()
     this.globalSchemas.clear()
-    console.log('🧹 Validation schemas cleared')
+    logger.debug('Validation schemas cleared')
   }
 }
 

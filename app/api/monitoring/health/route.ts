@@ -1,24 +1,10 @@
-import { redis } from '@/lib/redis';
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { MonitoringService } from '@/src/services/monitoring.service';
-import { MetricsCollector } from '@/src/services/metrics-collector.service';
-import { AlertManager } from '@/src/services/alert-manager.service';
-import { HealthChecker } from '@/src/services/health-checker.service';
-
-// Initialize services
-import { pool as db } from '@/lib/prisma'
-const metricsCollector = new MetricsCollector(db, redis);
-const alertManager = new AlertManager(db, redis, { enabled: true, channels: [], escalation: [] });
-const healthChecker = new HealthChecker(db, redis);
-const monitoringConfig = {
-  collection: { interval: 30, retention: 30, batchSize: 100 },
-  alerts: { enabled: true, channels: [], escalation: [] },
-  dashboards: { refreshInterval: 300, autoSave: true }
-};
-const monitoringService = new MonitoringService(db, redis, metricsCollector, alertManager, healthChecker, monitoringConfig);
+import { getMonitoringServices } from '../_shared';
 
 export async function GET(request: NextRequest) {
   try {
+    const { monitoringService, healthChecker } = await getMonitoringServices();
     const { searchParams } = new URL(request.url);
     const service = searchParams.get('service');
 
@@ -48,7 +34,7 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error fetching health status:', error);
+    logger.error('Error fetching health status:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -58,6 +44,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { healthChecker } = await getMonitoringServices();
     const body = await request.json();
     
     if (!body.service) {
@@ -75,7 +62,7 @@ export async function POST(request: NextRequest) {
       healthCheck
     });
   } catch (error) {
-    console.error('Error performing health check:', error);
+    logger.error('Error performing health check:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
