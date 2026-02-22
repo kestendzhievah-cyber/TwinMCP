@@ -38,6 +38,8 @@ interface NavItem {
   badgeColor?: string;
 }
 
+type DashboardTheme = "light" | "dark" | "twinmcp";
+
 function NavLink({ item, collapsed = false, pathname }: { item: NavItem; collapsed?: boolean; pathname: string }) {
   const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
   const Icon = item.icon;
@@ -92,6 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, logout } = useAuth();
+  const [dashboardTheme, setDashboardTheme] = useState<DashboardTheme>("twinmcp");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -137,6 +140,69 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Sync dashboard theme with settings page
+  useEffect(() => {
+    const applySavedTheme = () => {
+      try {
+        const saved = localStorage.getItem("twinmcp_dashboard_theme") as DashboardTheme | null;
+        if (saved === "light" || saved === "dark" || saved === "twinmcp") {
+          setDashboardTheme(saved);
+        } else {
+          setDashboardTheme("twinmcp");
+        }
+      } catch {
+        setDashboardTheme("twinmcp");
+      }
+    };
+
+    applySavedTheme();
+
+    const onThemeChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ theme?: DashboardTheme }>;
+      const nextTheme = customEvent.detail?.theme;
+      if (nextTheme === "light" || nextTheme === "dark" || nextTheme === "twinmcp") {
+        setDashboardTheme(nextTheme);
+      } else {
+        applySavedTheme();
+      }
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "twinmcp_dashboard_theme") {
+        applySavedTheme();
+      }
+    };
+
+    window.addEventListener("twinmcp-dashboard-theme-change", onThemeChange as EventListener);
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("twinmcp-dashboard-theme-change", onThemeChange as EventListener);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  const themeClasses = {
+    root:
+      dashboardTheme === "light"
+        ? "min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-white"
+        : dashboardTheme === "dark"
+        ? "min-h-screen bg-gradient-to-br from-[#080808] via-[#121212] to-[#090909]"
+        : "min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520]",
+    surface:
+      dashboardTheme === "light"
+        ? "bg-white/95 border-slate-200"
+        : dashboardTheme === "dark"
+        ? "bg-[#121212]/95 border-white/10"
+        : "bg-[#0f0520]/95 border-purple-500/20",
+    panel:
+      dashboardTheme === "light"
+        ? "bg-white border-slate-200"
+        : dashboardTheme === "dark"
+        ? "bg-[#1a1a1a] border-white/10"
+        : "bg-[#1a1b2e] border-purple-500/20",
+  };
+
   // Focus search input when modal opens
   useEffect(() => {
     if (searchOpen) {
@@ -159,11 +225,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [searchQuery, allSearchableItems]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0118] via-[#1a0b2e] to-[#0f0520]">
+    <div className={themeClasses.root} data-dashboard-theme={dashboardTheme}>
       {/* Search Modal */}
       {searchOpen && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[15vh]" onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-2xl bg-[#1a1b2e] border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className={`w-full max-w-2xl ${themeClasses.panel} border rounded-2xl shadow-2xl overflow-hidden`} onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 px-4 py-4 border-b border-purple-500/20">
               <Search className="w-5 h-5 text-gray-400" />
               <input
@@ -246,7 +312,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="fixed inset-y-0 left-0 w-72 bg-[#0f0520] border-r border-purple-500/20 p-4 overflow-y-auto">
+          <div className={`fixed inset-y-0 left-0 w-72 ${themeClasses.surface} border-r p-4 overflow-y-auto`}>
             <div className="flex items-center justify-between mb-6">
               <Link href="/" className="flex items-center gap-2">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
@@ -274,7 +340,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Desktop Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-30 hidden lg:flex flex-col bg-[#0f0520]/95 backdrop-blur-xl border-r border-purple-500/20 transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-30 hidden lg:flex flex-col ${themeClasses.surface} backdrop-blur-xl border-r transition-all duration-300 ${sidebarOpen ? "w-64" : "w-20"}`}>
         {/* Logo */}
         <div className={`flex items-center h-16 px-4 border-b border-purple-500/20 ${sidebarOpen ? "justify-between" : "justify-center"}`}>
           <Link href="/" className="flex items-center gap-2">
@@ -327,7 +393,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <div className={`min-h-screen transition-all duration-300 ${sidebarOpen ? "lg:pl-64" : "lg:pl-20"}`}>
         {/* Top Header */}
-        <header className="sticky top-0 z-20 h-16 bg-[#0f0520]/80 backdrop-blur-xl border-b border-purple-500/20">
+        <header className={`sticky top-0 z-20 h-16 ${themeClasses.surface} backdrop-blur-xl border-b`}>
           <div className="flex items-center justify-between h-full px-4 lg:px-6">
             {/* Mobile Menu Button */}
             <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 text-gray-400 hover:text-white">
@@ -337,7 +403,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Search Bar */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-3 px-4 py-2 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-gray-400 hover:border-purple-500/40 transition w-full max-w-md mx-4 lg:mx-0"
+              className={`flex items-center gap-3 px-4 py-2 ${themeClasses.panel} border rounded-xl text-gray-400 hover:border-purple-500/40 transition w-full max-w-md mx-4 lg:mx-0`}
             >
               <Search className="w-4 h-4" />
               <span className="text-sm">Rechercher...</span>
@@ -366,7 +432,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
                 
                 {/* Dropdown */}
-                <div className="absolute right-0 top-full mt-2 w-56 bg-[#1a1b2e] border border-purple-500/20 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className={`absolute right-0 top-full mt-2 w-56 ${themeClasses.panel} border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200`}>
                   <div className="p-4 border-b border-purple-500/20">
                     <p className="font-medium text-white">{userName}</p>
                     <p className="text-sm text-gray-400 truncate">{userEmail}</p>

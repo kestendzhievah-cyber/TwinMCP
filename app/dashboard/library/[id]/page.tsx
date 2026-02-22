@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -8,19 +8,159 @@ import {
   Clock, CheckCircle, ExternalLink, Copy, Terminal, Code, Star, GitFork,
   FileText, Tag, Shield, Layers, Play
 } from 'lucide-react';
-import { librariesData } from '@/lib/mcp-libraries-data';
+import { librariesData, type MCPLibraryData } from '@/lib/mcp-libraries-data';
+
+interface RuntimeLibrary {
+  id: string;
+  name: string;
+  vendor: string;
+  ecosystem: string;
+  language: string;
+  description: string;
+  repo: string;
+  docs: string;
+  defaultVersion: string;
+  tokens: number;
+  snippets: number;
+  lastCrawled: string;
+  tags: string[];
+  isUserImported?: boolean;
+}
+
+function formatCompactNumber(value: number): string {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `${Math.round(value / 1000)}K`;
+  return String(value);
+}
+
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (!Number.isFinite(diffDays) || diffDays < 0) return 'récemment';
+  if (diffDays === 0) return 'aujourd\'hui';
+  if (diffDays === 1) return '1 jour';
+  if (diffDays < 30) return `${diffDays} jours`;
+  return `${Math.floor(diffDays / 30)} mois`;
+}
+
+function buildInstallCommand(ecosystem: string, packageName: string): string {
+  if (ecosystem === 'pip') return `pip install ${packageName}`;
+  if (ecosystem === 'cargo') return `cargo add ${packageName}`;
+  return `npm install ${packageName}`;
+}
+
+function toDetailLibrary(lib: RuntimeLibrary): MCPLibraryData {
+  const sourceType: 'github' | 'website' = lib.repo.includes('github.com') ? 'github' : 'website';
+  const packageName = lib.name.toLowerCase().replace(/\s+/g, '-');
+  const categories = lib.tags?.length ? lib.tags.slice(0, 4) : [lib.ecosystem, 'documentation'];
+  const features = lib.tags?.length
+    ? lib.tags.slice(0, 5).map((tag) => `Support ${tag}`)
+    : ['Documentation indexée', 'Recherche contextuelle', 'Intégration MCP'];
+
+  return {
+    id: lib.id,
+    name: lib.name,
+    source: sourceType === 'github' ? `/${lib.vendor}/${lib.name}` : lib.repo || lib.docs,
+    sourceType,
+    tokens: formatCompactNumber(lib.tokens),
+    snippets: formatCompactNumber(lib.snippets),
+    lastUpdate: formatRelativeDate(lib.lastCrawled),
+    isVerified: !!lib.isUserImported,
+    description: lib.description,
+    longDescription: lib.description || 'Bibliothèque importée et prête à être utilisée avec votre serveur MCP.',
+    version: lib.defaultVersion || '1.0.0',
+    language: lib.language || 'Unknown',
+    license: 'N/A',
+    stars: '—',
+    forks: '—',
+    contributors: 0,
+    categories,
+    features,
+    installation: buildInstallCommand(lib.ecosystem, packageName),
+    usage: `// Exemple d\'utilisation\nconst client = createMcpClient({ libraryId: "${lib.id}" });\nconst result = await client.query("Comment utiliser ${lib.name} ?");`,
+    documentation: lib.docs || lib.repo,
+    repository: lib.repo,
+    examples: [
+      { title: 'Connexion au serveur MCP', code: `Connecter ${lib.name} à votre serveur MCP` },
+      { title: 'Recherche de documentation', code: `Rechercher des snippets dans ${lib.name}` },
+    ],
+  };
+}
 
 export default function LibraryDetailPage() {
   const params = useParams();
-  const libraryId = params.id as string;
-  const library = useMemo(() => librariesData[libraryId], [libraryId]);
+  const rawLibraryId = params.id as string;
+  const libraryId = decodeURIComponent(rawLibraryId);
+  const staticLibrary = useMemo(() => librariesData[libraryId], [libraryId]);
+  const [runtimeLibrary, setRuntimeLibrary] = useState<RuntimeLibrary | null>(null);
+  const [loading, setLoading] = useState(!staticLibrary);
   const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (staticLibrary) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadRuntimeLibrary = async () => {
+      try {
+        const stored = localStorage.getItem('twinmcp_user_libraries');
+        const localLibraries: RuntimeLibrary[] = stored ? JSON.parse(stored) : [];
+        const localMatch = localLibraries.find((lib) => lib.id === libraryId);
+        if (localMatch && !cancelled) {
+          setRuntimeLibrary(localMatch);
+          return;
+        }
+
+        const res = await fetch('/api/libraries?includeDefaults=true&limit=200', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const apiMatch = (data.libraries || []).find((lib: RuntimeLibrary) => lib.id === libraryId);
+        if (apiMatch && !cancelled) {
+          setRuntimeLibrary(apiMatch);
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadRuntimeLibrary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [libraryId, staticLibrary]);
+
+  const library = useMemo(() => {
+    if (staticLibrary) return staticLibrary;
+    if (runtimeLibrary) return toDetailLibrary(runtimeLibrary);
+    return null;
+  }, [staticLibrary, runtimeLibrary]);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
   };
+
+  if (!library && loading) {
+    return (
+      <div className="text-center py-20">
+        <h1 className="text-2xl font-bold text-white mb-4">Chargement de la bibliothèque...</h1>
+        <Link href="/dashboard/library" className="text-purple-400 hover:text-purple-300">Retour aux bibliothèques</Link>
+      </div>
+    );
+  }
 
   if (!library) {
     return (

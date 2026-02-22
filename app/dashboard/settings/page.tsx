@@ -48,6 +48,8 @@ interface NotificationPrefs {
   emailUsageAlerts: boolean;
 }
 
+type DashboardTheme = "light" | "dark" | "twinmcp";
+
 export default function SettingsPage() {
   const { user, profile, profileLoading, updateProfile, refreshProfile, logout } = useAuth();
   const router = useRouter();
@@ -82,6 +84,7 @@ export default function SettingsPage() {
     emailProductUpdates: false,
     emailUsageAlerts: true,
   });
+  const [dashboardTheme, setDashboardTheme] = useState<DashboardTheme>("twinmcp");
 
   // Sync form with profile data
   useEffect(() => {
@@ -105,6 +108,17 @@ export default function SettingsPage() {
     } catch { /* ignore */ }
   }, []);
 
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem("twinmcp_dashboard_theme") as DashboardTheme | null;
+      if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "twinmcp") {
+        setDashboardTheme(savedTheme);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const handleFormChange = (field: keyof ProfileForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setHasChanges(true);
@@ -117,6 +131,16 @@ export default function SettingsPage() {
       try { localStorage.setItem("twinmcp_notif_prefs", JSON.stringify(updated)); } catch { /* ignore */ }
       return updated;
     });
+  };
+
+  const handleThemeChange = (theme: DashboardTheme) => {
+    setDashboardTheme(theme);
+    try {
+      localStorage.setItem("twinmcp_dashboard_theme", theme);
+      window.dispatchEvent(new CustomEvent("twinmcp-dashboard-theme-change", { detail: { theme } }));
+    } catch {
+      // ignore
+    }
   };
 
   const handleSaveProfile = useCallback(async () => {
@@ -159,6 +183,12 @@ export default function SettingsPage() {
 
   const inputClass =
     "w-full px-4 py-3 bg-[#0f1020] border border-purple-500/30 rounded-xl text-white text-sm placeholder-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition";
+
+  const themeOptions: Array<{ id: DashboardTheme; name: string; gradient: string }> = [
+    { id: "light", name: "Clair", gradient: "from-slate-300 to-slate-200" },
+    { id: "dark", name: "Sombre", gradient: "from-slate-800 to-black" },
+    { id: "twinmcp", name: "TwinMCP", gradient: "from-purple-600 to-pink-500" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -677,32 +707,27 @@ export default function SettingsPage() {
                 <p className="text-sm text-gray-400 mb-6">Choisissez l'apparence de votre interface.</p>
 
                 <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { name: "Clair", gradient: "from-gray-100 to-gray-200", active: false },
-                    { name: "Sombre", gradient: "from-gray-800 to-gray-900", active: false },
-                    { name: "TwinMCP", gradient: "from-purple-600 to-pink-500", active: true },
-                  ].map((theme) => (
+                  {themeOptions.map((theme) => {
+                    const isActive = dashboardTheme === theme.id;
+                    return (
                     <button
-                      key={theme.name}
+                      key={theme.id}
+                      onClick={() => handleThemeChange(theme.id)}
                       className={`relative p-4 rounded-xl border-2 transition-all ${
-                        theme.active
+                        isActive
                           ? "border-purple-500 shadow-lg shadow-purple-500/20"
-                          : "border-purple-500/20 hover:border-purple-500/40 opacity-50 cursor-not-allowed"
+                          : "border-purple-500/20 hover:border-purple-500/40"
                       }`}
-                      disabled={!theme.active}
                     >
                       <div className={`w-full h-16 rounded-lg bg-gradient-to-br ${theme.gradient} mb-3`} />
                       <p className="font-medium text-center text-sm text-white">{theme.name}</p>
-                      {theme.active && (
+                      {isActive && (
                         <div className="absolute top-2 right-2 w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
-                      {!theme.active && (
-                        <span className="absolute top-2 right-2 text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">Bientôt</span>
-                      )}
                     </button>
-                  ))}
+                  )})}
                 </div>
               </div>
 
