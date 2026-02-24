@@ -35,6 +35,7 @@ export type AuthType = 'NONE' | 'API_KEY' | 'BEARER' | 'BASIC'
 
 export interface CreateExternalMcpServerInput {
   name: string
+  description?: string
   baseUrl: string
   authType: AuthType
   secret?: string
@@ -43,6 +44,7 @@ export interface CreateExternalMcpServerInput {
 export interface ExternalMcpServerDTO {
   id: string
   name: string
+  description: string | null
   baseUrl: string
   authType: AuthType
   status: string
@@ -92,6 +94,7 @@ export class ExternalMcpService {
     const server = await prisma.externalMcpServer.create({
       data: {
         name: input.name,
+        description: input.description || null,
         baseUrl: input.baseUrl.replace(/\/+$/, ''), // strip trailing slash
         authType: input.authType,
         encryptedSecret,
@@ -108,6 +111,7 @@ export class ExternalMcpService {
 
     const data: any = {}
     if (input.name !== undefined) data.name = input.name
+    if (input.description !== undefined) data.description = input.description || null
     if (input.baseUrl !== undefined) data.baseUrl = input.baseUrl.replace(/\/+$/, '')
     if (input.authType !== undefined) data.authType = input.authType
     if (input.secret !== undefined) data.encryptedSecret = input.secret ? encrypt(input.secret) : null
@@ -321,6 +325,7 @@ export class ExternalMcpService {
     return {
       id: server.id,
       name: server.name,
+      description: server.description,
       baseUrl: server.baseUrl,
       authType: server.authType,
       status: server.status,

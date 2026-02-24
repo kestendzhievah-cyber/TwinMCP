@@ -24,6 +24,7 @@ import {
 interface ExternalServer {
   id: string;
   name: string;
+  description: string | null;
   baseUrl: string;
   authType: 'NONE' | 'API_KEY' | 'BEARER' | 'BASIC';
   status: 'HEALTHY' | 'DEGRADED' | 'DOWN' | 'UNKNOWN';
@@ -60,6 +61,7 @@ export default function ExternalMcpPage() {
 
   // Form state
   const [formName, setFormName] = useState('');
+  const [formDescription, setFormDescription] = useState('');
   const [formUrl, setFormUrl] = useState('');
   const [formAuthType, setFormAuthType] = useState<'NONE' | 'API_KEY' | 'BEARER' | 'BASIC'>('NONE');
   const [formSecret, setFormSecret] = useState('');
@@ -110,6 +112,7 @@ export default function ExternalMcpPage() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formName.trim(),
+          description: formDescription.trim() || undefined,
           baseUrl: formUrl.trim(),
           authType: formAuthType,
           secret: formSecret || undefined,
@@ -120,6 +123,7 @@ export default function ExternalMcpPage() {
       if (data.success) {
         setShowAddModal(false);
         setFormName('');
+        setFormDescription('');
         setFormUrl('');
         setFormAuthType('NONE');
         setFormSecret('');
@@ -257,7 +261,10 @@ export default function ExternalMcpPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-white">{server.name}</h3>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                      {server.description && (
+                        <p className="text-xs text-gray-400 mt-0.5">{server.description}</p>
+                      )}
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <ExternalLink className="w-3 h-3" />
                         {server.baseUrl}
                       </p>
@@ -351,6 +358,17 @@ export default function ExternalMcpPage() {
                   placeholder="Mon serveur MCP"
                   className="w-full px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                   autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">Description (optionnel)</label>
+                <input
+                  type="text"
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  placeholder="Une courte description du serveur..."
+                  className="w-full px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 />
               </div>
 

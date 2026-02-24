@@ -33,6 +33,7 @@ enum ExternalMcpStatus {
 model ExternalMcpServer {
   id              String              @id @default(cuid())
   name            String
+  description     String?
   baseUrl         String
   authType        ExternalMcpAuthType @default(NONE)
   encryptedSecret String?

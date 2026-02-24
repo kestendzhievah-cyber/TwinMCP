@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const userId = await getAuthUserId(request)
     const body = await request.json()
 
-    const { name, baseUrl, authType, secret } = body
+    const { name, description, baseUrl, authType, secret } = body
     if (!name || !baseUrl) {
       return NextResponse.json(
         { success: false, error: 'name and baseUrl are required' },
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
 
     const server = await externalMcpService.create(userId, {
       name,
+      description,
       baseUrl,
       authType: authType || 'NONE',
       secret,
