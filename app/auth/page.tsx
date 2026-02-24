@@ -29,7 +29,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
 
   const router = useRouter();
-  const { signIn, signInWithGoogle, signInWithGithub, rememberMe, setRememberMe, user, loading } = useAuth();
+  const { signIn, signInWithGoogle, signInWithGithub, rememberMe, setRememberMe, user, loading, firebaseReady } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
@@ -37,6 +37,12 @@ export default function AuthPage() {
       router.push('/dashboard');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!loading && !firebaseReady) {
+      setError('Firebase n\'est pas configuré. Vérifiez les variables NEXT_PUBLIC_FIREBASE_* et activez Google/GitHub dans Firebase Auth.');
+    }
+  }, [loading, firebaseReady]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +106,12 @@ export default function AuthPage() {
         case 'auth/popup-blocked':
           errorMessage = 'Popup bloqué par le navigateur';
           break;
+        case 'auth/unauthorized-domain':
+          errorMessage = 'Domaine non autorisé dans Firebase Authentication';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Connexion Google non activée dans Firebase Authentication';
+          break;
         default:
           errorMessage = err.message || 'Erreur lors de la connexion Google';
       }
@@ -128,6 +140,12 @@ export default function AuthPage() {
           break;
         case 'auth/account-exists-with-different-credential':
           errorMessage = 'Un compte existe déjà avec cette adresse email';
+          break;
+        case 'auth/unauthorized-domain':
+          errorMessage = 'Domaine non autorisé dans Firebase Authentication';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Connexion GitHub non activée dans Firebase Authentication';
           break;
         default:
           errorMessage = err.message || 'Erreur lors de la connexion GitHub';
@@ -287,7 +305,7 @@ export default function AuthPage() {
             {/* Google Button */}
             <button
               onClick={handleGoogleLogin}
-              disabled={isLoading}
+              disabled={isLoading || !firebaseReady}
               className="w-full mb-3 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50"
               data-testid="google-login-btn"
             >
@@ -303,7 +321,7 @@ export default function AuthPage() {
             {/* GitHub Button */}
             <button
               onClick={handleGithubLogin}
-              disabled={isLoading}
+              disabled={isLoading || !firebaseReady}
               className="w-full mb-6 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50"
               data-testid="github-login-btn"
             >

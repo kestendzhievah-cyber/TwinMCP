@@ -10,6 +10,7 @@ import {
   GoogleAuthProvider,
   GithubAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
 } from 'firebase/auth'
 import { 
   auth, 
@@ -273,12 +274,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const shouldRemember = remember !== undefined ? remember : rememberMe
     
-    // Set persistence before signing in
-    await setAuthPersistence(shouldRemember)
+    // Keep popup opening in direct user gesture; don't await persistence first
+    const persistencePromise = setAuthPersistence(shouldRemember)
     saveRememberMePreference(shouldRemember)
     
     const provider = new GoogleAuthProvider()
-    await signInWithPopup(auth, provider)
+    provider.setCustomParameters({ prompt: 'select_account' })
+
+    try {
+      await signInWithPopup(auth, provider)
+    } catch (error: any) {
+      const popupFallbackCodes = new Set([
+        'auth/popup-blocked',
+        'auth/operation-not-supported-in-this-environment',
+        'auth/cancelled-popup-request',
+      ])
+
+      if (popupFallbackCodes.has(error?.code)) {
+        await signInWithRedirect(auth, provider)
+        return
+      }
+
+      throw error
+    } finally {
+      await persistencePromise
+    }
   }
 
   /**
@@ -291,12 +311,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const shouldRemember = remember !== undefined ? remember : rememberMe
     
-    // Set persistence before signing in
-    await setAuthPersistence(shouldRemember)
+    // Keep popup opening in direct user gesture; don't await persistence first
+    const persistencePromise = setAuthPersistence(shouldRemember)
     saveRememberMePreference(shouldRemember)
     
     const provider = new GithubAuthProvider()
-    await signInWithPopup(auth, provider)
+    provider.setCustomParameters({ allow_signup: 'true' })
+
+    try {
+      await signInWithPopup(auth, provider)
+    } catch (error: any) {
+      const popupFallbackCodes = new Set([
+        'auth/popup-blocked',
+        'auth/operation-not-supported-in-this-environment',
+        'auth/cancelled-popup-request',
+      ])
+
+      if (popupFallbackCodes.has(error?.code)) {
+        await signInWithRedirect(auth, provider)
+        return
+      }
+
+      throw error
+    } finally {
+      await persistencePromise
+    }
   }
 
   /**
