@@ -1,6 +1,7 @@
 const js = require('@eslint/js');
 const typescript = require('@typescript-eslint/eslint-plugin');
 const typescriptParser = require('@typescript-eslint/parser');
+const nextPlugin = require('@next/eslint-plugin-next');
 const prettier = require('eslint-config-prettier');
 const prettierPlugin = require('eslint-plugin-prettier');
 
@@ -29,9 +30,13 @@ module.exports = [
     },
     plugins: {
       '@typescript-eslint': typescript,
+      '@next/next': nextPlugin,
       prettier: prettierPlugin,
     },
     rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
+
       // TypeScript specific rules
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/explicit-function-return-type': 'off',
