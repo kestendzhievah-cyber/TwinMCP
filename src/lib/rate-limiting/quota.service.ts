@@ -89,7 +89,7 @@ export class QuotaService {
   }
 
   async startRequest(userId: string): Promise<string> {
-    const requestId = `${userId}-${Date.now()}-${Math.random()}`;
+    const requestId = `${userId}-${crypto.randomUUID()}`;
     await this.redis.sadd(`concurrent:${userId}`, requestId);
     return requestId;
   }

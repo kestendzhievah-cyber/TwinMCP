@@ -36,7 +36,7 @@ interface Chatbot {
 }
 
 function generateAgentId(): string {
-  return 'agent_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  return 'agent_' + crypto.randomUUID();
 }
 
 // Fonction pour créer un agent

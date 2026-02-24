@@ -110,7 +110,7 @@ export async function validateAndTrackApiKey(
     rateLimitCache.set(minuteKey, rateLimit);
 
     // Clean old cache entries periodically
-    if (Math.random() < 0.01) {
+    if (crypto.getRandomValues(new Uint8Array(1))[0] < 3) { // ~1% probability (3/256)
       const cutoff = now.getTime() - 120000; // 2 minutes ago
       for (const [cacheKey, value] of rateLimitCache.entries()) {
         if (value.resetAt.getTime() < cutoff) {

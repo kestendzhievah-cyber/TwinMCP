@@ -272,10 +272,12 @@ export class AuthService {
   }
 
   private generateRandomString(length: number): string {
+    const { randomBytes } = require('crypto') as typeof import('crypto')
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    const bytes = randomBytes(length)
     let result = ''
     for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
+      result += chars.charAt(bytes[i] % chars.length)
     }
     return result
   }

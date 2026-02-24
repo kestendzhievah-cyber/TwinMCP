@@ -83,7 +83,7 @@ export class LoadBalancer {
       case 'least-connections':
         return this.leastConnections(healthy)
       case 'random':
-        return healthy[Math.floor(Math.random() * healthy.length)]
+        return healthy[crypto.getRandomValues(new Uint32Array(1))[0] % healthy.length]
     }
   }
 

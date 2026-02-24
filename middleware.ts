@@ -26,6 +26,7 @@ const PUBLIC_ROUTES = [
 
 // Routes that handle their own authentication (Firebase tokens verified at route level)
 const SELF_AUTH_ROUTES = [
+  '/api/admin/stripe-diagnostic',
   '/api/auth/me',
   '/api/auth/profile',
   '/api/auth/session',
@@ -133,13 +134,22 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Firebase ID tokens are long RSA-signed JWTs (3 parts, typically >500 chars).
-    // They cannot be verified with HMAC/JWT_SECRET in Edge middleware.
-    // Let them pass through — route-level auth (UserAuthService.verifyToken)
-    // handles Firebase token verification via Firebase Admin SDK.
+    // Firebase ID tokens are RSA-signed JWTs that cannot be verified with
+    // HMAC/JWT_SECRET in Edge middleware. Validate JWT structure and that
+    // the header declares an RSA algorithm before letting route-level auth
+    // (Firebase Admin SDK) handle full verification.
     const parts = token.split('.');
-    if (parts.length === 3 && token.length > 500) {
-      return NextResponse.next();
+    if (parts.length === 3) {
+      try {
+        const headerJson = atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'));
+        const header = JSON.parse(headerJson);
+        // Firebase tokens use RS256; only pass through RSA-family algorithms
+        if (header.alg && header.alg.startsWith('RS')) {
+          return NextResponse.next();
+        }
+      } catch {
+        // Malformed header — fall through to JWT_SECRET verification
+      }
     }
 
     // Short JWTs: verify with JWT_SECRET (custom app-issued tokens)

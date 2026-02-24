@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import Stripe from 'stripe'
 
 // VÃ©rification des variables d'environnement (dÃ©fÃ©rÃ©e au runtime)
@@ -53,7 +54,7 @@ const logWebhookEvent = (log: Omit<WebhookLog, 'timestamp'>) => {
 }
 
 export async function POST(req: NextRequest) {
-  const requestId = Math.random().toString(36).substring(2, 9)
+  const requestId = randomUUID()
   const startTime = Date.now()
   
   try {

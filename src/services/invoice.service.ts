@@ -71,7 +71,7 @@ export class InvoiceService {
     const encryptedCustomerInfo = await this.encryptionService.encryptPII(customerInfo);
     const billingAddress = await this.getBillingAddress(userId);
 
-    const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const invoiceNumber = `INV-${Date.now()}-${randomUUID().replace(/-/g, '').substring(0, 9).toUpperCase()}`;
     
     const invoice: Invoice = {
       id: randomUUID(),

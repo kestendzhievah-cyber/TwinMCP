@@ -58,7 +58,7 @@ export class RateLimitingService {
     }
 
     // Add current request
-    await this.redis.zadd(key, now, `${now}-${Math.random()}`);
+    await this.redis.zadd(key, now, `${now}-${crypto.randomUUID()}`);
     await this.redis.expire(key, Math.ceil(config.windowMs / 1000));
 
     const remaining = config.maxRequests - current - 1;

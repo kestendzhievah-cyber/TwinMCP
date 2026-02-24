@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
+import { createDownloadSchema, parseBody } from '@/lib/validations/api-schemas';
 
 let _downloadManager: any = null;
 async function getDownloadManager() {
@@ -15,21 +16,27 @@ async function getDownloadManager() {
 export async function POST(request: NextRequest) {
   try {
     const downloadManager = await getDownloadManager();
-    const body = await request.json();
+
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = parseBody(createDownloadSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error, details: parsed.details }, { status: 400 });
+    }
+    const body = parsed.data;
 
     // Support both formats: { githubUrl } or { type, source }
     let taskData;
 
     if (body.githubUrl) {
-      // Extract owner/repo from GitHub URL
+      // Extract owner/repo from GitHub URL (already validated by Zod regex)
       const match = body.githubUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-      if (!match) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid GitHub URL format' },
-          { status: 400 }
-        );
-      }
-      const [, owner, repository] = match;
+      const [, owner, repository] = match!;
 
       taskData = {
         type: 'github' as const,

@@ -1,5 +1,5 @@
 # ── Stage 1: Install dependencies ──────────────────────────────────
-FROM node:18-slim AS deps
+FROM node:20-slim AS deps
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY package.json package-lock.json* ./
 RUN npm install --legacy-peer-deps
 
 # ── Stage 2: Build the application ────────────────────────────────
-FROM node:18-slim AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ COPY . .
 ENV DATABASE_URL="postgresql://user:password@localhost:5432/db"
 RUN npx prisma generate --schema=prisma/schema
 
-# Dummy env vars required at build time
+# Dummy env vars required at build time (NEVER leak into runner stage)
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV REDIS_DISABLED="true"
@@ -49,7 +49,7 @@ RUN mkdir -p /app/public
 RUN npm run build
 
 # ── Stage 3: Production runner ─────────────────────────────────────
-FROM node:18-slim AS runner
+FROM node:20-slim AS runner
 
 WORKDIR /app
 

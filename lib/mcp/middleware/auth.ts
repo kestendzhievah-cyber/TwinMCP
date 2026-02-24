@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import { randomUUID } from 'crypto'
 import { AuthContext, AuthError, User, ApiKey, Permission } from './auth-types'
 import { logger } from '@/lib/logger'
 
@@ -24,7 +25,7 @@ export class AuthService {
       return
     }
 
-    const devApiKey = process.env.MCP_DEV_API_KEY || `mcp-dev-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const devApiKey = process.env.MCP_DEV_API_KEY || `mcp-dev-${randomUUID()}`
 
     const defaultUser: User = {
       id: 'default-user',
@@ -217,7 +218,7 @@ export class AuthService {
       throw this.createAuthError('User not found', 'UNAUTHORIZED')
     }
 
-    const apiKey = `mcp-${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const apiKey = `mcp-${userId}-${randomUUID()}`
 
     const keyData: ApiKey = {
       id: `key_${Date.now()}`,
@@ -238,7 +239,7 @@ export class AuthService {
   // Créer un utilisateur
   async createUser(email: string, name: string, permissions: Permission[]): Promise<User> {
     const user: User = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `user_${randomUUID()}`,
       email,
       name,
       permissions,

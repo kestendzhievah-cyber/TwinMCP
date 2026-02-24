@@ -13,7 +13,12 @@ const globalForPool = globalThis as unknown as { pgPool: Pool }
 
 export const pool = globalForPool.pgPool || new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  ssl: process.env.NODE_ENV === 'production'
+    ? {
+        rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false',
+        ca: process.env.DATABASE_SSL_CA || undefined,
+      }
+    : undefined,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,

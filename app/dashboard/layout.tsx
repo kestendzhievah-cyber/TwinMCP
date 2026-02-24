@@ -100,6 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [userPlan, setUserPlan] = useState<string>("free");
 
   const userEmail = profile?.email || user?.email || '';
   const userName = profile?.name || user?.displayName || 'Utilisateur';
@@ -109,6 +110,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     .join('')
     .toUpperCase()
     .slice(0, 2) || 'U';
+
+  // Fetch real user plan from API
+  useEffect(() => {
+    if (!user) return;
+    const fetchPlan = async () => {
+      try {
+        const headers: Record<string, string> = {};
+        if (typeof user.getIdToken === 'function') {
+          const token = await user.getIdToken();
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch('/api/api-keys', { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.subscription?.plan) {
+          setUserPlan(data.subscription.plan);
+        }
+      } catch {
+        // Keep default plan
+      }
+    };
+    fetchPlan();
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -372,16 +396,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-purple-500/20">
           {sidebarOpen ? (
-            <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
-              <div className="flex items-center gap-3 mb-3">
-                <Zap className="w-5 h-5 text-yellow-400" />
-                <span className="font-semibold text-white text-sm">Plan Pro</span>
+            userPlan === 'free' ? (
+              <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <Zap className="w-5 h-5 text-yellow-400" />
+                  <span className="font-semibold text-white text-sm">Plan Free</span>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">Débloquez toutes les fonctionnalités</p>
+                <Link href="/pricing" className="block w-full py-2 text-center text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg hover:from-purple-600 hover:to-pink-600 transition">
+                  Upgrader
+                </Link>
               </div>
-              <p className="text-xs text-gray-400 mb-3">Débloquez toutes les fonctionnalités</p>
-              <Link href="/pricing" className="block w-full py-2 text-center text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg hover:from-purple-600 hover:to-pink-600 transition">
-                Upgrader
-              </Link>
-            </div>
+            ) : (
+              <div className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border border-green-500/20">
+                <div className="flex items-center gap-3">
+                  <Zap className="w-5 h-5 text-green-400" />
+                  <span className="font-semibold text-white text-sm">Plan {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}</span>
+                </div>
+              </div>
+            )
           ) : (
             <button onClick={() => setSidebarOpen(true)} className="w-full p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition flex justify-center">
               <ChevronRight className="w-5 h-5" />

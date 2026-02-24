@@ -1,22 +1,10 @@
 import { logger } from '@/lib/logger'
-import { redis } from '@/lib/redis';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { redis } from '@/lib/redis';
 import { UsageService } from '@/lib/services/usage.service';
 import { createHash } from 'crypto';
-
-// Helper to get Redis client (optional)
-async function getRedisClient() {
-  try {
-    if (process.env.REDIS_URL) {
-      const Redis = (await import('ioredis')).default;
-      return new Redis(process.env.REDIS_URL);
-    }
-  } catch (error) {
-    logger.warn('Redis not available');
-  }
-  return null;
-}
+import { trackUsageSchema, parseBody } from '@/lib/validations/api-schemas';
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,18 +30,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { toolName, success, responseTimeMs, libraryId, query, tokensReturned } = body;
-
-    if (!toolName) {
-      return NextResponse.json(
-        { success: false, error: 'toolName is required' },
-        { status: 400 }
-      );
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const redis = await getRedisClient();
-    const usageService = new UsageService(prisma, redis || undefined);
+    const parsed = parseBody(trackUsageSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error, details: parsed.details }, { status: 400 });
+    }
+    const { toolName, success, responseTimeMs, libraryId, query, tokensReturned } = parsed.data;
+
+    const usageService = new UsageService(prisma, redis);
     
     const result = await usageService.trackUsage(
       key.id,
@@ -65,10 +55,6 @@ export async function POST(request: NextRequest) {
       query,
       tokensReturned
     );
-
-    if (redis) {
-      await redis.quit();
-    }
 
     if (!result.allowed) {
       return NextResponse.json(

@@ -97,7 +97,7 @@ export async function checkRateLimit(
     multi.zcard(key);
     
     // Add current request
-    multi.zadd(key, now.toString(), `${now}-${Math.random()}`);
+    multi.zadd(key, now.toString(), `${now}-${crypto.randomUUID()}`);
     
     // Set expiry
     multi.expire(key, Math.ceil(config.windowMs / 1000) + 1);

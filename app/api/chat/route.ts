@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { createConversationSchema, parseBody } from '@/lib/validations/api-schemas';
 
 // Extract user ID from Firebase JWT payload (same pattern as other routes)
 function extractUserIdFromToken(token: string): { userId: string; email?: string } | null {
@@ -77,8 +78,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
-    const { title } = body;
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      rawBody = {};
+    }
+    const parsed = parseBody(createConversationSchema, rawBody);
+    const title = parsed.success ? parsed.data.title : undefined;
 
     const conversation = await prisma.conversation.create({
       data: {

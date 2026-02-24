@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createHash, randomBytes } from 'crypto'
+import { createApiKeySchema, parseBody } from '@/lib/validations/api-schemas'
 
 // â”€â”€â”€ Plan limits â”€â”€â”€
 const PLAN_LIMITS = {
@@ -11,9 +12,6 @@ const PLAN_LIMITS = {
 } as const
 
 type PlanTier = keyof typeof PLAN_LIMITS
-
-const ALLOW_INSECURE_DEV_AUTH =
-  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true'
 
 // â”€â”€â”€ Auth: Firebase JWT or API key â”€â”€â”€
 async function authenticateRequest(request: NextRequest): Promise<{ userId: string; email?: string } | null> {
@@ -26,7 +24,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ userId: stri
 
     // Skip if it looks like an API key (twinmcp_ prefix)
     if (!token.startsWith('twinmcp_')) {
-      // Try Firebase Admin verification
+      // Firebase Admin verification (only secure path)
       if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY) {
         try {
           const firebaseAdmin = await import('firebase-admin')
@@ -42,24 +40,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ userId: stri
           const decoded = await firebaseAdmin.auth().verifyIdToken(token)
           return { userId: decoded.uid, email: decoded.email }
         } catch {
-          // Fall through to JWT decode
-        }
-      }
-
-      // Fallback is explicitly allowed only in non-production development flows
-      if (ALLOW_INSECURE_DEV_AUTH) {
-        try {
-          const parts = token.split('.')
-          if (parts.length === 3) {
-            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'))
-            const userId = payload.user_id || payload.sub || payload.uid
-            if (userId) {
-              logger.warn('Using insecure dev auth fallback (unverified JWT payload).')
-              return { userId, email: payload.email }
-            }
-          }
-        } catch {
-          // Invalid JWT
+          // Firebase verification failed — no insecure fallback
         }
       }
     }
@@ -220,18 +201,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse body
-    let body: { name?: string }
+    // Parse and validate body with Zod
+    let rawBody: unknown
     try {
-      body = await request.json()
+      rawBody = await request.json()
     } catch {
       return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { name } = body
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json({ success: false, error: 'Name is required' }, { status: 400 })
+    const parsed = parseBody(createApiKeySchema, rawBody)
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error, details: parsed.details }, { status: 400 })
     }
+    const { name } = parsed.data
 
     // Generate key
     const prefix = tier === 'free' ? 'twinmcp_free_' : 'twinmcp_live_'

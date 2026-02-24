@@ -3,44 +3,47 @@ import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsServices } from '../_shared';
 import { SessionEvent, EventType, EventCategory, PageContext, UserContext } from '@/src/types/analytics.types';
+import { trackEventSchema, parseBody } from '@/lib/validations/api-schemas';
 
 export async function POST(request: NextRequest) {
   try {
     const { analyticsService } = await getAnalyticsServices();
-    const body = await request.json();
-    
-    // Validate required fields
-    const { sessionId, type, category, action, page, userContext } = body;
-    
-    if (!sessionId || !type || !category || !action || !page || !userContext) {
-      return NextResponse.json(
-        { error: 'Missing required fields: sessionId, type, category, action, page, userContext' },
-        { status: 400 }
-      );
+
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
+
+    const parsed = parseBody(trackEventSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error, details: parsed.details }, { status: 400 });
+    }
+    const { sessionId, type, category, action, page, userContext } = parsed.data;
 
     // Build proper EventType object — the service accesses event.type.name
     const eventType: EventType = typeof type === 'string'
-      ? { name: type, category: 'interaction', schema: { required: [], optional: [], types: {} } }
-      : type;
+      ? { name: type, category: 'interaction' as const, schema: { required: [], optional: [], types: {} } }
+      : type as EventType;
 
     // Build proper EventCategory object — the service accesses event.category.id
     const eventCategory: EventCategory = typeof category === 'string'
       ? { id: category, name: category, description: '', metrics: [] }
-      : category;
+      : category as EventCategory;
 
     // Construct event object
     const event: Omit<SessionEvent, 'id'> = {
       sessionId,
-      timestamp: new Date(body.timestamp || Date.now()),
+      timestamp: new Date(parsed.data.timestamp || Date.now()),
       type: eventType,
       category: eventCategory,
       action,
-      label: body.label,
-      value: body.value,
-      properties: body.properties || {},
-      page: page as PageContext,
-      userContext: userContext as UserContext,
+      label: parsed.data.label,
+      value: parsed.data.value,
+      properties: parsed.data.properties || {},
+      page: page as unknown as PageContext,
+      userContext: userContext as unknown as UserContext,
     };
 
     // Track the event

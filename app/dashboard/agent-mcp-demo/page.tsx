@@ -78,24 +78,25 @@ export default function AgentMCPDemo() {
   };
 
   const getMockResult = (type: string) => {
+    const uid = crypto.randomUUID().replace(/-/g, '').substring(0, 9);
     switch (type) {
       case 'payment':
         return {
-          payment_id: 'pi_' + Math.random().toString(36).substr(2, 9),
+          payment_id: 'pi_' + uid,
           amount: 29.99,
           currency: 'EUR',
           status: 'succeeded'
         };
       case 'email':
         return {
-          message_id: 'msg_' + Math.random().toString(36).substr(2, 9),
+          message_id: 'msg_' + uid,
           to: 'client@example.com',
           subject: 'Confirmation de commande',
           status: 'delivered'
         };
       case 'github':
         return {
-          issue_number: Math.floor(Math.random() * 1000),
+          issue_number: parseInt(uid.substring(0, 3), 16) % 1000,
           title: 'Nouvelle demande client',
           url: 'https://github.com/user/repo/issues/123'
         };

@@ -2,76 +2,23 @@ import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-
-// Fonction de vÃ©rification reCAPTCHA
-async function verifyRecaptcha(token: string): Promise<boolean> {
-  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-  
-  // En dÃ©veloppement, saute la vÃ©rification si la clÃ© commence par 'dev-skip'
-  if (process.env.NODE_ENV === 'development' && secretKey?.startsWith('dev-skip')) {
-    logger.info('[DEV] reCAPTCHA verification skipped');
-    return true;
-  }
-
-  if (!secretKey) {
-    logger.error('RECAPTCHA_SECRET_KEY is not configured');
-    return false;
-  }
-
-  try {
-    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        secret: secretKey,
-        response: token,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (data.success && data.score >= 0.5) {
-      return true;
-    } else {
-      logger.error('reCAPTCHA verification failed:', data['error-codes']);
-      return false;
-    }
-  } catch (error) {
-    logger.error('Error verifying reCAPTCHA:', error);
-    return false;
-  }
-}
+import { signupSchema, parseBody } from '@/lib/validations/api-schemas';
+import { verifyRecaptcha } from '@/lib/utils/recaptcha';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email, password, confirmPassword, recaptchaToken } = body;
-
-    // VÃ©rifier que les champs obligatoires sont prÃ©sents
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email et mot de passe sont requis' },
-        { status: 400 }
-      );
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    // VÃ©rifier que les mots de passe correspondent (si confirmPassword fourni)
-    if (confirmPassword && password !== confirmPassword) {
-      return NextResponse.json(
-        { error: 'Les mots de passe ne correspondent pas' },
-        { status: 400 }
-      );
+    const parsed = parseBody(signupSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error, details: parsed.details }, { status: 400 });
     }
-
-    // VÃ©rifier la longueur du mot de passe
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'Le mot de passe doit contenir au moins 6 caractÃ¨res' },
-        { status: 400 }
-      );
-    }
+    const { email, password, recaptchaToken } = parsed.data;
 
     // VÃ©rifier le token reCAPTCHA si fourni
     if (recaptchaToken) {

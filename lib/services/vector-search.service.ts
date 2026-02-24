@@ -284,7 +284,9 @@ export class VectorSearchService {
   // Fallback embedding generator (real implementation in qdrant-vector.service.ts)
   private async generateEmbedding(text: string): Promise<number[]> {
     // Returns random embeddings as fallback when QdrantVectorService is unavailable
-    return new Array(1536).fill(0).map(() => Math.random())
+    const bytes = new Uint32Array(1536)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes).map(v => v / 0xFFFFFFFF)
   }
 
   private async searchInVectorStore(embedding: number[], options: any): Promise<DocumentResult[]> {

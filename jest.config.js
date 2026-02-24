@@ -15,10 +15,9 @@ module.exports = {
     '!src/**/*.test.ts',
     '!src/**/*.spec.ts',
     '!src/index.ts',
-    'lib/mcp/**/*.ts',
+    'lib/**/*.ts',
     'app/api/**/*.ts',
-    '!lib/mcp/**/*.d.ts',
-    '!app/api/**/route.ts'
+    '!lib/**/*.d.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],

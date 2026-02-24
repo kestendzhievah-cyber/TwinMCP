@@ -762,7 +762,7 @@ Voir `INVOICE_IMPLEMENTATION.md` pour:
 
 ### ⚠️ Partiellement Implémenté
 - **Déploiement** (90%) ↑ était 35%
-  - ✅ Docker multi-stage optimisé (node:18-slim, non-root user)
+  - ✅ Docker multi-stage optimisé (node:20-slim, non-root user)
   - ✅ docker-compose avec healthchecks et depends_on conditions
   - ✅ Kubernetes manifests complets (k8s/deployment.yaml, hpa.yaml, cluster-autoscaler.yaml, advanced-lb.yaml, postgres-cluster.yaml, redis-cluster.yaml)
   - ✅ CI/CD: cloudbuild.yaml (Google Cloud), netlify.toml

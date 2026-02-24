@@ -46,6 +46,12 @@ mcp-server-demo
 # local downloads cache (only root-level, not app/api/downloads/)
 /downloads/
 
+# compiled output
+/dist/
+
+# log files
+/logs/
+
 # Environment files
 *.env
 *.env.*

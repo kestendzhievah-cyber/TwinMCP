@@ -214,7 +214,42 @@ export default function LibraryDetailPage() {
               <a href={library.documentation} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-[#0f1020] border border-purple-500/20 rounded-lg text-gray-300 hover:text-white hover:border-purple-500/50 transition">
                 <BookOpen className="w-5 h-5" />Documentation<ExternalLink className="w-4 h-4" />
               </a>
+              <Link href="/dashboard/external-mcp" className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 border border-purple-500/40 rounded-lg text-purple-300 hover:text-white hover:border-purple-500/60 transition">
+                <Settings className="w-5 h-5" />Connecter le serveur MCP
+              </Link>
+              <Link href="/dashboard/create-chatbot" className="flex items-center gap-2 px-4 py-2 bg-pink-500/15 border border-pink-500/40 rounded-lg text-pink-300 hover:text-white hover:border-pink-500/60 transition">
+                <Sparkles className="w-5 h-5" />Choisir le modèle LLM
+              </Link>
             </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-purple-500/15 to-pink-500/15 border border-purple-500/30 rounded-2xl p-5">
+          <h2 className="text-lg font-semibold text-white mb-2">Connexion MCP + LLM</h2>
+          <p className="text-sm text-gray-300 mb-4">
+            Pour utiliser cette bibliothèque avec l&apos;IA, suivez ces 2 étapes.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Link
+              href="/dashboard/external-mcp"
+              className="flex items-center justify-between gap-3 px-4 py-3 bg-[#0f1020] border border-purple-500/30 rounded-xl hover:border-purple-500/60 transition"
+            >
+              <div>
+                <p className="text-xs text-purple-300">Étape 1</p>
+                <p className="text-white font-medium">Connecter le serveur MCP</p>
+              </div>
+              <Settings className="w-5 h-5 text-purple-300" />
+            </Link>
+            <Link
+              href="/dashboard/create-chatbot"
+              className="flex items-center justify-between gap-3 px-4 py-3 bg-[#0f1020] border border-pink-500/30 rounded-xl hover:border-pink-500/60 transition"
+            >
+              <div>
+                <p className="text-xs text-pink-300">Étape 2</p>
+                <p className="text-white font-medium">Choisir le modèle LLM</p>
+              </div>
+              <Sparkles className="w-5 h-5 text-pink-300" />
+            </Link>
           </div>
         </div>
 
