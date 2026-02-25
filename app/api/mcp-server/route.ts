@@ -1,102 +1,65 @@
+/**
+ * /api/mcp-server — Legacy MCP server endpoint.
+ *
+ * Redirects to the main /api/mcp endpoint which implements the full
+ * MCP JSON-RPC 2.0 protocol. This route is kept for backward compatibility.
+ */
+
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
-import { mcpTools, serverInfo, executeTool, validateToolArgs } from '@/lib/mcp-tools'
 
 export async function GET() {
-  try {
-    return NextResponse.json({
-      status: 'MCP server initialized',
-      serverInfo: {
-        name: 'corel-mcp-server',
-        version: '1.0.0',
-        tools: mcpTools.map(t => t.name),
-        capabilities: {
-          tools: {},
-        }
-      }
-    })
-  } catch (error) {
-    logger.error('Error initializing MCP server:', error)
-    return NextResponse.json(
-      { error: 'Failed to initialize MCP server' },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json({
+    status: 'healthy',
+    serverInfo: {
+      name: 'twinmcp-server',
+      version: '1.0.0',
+    },
+    _redirect: 'Use POST /api/mcp for MCP JSON-RPC protocol. GET /api/mcp for server discovery.',
+  })
 }
 
 export async function POST(request: NextRequest) {
+  // Forward to the main /api/mcp endpoint
   try {
     const body = await request.json()
-    const { method, params } = body
 
-    // Handle tool calls
-    if (method === 'tools/call' && params?.name) {
-      const { name, arguments: args } = params
-
-      // Find the tool
-      const tool = mcpTools.find(t => t.name === name)
-      if (!tool) {
-        return NextResponse.json({
-          error: `Tool '${name}' not found`,
-        }, { status: 404 })
+    // Wrap legacy non-JSON-RPC requests into proper JSON-RPC format
+    let jsonRpcBody = body
+    if (!body.jsonrpc) {
+      const { method, params } = body
+      jsonRpcBody = {
+        jsonrpc: '2.0',
+        id: `legacy_${Date.now()}`,
+        method: method || 'initialize',
+        params: params,
       }
-
-      // Validate required arguments
-      const missingArgs = validateToolArgs(tool, args)
-      if (missingArgs.length > 0) {
-        return NextResponse.json({
-          error: `Missing required arguments: ${missingArgs.join(', ')}`,
-        }, { status: 400 })
-      }
-
-      // Execute the tool
-      const result = executeTool(name, args)
-
-      return NextResponse.json({
-        result: {
-          content: [
-            {
-              type: 'text',
-              text: result,
-            },
-          ],
-        }
-      })
     }
 
-    // Handle tools list
-    if (method === 'tools/list') {
-      return NextResponse.json({
-        tools: mcpTools.map(t => ({
-          name: t.name,
-          description: t.description,
-          inputSchema: t.inputSchema
-        }))
-      })
-    }
+    // Use internal fetch to /api/mcp
+    const baseUrl = request.nextUrl.origin
+    const response = await fetch(`${baseUrl}/api/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': request.headers.get('x-api-key') || '',
+        'authorization': request.headers.get('authorization') || '',
+        'twinmcp_api_key': request.headers.get('twinmcp_api_key') || '',
+      },
+      body: JSON.stringify(jsonRpcBody),
+    })
 
-    // Handle initialize
-    if (method === 'initialize') {
-      return NextResponse.json({
-        capabilities: {
-          tools: {},
-        },
-        serverInfo: {
-          name: 'corel-mcp-server',
-          version: '1.0.0',
-        }
-      })
-    }
-
-    return NextResponse.json({
-      error: 'Method not supported',
-    }, { status: 400 })
-
+    const result = await response.json()
+    return NextResponse.json(result, { status: response.status })
   } catch (error) {
-    logger.error('Error in MCP server:', error)
+    logger.error('[MCP-Server Legacy] Error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      {
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32603, message: error instanceof Error ? error.message : 'Unknown error' },
+      },
+      { status: 200 }
     )
   }
 }

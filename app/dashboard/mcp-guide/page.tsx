@@ -1,11 +1,27 @@
-import React from 'react';
-import { BookOpen, Code, Zap, CreditCard, Mail, Github, CheckCircle, ArrowRight, Copy, ExternalLink } from 'lucide-react';
+// @ts-nocheck
+'use client';
+
+import React, { useState } from 'react';
+import { BookOpen, Code, Zap, CreditCard, Mail, Github, CheckCircle, ArrowRight, Copy, ExternalLink, Terminal, Globe, Shield } from 'lucide-react';
 
 export default function MCPAgentGuide() {
-  const copyToClipboard = (text: string) => {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
-    // Vous pourriez ajouter une notification ici
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
   };
+
+  const CopyButton = ({ text, id }: { text: string; id: string }) => (
+    <button
+      onClick={() => copyToClipboard(text, id)}
+      className="absolute top-2 right-2 p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition text-gray-400 hover:text-white"
+      title="Copier"
+    >
+      {copied === id ? <CheckCircle className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+    </button>
+  );
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -13,20 +29,238 @@ export default function MCPAgentGuide() {
         <div>
           <h1 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
             <BookOpen className="w-7 h-7 text-purple-400" />
-            Guide - Agent MCP
+            Guide MCP — Connexion aux LLMs
           </h1>
           <p className="text-gray-400">
-            Tutoriel complet pour créer et utiliser un agent avec outils MCP
+            Connectez votre serveur TwinMCP à Claude, Cursor, Windsurf, VS Code et autres clients MCP
           </p>
         </div>
 
-        {/* Introduction */}
+        {/* Quick Start — LLM Integration */}
+        <div className="p-6 bg-[#1a1b2e] border border-green-500/30 rounded-xl mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Zap className="w-6 h-6 text-green-400" />
+            Connexion rapide aux LLMs
+          </h2>
+          <p className="text-gray-300 mb-6">
+            Copiez la configuration correspondant à votre client LLM. Remplacez <code className="text-purple-400">YOUR_API_KEY</code> par votre clé API (<a href="/dashboard/api-keys" className="text-purple-400 underline hover:text-purple-300">obtenir une clé</a>).
+          </p>
+
+          <div className="space-y-6">
+            {/* Claude Desktop */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Terminal className="w-5 h-5 text-orange-400" />
+                Claude Desktop
+              </h3>
+              <p className="text-sm text-gray-400 mb-2">
+                Fichier: <code className="text-gray-300">~/.config/claude/claude_desktop_config.json</code> (macOS/Linux) ou <code className="text-gray-300">%APPDATA%\Claude\claude_desktop_config.json</code> (Windows)
+              </p>
+              <div className="relative">
+                <CopyButton text={`{
+  "mcpServers": {
+    "twinmcp": {
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
+}`} id="claude-desktop" />
+                <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
+                  <code className="text-green-400">{`{
+  "mcpServers": {
+    "twinmcp": {
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
+}`}</code>
+                </pre>
+              </div>
+            </div>
+
+            {/* Claude Code */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Terminal className="w-5 h-5 text-orange-400" />
+                Claude Code (CLI)
+              </h3>
+              <div className="relative">
+                <CopyButton text="claude mcp add twinmcp -- npx -y @twinmcp/mcp --api-key YOUR_API_KEY" id="claude-code" />
+                <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
+                  <code className="text-green-400">claude mcp add twinmcp -- npx -y @twinmcp/mcp --api-key YOUR_API_KEY</code>
+                </pre>
+              </div>
+            </div>
+
+            {/* Cursor */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Code className="w-5 h-5 text-blue-400" />
+                Cursor
+              </h3>
+              <p className="text-sm text-gray-400 mb-2">
+                Fichier: <code className="text-gray-300">~/.cursor/mcp.json</code>
+              </p>
+              <div className="relative">
+                <CopyButton text={`{
+  "mcpServers": {
+    "twinmcp": {
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
+}`} id="cursor" />
+                <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
+                  <code className="text-green-400">{`{
+  "mcpServers": {
+    "twinmcp": {
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
+}`}</code>
+                </pre>
+              </div>
+            </div>
+
+            {/* Windsurf */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Code className="w-5 h-5 text-cyan-400" />
+                Windsurf
+              </h3>
+              <p className="text-sm text-gray-400 mb-2">
+                Fichier: <code className="text-gray-300">~/.codeium/windsurf/mcp_config.json</code>
+              </p>
+              <div className="relative">
+                <CopyButton text={`{
+  "mcpServers": {
+    "twinmcp": {
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
+}`} id="windsurf" />
+                <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
+                  <code className="text-green-400">{`{
+  "mcpServers": {
+    "twinmcp": {
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
+}`}</code>
+                </pre>
+              </div>
+            </div>
+
+            {/* VS Code */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Code className="w-5 h-5 text-blue-500" />
+                VS Code (GitHub Copilot)
+              </h3>
+              <p className="text-sm text-gray-400 mb-2">
+                Fichier: <code className="text-gray-300">.vscode/mcp.json</code> dans votre projet
+              </p>
+              <div className="relative">
+                <CopyButton text={`{
+  "servers": {
+    "twinmcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
+}`} id="vscode" />
+                <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
+                  <code className="text-green-400">{`{
+  "servers": {
+    "twinmcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@twinmcp/mcp", "--api-key", "YOUR_API_KEY"]
+    }
+  }
+}`}</code>
+                </pre>
+              </div>
+            </div>
+
+            {/* HTTP — OpenAI / Gemini */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Globe className="w-5 h-5 text-purple-400" />
+                HTTP (OpenAI GPTs, Gemini, cURL)
+              </h3>
+              <p className="text-sm text-gray-400 mb-2">
+                Pour les clients HTTP, utilisez le endpoint Streamable HTTP :
+              </p>
+              <div className="relative">
+                <CopyButton text={`curl -X POST https://YOUR_DOMAIN/api/mcp \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`} id="http" />
+                <pre className="bg-[#0a0a14] p-4 rounded-lg overflow-x-auto text-sm">
+                  <code className="text-green-400">{`curl -X POST https://YOUR_DOMAIN/api/mcp \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`}</code>
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Protocol info */}
         <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Introduction</h2>
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Shield className="w-6 h-6 text-purple-400" />
+            Protocole et Transports
+          </h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="p-4 bg-[#0f1020] rounded-lg">
+              <h3 className="font-bold text-white mb-2">Streamable HTTP</h3>
+              <p className="text-sm text-gray-400 mb-1"><code className="text-green-400">POST /api/mcp</code></p>
+              <p className="text-xs text-gray-500">Claude Code, OpenAI, Gemini</p>
+            </div>
+            <div className="p-4 bg-[#0f1020] rounded-lg">
+              <h3 className="font-bold text-white mb-2">SSE (Legacy)</h3>
+              <p className="text-sm text-gray-400 mb-1"><code className="text-green-400">GET /api/mcp/sse</code></p>
+              <p className="text-xs text-gray-500">Claude Desktop, Cursor, Windsurf</p>
+            </div>
+            <div className="p-4 bg-[#0f1020] rounded-lg">
+              <h3 className="font-bold text-white mb-2">stdio</h3>
+              <p className="text-sm text-gray-400 mb-1"><code className="text-green-400">npx @twinmcp/mcp</code></p>
+              <p className="text-xs text-gray-500">Tous les clients locaux</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Available tools */}
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Outils MCP disponibles</h2>
+          <div className="space-y-4">
+            <div className="p-4 bg-[#0f1020] rounded-lg">
+              <h3 className="font-bold text-purple-400 mb-2">resolve-library-id</h3>
+              <p className="text-sm text-gray-300 mb-2">Résout un nom de bibliothèque et retourne son identifiant TwinMCP.</p>
+              <p className="text-xs text-gray-500">Params: <code>query</code> (string), <code>libraryName</code> (string)</p>
+            </div>
+            <div className="p-4 bg-[#0f1020] rounded-lg">
+              <h3 className="font-bold text-purple-400 mb-2">query-docs</h3>
+              <p className="text-sm text-gray-300 mb-2">Recherche la documentation d&apos;une bibliothèque spécifique. Retourne des snippets de code et des guides.</p>
+              <p className="text-xs text-gray-500">Params: <code>libraryId</code> (string), <code>query</code> (string), <code>version</code>?, <code>maxResults</code>?, <code>maxTokens</code>?</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Introduction (original section) */}
+        <div className="p-6 bg-[#1a1b2e] border border-purple-500/20 rounded-xl mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Agent MCP — Exemple avancé</h2>
           <p className="text-gray-300 mb-4">
             Cet exemple montre comment créer un agent intelligent qui utilise plusieurs outils MCP
             (Model Context Protocol) pour automatiser des tâches complexes comme le traitement
-            des paiements, l'envoi d'emails et la gestion des issues GitHub.
+            des paiements, l&apos;envoi d&apos;emails et la gestion des issues GitHub.
           </p>
           <div className="flex items-center text-green-400">
             <CheckCircle className="w-5 h-5 mr-2" />

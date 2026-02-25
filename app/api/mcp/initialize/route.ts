@@ -1,73 +1,65 @@
-import { logger } from '@/lib/logger'
+/**
+ * /api/mcp/initialize — Legacy initialize endpoint.
+ *
+ * Returns MCP server info. For proper MCP protocol initialization,
+ * use POST /api/mcp with { "method": "initialize" }.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { mcpTools, serverInfo } from '@/lib/mcp-tools';
-import { loadClientConfig } from '@/lib/loadClientConfig';
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const clientName = searchParams.get('clientName') || 'Axe Wash';
+const SERVER_INFO = {
+  name: 'twinmcp-server',
+  version: '1.0.0',
+  protocol: 'MCP 2025-03-26',
+  capabilities: {
+    tools: { listChanged: false },
+    logging: {},
+  },
+  tools: ['resolve-library-id', 'query-docs'],
+};
 
-    // Charger la configuration du client
-    const config = await loadClientConfig(clientName);
-
-    // Initialiser le serveur MCP
-    const initializedServer = {
-      ...serverInfo,
-      client: {
-        name: config.name,
-        activeModules: config.modules,
-        apiKeysConfigured: Object.keys(config.apiKeys).length,
-        settings: config.settings,
-      },
-      timestamp: new Date().toISOString(),
-    };
-
-    return NextResponse.json({
-      success: true,
-      message: `MCP Server initialisÃ© pour le client ${config.name}`,
-      data: initializedServer,
-    });
-  } catch (error) {
-    logger.error('Erreur lors de l\'initialisation du serveur MCP:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Erreur inconnue',
-    }, { status: 500 });
-  }
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    message: 'MCP Server ready. Use POST /api/mcp for JSON-RPC protocol.',
+    data: SERVER_INFO,
+  });
 }
 
 export async function POST(request: NextRequest) {
+  // Forward to /api/mcp as JSON-RPC initialize
   try {
-    const body = await request.json();
-    const { clientName } = body;
-
-    // Charger la configuration du client
-    const config = await loadClientConfig(clientName || 'Axe Wash');
-
-    // Initialiser le serveur MCP avec configuration complÃ¨te
-    const initializedServer = {
-      ...serverInfo,
-      client: {
-        name: config.name,
-        activeModules: config.modules,
-        apiKeysConfigured: Object.keys(config.apiKeys).length,
-        settings: config.settings,
-        timestamp: new Date().toISOString(),
+    const baseUrl = request.nextUrl.origin;
+    const response = await fetch(`${baseUrl}/api/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': request.headers.get('x-api-key') || '',
+        'authorization': request.headers.get('authorization') || '',
+        'twinmcp_api_key': request.headers.get('twinmcp_api_key') || '',
       },
-      availableTools: mcpTools.map(tool => tool.name),
-    };
-
-    return NextResponse.json({
-      success: true,
-      message: `MCP Server initialisÃ© avec succÃ¨s pour ${config.name}`,
-      data: initializedServer,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: `init_${Date.now()}`,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-03-26',
+          clientInfo: { name: 'legacy-client', version: '1.0.0' },
+        },
+      }),
     });
+
+    const result = await response.json();
+
+    // Unwrap for legacy clients
+    if (result.result) {
+      return NextResponse.json({ success: true, data: result.result });
+    }
+    return NextResponse.json(result);
   } catch (error) {
-    logger.error('Erreur lors de l\'initialisation du serveur MCP:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Erreur inconnue',
+      error: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 });
   }
 }

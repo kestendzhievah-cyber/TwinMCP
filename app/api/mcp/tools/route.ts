@@ -1,24 +1,47 @@
-import { logger } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server';
-import { mcpTools, serverInfo } from '@/lib/mcp-tools';
+/**
+ * /api/mcp/tools — Legacy tool-list endpoint.
+ *
+ * Returns the same tool list as the main JSON-RPC endpoint.
+ * Kept for backward compatibility.
+ *
+ * Preferred usage: POST /api/mcp with { "method": "tools/list" }
+ */
 
-export async function GET(request: NextRequest) {
-  try {
-    return NextResponse.json({
-      tools: mcpTools.map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema
-      })),
-      serverInfo: {
-        name: serverInfo.name,
-        version: serverInfo.version,
-      }
-    });
-  } catch (error) {
-    logger.error('Error listing MCP tools:', error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
-  }
+import { NextResponse } from 'next/server';
+
+const MCP_TOOLS = [
+  {
+    name: 'resolve-library-id',
+    description: 'Resolve library names and find matching software libraries. Use this to find the TwinMCP library ID for a given library name before querying documentation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'User question or task to help contextualise the search' },
+        libraryName: { type: 'string', description: 'Human name of the library (e.g. "React", "Next.js", "MongoDB")' },
+      },
+      required: ['query', 'libraryName'],
+    },
+  },
+  {
+    name: 'query-docs',
+    description: 'Search documentation for a specific library. Returns code snippets, guides, and API references optimised for LLM context.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        libraryId: { type: 'string', description: 'TwinMCP library ID in format /vendor/lib' },
+        query: { type: 'string', description: 'Question or task (setup, code example, configuration, etc.)' },
+        version: { type: 'string', description: 'Optional specific version of the library' },
+        maxResults: { type: 'number', description: 'Maximum number of results (default: 10)' },
+        maxTokens: { type: 'number', description: 'Maximum tokens in response (default: 4000)' },
+      },
+      required: ['libraryId', 'query'],
+    },
+  },
+];
+
+export async function GET() {
+  return NextResponse.json({
+    tools: MCP_TOOLS,
+    serverInfo: { name: 'twinmcp-server', version: '1.0.0' },
+  });
 }

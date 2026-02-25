@@ -1,57 +1,53 @@
+/**
+ * /api/mcp/call — Legacy tool-call endpoint.
+ *
+ * Wraps the request into proper MCP JSON-RPC format and forwards
+ * to the main /api/mcp endpoint. Kept for backward compatibility.
+ *
+ * Preferred usage: POST /api/mcp with JSON-RPC 2.0 body.
+ */
+
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { mcpTools, executeTool, validateToolArgs } from '@/lib/mcp-tools';
-
-// Simulate tool execution results
-const getToolResult = (toolName: string, args: any) => {
-  return executeTool(toolName, args);
-};
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { name, arguments: args } = body;
 
-    // Validate required parameters
     if (!name) {
-      return NextResponse.json({
-        error: 'Tool name is required',
-      }, { status: 400 });
+      return NextResponse.json({ error: 'Tool name is required' }, { status: 400 });
     }
 
-    // Find the tool
-    const tool = mcpTools.find(t => t.name === name);
-    if (!tool) {
-      return NextResponse.json({
-        error: `Tool '${name}' not found`,
-      }, { status: 404 });
-    }
-
-    // Validate required arguments
-    const missingArgs = validateToolArgs(tool, args);
-
-    if (missingArgs.length > 0) {
-      return NextResponse.json({
-        error: `Missing required arguments: ${missingArgs.join(', ')}`,
-      }, { status: 400 });
-    }
-
-    // Execute the tool
-    const result = await getToolResult(name, args);
-
-    return NextResponse.json({
-      content: [
-        {
-          type: 'text',
-          text: result,
-        },
-      ],
+    // Forward as JSON-RPC to /api/mcp
+    const baseUrl = request.nextUrl.origin;
+    const response = await fetch(`${baseUrl}/api/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': request.headers.get('x-api-key') || '',
+        'authorization': request.headers.get('authorization') || '',
+        'twinmcp_api_key': request.headers.get('twinmcp_api_key') || '',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: `call_${Date.now()}`,
+        method: 'tools/call',
+        params: { name, arguments: args },
+      }),
     });
 
+    const result = await response.json();
+
+    // Unwrap JSON-RPC for legacy clients expecting { content: [...] }
+    if (result.result) return NextResponse.json(result.result);
+    if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 });
+    return NextResponse.json(result);
   } catch (error) {
-    logger.error('Error executing MCP tool:', error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
+    logger.error('[MCP /call legacy] Error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }

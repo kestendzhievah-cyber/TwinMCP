@@ -34,7 +34,8 @@ export class MCPLogger implements Logger {
 
   info(message: string, meta?: any): void {
     if (this.shouldLog(LogLevel.INFO)) {
-      console.log(this.formatMessage('INFO', message, meta));
+      // Use stderr for all log output — stdout is reserved for MCP stdio transport
+      console.error(this.formatMessage('INFO', message, meta));
     }
   }
 

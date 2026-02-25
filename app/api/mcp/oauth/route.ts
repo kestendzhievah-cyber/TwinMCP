@@ -138,24 +138,67 @@ export async function POST(request: NextRequest) {
         };
         break;
         
-      case 'tools/call':
-        // Proxy to main MCP endpoint for tool execution
-        const mcpResponse = await fetch(new URL('/api/mcp', request.url), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'TWINMCP_API_KEY': auth.userId! // Use userId as internal auth
-          },
-          body: JSON.stringify(body)
-        });
+      case 'tools/call': {
+        // Execute tool directly using the same logic as /api/mcp
+        const { name: toolName, arguments: toolArgs } = body.params ?? {};
         
-        const mcpResult = await mcpResponse.json();
-        return NextResponse.json(mcpResult, {
-          headers: {
-            'X-Response-Time': `${Date.now() - startTime}ms`,
-            'X-Auth-Method': 'oauth'
+        if (!toolName) {
+          return NextResponse.json({
+            jsonrpc: '2.0',
+            id: body.id,
+            error: { code: -32602, message: 'Invalid params: tool name required' }
+          }, { status: 200, headers: { 'X-Response-Time': `${Date.now() - startTime}ms`, 'X-Auth-Method': 'oauth' } });
+        }
+
+        let toolResult: any;
+        
+        if (toolName === 'resolve-library-id') {
+          try {
+            const { getServices } = await import('@/lib/mcp-tools');
+            const { libraryResolutionService } = await getServices();
+            if (libraryResolutionService) {
+              toolResult = await libraryResolutionService.resolveLibrary({
+                query: toolArgs?.libraryName,
+                context: {},
+                limit: 5,
+                include_aliases: true,
+              });
+            } else {
+              toolResult = { results: [], totalFound: 0, query: toolArgs?.libraryName };
+            }
+          } catch {
+            toolResult = { results: [], totalFound: 0, query: toolArgs?.libraryName };
           }
-        });
+        } else if (toolName === 'query-docs') {
+          try {
+            const { getServices } = await import('@/lib/mcp-tools');
+            const { vectorSearchService } = await getServices();
+            if (vectorSearchService) {
+              toolResult = await vectorSearchService.searchDocuments({
+                library_id: toolArgs?.libraryId,
+                query: toolArgs?.query,
+                version: toolArgs?.version,
+                max_results: toolArgs?.maxResults || 10,
+                include_code: true,
+                context_limit: toolArgs?.maxTokens || 4000,
+              });
+            } else {
+              toolResult = { libraryId: toolArgs?.libraryId, query: toolArgs?.query, results: [], totalResults: 0, totalTokens: 0 };
+            }
+          } catch {
+            toolResult = { libraryId: toolArgs?.libraryId, query: toolArgs?.query, results: [], totalResults: 0, totalTokens: 0 };
+          }
+        } else {
+          return NextResponse.json({
+            jsonrpc: '2.0',
+            id: body.id,
+            error: { code: -32601, message: `Unknown tool: ${toolName}` }
+          }, { status: 200, headers: { 'X-Response-Time': `${Date.now() - startTime}ms`, 'X-Auth-Method': 'oauth' } });
+        }
+
+        result = { content: [{ type: 'text', text: JSON.stringify(toolResult, null, 2) }] };
+        break;
+      }
         
       default:
         return NextResponse.json({
