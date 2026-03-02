@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/firebase-admin';
+import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 import { createAgent } from '@/lib/agents';
 import { canCreateAgent, updateUserAgentsCount } from '@/lib/user-limits';
 import QRCode from 'qrcode';
@@ -36,8 +36,12 @@ export async function POST(request: NextRequest) {
     const token = authHeader.split('Bearer ')[1];
     let decodedToken: any;
 
+    const adminAuth = await getFirebaseAdminAuth();
+    if (!adminAuth) {
+      return NextResponse.json({ error: 'Firebase Admin not configured' }, { status: 500 });
+    }
     try {
-      decodedToken = await auth.verifyIdToken(token);
+      decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json(
         { error: 'Invalid token' },

@@ -5,11 +5,18 @@ import './globals.css'
 import { AuthProvider } from '../lib/auth-context'
 import { StripeProvider } from '../components/StripeProvider'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+})
 
 export const metadata: Metadata = {
   title: 'TwinMCP - Plateforme SaaS pour Agents IA',
   description: 'Créez, gérez et optimisez des agents d\'intelligence artificielle personnalisés avec TwinMCP',
+  other: {
+    'theme-color': '#0a0118',
+  },
 }
 
 export default function RootLayout({
@@ -19,6 +26,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
+      <head>
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className={inter.className}>
         <StripeProvider>
           <AuthProvider>

@@ -7,7 +7,22 @@
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@localhost:5432/twinmcp` |
 | `JWT_SECRET` | Secret key for JWT signing (min 32 chars) | `your-super-secret-key-at-least-32-chars` |
 
-## Optional — Auth
+## Required — Firebase Client (for Google/GitHub OAuth on /auth page)
+
+| Variable | Description | Example |
+|----------|-------------|----------|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Web API key | `AIzaSy...` |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth domain | `your-project.firebaseapp.com` |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID | `your-project` |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket | `your-project.firebasestorage.app` |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID | `123456789012` |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID | `1:123456789012:web:abcdef` |
+
+> **Where to find these:** Firebase Console > Project Settings > General > Your apps > Web app config
+
+> **Also required in Firebase Console:** Enable Google and/or GitHub as sign-in providers under Authentication > Sign-in method. For GitHub, create an OAuth App at https://github.com/settings/developers with callback URL `https://<PROJECT_ID>.firebaseapp.com/__/auth/handler`.
+
+## Optional — Firebase Server (Admin SDK for backend token verification)
 
 | Variable | Description | Default |
 |----------|-------------|---------|

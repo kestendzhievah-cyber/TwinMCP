@@ -123,7 +123,13 @@ export async function GET(request: NextRequest) {
 
     const statusCode = overallStatus === 'unhealthy' ? 503 : 200
 
-    return NextResponse.json(health, { status: statusCode })
+    return NextResponse.json(health, {
+      status: statusCode,
+      headers: {
+        'Cache-Control': 'public, max-age=15, stale-while-revalidate=10',
+        'X-Response-Time': `${Date.now() - startTime}ms`,
+      },
+    })
 
   } catch (error: any) {
     logger.error('Health check error:', error)

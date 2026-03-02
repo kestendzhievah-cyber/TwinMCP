@@ -1,67 +1,7 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const ALLOW_INSECURE_DEV_AUTH =
-  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
-
-// Extract user ID from Firebase JWT token
-function extractUserIdFromToken(token: string): { userId: string; email?: string } | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-    const userId = payload.user_id || payload.sub || payload.uid;
-    
-    if (!userId) return null;
-    
-    return { userId, email: payload.email };
-  } catch {
-    return null;
-  }
-}
-
-// Validate authentication
-async function validateAuth(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    
-    // Try Firebase Admin if fully configured
-    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-      try {
-        const firebaseAdmin = await import('firebase-admin');
-        if (!firebaseAdmin.apps.length) {
-          firebaseAdmin.initializeApp({
-            credential: firebaseAdmin.credential.cert({
-              projectId: process.env.FIREBASE_PROJECT_ID,
-              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-            }),
-          });
-        }
-        
-        const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
-        return { valid: true, userId: decodedToken.uid, email: decodedToken.email };
-      } catch (firebaseError) {
-        logger.warn('Firebase Admin verification failed, trying JWT extraction');
-      }
-    }
-    
-    // Fallback is explicitly allowed only in non-production development flows
-    if (ALLOW_INSECURE_DEV_AUTH) {
-      const extracted = extractUserIdFromToken(token);
-      if (extracted) {
-        logger.warn('Using insecure dev auth fallback (unverified JWT payload).');
-        return { valid: true, userId: extracted.userId, email: extracted.email };
-      }
-    }
-  }
-
-  return { valid: false, error: 'No authentication provided' };
-}
+import { validateAuth } from '@/lib/firebase-admin-auth';
 
 const PLAN_DETAILS = {
   free: {
@@ -88,8 +28,9 @@ const PLAN_DETAILS = {
 };
 
 export async function GET(request: NextRequest) {
+  const start = Date.now();
   try {
-    const auth = await validateAuth(request);
+    const auth = await validateAuth(request.headers.get('authorization'));
     
     if (!auth.valid) {
       return NextResponse.json(
@@ -229,6 +170,11 @@ export async function GET(request: NextRequest) {
           postalCode: userProfile.postalCode
         } : null
       }
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=60, stale-while-revalidate=30',
+        'X-Response-Time': `${Date.now() - start}ms`,
+      },
     });
 
   } catch (error) {

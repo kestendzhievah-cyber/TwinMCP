@@ -342,13 +342,15 @@ export default function DashboardPage() {
       fetchDashboardData();
       checkMCPStatus();
 
-      // Auto-refresh every 30 seconds
-      const interval = setInterval(() => {
-        fetchDashboardData();
-        checkMCPStatus();
-      }, 30000);
+      // Auto-refresh dashboard data every 60 seconds
+      const dataInterval = setInterval(fetchDashboardData, 60000);
+      // MCP health check every 2 minutes (less critical)
+      const mcpInterval = setInterval(checkMCPStatus, 120000);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(dataInterval);
+        clearInterval(mcpInterval);
+      };
     }
     return undefined;
   }, [user, authLoading, router, fetchDashboardData, checkMCPStatus]);

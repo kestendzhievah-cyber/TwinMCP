@@ -1,9 +1,9 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/firebase-admin';
+import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 
-// Fonction helper pour vÃ©rifier le token d'authentification
+// Fonction helper pour vérifier le token d'authentification
 async function getAuthenticatedUserId(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -11,8 +11,12 @@ async function getAuthenticatedUserId(request: NextRequest) {
   }
 
   const token = authHeader.split('Bearer ')[1];
+  const adminAuth = await getFirebaseAdminAuth();
+  if (!adminAuth) {
+    throw new Error('Firebase Admin not configured');
+  }
   try {
-    const decodedToken: any = await auth.verifyIdToken(token);
+    const decodedToken: any = await adminAuth.verifyIdToken(token);
     return decodedToken.uid;
   } catch (error) {
     throw new Error('Token invalide');
@@ -21,6 +25,7 @@ async function getAuthenticatedUserId(request: NextRequest) {
 
 // GET /api/mcp-configurations - RÃ©cupÃ©rer toutes les configurations de l'utilisateur
 export async function GET(request: NextRequest) {
+  const start = Date.now();
   try {
     const userId = await getAuthenticatedUserId(request);
 
@@ -29,7 +34,12 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(configurations);
+    return NextResponse.json(configurations, {
+      headers: {
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=15',
+        'X-Response-Time': `${Date.now() - start}ms`,
+      },
+    });
   } catch (error) {
     logger.error('Erreur lors de la rÃ©cupÃ©ration des configurations:', error);
     if (error instanceof Error && error.message.includes('Token')) {

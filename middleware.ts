@@ -8,8 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * - JWT signature is verified using the Web Crypto API (Edge-compatible).
  */
 
-// ─── Routes that do NOT require authentication ───────────────────
-const PUBLIC_ROUTES = [
+// ─── Routes that do NOT require authentication (Set for O(1) lookup) ───
+const PUBLIC_ROUTES = new Set([
   '/api/auth/login',
   '/api/auth/signup',
   '/api/auth/register',
@@ -22,7 +22,7 @@ const PUBLIC_ROUTES = [
   '/api/ready',
   '/api/v1/mcp/health',
   '/api/monitoring/health',
-];
+]);
 
 // Routes that handle their own authentication (Firebase tokens verified at route level)
 const SELF_AUTH_ROUTES = [
@@ -54,14 +54,12 @@ const SELF_AUTH_ROUTES = [
   '/api/github-monitoring',
 ];
 
-const PUBLIC_PREFIXES = [
-  '/api/webhooks/',
-  '/api/public/',
-];
+// Pre-build a Set of exact SELF_AUTH routes for O(1) exact match
+const SELF_AUTH_SET = new Set(SELF_AUTH_ROUTES);
 
 function isPublicRoute(pathname: string): boolean {
-  if (PUBLIC_ROUTES.includes(pathname)) return true;
-  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  if (PUBLIC_ROUTES.has(pathname)) return true;
+  return pathname.startsWith('/api/webhooks/') || pathname.startsWith('/api/public/');
 }
 
 // ─── JWT verification (Edge-compatible, uses Web Crypto) ─────────
@@ -112,7 +110,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Allow self-authenticating routes (they verify Firebase tokens at route level)
-  if (SELF_AUTH_ROUTES.some((route) => pathname === route || pathname.startsWith(route + '/'))) {
+  // Fast path: exact match via Set, then prefix check
+  if (SELF_AUTH_SET.has(pathname) || SELF_AUTH_ROUTES.some((route) => pathname.startsWith(route + '/'))) {
     return NextResponse.next();
   }
 

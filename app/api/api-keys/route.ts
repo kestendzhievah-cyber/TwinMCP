@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createHash, randomBytes } from 'crypto'
 import { createApiKeySchema, parseBody } from '@/lib/validations/api-schemas'
+import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth'
 
-// â”€â”€â”€ Plan limits â”€â”€â”€
+// ─── Plan limits ───
 const PLAN_LIMITS = {
   free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
   pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10, rateLimit: 200 },
@@ -13,57 +14,13 @@ const PLAN_LIMITS = {
 
 type PlanTier = keyof typeof PLAN_LIMITS
 
-// â”€â”€â”€ Auth: Firebase JWT or API key â”€â”€â”€
+// ─── Auth: shared Firebase Admin singleton + API key fallback ───
 async function authenticateRequest(request: NextRequest): Promise<{ userId: string; email?: string } | null> {
-  const authHeader = request.headers.get('authorization')
-  const apiKeyHeader = request.headers.get('x-api-key')
-
-  // 1) Firebase JWT (Bearer token from dashboard)
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7)
-
-    // Skip if it looks like an API key (twinmcp_ prefix)
-    if (!token.startsWith('twinmcp_')) {
-      // Firebase Admin verification (only secure path)
-      if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY) {
-        try {
-          const firebaseAdmin = await import('firebase-admin')
-          if (!firebaseAdmin.apps.length) {
-            firebaseAdmin.initializeApp({
-              credential: firebaseAdmin.credential.cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-              }),
-            })
-          }
-          const decoded = await firebaseAdmin.auth().verifyIdToken(token)
-          return { userId: decoded.uid, email: decoded.email }
-        } catch {
-          // Firebase verification failed — no insecure fallback
-        }
-      }
-    }
-  }
-
-  // 2) API key auth (x-api-key header or Bearer twinmcp_...)
-  const rawKey = apiKeyHeader || (authHeader?.startsWith('Bearer twinmcp_') ? authHeader.substring(7) : null)
-  if (rawKey) {
-    try {
-      const keyHash = createHash('sha256').update(rawKey).digest('hex')
-      const key = await prisma.apiKey.findUnique({ where: { keyHash } })
-      if (key && key.isActive && !key.revokedAt) {
-        return { userId: key.userId }
-      }
-    } catch {
-      // DB error
-    }
-  }
-
-  return null
+  const result = await validateAuthWithApiKey(request.headers.get('authorization'), request.headers.get('x-api-key'))
+  return result.valid ? { userId: result.userId, email: result.email } : null
 }
 
-// â”€â”€â”€ Ensure user exists in DB â”€â”€â”€
+// ─── Ensure user exists in DB ───
 async function ensureUser(userId: string, email?: string) {
   let user = await prisma.user.findFirst({
     where: { OR: [{ id: userId }, { oauthId: userId }] },
@@ -104,6 +61,7 @@ async function getUserTier(userId: string): Promise<PlanTier> {
 
 // â”€â”€â”€ GET: List user's API keys with real usage stats â”€â”€â”€
 export async function GET(request: NextRequest) {
+  const start = Date.now()
   try {
     const auth = await authenticateRequest(request)
     if (!auth) {
@@ -119,55 +77,83 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
+    // Batch stats: use groupBy instead of per-key queries (N+1 fix)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const hourAgo = new Date(Date.now() - 3600000)
+    const keyIds = apiKeys.map((k: typeof apiKeys[number]) => k.id)
 
-    const keysWithStats = await Promise.all(
-      apiKeys.map(async (key: typeof apiKeys[number]) => {
-        let requestsToday = 0
-        let requestsThisHour = 0
-        let successRate = 100
+    let dailyByKey = new Map<string, number>()
+    let hourlyByKey = new Map<string, number>()
+    let successByKey = new Map<string, number>()
 
-        try {
-          const [daily, hourly, recentLogs] = await Promise.all([
-            prisma.usageLog.count({ where: { apiKeyId: key.id, createdAt: { gte: today } } }),
-            prisma.usageLog.count({ where: { apiKeyId: key.id, createdAt: { gte: hourAgo } } }),
-            prisma.usageLog.findMany({
-              where: { apiKeyId: key.id },
-              orderBy: { createdAt: 'desc' },
-              take: 100,
-              select: { success: true },
-            }),
-          ])
-          requestsToday = daily
-          requestsThisHour = hourly
-          if (recentLogs.length > 0) {
-            const ok = recentLogs.filter((l: { success: boolean }) => l.success).length
-            successRate = Math.round((ok / recentLogs.length) * 1000) / 10
-          }
-        } catch {
-          // Keep defaults
+    if (keyIds.length > 0) {
+      try {
+        const [dailyAgg, hourlyAgg, recentLogs] = await Promise.all([
+          prisma.usageLog.groupBy({
+            by: ['apiKeyId'],
+            where: { apiKeyId: { in: keyIds }, createdAt: { gte: today } },
+            _count: true,
+          }),
+          prisma.usageLog.groupBy({
+            by: ['apiKeyId'],
+            where: { apiKeyId: { in: keyIds }, createdAt: { gte: hourAgo } },
+            _count: true,
+          }),
+          prisma.usageLog.findMany({
+            where: { apiKeyId: { in: keyIds } },
+            orderBy: { createdAt: 'desc' },
+            take: keyIds.length * 50,
+            select: { apiKeyId: true, success: true },
+          }),
+        ])
+        for (const row of dailyAgg) {
+          if (row.apiKeyId) dailyByKey.set(row.apiKeyId, row._count)
         }
-
-        return {
-          id: key.id,
-          keyPrefix: key.keyPrefix,
-          name: key.name || 'Sans nom',
-          tier: key.tier,
-          quotaRequestsPerDay: limits.dailyLimit,
-          quotaRequestsPerMinute: limits.rateLimit,
-          createdAt: key.createdAt.toISOString(),
-          lastUsedAt: key.lastUsedAt?.toISOString() || null,
-          usage: { requestsToday, requestsThisHour, successRate },
+        for (const row of hourlyAgg) {
+          if (row.apiKeyId) hourlyByKey.set(row.apiKeyId, row._count)
         }
-      })
-    )
+        const logsByKey = new Map<string, { total: number; success: number }>()
+        for (const log of recentLogs) {
+          if (!log.apiKeyId) continue
+          const entry = logsByKey.get(log.apiKeyId) || { total: 0, success: 0 }
+          entry.total++
+          if (log.success) entry.success++
+          logsByKey.set(log.apiKeyId, entry)
+        }
+        for (const [kid, stats] of logsByKey) {
+          successByKey.set(kid, stats.total > 0 ? Math.round((stats.success / stats.total) * 1000) / 10 : 100)
+        }
+      } catch {
+        // Keep empty maps
+      }
+    }
+
+    const keysWithStats = apiKeys.map((key: typeof apiKeys[number]) => ({
+      id: key.id,
+      keyPrefix: key.keyPrefix,
+      name: key.name || 'Sans nom',
+      tier: key.tier,
+      quotaRequestsPerDay: limits.dailyLimit,
+      quotaRequestsPerMinute: limits.rateLimit,
+      createdAt: key.createdAt.toISOString(),
+      lastUsedAt: key.lastUsedAt?.toISOString() || null,
+      usage: {
+        requestsToday: dailyByKey.get(key.id) || 0,
+        requestsThisHour: hourlyByKey.get(key.id) || 0,
+        successRate: successByKey.get(key.id) ?? 100,
+      },
+    }))
 
     return NextResponse.json({
       success: true,
       data: keysWithStats,
       subscription: { plan: tier, limits },
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=10, stale-while-revalidate=5',
+        'X-Response-Time': `${Date.now() - start}ms`,
+      },
     })
   } catch (error) {
     logger.error('List API keys error:', error)

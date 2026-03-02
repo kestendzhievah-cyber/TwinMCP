@@ -1,73 +1,16 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const ALLOW_INSECURE_DEV_AUTH =
-  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
-
-// Extract user ID from Firebase JWT token
-function extractUserIdFromToken(token: string): { userId: string; email?: string } | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-    const userId = payload.user_id || payload.sub || payload.uid;
-    
-    if (!userId) return null;
-    
-    return { userId, email: payload.email };
-  } catch {
-    return null;
-  }
-}
-
-// Validate auth header
-async function validateAuthHeader(request: NextRequest): Promise<{ userId: string } | null> {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-
-  const token = authHeader.substring(7);
-
-  // Try Firebase Admin if fully configured
-  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-    try {
-      const firebaseAdmin = await import('firebase-admin');
-      if (!firebaseAdmin.apps.length) {
-        firebaseAdmin.initializeApp({
-          credential: firebaseAdmin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-          }),
-        });
-      }
-      
-      const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
-      return { userId: decodedToken.uid };
-    } catch {
-      // Fall through to JWT extraction
-    }
-  }
-
-  // Fallback is explicitly allowed only in non-production development flows
-  if (ALLOW_INSECURE_DEV_AUTH) {
-    const extracted = extractUserIdFromToken(token);
-    if (extracted) {
-      logger.warn('Using insecure dev auth fallback (unverified JWT payload).');
-      return { userId: extracted.userId };
-    }
-  }
-
-  return null;
-}
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 // GET - Get usage statistics for user
 export async function GET(request: NextRequest) {
-  const auth = await validateAuthHeader(request);
-  if (!auth) {
+  const start = Date.now();
+  const userId = await getAuthUserId(request.headers.get('authorization'));
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const auth = { userId };
 
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period') || 'day'; // day, week, month
@@ -200,6 +143,11 @@ export async function GET(request: NextRequest) {
           remaining: Math.max(0, key.quotaMonthly - key.usedMonthly),
         },
       })),
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=15, stale-while-revalidate=10',
+        'X-Response-Time': `${Date.now() - start}ms`,
+      },
     });
   } catch (error) {
     logger.error('Failed to fetch usage:', error);
@@ -213,8 +161,8 @@ export async function GET(request: NextRequest) {
 // POST - Log a usage event (internal use)
 export async function POST(request: NextRequest) {
   try {
-    const auth = await validateAuthHeader(request);
-    if (!auth) {
+    const authUserId = await getAuthUserId(request.headers.get('authorization'));
+    if (!authUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -222,7 +170,7 @@ export async function POST(request: NextRequest) {
     const { apiKeyId, userId, toolName, libraryId, query, tokensReturned, responseTimeMs, success, errorMessage } = body;
 
     // Prevent forging usage logs for other users
-    const effectiveUserId = auth.userId;
+    const effectiveUserId = authUserId;
     if (userId && userId !== effectiveUserId) {
       return NextResponse.json({ error: 'Forbidden: userId mismatch' }, { status: 403 });
     }

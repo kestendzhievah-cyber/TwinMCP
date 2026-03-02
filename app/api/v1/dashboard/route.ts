@@ -1,73 +1,13 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const ALLOW_INSECURE_DEV_AUTH =
-  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
+import { validateAuth } from '@/lib/firebase-admin-auth';
 
 const PLAN_LIMITS = {
   free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
   pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10, rateLimit: 200 },
   enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 }
 };
-
-// Extract user ID from Firebase JWT token
-function extractUserIdFromToken(token: string): { userId: string; email?: string } | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-    const userId = payload.user_id || payload.sub || payload.uid;
-    
-    if (!userId) return null;
-    
-    return { userId, email: payload.email };
-  } catch {
-    return null;
-  }
-}
-
-// Validate authentication
-async function validateAuth(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    
-    // Try Firebase Admin if fully configured
-    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-      try {
-        const firebaseAdmin = await import('firebase-admin');
-        if (!firebaseAdmin.apps.length) {
-          firebaseAdmin.initializeApp({
-            credential: firebaseAdmin.credential.cert({
-              projectId: process.env.FIREBASE_PROJECT_ID,
-              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-            }),
-          });
-        }
-        
-        const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
-        return { valid: true, userId: decodedToken.uid, email: decodedToken.email };
-      } catch (firebaseError) {
-        logger.warn('Firebase Admin verification failed, trying JWT extraction');
-      }
-    }
-    
-    // Fallback is explicitly allowed only in non-production development flows
-    if (ALLOW_INSECURE_DEV_AUTH) {
-      const extracted = extractUserIdFromToken(token);
-      if (extracted) {
-        logger.warn('Using insecure dev auth fallback (unverified JWT payload).');
-        return { valid: true, userId: extracted.userId, email: extracted.email };
-      }
-    }
-  }
-
-  return { valid: false, error: 'No authentication provided' };
-}
 
 // Get empty stats
 function getEmptyStats() {
@@ -89,8 +29,9 @@ function getEmptyStats() {
 }
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
   try {
-    const auth = await validateAuth(request);
+    const auth = await validateAuth(request.headers.get('authorization'));
     
     if (!auth.valid) {
       return NextResponse.json(
@@ -99,7 +40,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = auth.userId!;
+    const userId = auth.userId;
 
     // Try to get or create user
     let dbUser;
@@ -175,55 +116,76 @@ export async function GET(request: NextRequest) {
       monthStart.setDate(1);
       monthStart.setHours(0, 0, 0, 0);
 
-      // Get stats for each key
-      const keysWithStats = await Promise.all(
-        apiKeys.map(async (key: typeof apiKeys[number]) => {
-          let dailyUsage = 0;
-          let hourlyUsage = 0;
-          let monthlyUsage = 0;
-          let successRate = 100;
+      // Batch all key stats in 3 aggregate queries instead of N*4 queries (N+1 fix)
+      const keyIds = apiKeys.map((k: typeof apiKeys[number]) => k.id);
 
-          try {
-            const [daily, hourly, monthly, recentLogs] = await Promise.all([
-              prisma.usageLog.count({ where: { apiKeyId: key.id, createdAt: { gte: today } } }),
-              prisma.usageLog.count({ where: { apiKeyId: key.id, createdAt: { gte: hourAgo } } }),
-              prisma.usageLog.count({ where: { apiKeyId: key.id, createdAt: { gte: monthStart } } }),
-              prisma.usageLog.findMany({
-                where: { apiKeyId: key.id },
-                orderBy: { createdAt: 'desc' },
-                take: 100
-              })
-            ]);
+      let dailyByKey = new Map<string, number>();
+      let hourlyByKey = new Map<string, number>();
+      let successByKey = new Map<string, number>();
 
-            dailyUsage = daily;
-            hourlyUsage = hourly;
-            monthlyUsage = monthly;
+      if (keyIds.length > 0) {
+        try {
+          const [dailyAgg, hourlyAgg, recentLogs] = await Promise.all([
+            // Single query: daily counts grouped by apiKeyId
+            prisma.usageLog.groupBy({
+              by: ['apiKeyId'],
+              where: { apiKeyId: { in: keyIds }, createdAt: { gte: today } },
+              _count: true,
+            }),
+            // Single query: hourly counts grouped by apiKeyId
+            prisma.usageLog.groupBy({
+              by: ['apiKeyId'],
+              where: { apiKeyId: { in: keyIds }, createdAt: { gte: hourAgo } },
+              _count: true,
+            }),
+            // Single query: recent logs for success rate (limited)
+            prisma.usageLog.findMany({
+              where: { apiKeyId: { in: keyIds } },
+              orderBy: { createdAt: 'desc' },
+              take: keyIds.length * 50,
+              select: { apiKeyId: true, success: true },
+            }),
+          ]);
 
-            if (recentLogs.length > 0) {
-              const successCount = recentLogs.filter((log: any) => log.success).length;
-              successRate = Math.round((successCount / recentLogs.length) * 1000) / 10;
-            }
-          } catch {
-            // Keep defaults
+          for (const row of dailyAgg) {
+            if (row.apiKeyId) dailyByKey.set(row.apiKeyId, row._count);
+          }
+          for (const row of hourlyAgg) {
+            if (row.apiKeyId) hourlyByKey.set(row.apiKeyId, row._count);
           }
 
-          return {
-            id: key.id,
-            keyPrefix: key.keyPrefix,
-            name: key.name || 'Sans nom',
-            tier: key.tier,
-            quotaDaily: limits.dailyLimit,
-            quotaHourly: limits.rateLimit,
-            createdAt: key.createdAt.toISOString(),
-            lastUsedAt: key.lastUsedAt?.toISOString() || null,
-            usage: {
-              requestsToday: dailyUsage,
-              requestsThisHour: hourlyUsage,
-              successRate
-            }
-          };
-        })
-      );
+          // Compute success rate per key from recent logs
+          const logsByKey = new Map<string, { total: number; success: number }>();
+          for (const log of recentLogs) {
+            if (!log.apiKeyId) continue;
+            const entry = logsByKey.get(log.apiKeyId) || { total: 0, success: 0 };
+            entry.total++;
+            if (log.success) entry.success++;
+            logsByKey.set(log.apiKeyId, entry);
+          }
+          for (const [kid, stats] of logsByKey) {
+            successByKey.set(kid, stats.total > 0 ? Math.round((stats.success / stats.total) * 1000) / 10 : 100);
+          }
+        } catch {
+          // Keep empty maps (defaults to 0)
+        }
+      }
+
+      const keysWithStats = apiKeys.map((key: typeof apiKeys[number]) => ({
+        id: key.id,
+        keyPrefix: key.keyPrefix,
+        name: key.name || 'Sans nom',
+        tier: key.tier,
+        quotaDaily: limits.dailyLimit,
+        quotaHourly: limits.rateLimit,
+        createdAt: key.createdAt.toISOString(),
+        lastUsedAt: key.lastUsedAt?.toISOString() || null,
+        usage: {
+          requestsToday: dailyByKey.get(key.id) || 0,
+          requestsThisHour: hourlyByKey.get(key.id) || 0,
+          successRate: successByKey.get(key.id) ?? 100,
+        },
+      }));
 
       // Calculate totals
       const totalRequestsToday = keysWithStats.reduce((sum, k) => sum + (k.usage?.requestsToday || 0), 0);
@@ -265,7 +227,7 @@ export async function GET(request: NextRequest) {
         // Empty activity
       }
 
-      return NextResponse.json({
+      const responseData = {
         success: true,
         data: {
           totalKeys: apiKeys.length,
@@ -282,6 +244,13 @@ export async function GET(request: NextRequest) {
           keys: keysWithStats,
           recentActivity
         }
+      };
+
+      return NextResponse.json(responseData, {
+        headers: {
+          'Cache-Control': 'private, max-age=5, stale-while-revalidate=10',
+          'X-Response-Time': `${Date.now() - startTime}ms`,
+        },
       });
 
     } catch (statsError) {

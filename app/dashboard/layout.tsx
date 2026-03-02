@@ -100,7 +100,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [userPlan, setUserPlan] = useState<string>("free");
+
+  // Derive plan from auth profile (avoids a redundant API call)
+  const userPlan = profile?.plan || 'free';
 
   const userEmail = profile?.email || user?.email || '';
   const userName = profile?.name || user?.displayName || 'Utilisateur';
@@ -110,29 +112,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     .join('')
     .toUpperCase()
     .slice(0, 2) || 'U';
-
-  // Fetch real user plan from API
-  useEffect(() => {
-    if (!user) return;
-    const fetchPlan = async () => {
-      try {
-        const headers: Record<string, string> = {};
-        if (typeof user.getIdToken === 'function') {
-          const token = await user.getIdToken();
-          if (token) headers['Authorization'] = `Bearer ${token}`;
-        }
-        const res = await fetch('/api/api-keys', { headers });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.subscription?.plan) {
-          setUserPlan(data.subscription.plan);
-        }
-      } catch {
-        // Keep default plan
-      }
-    };
-    fetchPlan();
-  }, [user]);
 
   const handleLogout = async () => {
     try {

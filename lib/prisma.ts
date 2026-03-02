@@ -4,7 +4,15 @@ import { Pool } from 'pg'
 // ─── Prisma singleton (preferred DB access) ───
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
-export const prisma = globalForPrisma.prisma || new PrismaClient()
+export const prisma = globalForPrisma.prisma || new PrismaClient({
+  // Log slow queries in development
+  log: process.env.NODE_ENV !== 'production'
+    ? [{ emit: 'stdout', level: 'query' }, { emit: 'stdout', level: 'warn' }, { emit: 'stdout', level: 'error' }]
+    : [{ emit: 'stdout', level: 'error' }],
+  // Datasource URL can include connection pool params:
+  //   ?connection_limit=10&pool_timeout=20
+  // These are set via DATABASE_URL env var.
+})
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 

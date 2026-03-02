@@ -1,9 +1,7 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const ALLOW_INSECURE_DEV_AUTH =
-  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
+import { validateAuth } from '@/lib/firebase-admin-auth';
 
 const PLAN_LIMITS = {
   free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
@@ -11,67 +9,10 @@ const PLAN_LIMITS = {
   enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 }
 };
 
-// Extract user ID from Firebase JWT token
-function extractUserIdFromToken(token: string): { userId: string; email?: string } | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-    const userId = payload.user_id || payload.sub || payload.uid;
-    
-    if (!userId) return null;
-    
-    return { userId, email: payload.email };
-  } catch {
-    return null;
-  }
-}
-
-// Validate authentication
-async function validateAuth(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    
-    // Try Firebase Admin if fully configured
-    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-      try {
-        const firebaseAdmin = await import('firebase-admin');
-        if (!firebaseAdmin.apps.length) {
-          firebaseAdmin.initializeApp({
-            credential: firebaseAdmin.credential.cert({
-              projectId: process.env.FIREBASE_PROJECT_ID,
-              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-            }),
-          });
-        }
-        
-        const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
-        return { valid: true, userId: decodedToken.uid, email: decodedToken.email };
-      } catch (firebaseError) {
-        logger.warn('Firebase Admin verification failed, trying JWT extraction');
-      }
-    }
-    
-    // Fallback is explicitly allowed only in non-production development flows
-    if (ALLOW_INSECURE_DEV_AUTH) {
-      const extracted = extractUserIdFromToken(token);
-      if (extracted) {
-        logger.warn('Using insecure dev auth fallback (unverified JWT payload).');
-        return { valid: true, userId: extracted.userId, email: extracted.email };
-      }
-    }
-  }
-
-  return { valid: false, error: 'No authentication provided' };
-}
-
 export async function GET(request: NextRequest) {
+  const start = Date.now();
   try {
-    const auth = await validateAuth(request);
+    const auth = await validateAuth(request.headers.get('authorization'));
     
     if (!auth.valid) {
       return NextResponse.json(
@@ -212,36 +153,58 @@ export async function GET(request: NextRequest) {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const quotas = await Promise.all(
-      apiKeys.map(async (key: typeof apiKeys[number]) => {
-        const [dailyCount, monthlyCount] = await Promise.all([
-          prisma.usageLog.count({ where: { apiKeyId: key.id, createdAt: { gte: today } } }),
-          prisma.usageLog.count({ where: { apiKeyId: key.id, createdAt: { gte: monthStart } } })
+    // Batch quota queries with groupBy instead of per-key (N+1 fix)
+    const quotaKeyIds = apiKeys.map((k: typeof apiKeys[number]) => k.id);
+    let dailyByKey = new Map<string, number>();
+    let monthlyByKey = new Map<string, number>();
+
+    if (quotaKeyIds.length > 0) {
+      try {
+        const [dailyAgg, monthlyAgg] = await Promise.all([
+          prisma.usageLog.groupBy({
+            by: ['apiKeyId'],
+            where: { apiKeyId: { in: quotaKeyIds }, createdAt: { gte: today } },
+            _count: true,
+          }),
+          prisma.usageLog.groupBy({
+            by: ['apiKeyId'],
+            where: { apiKeyId: { in: quotaKeyIds }, createdAt: { gte: monthStart } },
+            _count: true,
+          }),
         ]);
+        for (const row of dailyAgg) {
+          if (row.apiKeyId) dailyByKey.set(row.apiKeyId, row._count);
+        }
+        for (const row of monthlyAgg) {
+          if (row.apiKeyId) monthlyByKey.set(row.apiKeyId, row._count);
+        }
+      } catch {
+        // Keep empty maps
+      }
+    }
 
-        const dailyPercentage = Math.round((dailyCount / limits.dailyLimit) * 1000) / 10;
-        const monthlyPercentage = Math.round((monthlyCount / limits.monthlyLimit) * 1000) / 10;
-
-        return {
-          keyId: key.id,
-          keyPrefix: key.keyPrefix,
-          name: key.name || 'Sans nom',
-          tier: key.tier,
-          daily: {
-            used: dailyCount,
-            limit: limits.dailyLimit,
-            percentage: dailyPercentage,
-            remaining: Math.max(0, limits.dailyLimit - dailyCount)
-          },
-          monthly: {
-            used: monthlyCount,
-            limit: limits.monthlyLimit,
-            percentage: monthlyPercentage,
-            remaining: Math.max(0, limits.monthlyLimit - monthlyCount)
-          }
-        };
-      })
-    );
+    const quotas = apiKeys.map((key: typeof apiKeys[number]) => {
+      const dailyCount = dailyByKey.get(key.id) || 0;
+      const monthlyCount = monthlyByKey.get(key.id) || 0;
+      return {
+        keyId: key.id,
+        keyPrefix: key.keyPrefix,
+        name: key.name || 'Sans nom',
+        tier: key.tier,
+        daily: {
+          used: dailyCount,
+          limit: limits.dailyLimit,
+          percentage: Math.round((dailyCount / limits.dailyLimit) * 1000) / 10,
+          remaining: Math.max(0, limits.dailyLimit - dailyCount)
+        },
+        monthly: {
+          used: monthlyCount,
+          limit: limits.monthlyLimit,
+          percentage: Math.round((monthlyCount / limits.monthlyLimit) * 1000) / 10,
+          remaining: Math.max(0, limits.monthlyLimit - monthlyCount)
+        }
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -257,6 +220,11 @@ export async function GET(request: NextRequest) {
         usageOverTime,
         quotas
       }
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=15',
+        'X-Response-Time': `${Date.now() - start}ms`,
+      },
     });
 
   } catch (error) {

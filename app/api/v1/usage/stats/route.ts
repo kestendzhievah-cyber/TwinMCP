@@ -1,63 +1,13 @@
 import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { createHash } from 'crypto';
-
-// Validate Firebase token or API key
-async function validateAuth(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const apiKey = request.headers.get('x-api-key');
-
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    
-    try {
-      const firebaseAdmin = await import('firebase-admin');
-      if (!firebaseAdmin.apps.length) {
-        firebaseAdmin.initializeApp({
-          credential: firebaseAdmin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-          }),
-        });
-      }
-      
-      const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
-      return { valid: true, userId: decodedToken.uid, email: decodedToken.email };
-    } catch (error) {
-      // Try as API key
-      const keyHash = createHash('sha256').update(token).digest('hex');
-      const key = await prisma.apiKey.findUnique({
-        where: { keyHash }
-      });
-      
-      if (key && key.isActive) {
-        return { valid: true, userId: key.userId };
-      }
-      return { valid: false, error: 'Invalid token' };
-    }
-  }
-
-  if (apiKey) {
-    const keyHash = createHash('sha256').update(apiKey).digest('hex');
-    const key = await prisma.apiKey.findUnique({
-      where: { keyHash }
-    });
-    
-    if (key && key.isActive) {
-      return { valid: true, userId: key.userId };
-    }
-    return { valid: false, error: 'Invalid API key' };
-  }
-
-  return { valid: false, error: 'No authentication provided' };
-}
+import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
 
 // GET - Get real-time usage statistics
 export async function GET(request: NextRequest) {
+  const start = Date.now();
   try {
-    const auth = await validateAuth(request);
+    const auth = await validateAuthWithApiKey(request.headers.get('authorization'), request.headers.get('x-api-key'));
     
     if (!auth.valid) {
       return NextResponse.json(
@@ -234,6 +184,11 @@ export async function GET(request: NextRequest) {
         }))
       },
       timestamp: new Date().toISOString()
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=15, stale-while-revalidate=10',
+        'X-Response-Time': `${Date.now() - start}ms`,
+      },
     });
 
   } catch (error) {

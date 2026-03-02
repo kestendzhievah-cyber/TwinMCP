@@ -14,19 +14,26 @@ const firebaseConfig = {
 
 // Validate Firebase configuration
 const isFirebaseConfigValid = () => {
-  const requiredFields = ['apiKey', 'authDomain', 'projectId', 'appId'];
-  const missingFields = requiredFields.filter(field => !firebaseConfig[field as keyof typeof firebaseConfig]);
+  const requiredFields = ['apiKey', 'authDomain', 'projectId', 'appId'] as const;
+  const missingFields = requiredFields.filter(field => {
+    const val = firebaseConfig[field];
+    return !val || val.trim() === '';
+  });
   
   if (missingFields.length > 0) {
-    console.warn('⚠️ Configuration Firebase incomplète. Champs manquants:', missingFields);
+    console.warn(
+      '⚠️ Configuration Firebase incomplète. Champs manquants ou vides:',
+      missingFields,
+      '\n→ Créez un fichier .env.local avec les variables NEXT_PUBLIC_FIREBASE_* (voir docs/env.local.example)'
+    );
     return false;
   }
   
   // Check for placeholder values
   if (firebaseConfig.apiKey.includes('your-') || 
-      firebaseConfig.messagingSenderId === '123456789012' ||
+      firebaseConfig.apiKey.includes('YOUR_') ||
       firebaseConfig.appId.includes('abcdef')) {
-    console.warn('⚠️ Configuration Firebase utilise des valeurs de placeholder');
+    console.warn('⚠️ Configuration Firebase utilise des valeurs de placeholder. Remplacez-les par les vraies valeurs Firebase.');
     return false;
   }
   
@@ -45,7 +52,7 @@ try {
     auth = getAuth(app);
     db = getFirestore(app);
     firebaseInitialized = true;
-    console.log('✅ Firebase initialisé avec succès');
+    console.log('✅ Firebase initialisé avec succès (authDomain:', firebaseConfig.authDomain + ')');
   } else {
     console.warn('⚠️ Firebase non initialisé - configuration incomplète');
   }
@@ -124,6 +131,27 @@ export function clearRememberMePreference(): void {
  */
 export function isFirebaseReady(): boolean {
   return firebaseInitialized && auth !== null;
+}
+
+/**
+ * Return diagnostic info for troubleshooting auth issues
+ */
+export function getFirebaseDiagnostics(): { ready: boolean; missingVars: string[]; authDomain: string } {
+  const allVars = [
+    'NEXT_PUBLIC_FIREBASE_API_KEY',
+    'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+    'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+    'NEXT_PUBLIC_FIREBASE_APP_ID',
+  ];
+  const missingVars = allVars.filter(v => {
+    const val = process.env[v];
+    return !val || val.trim() === '';
+  });
+  return {
+    ready: firebaseInitialized && auth !== null,
+    missingVars,
+    authDomain: firebaseConfig.authDomain || '(non défini)',
+  };
 }
 
 // Export with null safety

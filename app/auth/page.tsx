@@ -19,6 +19,7 @@ import {
   Check
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
+import { getFirebaseDiagnostics } from '../../lib/firebase';
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
@@ -40,7 +41,12 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (!loading && !firebaseReady) {
-      setError('Firebase n\'est pas configuré. Vérifiez les variables NEXT_PUBLIC_FIREBASE_* et activez Google/GitHub dans Firebase Auth.');
+      const diag = getFirebaseDiagnostics();
+      if (diag.missingVars.length > 0) {
+        setError(`Firebase non configuré. Variables manquantes dans .env.local : ${diag.missingVars.join(', ')}. Voir docs/env.local.example.`);
+      } else {
+        setError('Firebase n\'est pas configuré correctement. Vérifiez vos variables NEXT_PUBLIC_FIREBASE_* dans .env.local.');
+      }
     }
   }, [loading, firebaseReady]);
 
@@ -80,6 +86,9 @@ export default function AuthPage() {
         case 'auth/invalid-credential':
           errorMessage = 'Email ou mot de passe incorrect';
           break;
+        case 'auth/internal-error':
+          errorMessage = 'Erreur interne Firebase. Vérifiez que les variables NEXT_PUBLIC_FIREBASE_* sont correctes dans .env.local.';
+          break;
         default:
           errorMessage = err.message || 'Identifiants incorrects';
       }
@@ -104,13 +113,19 @@ export default function AuthPage() {
           errorMessage = 'Connexion annulée';
           break;
         case 'auth/popup-blocked':
-          errorMessage = 'Popup bloqué par le navigateur';
+          errorMessage = 'Popup bloqué par le navigateur. Autorisez les popups pour ce site.';
           break;
         case 'auth/unauthorized-domain':
-          errorMessage = 'Domaine non autorisé dans Firebase Authentication';
+          errorMessage = 'Domaine non autorisé. Ajoutez votre domaine (ex: localhost) dans Firebase Console > Authentication > Settings > Authorized domains.';
           break;
         case 'auth/operation-not-allowed':
-          errorMessage = 'Connexion Google non activée dans Firebase Authentication';
+          errorMessage = 'Connexion Google non activée. Activez Google dans Firebase Console > Authentication > Sign-in method.';
+          break;
+        case 'auth/internal-error':
+          errorMessage = 'Erreur interne Firebase. Vérifiez que les variables NEXT_PUBLIC_FIREBASE_* sont correctes dans .env.local et que Google est activé comme fournisseur dans Firebase Console.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Erreur réseau. Vérifiez votre connexion internet.';
           break;
         default:
           errorMessage = err.message || 'Erreur lors de la connexion Google';
@@ -136,16 +151,22 @@ export default function AuthPage() {
           errorMessage = 'Connexion annulée';
           break;
         case 'auth/popup-blocked':
-          errorMessage = 'Popup bloqué par le navigateur';
+          errorMessage = 'Popup bloqué par le navigateur. Autorisez les popups pour ce site.';
           break;
         case 'auth/account-exists-with-different-credential':
-          errorMessage = 'Un compte existe déjà avec cette adresse email';
+          errorMessage = 'Un compte existe déjà avec cette adresse email (via un autre fournisseur).';
           break;
         case 'auth/unauthorized-domain':
-          errorMessage = 'Domaine non autorisé dans Firebase Authentication';
+          errorMessage = 'Domaine non autorisé. Ajoutez votre domaine (ex: localhost) dans Firebase Console > Authentication > Settings > Authorized domains.';
           break;
         case 'auth/operation-not-allowed':
-          errorMessage = 'Connexion GitHub non activée dans Firebase Authentication';
+          errorMessage = 'Connexion GitHub non activée. Activez GitHub dans Firebase Console > Authentication > Sign-in method.';
+          break;
+        case 'auth/internal-error':
+          errorMessage = 'Erreur interne Firebase. Vérifiez que les variables NEXT_PUBLIC_FIREBASE_* sont correctes dans .env.local et que GitHub est activé comme fournisseur dans Firebase Console.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Erreur réseau. Vérifiez votre connexion internet.';
           break;
         default:
           errorMessage = err.message || 'Erreur lors de la connexion GitHub';

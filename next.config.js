@@ -7,10 +7,21 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Désactiver les images optimisées
+  // Optimisation des images (Next.js Image Optimization)
   images: {
-    unoptimized: true,
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+    deviceSizes: [640, 750, 828, 1080, 1200],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
   },
+  // SWC compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
+  // Remove X-Powered-By header (smaller responses)
+  poweredByHeader: false,
+  // Enable gzip compression
+  compress: true,
   // Configuration pour le build de production
   distDir: '.next',
   // Configuration pour le output standalone
@@ -63,9 +74,40 @@ const nextConfig = {
 
     return config;
   },
-  // Configuration pour les en-têtes de sécurité
+  // Configuration pour les en-têtes de sécurité et caching
   async headers() {
     return [
+      // Immutable static assets — cache for 1 year
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Font files — cache for 1 year
+      {
+        source: '/fonts/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Optimized images — cache for 30 days
+      {
+        source: '/_next/image/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=2592000, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      // Security headers on all routes
       {
         source: '/(.*)',
         headers: [
@@ -95,7 +137,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-ancestors 'self';",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.firebaseapp.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://github.com https://apis.google.com; frame-ancestors 'self';",
           },
         ],
       },

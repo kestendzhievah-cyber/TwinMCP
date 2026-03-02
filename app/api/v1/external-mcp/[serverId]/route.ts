@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { externalMcpService } from '@/lib/services/external-mcp.service'
-import { auth } from '@/lib/firebase-admin'
+import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth'
 
 async function getAuthUserId(request: NextRequest): Promise<string> {
   const authHeader = request.headers.get('authorization')
@@ -10,7 +10,13 @@ async function getAuthUserId(request: NextRequest): Promise<string> {
     throw err
   }
   const token = authHeader.split('Bearer ')[1]
-  const decoded: any = await auth.verifyIdToken(token)
+  const adminAuth = await getFirebaseAdminAuth()
+  if (!adminAuth) {
+    const err: any = new Error('Firebase Admin not configured')
+    err.statusCode = 500
+    throw err
+  }
+  const decoded: any = await adminAuth.verifyIdToken(token)
   return decoded.uid
 }
 
