@@ -4,6 +4,9 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const REDIS_DISABLED =
+  process.env.REDIS_DISABLED === 'true' || !process.env.REDIS_URL;
+
 interface ContextOptions {
   conversationId?: string;
   maxTokens?: number;
@@ -29,11 +32,18 @@ interface AssembledContext {
 }
 
 export class ContextCacheService {
-  private redis: Redis;
+  private redis: Redis | null;
   private ttl = 3600;
   
   constructor() {
-    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    if (REDIS_DISABLED) {
+      this.redis = null;
+    } else {
+      this.redis = new Redis(process.env.REDIS_URL!);
+      this.redis.on('error', (err: Error) => {
+        console.error('[context-cache] Redis error:', err.message);
+      });
+    }
   }
   
   async get(
@@ -41,6 +51,7 @@ export class ContextCacheService {
     options: ContextOptions
   ): Promise<AssembledContext | null> {
     const key = this.generateKey(query, options);
+    if (!this.redis) return null;
     const cached = await this.redis.get(key);
     
     if (cached) {
@@ -60,6 +71,7 @@ export class ContextCacheService {
     context: AssembledContext
   ): Promise<void> {
     const key = this.generateKey(query, options);
+    if (!this.redis) return;
     await this.redis.setex(key, this.ttl, JSON.stringify(context));
   }
   
@@ -87,6 +99,7 @@ export class ContextCacheService {
   }
   
   async invalidate(pattern: string): Promise<void> {
+    if (!this.redis) return;
     const keys = await this.redis.keys(`context:${pattern}*`);
     if (keys.length > 0) {
       await this.redis.del(...keys);
@@ -94,6 +107,7 @@ export class ContextCacheService {
   }
   
   async close(): Promise<void> {
+    if (!this.redis) return;
     await this.redis.quit();
   }
 }

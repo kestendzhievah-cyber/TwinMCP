@@ -1,5 +1,8 @@
 import Redis from 'ioredis';
 
+const REDIS_DISABLED =
+  process.env.REDIS_DISABLED === 'true' || !process.env.REDIS_URL;
+
 interface CacheEntry {
   value: any;
   timestamp: number;
@@ -13,11 +16,18 @@ interface CacheOptions {
 
 export class MultiLevelCacheService {
   private l1Cache: Map<string, CacheEntry>;
-  private l2Cache: Redis;
+  private l2Cache: Redis | null;
   
   constructor() {
     this.l1Cache = new Map();
-    this.l2Cache = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    if (REDIS_DISABLED) {
+      this.l2Cache = null;
+    } else {
+      this.l2Cache = new Redis(process.env.REDIS_URL!);
+      this.l2Cache.on('error', (err: Error) => {
+        console.error('[multi-level-cache] Redis error:', err.message);
+      });
+    }
     this.setupL1Eviction();
   }
   
@@ -27,11 +37,13 @@ export class MultiLevelCacheService {
       return l1.value as T;
     }
     
-    const l2 = await this.l2Cache.get(key);
-    if (l2) {
-      const value = JSON.parse(l2);
-      this.l1Cache.set(key, { value, timestamp: Date.now() });
-      return value as T;
+    if (this.l2Cache) {
+      const l2 = await this.l2Cache.get(key);
+      if (l2) {
+        const value = JSON.parse(l2);
+        this.l1Cache.set(key, { value, timestamp: Date.now() });
+        return value as T;
+      }
     }
     
     if (this.isStaticContent(key)) {
@@ -56,7 +68,9 @@ export class MultiLevelCacheService {
       this.l1Cache.set(key, { value, timestamp: Date.now(), ttl });
     }
     
-    await this.l2Cache.setex(key, ttl, JSON.stringify(value));
+    if (this.l2Cache) {
+      await this.l2Cache.setex(key, ttl, JSON.stringify(value));
+    }
     
     if (this.isStaticContent(key) && options.cdn) {
       await this.uploadToCDN(key, value);
@@ -65,12 +79,12 @@ export class MultiLevelCacheService {
   
   async delete(key: string): Promise<void> {
     this.l1Cache.delete(key);
-    await this.l2Cache.del(key);
+    if (this.l2Cache) await this.l2Cache.del(key);
   }
   
   async clear(): Promise<void> {
     this.l1Cache.clear();
-    await this.l2Cache.flushdb();
+    if (this.l2Cache) await this.l2Cache.flushdb();
   }
   
   private setupL1Eviction() {
@@ -101,6 +115,6 @@ export class MultiLevelCacheService {
   }
   
   async close(): Promise<void> {
-    await this.l2Cache.quit();
+    if (this.l2Cache) await this.l2Cache.quit();
   }
 }
