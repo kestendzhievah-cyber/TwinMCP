@@ -57,10 +57,9 @@ export async function POST(request: NextRequest) {
 
     switch (error.code) {
       case 'auth/user-not-found':
-        errorMessage = 'Aucun compte trouvé avec cette adresse email';
-        break;
       case 'auth/wrong-password':
-        errorMessage = 'Mot de passe incorrect';
+      case 'auth/invalid-credential':
+        errorMessage = 'Email ou mot de passe incorrect';
         break;
       case 'auth/invalid-email':
         errorMessage = 'Adresse email invalide';
@@ -72,7 +71,7 @@ export async function POST(request: NextRequest) {
         errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
         break;
       default:
-        errorMessage = error.message || 'Erreur lors de la connexion';
+        errorMessage = 'Erreur lors de la connexion';
     }
 
     return NextResponse.json({ error: errorMessage }, { status: 401 });

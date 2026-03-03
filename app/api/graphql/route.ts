@@ -86,10 +86,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const gw = getGateway();
 
+    // Properly verify authentication — do NOT trust headers blindly
+    let userId: string | undefined;
+    let isAuthenticated = false;
+
+    const authHeader = request.headers.get('authorization');
+    const apiKey = request.headers.get('x-api-key');
+
+    if (authHeader || apiKey) {
+      try {
+        const { getAuthUserId } = await import('@/lib/firebase-admin-auth');
+        const verifiedUserId = await getAuthUserId(authHeader);
+        if (verifiedUserId) {
+          userId = verifiedUserId;
+          isAuthenticated = true;
+        }
+      } catch {
+        // Auth verification failed — leave isAuthenticated as false
+      }
+    }
+
     const context: GraphQLContext = {
-      userId: request.headers.get('x-user-id') || undefined,
-      apiKey: request.headers.get('x-api-key') || undefined,
-      isAuthenticated: !!(request.headers.get('x-api-key') || request.headers.get('authorization')),
+      userId,
+      apiKey: apiKey || undefined,
+      isAuthenticated,
     };
 
     const result = await gw.execute(body, context);

@@ -33,6 +33,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Chatbot ID is required' }, { status: 400 });
     }
 
+    // Verify ownership before deleting
+    const { getAgent } = await import('@/lib/agents');
+    const agent = await getAgent(chatbotId);
+    if (!agent || agent.userId !== userId) {
+      return NextResponse.json({ error: 'Chatbot not found or not owned by you' }, { status: 404 });
+    }
+
     // Delete the agent
     await deleteAgent(chatbotId);
 

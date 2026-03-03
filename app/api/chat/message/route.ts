@@ -1,5 +1,6 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 // Generate response using real LLM provider when available, mock otherwise
 async function generateResponse(message: string, options: any) {
@@ -94,6 +95,11 @@ async function generateResponse(message: string, options: any) {
 
 export async function POST(req: NextRequest) {
   try {
+    const userId = await getAuthUserId(req.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { conversationId, message, options = {} } = body;
 
