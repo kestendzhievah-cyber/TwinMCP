@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createConversationSchema, parseBody } from '@/lib/validations/api-schemas';
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         title: true,
         createdAt: true,
         updatedAt: true,
-      }
+      },
     });
 
     return NextResponse.json({ success: true, data: conversations });
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId,
         title: title || 'Nouvelle conversation',
-      }
+      },
     });
 
     return NextResponse.json({ success: true, data: conversation });

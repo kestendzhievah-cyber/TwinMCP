@@ -14,7 +14,7 @@ export function ConfirmDeleteModal({
   onClose,
   onConfirm,
   chatbotName,
-  isDeleting = false
+  isDeleting = false,
 }: ConfirmDeleteModalProps) {
   if (!isOpen) return null;
 
@@ -25,16 +25,17 @@ export function ConfirmDeleteModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleOverlayClick}>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={handleOverlayClick}
+    >
       <div className="bg-white rounded-2xl max-w-md w-full p-8">
         <div className="text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600" />
           </div>
 
-          <h3 className="text-2xl font-bold text-slate-900 mb-2">
-            Supprimer le chatbot ?
-          </h3>
+          <h3 className="text-2xl font-bold text-slate-900 mb-2">Supprimer le chatbot ?</h3>
 
           <p className="text-slate-600 mb-6">
             Êtes-vous sûr de vouloir supprimer <strong>"{chatbotName}"</strong> ?
@@ -44,7 +45,8 @@ export function ConfirmDeleteModal({
 
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-800 text-sm">
-              ⚠️ Toutes les conversations et données associées à ce chatbot seront définitivement perdues.
+              ⚠️ Toutes les conversations et données associées à ce chatbot seront définitivement
+              perdues.
             </p>
           </div>
 

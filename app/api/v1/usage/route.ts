@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Calculate date range
     const now = new Date();
     let startDate: Date;
-    
+
     switch (period) {
       case 'week':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -112,49 +112,49 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      period,
-      summary: {
-        totalRequests,
-        totalTokens,
-        avgResponseTime: totalRequests > 0 ? Math.round(totalResponseTime / totalRequests) : 0,
-        successRate: totalRequests > 0 ? (successCount / totalRequests) * 100 : 100,
-      },
-      byTool: Object.entries(byTool).map(([name, stats]) => ({
-        tool: name,
-        ...stats,
-      })),
-      usageOverTime: sortedBuckets,
-      quotas: apiKeys.map((key: typeof apiKeys[number]) => ({
-        keyId: key.id,
-        keyPrefix: key.keyPrefix,
-        name: key.name,
-        tier: key.tier,
-        daily: {
-          used: key.usedDaily,
-          limit: key.quotaDaily,
-          percentage: key.quotaDaily > 0 ? (key.usedDaily / key.quotaDaily) * 100 : 0,
-          remaining: Math.max(0, key.quotaDaily - key.usedDaily),
+    return NextResponse.json(
+      {
+        period,
+        summary: {
+          totalRequests,
+          totalTokens,
+          avgResponseTime: totalRequests > 0 ? Math.round(totalResponseTime / totalRequests) : 0,
+          successRate: totalRequests > 0 ? (successCount / totalRequests) * 100 : 100,
         },
-        monthly: {
-          used: key.usedMonthly,
-          limit: key.quotaMonthly,
-          percentage: key.quotaMonthly > 0 ? (key.usedMonthly / key.quotaMonthly) * 100 : 0,
-          remaining: Math.max(0, key.quotaMonthly - key.usedMonthly),
-        },
-      })),
-    }, {
-      headers: {
-        'Cache-Control': 'private, max-age=15, stale-while-revalidate=10',
-        'X-Response-Time': `${Date.now() - start}ms`,
+        byTool: Object.entries(byTool).map(([name, stats]) => ({
+          tool: name,
+          ...stats,
+        })),
+        usageOverTime: sortedBuckets,
+        quotas: apiKeys.map((key: (typeof apiKeys)[number]) => ({
+          keyId: key.id,
+          keyPrefix: key.keyPrefix,
+          name: key.name,
+          tier: key.tier,
+          daily: {
+            used: key.usedDaily,
+            limit: key.quotaDaily,
+            percentage: key.quotaDaily > 0 ? (key.usedDaily / key.quotaDaily) * 100 : 0,
+            remaining: Math.max(0, key.quotaDaily - key.usedDaily),
+          },
+          monthly: {
+            used: key.usedMonthly,
+            limit: key.quotaMonthly,
+            percentage: key.quotaMonthly > 0 ? (key.usedMonthly / key.quotaMonthly) * 100 : 0,
+            remaining: Math.max(0, key.quotaMonthly - key.usedMonthly),
+          },
+        })),
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=15, stale-while-revalidate=10',
+          'X-Response-Time': `${Date.now() - start}ms`,
+        },
+      }
+    );
   } catch (error) {
     logger.error('Failed to fetch usage:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch usage statistics' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch usage statistics' }, { status: 500 });
   }
 }
 
@@ -167,7 +167,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { apiKeyId, userId, toolName, libraryId, query, tokensReturned, responseTimeMs, success, errorMessage } = body;
+    const {
+      apiKeyId,
+      userId,
+      toolName,
+      libraryId,
+      query,
+      tokensReturned,
+      responseTimeMs,
+      success,
+      errorMessage,
+    } = body;
 
     // Prevent forging usage logs for other users
     const effectiveUserId = authUserId;
@@ -216,9 +226,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ logged: true, id: log.id });
   } catch (error) {
     logger.error('Failed to log usage:', error);
-    return NextResponse.json(
-      { error: 'Failed to log usage' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to log usage' }, { status: 500 });
   }
 }

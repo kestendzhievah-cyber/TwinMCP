@@ -48,7 +48,7 @@ class InvoiceSystemValidator {
       await this.db.query('SELECT NOW()');
       this.addResult('Database Connection', 'success', 'Connexion à la base de données réussie');
     } catch (error) {
-      this.addResult('Database Connection', 'error', `Échec de connexion: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`);
+      this.addResult('Database Connection', 'error', `Échec de connexion: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -82,7 +82,7 @@ class InvoiceSystemValidator {
           this.addResult(`Table: ${table}`, 'error', 'Table manquante');
         }
       } catch (error) {
-        this.addResult(`Table: ${table}`, 'error', `Erreur de vérification: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown'}`);
+        this.addResult(`Table: ${table}`, 'error', `Erreur de vérification: ${error instanceof Error ? error.message : 'Unknown'}`);
       }
     }
   }
@@ -122,7 +122,7 @@ class InvoiceSystemValidator {
       this.addResult('AdvancedBillingService', 'success', 'Service initialisé correctement');
 
     } catch (error) {
-      this.addResult('Services', 'error', `Erreur d'initialisation: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown'}`);
+      this.addResult('Services', 'error', `Erreur d'initialisation: ${error instanceof Error ? error.message : 'Unknown'}`);
     }
   }
 
@@ -169,7 +169,7 @@ class InvoiceSystemValidator {
         this.addResult('TypeScript Types', 'success', 'Tous les types requis sont définis');
       }
     } catch (error) {
-      this.addResult('TypeScript Types', 'error', `Erreur de validation: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown'}`);
+      this.addResult('TypeScript Types', 'error', `Erreur de validation: ${error instanceof Error ? error.message : 'Unknown'}`);
     }
   }
 
@@ -198,7 +198,7 @@ class InvoiceSystemValidator {
         this.addResult('Migrations', 'warning', 'Répertoire migrations non trouvé');
       }
     } catch (error) {
-      this.addResult('Migrations', 'error', `Erreur: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown'}`);
+      this.addResult('Migrations', 'error', `Erreur: ${error instanceof Error ? error.message : 'Unknown'}`);
     }
   }
 

@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 import { getUserLimits, UserLimitsResponse } from '@/lib/user-limits';
@@ -9,10 +9,7 @@ export async function GET(request: NextRequest) {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -25,10 +22,7 @@ export async function GET(request: NextRequest) {
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const userId = decodedToken.uid;
@@ -44,9 +38,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error('Error getting user limits:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

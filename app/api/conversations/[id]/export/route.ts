@@ -1,11 +1,8 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationService } from '../../_shared';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const conversationService = await getConversationService();
   try {
     const body = await request.json();
@@ -27,20 +24,22 @@ export async function POST(
       );
     }
 
-    const exportRecord = await conversationService.exportConversation(conversationId, userId, format, {
-      includeMetadata: true,
-      includeAnalytics: false,
-      includeAttachments: true,
-      compressImages: false,
-      ...options
-    });
+    const exportRecord = await conversationService.exportConversation(
+      conversationId,
+      userId,
+      format,
+      {
+        includeMetadata: true,
+        includeAnalytics: false,
+        includeAttachments: true,
+        compressImages: false,
+        ...options,
+      }
+    );
 
     return NextResponse.json({ export: exportRecord }, { status: 201 });
   } catch (error) {
     logger.error('Error exporting conversation:', error);
-    return NextResponse.json(
-      { error: 'Failed to export conversation' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to export conversation' }, { status: 500 });
   }
 }

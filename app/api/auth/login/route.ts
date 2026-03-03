@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -20,21 +20,18 @@ export async function POST(request: NextRequest) {
     }
     const { email, password, recaptchaToken } = parsed.data;
 
-    // VÃ©rifier le token reCAPTCHA si fourni
+    // Vérifier le token reCAPTCHA si fourni
     if (recaptchaToken) {
       const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
       if (!isRecaptchaValid) {
-        return NextResponse.json(
-          { error: 'VÃ©rification reCAPTCHA Ã©chouÃ©e' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Vérification reCAPTCHA échouée' }, { status: 400 });
       }
     }
 
     // Authentifier l'utilisateur avec Firebase
     if (!auth) {
       return NextResponse.json(
-        { error: 'Service d\'authentification non disponible' },
+        { error: "Service d'authentification non disponible" },
         { status: 503 }
       );
     }
@@ -44,7 +41,7 @@ export async function POST(request: NextRequest) {
     const user = userCredential.user;
 
     return NextResponse.json({
-      message: 'Connexion rÃ©ussie',
+      message: 'Connexion réussie',
       user: {
         uid: user.uid,
         email: user.email,
@@ -52,7 +49,6 @@ export async function POST(request: NextRequest) {
         emailVerified: user.emailVerified,
       },
     });
-
   } catch (error: any) {
     logger.error('Erreur lors de la connexion:', error);
 
@@ -61,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     switch (error.code) {
       case 'auth/user-not-found':
-        errorMessage = 'Aucun compte trouvÃ© avec cette adresse email';
+        errorMessage = 'Aucun compte trouvé avec cette adresse email';
         break;
       case 'auth/wrong-password':
         errorMessage = 'Mot de passe incorrect';
@@ -70,18 +66,15 @@ export async function POST(request: NextRequest) {
         errorMessage = 'Adresse email invalide';
         break;
       case 'auth/user-disabled':
-        errorMessage = 'Ce compte a Ã©tÃ© dÃ©sactivÃ©';
+        errorMessage = 'Ce compte a été désactivé';
         break;
       case 'auth/too-many-requests':
-        errorMessage = 'Trop de tentatives. Veuillez rÃ©essayer plus tard';
+        errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
         break;
       default:
         errorMessage = error.message || 'Erreur lors de la connexion';
     }
 
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 401 });
   }
 }

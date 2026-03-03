@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getFirebaseAdminApp } from '@/lib/firebase/admin';
@@ -18,32 +18,23 @@ function getDb(): Firestore {
 }
 
 // GET /api/chatbot/[id]
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    
+
     if (!id) {
-      return NextResponse.json(
-        { error: 'ID du chatbot manquant' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'ID du chatbot manquant' }, { status: 400 });
     }
 
     const docRef = getDb().collection('chatbots').doc(id);
     const doc = await docRef.get();
 
     if (!doc.exists) {
-      return NextResponse.json(
-        { error: 'Chatbot non trouvé' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Chatbot non trouvé' }, { status: 404 });
     }
 
     const data = doc.data();
-    
+
     // Formater les données pour correspondre à l'interface Chatbot
     const chatbot = {
       id: doc.id,
@@ -62,32 +53,23 @@ export async function GET(
     return NextResponse.json(chatbot);
   } catch (error) {
     logger.error('Erreur lors de la récupération du chatbot:', error);
-    return NextResponse.json(
-      { error: 'Erreur interne du serveur' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
 
 // PUT /api/chatbot/[id]
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    
+
     if (!id) {
-      return NextResponse.json(
-        { error: 'ID du chatbot manquant' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'ID du chatbot manquant' }, { status: 400 });
     }
 
     // Validation des données
     const updateData: any = {};
-    
+
     if (body.name !== undefined) updateData.name = body.name;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.model !== undefined) updateData.model = body.model;
@@ -95,28 +77,25 @@ export async function PUT(
     if (body.temperature !== undefined) updateData.temperature = parseFloat(body.temperature);
     if (body.maxTokens !== undefined) updateData.maxTokens = parseInt(body.maxTokens, 10);
     if (body.isActive !== undefined) updateData.isActive = Boolean(body.isActive);
-    
+
     // Ajout de la date de mise à jour
     updateData.updatedAt = new Date();
 
     const docRef = getDb().collection('chatbots').doc(id);
-    
+
     // Vérifier si le document existe
     const doc = await docRef.get();
     if (!doc.exists) {
-      return NextResponse.json(
-        { error: 'Chatbot non trouvé' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Chatbot non trouvé' }, { status: 404 });
     }
 
     // Mise à jour du document
     await docRef.update(updateData);
-    
+
     // Récupérer le document mis à jour
     const updatedDoc = await docRef.get();
     const updatedData = updatedDoc.data();
-    
+
     const updatedChatbot = {
       id: updatedDoc.id,
       name: updatedData?.name || '',

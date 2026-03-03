@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { externalMcpService } from '@/lib/services/external-mcp.service'
-import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth'
+import { NextRequest, NextResponse } from 'next/server';
+import { externalMcpService } from '@/lib/services/external-mcp.service';
+import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 
 async function getAuthUserId(request: NextRequest): Promise<string> {
-  const authHeader = request.headers.get('authorization')
+  const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    const err: any = new Error('Authentication required')
-    err.statusCode = 401
-    throw err
+    const err: any = new Error('Authentication required');
+    err.statusCode = 401;
+    throw err;
   }
-  const token = authHeader.split('Bearer ')[1]
-  const adminAuth = await getFirebaseAdminAuth()
+  const token = authHeader.split('Bearer ')[1];
+  const adminAuth = await getFirebaseAdminAuth();
   if (!adminAuth) {
-    const err: any = new Error('Firebase Admin not configured')
-    err.statusCode = 500
-    throw err
+    const err: any = new Error('Firebase Admin not configured');
+    err.statusCode = 500;
+    throw err;
   }
-  const decoded: any = await adminAuth.verifyIdToken(token)
-  return decoded.uid
+  const decoded: any = await adminAuth.verifyIdToken(token);
+  return decoded.uid;
 }
 
 // GET /api/v1/external-mcp/[serverId] — Get server details
@@ -26,18 +26,18 @@ export async function GET(
   { params }: { params: Promise<{ serverId: string }> }
 ) {
   try {
-    const userId = await getAuthUserId(request)
-    const { serverId } = await params
-    const server = await externalMcpService.getById(serverId, userId)
+    const userId = await getAuthUserId(request);
+    const { serverId } = await params;
+    const server = await externalMcpService.getById(serverId, userId);
     if (!server) {
-      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: server })
+    return NextResponse.json({ success: true, data: server });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },
       { status: error.statusCode || 500 }
-    )
+    );
   }
 }
 
@@ -47,17 +47,14 @@ export async function PUT(
   { params }: { params: Promise<{ serverId: string }> }
 ) {
   try {
-    const userId = await getAuthUserId(request)
-    const { serverId } = await params
-    const body = await request.json()
-    const server = await externalMcpService.update(serverId, userId, body)
-    return NextResponse.json({ success: true, data: server })
+    const userId = await getAuthUserId(request);
+    const { serverId } = await params;
+    const body = await request.json();
+    const server = await externalMcpService.update(serverId, userId, body);
+    return NextResponse.json({ success: true, data: server });
   } catch (error: any) {
-    const status = error.message === 'Server not found' ? 404 : error.statusCode || 500
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status }
-    )
+    const status = error.message === 'Server not found' ? 404 : error.statusCode || 500;
+    return NextResponse.json({ success: false, error: error.message }, { status });
   }
 }
 
@@ -67,15 +64,12 @@ export async function DELETE(
   { params }: { params: Promise<{ serverId: string }> }
 ) {
   try {
-    const userId = await getAuthUserId(request)
-    const { serverId } = await params
-    await externalMcpService.delete(serverId, userId)
-    return NextResponse.json({ success: true, message: 'Server deleted' })
+    const userId = await getAuthUserId(request);
+    const { serverId } = await params;
+    await externalMcpService.delete(serverId, userId);
+    return NextResponse.json({ success: true, message: 'Server deleted' });
   } catch (error: any) {
-    const status = error.message === 'Server not found' ? 404 : error.statusCode || 500
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status }
-    )
+    const status = error.message === 'Server not found' ? 404 : error.statusCode || 500;
+    return NextResponse.json({ success: false, error: error.message }, { status });
   }
 }

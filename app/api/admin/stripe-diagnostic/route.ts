@@ -39,7 +39,7 @@ async function ensureAdmin(request: NextRequest): Promise<NextResponse | null> {
 
   if (error) return error;
 
-  if (!context.user || context.user.role !== 'ADMIN') {
+  if (context.user?.role !== 'ADMIN') {
     return NextResponse.json(
       { success: false, error: 'Admin access required', code: 'FORBIDDEN' },
       { status: 403 }
@@ -185,8 +185,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const hasFailure = checks.some((check) => check.status === 'fail');
-  const hasWarning = checks.some((check) => check.status === 'warn');
+  const hasFailure = checks.some(check => check.status === 'fail');
+  const hasWarning = checks.some(check => check.status === 'warn');
   const overallStatus: CheckStatus = hasFailure ? 'fail' : hasWarning ? 'warn' : 'ok';
 
   return NextResponse.json({

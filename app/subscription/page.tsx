@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import { Check, Sparkles, ArrowRight, Zap, Shield, Crown } from 'lucide-react';
@@ -24,12 +24,12 @@ export default function SubscriptionPage() {
         '200 requêtes/jour',
         'Accès bibliothèque publique',
         'Support communauté',
-        'Documentation complète'
+        'Documentation complète',
       ],
       popular: false,
       color: 'from-blue-500 to-cyan-500',
       cta: 'Démarrer gratuitement',
-      isContactSales: false
+      isContactSales: false,
     },
     {
       id: 'professional',
@@ -45,12 +45,12 @@ export default function SubscriptionPage() {
         'Support prioritaire 24/7',
         'Analytics avancés',
         'API complète',
-        'Webhooks & intégrations'
+        'Webhooks & intégrations',
       ],
       popular: true,
       color: 'from-purple-500 to-pink-500',
       cta: 'Essai gratuit 14 jours',
-      isContactSales: false
+      isContactSales: false,
     },
     {
       id: 'enterprise',
@@ -67,13 +67,13 @@ export default function SubscriptionPage() {
         'SLA 99.9%',
         'Déploiement on-premise',
         'Formation & onboarding',
-        'White-label disponible'
+        'White-label disponible',
       ],
       popular: false,
       color: 'from-amber-500 to-orange-500',
       cta: 'Contacter les ventes',
-      isContactSales: true
-    }
+      isContactSales: true,
+    },
   ];
 
   const handleSelectPlan = async (planId: string) => {
@@ -136,22 +136,28 @@ export default function SubscriptionPage() {
           {/* Header */}
           <div className="text-center mb-16">
             <div className="inline-block mb-4 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-full">
-              <span className="text-purple-300 text-sm font-semibold">🎉 Bienvenue chez TwinMCP !</span>
+              <span className="text-purple-300 text-sm font-semibold">
+                🎉 Bienvenue chez TwinMCP !
+              </span>
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
               Choisissez Votre
-              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Abonnement</span>
+              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                {' '}
+                Abonnement
+              </span>
             </h1>
-            
+
             <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
-              Sélectionnez le plan qui correspond à vos besoins. 
-              Vous pouvez changer à tout moment.
+              Sélectionnez le plan qui correspond à vos besoins. Vous pouvez changer à tout moment.
             </p>
 
             {/* Billing Toggle */}
             <div className="flex items-center justify-center gap-4">
-              <span className={`text-sm font-medium transition ${!isAnnual ? 'text-white' : 'text-gray-400'}`}>
+              <span
+                className={`text-sm font-medium transition ${!isAnnual ? 'text-white' : 'text-gray-400'}`}
+              >
                 Mensuel
               </span>
               <button
@@ -162,7 +168,9 @@ export default function SubscriptionPage() {
                   className={`w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-md transform transition-transform duration-300 ${isAnnual ? 'translate-x-8' : 'translate-x-0'}`}
                 />
               </button>
-              <span className={`text-sm font-medium transition ${isAnnual ? 'text-white' : 'text-gray-400'}`}>
+              <span
+                className={`text-sm font-medium transition ${isAnnual ? 'text-white' : 'text-gray-400'}`}
+              >
                 Annuel
               </span>
               {isAnnual && (
@@ -182,10 +190,10 @@ export default function SubscriptionPage() {
 
           {/* Plans Grid */}
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {plans.map((plan) => {
+            {plans.map(plan => {
               const IconComponent = plan.icon;
               const isSelected = selectedPlan === plan.id;
-              
+
               return (
                 <div
                   key={plan.id}
@@ -194,8 +202,8 @@ export default function SubscriptionPage() {
                     plan.popular
                       ? 'bg-gradient-to-br from-purple-900/50 to-pink-900/50 border-purple-500 shadow-2xl shadow-purple-500/30 scale-105'
                       : isSelected
-                      ? 'bg-gradient-to-br from-slate-800/80 to-purple-900/40 border-purple-400 shadow-xl shadow-purple-500/20'
-                      : 'bg-slate-800/50 border-slate-700 hover:border-purple-500/50 hover:bg-slate-800/70'
+                        ? 'bg-gradient-to-br from-slate-800/80 to-purple-900/40 border-purple-400 shadow-xl shadow-purple-500/20'
+                        : 'bg-slate-800/50 border-slate-700 hover:border-purple-500/50 hover:bg-slate-800/70'
                   }`}
                 >
                   {plan.popular && (
@@ -212,7 +220,9 @@ export default function SubscriptionPage() {
                   )}
 
                   {/* Plan Icon */}
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-r ${plan.color} flex items-center justify-center mb-6`}>
+                  <div
+                    className={`w-14 h-14 rounded-xl bg-gradient-to-r ${plan.color} flex items-center justify-center mb-6`}
+                  >
                     <IconComponent className="w-7 h-7 text-white" />
                   </div>
 
@@ -234,7 +244,9 @@ export default function SubscriptionPage() {
                     </div>
                     {isAnnual && !plan.isContactSales && plan.id !== 'free' && (
                       <p className="text-green-400 text-sm mt-2">
-                        Économisez {Math.round((parseFloat(plan.price) - parseFloat(plan.priceAnnual)) * 12)}€/an
+                        Économisez{' '}
+                        {Math.round((parseFloat(plan.price) - parseFloat(plan.priceAnnual)) * 12)}
+                        €/an
                       </p>
                     )}
                   </div>
@@ -251,7 +263,7 @@ export default function SubscriptionPage() {
 
                   {/* Select Button */}
                   <button
-                    onClick={(e) => {
+                    onClick={e => {
                       e.stopPropagation();
                       if (plan.isContactSales) {
                         router.push('/contact');
@@ -280,7 +292,8 @@ export default function SubscriptionPage() {
           {/* Additional Info */}
           <div className="mt-16 text-center">
             <p className="text-gray-400 text-sm mb-4">
-              ✓ Essai gratuit de 14 jours • ✓ Aucune carte de crédit requise • ✓ Annulation à tout moment
+              ✓ Essai gratuit de 14 jours • ✓ Aucune carte de crédit requise • ✓ Annulation à tout
+              moment
             </p>
             <p className="text-gray-500 text-xs">
               En continuant, vous acceptez nos{' '}

@@ -1,259 +1,70 @@
-import { logger } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
-import Stripe from 'stripe'
+import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  constructWebhookEvent,
+  processWebhookEvent,
+  isStripeConfigured,
+} from '@/lib/services/stripe-billing.service';
 
-// VÃ©rification des variables d'environnement (dÃ©fÃ©rÃ©e au runtime)
-function getStripeClient(): { stripe: Stripe; endpointSecret: string } {
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
-
-  if (!stripeSecretKey) {
-    logger.error('âŒ STRIPE_SECRET_KEY is not set in environment variables')
-    throw new Error('STRIPE_SECRET_KEY is not configured')
-  }
-
-  if (!endpointSecret) {
-    logger.error('âŒ STRIPE_WEBHOOK_SECRET is not set in environment variables')
-    throw new Error('STRIPE_WEBHOOK_SECRET is not configured')
-  }
-
-  const stripe = new Stripe(stripeSecretKey, {
-    typescript: true,
-  })
-
-  return { stripe, endpointSecret }
-}
-
-// Interface pour les mÃ©tadonnÃ©es de journalisation
-interface WebhookLog {
-  eventId: string
-  type: string
-  status: 'success' | 'error'
-  message: string
-  timestamp: string
-  metadata?: Record<string, any>
-}
-
-// Fonction utilitaire pour la journalisation
-const logWebhookEvent = (log: Omit<WebhookLog, 'timestamp'>) => {
-  const logEntry: WebhookLog = {
-    ...log,
-    timestamp: new Date().toISOString(),
-  }
-  
-  // En production, vous pourriez envoyer ces logs Ã  un service comme Sentry, LogRocket, etc.
-  if (log.status === 'error') {
-    logger.error('ðŸ”´ Webhook Error:', logEntry)
-  } else {
-    logger.info('ðŸŸ¢ Webhook Log:', logEntry)
-  }
-  
-  // Ici, vous pourriez Ã©galement enregistrer dans une base de donnÃ©es
-  // await db.webhookLogs.create({ data: logEntry })
-}
-
+/**
+ * Main Stripe webhook endpoint.
+ * Verifies signature, then delegates to the centralized billing service
+ * which performs real DB updates (subscriptions, plans, invoices).
+ */
 export async function POST(req: NextRequest) {
-  const requestId = randomUUID()
-  const startTime = Date.now()
-  
+  const start = Date.now();
+
+  if (!isStripeConfigured()) {
+    return NextResponse.json(
+      { error: 'Stripe is not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
-    const body = await req.text()
-    const sig = req.headers.get('stripe-signature')
-    
-    if (!sig) {
-      logWebhookEvent({
-        eventId: requestId,
-        type: 'signature_missing',
-        status: 'error',
-        message: 'Missing Stripe signature header',
-      })
+    const body = await req.text();
+    const signature = req.headers.get('stripe-signature');
+
+    if (!signature) {
       return NextResponse.json(
-        { error: 'Missing Stripe signature' },
+        { error: 'Missing stripe-signature header' },
         { status: 400 }
-      )
+      );
     }
 
-    const { stripe, endpointSecret } = getStripeClient()
-    let event: Stripe.Event
-
+    // Verify signature + construct event
+    let event;
     try {
-      event = stripe.webhooks.constructEvent(body, sig!, endpointSecret)
-      
-      // Type guard pour vÃ©rifier si l'event a un objet de type Subscription
-      const isSubscriptionEvent = (
-        event.type === 'customer.subscription.created' ||
-        event.type === 'customer.subscription.updated' ||
-        event.type === 'customer.subscription.deleted'
-      )
-      
-      logWebhookEvent({
-        eventId: requestId,
-        type: 'webhook_received',
-        status: 'success',
-        message: `Received event: ${event.type}`,
-        metadata: {
-          eventId: event.id,
-          type: event.type,
-          apiVersion: event.api_version,
-          // Inclure des mÃ©tadonnÃ©es spÃ©cifiques au type d'Ã©vÃ©nement
-          ...(isSubscriptionEvent ? {
-            subscriptionId: (event.data.object as Stripe.Subscription).id,
-            customerId: (event.data.object as Stripe.Subscription).customer
-          } : {})
-        },
-      })
-      
+      event = await constructWebhookEvent(body, signature);
     } catch (err) {
-      const error = err as Error
-      logWebhookEvent({
-        eventId: requestId,
-        type: 'signature_verification_failed',
-        status: 'error',
-        message: 'Webhook signature verification failed',
-        metadata: {
-          error: error.message,
-          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-        },
-      })
-      
+      logger.error('[webhook] Signature verification failed:', err);
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
-      )
+      );
     }
 
-    // Traitement des Ã©vÃ©nements
+    // Process event (updates DB)
     try {
-      switch (event.type) {
-        case 'customer.subscription.created':
-        case 'customer.subscription.updated':
-        case 'customer.subscription.deleted': {
-          const subscription = event.data.object as Stripe.Subscription
-          // Mettez Ã  jour la base de donnÃ©es avec les informations d'abonnement
-          
-          logWebhookEvent({
-            eventId: requestId,
-            type: 'subscription_updated',
-            status: 'success',
-            message: `Subscription ${event.type.split('.').pop()}`,
-            metadata: {
-              subscriptionId: subscription.id,
-              customerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id || 'unknown',
-              status: subscription.status,
-              // Utilisation de la propriÃ©tÃ© current_period_end du type Stripe.Subscription
-              currentPeriodEnd: 'current_period_end' in subscription ? 
-                (subscription as any).current_period_end?.toString() || 'unknown' : 'unknown',
-            },
-          })
-          break
-        }
-          
-        case 'invoice.payment_succeeded': {
-          const invoice = event.data.object as Stripe.Invoice
-          // Mettez Ã  jour la base de donnÃ©es pour reflÃ©ter le paiement rÃ©ussi
-          
-          // RÃ©cupÃ©rer l'ID d'abonnement Ã  partir des lignes de facture
-          const subscriptionId = invoice.lines.data[0]?.subscription || null
-          
-          logWebhookEvent({
-            eventId: requestId,
-            type: 'payment_succeeded',
-            status: 'success',
-            message: `Payment received for invoice ${invoice.id}`,
-            metadata: {
-              invoiceId: invoice.id,
-              amount: invoice.amount_paid,
-              customerId: typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id || 'unknown',
-              subscriptionId: subscriptionId,
-            },
-          })
-          break
-        }
-          
-        case 'invoice.payment_failed': {
-          const failedInvoice = event.data.object as Stripe.Invoice
-          // Notifiez l'utilisateur ou effectuez d'autres actions en cas d'Ã©chec de paiement
-          
-          // RÃ©cupÃ©rer l'ID d'abonnement Ã  partir des lignes de facture
-          const subscriptionId = failedInvoice.lines.data[0]?.subscription || null
-          
-          logWebhookEvent({
-            eventId: requestId,
-            type: 'payment_failed',
-            status: 'error',
-            message: `Payment failed for invoice ${failedInvoice.id}`,
-            metadata: {
-              invoiceId: failedInvoice.id,
-              attempt: failedInvoice.attempt_count,
-              customerId: typeof failedInvoice.customer === 'string' ? failedInvoice.customer : failedInvoice.customer?.id || 'unknown',
-              subscriptionId: subscriptionId,
-            },
-          })
-          break
-        }
-          
-        default:
-          logWebhookEvent({
-            eventId: requestId,
-            type: 'unhandled_event',
-            status: 'success',
-            message: `Unhandled event type: ${event.type}`,
-            metadata: {
-              eventType: event.type,
-            },
-          })
-      }
-
-      return NextResponse.json({ 
-        received: true,
-        eventId: requestId,
-        eventType: event.type,
-        processedIn: `${Date.now() - startTime}ms`
-      })
-      
-    } catch (error) {
-      const err = error as Error
-      logWebhookEvent({
-        eventId: requestId,
-        type: 'processing_error',
-        status: 'error',
-        message: 'Error processing webhook event',
-        metadata: {
-          error: err.message,
-          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-          eventType: event.type,
-        },
-      })
-      
+      await processWebhookEvent(event);
+    } catch (err) {
+      logger.error(`[webhook] Error processing ${event.type}:`, err);
       return NextResponse.json(
-        { 
-          error: 'Error processing webhook',
-          eventId: requestId,
-        },
+        { error: 'Webhook processing failed' },
         { status: 500 }
-      )
+      );
     }
-    
+
+    return NextResponse.json({
+      received: true,
+      type: event.type,
+      processedIn: `${Date.now() - start}ms`,
+    });
   } catch (error) {
-    const err = error as Error
-    logWebhookEvent({
-      eventId: requestId,
-      type: 'unexpected_error',
-      status: 'error',
-      message: 'Unexpected error in webhook handler',
-      metadata: {
-        error: err.message,
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-      },
-    })
-    
+    logger.error('[webhook] Unexpected error:', error);
     return NextResponse.json(
-      { 
-        error: 'Internal server error',
-        eventId: requestId,
-      },
+      { error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }

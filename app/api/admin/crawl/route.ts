@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { crawlerService, LIBRARY_CRAWL_CONFIGS } from '@/lib/services/github-crawler.service';
 import { getQdrantService } from '@/lib/services/qdrant-vector.service';
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     // Get crawl configs with status
     const libraries = await Promise.all(
-      LIBRARY_CRAWL_CONFIGS.map(async (config) => {
+      LIBRARY_CRAWL_CONFIGS.map(async config => {
         const status = await crawlerService.getCrawlStatus(config.libraryId);
         return {
           libraryId: config.libraryId,
@@ -48,10 +48,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error('Failed to get crawl status:', error);
-    return NextResponse.json(
-      { error: 'Failed to get crawl status' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to get crawl status' }, { status: 500 });
   }
 }
 
@@ -67,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Find config or create new one
     let config = LIBRARY_CRAWL_CONFIGS.find(c => c.libraryId === libraryId);
-    
+
     if (!config && owner && repo) {
       config = {
         libraryId: libraryId || `/${owner}/${repo}`,
@@ -88,9 +85,14 @@ export async function POST(request: NextRequest) {
     // Run crawl (async or sync)
     if (runAsync) {
       // Start crawl in background
-      crawlerService.crawlLibrary(config).then(result => {
-        logger.info(`[Crawler] Async crawl completed:`, result);
-      });
+      crawlerService
+        .crawlLibrary(config)
+        .then(result => {
+          logger.info(`[Crawler] Async crawl completed:`, result);
+        })
+        .catch(err => {
+          logger.error(`[Crawler] Async crawl failed for ${config!.libraryId}:`, err);
+        });
 
       return NextResponse.json({
         message: 'Crawl started in background',
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Run synchronously
       const result = await crawlerService.crawlLibrary(config);
-      
+
       return NextResponse.json({
         message: result.success ? 'Crawl completed successfully' : 'Crawl failed',
         result,
@@ -108,10 +110,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     logger.error('Failed to start crawl:', error);
-    return NextResponse.json(
-      { error: 'Failed to start crawl' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to start crawl' }, { status: 500 });
   }
 }
 
@@ -126,10 +125,7 @@ export async function DELETE(request: NextRequest) {
     const libraryId = searchParams.get('libraryId');
 
     if (!libraryId) {
-      return NextResponse.json(
-        { error: 'libraryId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'libraryId is required' }, { status: 400 });
     }
 
     await getQdrantService().deleteByLibrary(libraryId);
@@ -139,9 +135,6 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error) {
     logger.error('Failed to delete documents:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete documents' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to delete documents' }, { status: 500 });
   }
 }

@@ -58,10 +58,10 @@ describe('CDNIntegrationService', () => {
   })
 
   it('generates stats', () => {
-    const stats = service.generateStats(5000)
-    expect(stats.totalRequests).toBe(5000)
-    expect(stats.hitRate).toBeGreaterThan(0.8)
-    expect(stats.topPaths.length).toBeGreaterThan(0)
+    const stats = service.generateStats()
+    expect(stats.totalRequests).toBe(0)
+    expect(stats.hitRate).toBe(0)
+    expect(stats.topPaths.length).toBe(0)
   })
 })
 
@@ -220,27 +220,26 @@ describe('SecurityScanningService', () => {
   it('runs SAST scan', () => {
     const scan = service.runSASTScan('src/services/')
     expect(scan.status).toBe('completed')
-    expect(scan.findings.length).toBeGreaterThan(0)
-    expect(scan.summary.medium).toBeGreaterThan(0)
+    expect(scan.findings).toEqual([])
+    expect(scan.summary.critical).toBe(0)
   })
 
   it('runs DAST scan', () => {
     const scan = service.runDASTScan('https://api.twinmcp.com')
     expect(scan.status).toBe('completed')
-    expect(scan.pagesScanned).toBeGreaterThan(0)
+    expect(scan.pagesScanned).toBe(0)
   })
 
   it('tracks all findings', () => {
     service.runSASTScan('src/')
     service.runDASTScan('https://api.test.com')
-    expect(service.getAllFindings().length).toBeGreaterThan(0)
-    expect(service.getOpenFindings().length).toBeGreaterThan(0)
+    expect(service.getAllFindings().length).toBe(0)
+    expect(service.getOpenFindings().length).toBe(0)
   })
 
-  it('updates finding status', () => {
-    const scan = service.runSASTScan('src/')
-    const finding = scan.findings[0]
-    expect(service.updateFindingStatus(finding.id, 'fixed')).toBe(true)
+  it('updates finding status returns false for empty scans', () => {
+    service.runSASTScan('src/')
+    expect(service.updateFindingStatus('nonexistent', 'fixed')).toBe(false)
   })
 
   it('manages WAF rules', () => {

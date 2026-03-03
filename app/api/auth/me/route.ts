@@ -3,7 +3,7 @@
  * Get current authenticated user profile
  */
 
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/middleware/auth-middleware';
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // Authenticate request
     const { context, error } = await authenticateRequest(request, {
       required: true,
-      rateLimitConfig: 'api'
+      rateLimitConfig: 'api',
     });
 
     if (error) {
@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       data: {
-        user: context.user
-      }
+        user: context.user,
+      },
     });
 
     // Add rate limit headers
@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
     response.headers.set('X-RateLimit-Limit', context.rateLimit.limit.toString());
 
     return response;
-
   } catch (error) {
     logger.error('[Auth Me] Error:', error);
     return NextResponse.json(

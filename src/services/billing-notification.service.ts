@@ -195,7 +195,7 @@ export class BillingNotificationService {
       });
     } catch (error) {
       logger.error('Failed to send email:', error);
-      throw new Error(`Email sending failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`);
+      throw new Error(`Email sending failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

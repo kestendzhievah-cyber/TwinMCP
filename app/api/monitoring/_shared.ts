@@ -4,7 +4,11 @@ import type { Pool } from 'pg';
 
 // Shared lazy-init singleton for all monitoring routes.
 // Prevents DB/Redis connections during next build.
-let _services: { monitoringService: MonitoringService; healthChecker: HealthChecker; db: Pool } | null = null;
+let _services: {
+  monitoringService: MonitoringService;
+  healthChecker: HealthChecker;
+  db: Pool;
+} | null = null;
 
 export async function getMonitoringServices() {
   if (!_services) {
@@ -16,14 +20,25 @@ export async function getMonitoringServices() {
     const { HealthChecker } = await import('@/src/services/health-checker.service');
 
     const metricsCollector = new MetricsCollector(db, redis);
-    const alertManager = new AlertManager(db, redis, { enabled: true, channels: [], escalation: [] });
+    const alertManager = new AlertManager(db, redis, {
+      enabled: true,
+      channels: [],
+      escalation: [],
+    });
     const healthChecker = new HealthChecker(db, redis);
     const monitoringConfig = {
       collection: { interval: 30, retention: 30, batchSize: 100 },
       alerts: { enabled: true, channels: [], escalation: [] },
-      dashboards: { refreshInterval: 300, autoSave: true }
+      dashboards: { refreshInterval: 300, autoSave: true },
     };
-    const monitoringService = new MonitoringService(db, redis, metricsCollector, alertManager, healthChecker, monitoringConfig);
+    const monitoringService = new MonitoringService(
+      db,
+      redis,
+      metricsCollector,
+      alertManager,
+      healthChecker,
+      monitoringConfig
+    );
     _services = { monitoringService, healthChecker, db };
   }
   return _services;

@@ -1,42 +1,30 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../../../_shared';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const monitoringService = await getMonitoringService();
     const alertId = (await params).id;
     const body = await request.json();
-    
+
     if (!body.userId) {
-      return NextResponse.json(
-        { error: 'Missing required field: userId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required field: userId' }, { status: 400 });
     }
 
     const alert = await monitoringService.resolveAlert(alertId, body.userId);
 
     return NextResponse.json({
       success: true,
-      alert
+      alert,
     });
   } catch (error) {
     logger.error('Error resolving alert:', error);
-    
+
     if ((error as Error).message.includes('not found')) {
-      return NextResponse.json(
-        { error: 'Alert not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
     }
 
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

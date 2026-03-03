@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationHistory } from '@/lib/conversation';
 
@@ -8,19 +8,13 @@ export async function GET(request: NextRequest) {
     const conversationId = url.searchParams.get('conversationId');
 
     if (!conversationId) {
-      return NextResponse.json(
-        { error: 'Conversation ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Conversation ID is required' }, { status: 400 });
     }
 
     const conversation = await getConversationHistory(conversationId);
 
     if (!conversation) {
-      return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -29,9 +23,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error('Error getting conversation history:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

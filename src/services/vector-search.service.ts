@@ -213,7 +213,7 @@ export class VectorSearchService {
       return {
         status: 'unhealthy',
         details: {
-          error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error',
+          error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         }
       };

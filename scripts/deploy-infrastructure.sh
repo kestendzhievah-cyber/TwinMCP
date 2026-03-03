@@ -162,7 +162,7 @@ setup_monitoring() {
         --namespace monitoring \
         --create-namespace \
         --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=50Gi \
-        --set grafana.adminPassword=admin123 \
+        --set grafana.adminPassword=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set} \
         --wait
     
     log_info "Monitoring configuré ✅"

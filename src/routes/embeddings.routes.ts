@@ -73,7 +73,7 @@ const initializeServices = (req: Request, res: Response, next: any) => {
     logger.error('Error initializing services:', error);
     res.status(500).json({
       error: 'Internal server error',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };
@@ -137,7 +137,7 @@ router.post('/generate', initializeServices, async (req: Request, res: Response)
     
     res.status(500).json({
       error: 'Failed to generate embeddings',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -183,7 +183,7 @@ router.post('/search', initializeServices, async (req: Request, res: Response) =
     
     res.status(500).json({
       error: 'Failed to perform search',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -210,7 +210,7 @@ router.get('/stats', initializeServices, async (req: Request, res: Response) => 
     logger.error('Error fetching stats:', error);
     res.status(500).json({
       error: 'Failed to fetch statistics',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -237,7 +237,7 @@ router.get('/forecast', initializeServices, async (req: Request, res: Response) 
     logger.error('Error generating forecast:', error);
     res.status(500).json({
       error: 'Failed to generate forecast',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -263,7 +263,7 @@ router.get('/alerts', initializeServices, async (req: Request, res: Response) =>
     logger.error('Error fetching alerts:', error);
     res.status(500).json({
       error: 'Failed to fetch alerts',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -297,7 +297,7 @@ router.get('/library/:libraryId/stats', initializeServices, async (req: Request,
     logger.error('Error fetching library stats:', error);
     res.status(500).json({
       error: 'Failed to fetch library statistics',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -322,7 +322,7 @@ router.get('/health', initializeServices, async (req: Request, res: Response) =>
     logger.error('Error checking health:', error);
     res.status(500).json({
       error: 'Failed to check health',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -359,7 +359,7 @@ router.get('/similar/:chunkId', initializeServices, async (req: Request, res: Re
     logger.error('Error finding similar chunks:', error);
     res.status(500).json({
       error: 'Failed to find similar chunks',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -386,7 +386,7 @@ router.get('/export', initializeServices, async (req: Request, res: Response) =>
     logger.error('Error exporting analytics:', error);
     res.status(500).json({
       error: 'Failed to export analytics',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -420,7 +420,7 @@ router.delete('/chunk/:chunkId', initializeServices, async (req: Request, res: R
     logger.error('Error deleting chunk embedding:', error);
     res.status(500).json({
       error: 'Failed to delete chunk embedding',
-      details: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

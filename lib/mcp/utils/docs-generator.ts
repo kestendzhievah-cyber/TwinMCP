@@ -1,57 +1,54 @@
 // Import the real registry from the correct path
-import { registry } from '../core/registry'
+import { registry } from '../core/registry';
 
 export interface OpenAPISpec {
-  openapi: string
+  openapi: string;
   info: {
-    title: string
-    version: string
-    description?: string
-  }
+    title: string;
+    version: string;
+    description?: string;
+  };
   servers?: Array<{
-    url: string
-    description?: string
-  }>
-  paths: Record<string, any>
+    url: string;
+    description?: string;
+  }>;
+  paths: Record<string, any>;
   components: {
-    schemas: Record<string, any>
-    securitySchemes?: Record<string, any>
-    responses?: Record<string, any>
-  }
+    schemas: Record<string, any>;
+    securitySchemes?: Record<string, any>;
+    responses?: Record<string, any>;
+  };
 }
 
 export class DocsGenerator {
-  private baseUrl: string
+  private baseUrl: string;
 
   constructor(baseUrl: string = 'https://api.example.com') {
-    this.baseUrl = baseUrl
+    this.baseUrl = baseUrl;
   }
 
   async generateOpenAPI(): Promise<OpenAPISpec> {
-    const tools = registry.getAll()
+    const tools = registry.getAll();
 
     return {
       openapi: '3.0.0',
       info: {
         title: 'MCP Server API',
         version: '1.0.0',
-        description: 'Model Context Protocol Server API with advanced tools and features'
+        description: 'Model Context Protocol Server API with advanced tools and features',
       },
       servers: [
         {
           url: this.baseUrl,
-          description: 'MCP API Server'
-        }
+          description: 'MCP API Server',
+        },
       ],
       paths: {
         '/v1/mcp/tools': {
           get: {
             summary: 'List available tools',
             description: 'Get a list of all available MCP tools with their metadata',
-            security: [
-              { ApiKeyAuth: [] },
-              { BearerAuth: [] }
-            ],
+            security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
             responses: {
               200: {
                 description: 'List of tools',
@@ -62,29 +59,26 @@ export class DocsGenerator {
                       properties: {
                         tools: {
                           type: 'array',
-                          items: { $ref: '#/components/schemas/Tool' }
+                          items: { $ref: '#/components/schemas/Tool' },
                         },
                         totalCount: { type: 'number' },
                         apiVersion: { type: 'string' },
-                        metadata: { $ref: '#/components/schemas/Metadata' }
-                      }
-                    }
-                  }
-                }
+                        metadata: { $ref: '#/components/schemas/Metadata' },
+                      },
+                    },
+                  },
+                },
               },
               401: { $ref: '#/components/responses/Unauthorized' },
-              429: { $ref: '#/components/responses/RateLimit' }
-            }
-          }
+              429: { $ref: '#/components/responses/RateLimit' },
+            },
+          },
         },
         '/v1/mcp/execute': {
           post: {
             summary: 'Execute a tool',
             description: 'Execute an MCP tool with the provided arguments',
-            security: [
-              { ApiKeyAuth: [] },
-              { BearerAuth: [] }
-            ],
+            security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
             requestBody: {
               required: true,
               content: {
@@ -95,11 +89,11 @@ export class DocsGenerator {
                     properties: {
                       toolId: { type: 'string' },
                       args: { type: 'object' },
-                      async: { type: 'boolean', default: false }
-                    }
-                  }
-                }
-              }
+                      async: { type: 'boolean', default: false },
+                    },
+                  },
+                },
+              },
             },
             responses: {
               200: {
@@ -112,19 +106,19 @@ export class DocsGenerator {
                         result: { type: 'object' },
                         success: { type: 'boolean' },
                         apiVersion: { type: 'string' },
-                        metadata: { $ref: '#/components/schemas/Metadata' }
-                      }
-                    }
-                  }
-                }
+                        metadata: { $ref: '#/components/schemas/Metadata' },
+                      },
+                    },
+                  },
+                },
               },
               400: { $ref: '#/components/responses/BadRequest' },
               401: { $ref: '#/components/responses/Unauthorized' },
               403: { $ref: '#/components/responses/Forbidden' },
               404: { $ref: '#/components/responses/NotFound' },
-              429: { $ref: '#/components/responses/RateLimit' }
-            }
-          }
+              429: { $ref: '#/components/responses/RateLimit' },
+            },
+          },
         },
         '/v1/mcp/health': {
           get: {
@@ -135,13 +129,13 @@ export class DocsGenerator {
                 description: 'System is healthy',
                 content: {
                   'application/json': {
-                    schema: { $ref: '#/components/schemas/Health' }
-                  }
-                }
+                    schema: { $ref: '#/components/schemas/Health' },
+                  },
+                },
               },
-              503: { $ref: '#/components/responses/ServiceUnavailable' }
-            }
-          }
+              503: { $ref: '#/components/responses/ServiceUnavailable' },
+            },
+          },
         },
         '/v1/mcp/metrics': {
           get: {
@@ -153,29 +147,29 @@ export class DocsGenerator {
                 name: 'period',
                 in: 'query',
                 schema: { type: 'string', enum: ['day', 'week', 'month'] },
-                description: 'Time period for metrics'
+                description: 'Time period for metrics',
               },
               {
                 name: 'toolId',
                 in: 'query',
                 schema: { type: 'string' },
-                description: 'Specific tool metrics'
-              }
+                description: 'Specific tool metrics',
+              },
             ],
             responses: {
               200: {
                 description: 'Metrics data',
                 content: {
                   'application/json': {
-                    schema: { $ref: '#/components/schemas/Metrics' }
-                  }
-                }
+                    schema: { $ref: '#/components/schemas/Metrics' },
+                  },
+                },
               },
               401: { $ref: '#/components/responses/Unauthorized' },
-              403: { $ref: '#/components/responses/Forbidden' }
-            }
-          }
-        }
+              403: { $ref: '#/components/responses/Forbidden' },
+            },
+          },
+        },
       },
       components: {
         schemas: this.generateSchemas(tools),
@@ -183,12 +177,12 @@ export class DocsGenerator {
           ApiKeyAuth: {
             type: 'apiKey',
             in: 'header',
-            name: 'x-api-key'
+            name: 'x-api-key',
           },
           BearerAuth: {
             type: 'http',
-            scheme: 'bearer'
-          }
+            scheme: 'bearer',
+          },
         },
         responses: {
           BadRequest: {
@@ -200,11 +194,11 @@ export class DocsGenerator {
                   properties: {
                     error: { type: 'string' },
                     details: { type: 'array' },
-                    apiVersion: { type: 'string' }
-                  }
-                }
-              }
-            }
+                    apiVersion: { type: 'string' },
+                  },
+                },
+              },
+            },
           },
           Unauthorized: {
             description: 'Unauthorized',
@@ -214,11 +208,11 @@ export class DocsGenerator {
                   type: 'object',
                   properties: {
                     error: { type: 'string' },
-                    apiVersion: { type: 'string' }
-                  }
-                }
-              }
-            }
+                    apiVersion: { type: 'string' },
+                  },
+                },
+              },
+            },
           },
           Forbidden: {
             description: 'Forbidden',
@@ -228,11 +222,11 @@ export class DocsGenerator {
                   type: 'object',
                   properties: {
                     error: { type: 'string' },
-                    apiVersion: { type: 'string' }
-                  }
-                }
-              }
-            }
+                    apiVersion: { type: 'string' },
+                  },
+                },
+              },
+            },
           },
           NotFound: {
             description: 'Not found',
@@ -242,11 +236,11 @@ export class DocsGenerator {
                   type: 'object',
                   properties: {
                     error: { type: 'string' },
-                    apiVersion: { type: 'string' }
-                  }
-                }
-              }
-            }
+                    apiVersion: { type: 'string' },
+                  },
+                },
+              },
+            },
           },
           RateLimit: {
             description: 'Rate limit exceeded',
@@ -256,11 +250,11 @@ export class DocsGenerator {
                   type: 'object',
                   properties: {
                     error: { type: 'string' },
-                    apiVersion: { type: 'string' }
-                  }
-                }
-              }
-            }
+                    apiVersion: { type: 'string' },
+                  },
+                },
+              },
+            },
           },
           ServiceUnavailable: {
             description: 'Service unavailable',
@@ -271,15 +265,15 @@ export class DocsGenerator {
                   properties: {
                     status: { type: 'string' },
                     error: { type: 'string' },
-                    apiVersion: { type: 'string' }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+                    apiVersion: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
   }
 
   private generateSchemas(tools: any[]) {
@@ -290,7 +284,10 @@ export class DocsGenerator {
           id: { type: 'string' },
           name: { type: 'string' },
           version: { type: 'string' },
-          category: { type: 'string', enum: ['communication', 'productivity', 'development', 'data'] },
+          category: {
+            type: 'string',
+            enum: ['communication', 'productivity', 'development', 'data'],
+          },
           description: { type: 'string' },
           author: { type: 'string' },
           tags: { type: 'array', items: { type: 'string' } },
@@ -300,26 +297,26 @@ export class DocsGenerator {
               async: { type: 'boolean' },
               batch: { type: 'boolean' },
               streaming: { type: 'boolean' },
-              webhook: { type: 'boolean' }
-            }
+              webhook: { type: 'boolean' },
+            },
           },
           rateLimit: {
             type: 'object',
             properties: {
               requests: { type: 'number' },
               period: { type: 'string' },
-              strategy: { type: 'string', enum: ['fixed', 'sliding', 'token-bucket'] }
-            }
+              strategy: { type: 'string', enum: ['fixed', 'sliding', 'token-bucket'] },
+            },
           },
           cache: {
             type: 'object',
             properties: {
               enabled: { type: 'boolean' },
               ttl: { type: 'number' },
-              strategy: { type: 'string', enum: ['memory', 'redis', 'hybrid'] }
-            }
-          }
-        }
+              strategy: { type: 'string', enum: ['memory', 'redis', 'hybrid'] },
+            },
+          },
+        },
       },
       Metadata: {
         type: 'object',
@@ -328,8 +325,8 @@ export class DocsGenerator {
           cacheHit: { type: 'boolean' },
           cost: { type: 'number' },
           authenticated: { type: 'boolean' },
-          authMethod: { type: 'string', enum: ['api_key', 'jwt', 'none'] }
-        }
+          authMethod: { type: 'string', enum: ['api_key', 'jwt', 'none'] },
+        },
       },
       Health: {
         type: 'object',
@@ -344,26 +341,26 @@ export class DocsGenerator {
             properties: {
               registry: { $ref: '#/components/schemas/ServiceStatus' },
               queue: { $ref: '#/components/schemas/ServiceStatus' },
-              metrics: { $ref: '#/components/schemas/ServiceStatus' }
-            }
+              metrics: { $ref: '#/components/schemas/ServiceStatus' },
+            },
           },
           performance: {
             type: 'object',
             properties: {
               avgResponseTime: { type: 'number' },
               cacheHitRate: { type: 'number' },
-              errorRate: { type: 'number' }
-            }
-          }
-        }
+              errorRate: { type: 'number' },
+            },
+          },
+        },
       },
       ServiceStatus: {
         type: 'object',
         properties: {
           status: { type: 'string', enum: ['healthy', 'unhealthy'] },
           toolsCount: { type: 'number' },
-          categories: { type: 'array', items: { type: 'string' } }
-        }
+          categories: { type: 'array', items: { type: 'string' } },
+        },
       },
       Metrics: {
         type: 'object',
@@ -373,8 +370,8 @@ export class DocsGenerator {
           errorAnalysis: { $ref: '#/components/schemas/ErrorAnalysis' },
           report: { $ref: '#/components/schemas/Report' },
           apiVersion: { type: 'string' },
-          metadata: { $ref: '#/components/schemas/Metadata' }
-        }
+          metadata: { $ref: '#/components/schemas/Metadata' },
+        },
       },
       SystemStats: {
         type: 'object',
@@ -384,8 +381,8 @@ export class DocsGenerator {
           toolsUsed: { type: 'number' },
           avgResponseTime: { type: 'number' },
           errorRate: { type: 'number' },
-          cacheHitRate: { type: 'number' }
-        }
+          cacheHitRate: { type: 'number' },
+        },
       },
       ToolStats: {
         type: 'object',
@@ -398,33 +395,33 @@ export class DocsGenerator {
               totalExecutions: { type: 'number' },
               successRate: { type: 'number' },
               avgExecutionTime: { type: 'number' },
-              errorCount: { type: 'number' }
-            }
-          }
-        }
+              errorCount: { type: 'number' },
+            },
+          },
+        },
       },
       ErrorAnalysis: {
         type: 'object',
         properties: {
           byTool: { type: 'array', items: { $ref: '#/components/schemas/ErrorByTool' } },
           byType: { type: 'array', items: { $ref: '#/components/schemas/ErrorByType' } },
-          recent: { type: 'array', items: { $ref: '#/components/schemas/RecentError' } }
-        }
+          recent: { type: 'array', items: { $ref: '#/components/schemas/RecentError' } },
+        },
       },
       ErrorByTool: {
         type: 'object',
         properties: {
           toolId: { type: 'string' },
           errors: { type: 'number' },
-          errorRate: { type: 'number' }
-        }
+          errorRate: { type: 'number' },
+        },
       },
       ErrorByType: {
         type: 'object',
         properties: {
           errorType: { type: 'string' },
-          count: { type: 'number' }
-        }
+          count: { type: 'number' },
+        },
       },
       RecentError: {
         type: 'object',
@@ -433,25 +430,25 @@ export class DocsGenerator {
           userId: { type: 'string' },
           timestamp: { type: 'string', format: 'date-time' },
           executionTime: { type: 'number' },
-          errorType: { type: 'string' }
-        }
+          errorType: { type: 'string' },
+        },
       },
       Report: {
         type: 'object',
         properties: {
           period: { type: 'string', enum: ['day', 'week', 'month'] },
           systemStats: { $ref: '#/components/schemas/SystemStats' },
-          recommendations: { type: 'array', items: { type: 'string' } }
-        }
-      }
-    }
+          recommendations: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    };
 
-    return schemas
+    return schemas;
   }
 
   async generateMarkdown(): Promise<string> {
-    const tools = registry.getAll()
-    const stats = registry.getStats()
+    const tools = registry.getAll();
+    const stats = registry.getStats();
 
     let markdown = `# MCP Server API Documentation
 
@@ -523,17 +520,20 @@ GET /api/v1/mcp/metrics?period=day
 
 ## Available Tools
 
-`
+`;
 
     // Grouper les outils par catégorie
-    const toolsByCategory = tools.reduce((acc, tool) => {
-      if (!acc[tool.category]) acc[tool.category] = []
-      acc[tool.category].push(tool)
-      return acc
-    }, {} as Record<string, any[]>)
+    const toolsByCategory = tools.reduce(
+      (acc, tool) => {
+        if (!acc[tool.category]) acc[tool.category] = [];
+        acc[tool.category].push(tool);
+        return acc;
+      },
+      {} as Record<string, any[]>
+    );
 
     for (const [category, categoryTools] of Object.entries(toolsByCategory)) {
-      markdown += `### ${category.charAt(0).toUpperCase() + category.slice(1)} Tools\n\n`
+      markdown += `### ${category.charAt(0).toUpperCase() + category.slice(1)} Tools\n\n`;
 
       for (const tool of categoryTools) {
         markdown += `#### ${tool.name} (\`${tool.id}\`)
@@ -565,7 +565,7 @@ ${tool.cache ? `**Cache:** ${tool.cache.enabled ? 'Enabled' : 'Disabled'} (${too
 
 ---
 
-`
+`;
       }
     }
 
@@ -573,10 +573,10 @@ ${tool.cache ? `**Cache:** ${tool.cache.enabled ? 'Enabled' : 'Disabled'} (${too
 
 | Category | Tools | Description |
 |----------|-------|-------------|
-`
+`;
 
     for (const [category, count] of Object.entries(stats.toolsByCategory)) {
-      markdown += `| ${category.charAt(0).toUpperCase() + category.slice(1)} | ${count} | ${this.getCategoryDescription(category)} |\n`
+      markdown += `| ${category.charAt(0).toUpperCase() + category.slice(1)} | ${count} | ${this.getCategoryDescription(category)} |\n`;
     }
 
     markdown += `
@@ -618,9 +618,9 @@ For support and questions:
 ---
 
 *This documentation is auto-generated and always up-to-date with the current API implementation.*
-`
+`;
 
-    return markdown
+    return markdown;
   }
 
   private getCategoryDescription(category: string): string {
@@ -628,16 +628,16 @@ For support and questions:
       communication: 'Email, messaging, and communication tools',
       productivity: 'Calendar, task management, and productivity tools',
       development: 'Git, CI/CD, and development workflow tools',
-      data: 'Database, API, and data processing tools'
-    }
-    return descriptions[category] || 'General purpose tools'
+      data: 'Database, API, and data processing tools',
+    };
+    return descriptions[category] || 'General purpose tools';
   }
 
   async generateREADME(): Promise<string> {
-    const markdown = await this.generateMarkdown()
-    return markdown
+    const markdown = await this.generateMarkdown();
+    return markdown;
   }
 }
 
 // Instance globale
-export const docsGenerator = new DocsGenerator()
+export const docsGenerator = new DocsGenerator();

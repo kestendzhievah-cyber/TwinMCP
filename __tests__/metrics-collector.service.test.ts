@@ -126,17 +126,16 @@ describe('MetricsCollector', () => {
 
   describe('getDatabaseMetrics', () => {
     it('should return database metrics', async () => {
-      // Mock database queries
+      // Mock all 6 queries that getDatabaseMetrics makes:
+      // 1) pg_stat_activity, 2) max_connections, 3) pg_stat_statements,
+      // 4) cache hit ratio, 5) pg_stat_replication, 6) pg_database_size
       mockDb.query = jest.fn()
-        .mockResolvedValueOnce({
-          rows: [{ active_connections: 5, total_connections: 10 }]
-        })
-        .mockResolvedValueOnce({
-          rows: [{ avg_query_time: 50, total_queries: 1000 }]
-        })
-        .mockResolvedValueOnce({
-          rows: [{ database_size: 1000000 }]
-        });
+        .mockResolvedValueOnce({ rows: [{ active: '5', idle: '3', total: '10' }] })
+        .mockResolvedValueOnce({ rows: [{ max_connections: '100' }] })
+        .mockResolvedValueOnce({ rows: [{ total: '1000', select: '800', insert: '100', update: '50', delete: '50', averageTime: '50', slowQueries: '2' }] })
+        .mockResolvedValueOnce({ rows: [{ cache_hit_ratio: '0.99' }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ database_size: '1000000' }] });
 
       const metrics = await metricsCollector.getDatabaseMetrics();
 

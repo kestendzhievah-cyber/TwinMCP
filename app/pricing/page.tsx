@@ -3,18 +3,18 @@
 import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { 
-  Check, 
-  Sparkles, 
-  Zap, 
-  Crown, 
+import {
+  Check,
+  Sparkles,
+  Zap,
+  Crown,
   Building2,
   ArrowRight,
   Loader2,
   X,
   AlertCircle,
   Server,
-  Star
+  Star,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
@@ -42,10 +42,10 @@ const plans: Plan[] = [
       '200 requêtes/jour',
       'Accès bibliothèque publique',
       'Support communauté',
-      'Documentation complète'
+      'Documentation complète',
     ],
     cta: 'Démarrer gratuitement',
-    popular: false
+    popular: false,
   },
   {
     id: 'professional',
@@ -61,11 +61,11 @@ const plans: Plan[] = [
       'Support prioritaire 24/7',
       'Analytics avancés',
       'API complète',
-      'Webhooks & intégrations'
+      'Webhooks & intégrations',
     ],
     cta: 'Essai gratuit 14 jours',
     popular: true,
-    badge: 'ESSAI GRATUIT'
+    badge: 'ESSAI GRATUIT',
   },
   {
     id: 'enterprise',
@@ -81,11 +81,11 @@ const plans: Plan[] = [
       'SLA 99.9%',
       'Déploiement on-premise',
       'Formation & onboarding',
-      'White-label disponible'
+      'White-label disponible',
     ],
     cta: 'Contacter les ventes',
-    popular: false
-  }
+    popular: false,
+  },
 ];
 
 function PricingContent() {
@@ -171,17 +171,25 @@ function PricingContent() {
             </div>
             <span className="text-2xl font-bold text-white">TwinMCP</span>
           </Link>
-          
+
           <div className="hidden md:flex items-center space-x-8">
-            <Link href="/#features" className="text-gray-300 hover:text-white transition">Fonctionnalités</Link>
-            <Link href="/#compare" className="text-gray-300 hover:text-white transition">Comparatif</Link>
-            <Link href="/pricing" className="text-white font-semibold">Tarifs</Link>
-            <Link href="/#testimonials" className="text-gray-300 hover:text-white transition">Témoignages</Link>
+            <Link href="/#features" className="text-gray-300 hover:text-white transition">
+              Fonctionnalités
+            </Link>
+            <Link href="/#compare" className="text-gray-300 hover:text-white transition">
+              Comparatif
+            </Link>
+            <Link href="/pricing" className="text-white font-semibold">
+              Tarifs
+            </Link>
+            <Link href="/#testimonials" className="text-gray-300 hover:text-white transition">
+              Témoignages
+            </Link>
           </div>
 
           <div className="flex items-center space-x-4">
             {user ? (
-              <Link 
+              <Link
                 href="/dashboard"
                 className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/30"
               >
@@ -228,9 +236,11 @@ function PricingContent() {
                 isAnnual ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-slate-600'
               }`}
             >
-              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 ${
-                isAnnual ? 'translate-x-9' : 'translate-x-1'
-              }`} />
+              <div
+                className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 ${
+                  isAnnual ? 'translate-x-9' : 'translate-x-1'
+                }`}
+              />
             </button>
             <span className={`text-lg ${isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}>
               Annuel
@@ -250,7 +260,7 @@ function PricingContent() {
             <p className="text-sm text-yellow-200">
               Paiement annulé. Vous pouvez réessayer quand vous le souhaitez.
             </p>
-            <button 
+            <button
               onClick={() => router.replace('/pricing')}
               className="ml-auto text-yellow-400 hover:text-yellow-300"
             >
@@ -264,7 +274,7 @@ function PricingContent() {
           <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <p className="text-sm text-red-200">{error}</p>
-            <button 
+            <button
               onClick={() => setError(null)}
               className="ml-auto text-red-400 hover:text-red-300"
             >
@@ -275,7 +285,7 @@ function PricingContent() {
 
         {/* Plans Grid */}
         <div className="grid md:grid-cols-3 gap-8 items-start">
-          {plans.map((plan) => (
+          {plans.map(plan => (
             <div
               key={plan.id}
               className={`relative p-8 rounded-2xl border transition-all duration-300 ${
@@ -321,9 +331,11 @@ function PricingContent() {
               <ul className="space-y-3 mb-8">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <Check className={`w-5 h-5 ${
-                      plan.popular ? 'text-green-400' : 'text-purple-400'
-                    } mr-3 flex-shrink-0 mt-0.5`} />
+                    <Check
+                      className={`w-5 h-5 ${
+                        plan.popular ? 'text-green-400' : 'text-purple-400'
+                      } mr-3 flex-shrink-0 mt-0.5`}
+                    />
                     <span className="text-gray-300">{feature}</span>
                   </li>
                 ))}

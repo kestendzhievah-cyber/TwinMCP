@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': request.headers.get('x-api-key') || '',
-        'authorization': request.headers.get('authorization') || '',
-        'twinmcp_api_key': request.headers.get('twinmcp_api_key') || '',
+        authorization: request.headers.get('authorization') || '',
+        twinmcp_api_key: request.headers.get('twinmcp_api_key') || '',
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
@@ -57,9 +57,12 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }

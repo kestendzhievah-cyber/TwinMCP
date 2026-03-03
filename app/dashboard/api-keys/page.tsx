@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { 
-  Key, 
-  Plus, 
-  Copy, 
-  Trash2, 
-  RefreshCw, 
-  Shield, 
-  Clock, 
+import React, { useState, useEffect } from 'react';
+import {
+  Key,
+  Plus,
+  Copy,
+  Trash2,
+  RefreshCw,
+  Shield,
+  Clock,
   TrendingUp,
   Check,
   AlertTriangle,
   BarChart3,
-  XCircle
-} from "lucide-react";
-import { apiClient } from "@/lib/client/api-client";
+  XCircle,
+} from 'lucide-react';
+import { apiClient } from '@/lib/client/api-client';
 
 interface ApiKey {
   id: string;
@@ -37,7 +37,7 @@ export default function ApiKeysPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyName, setNewKeyName] = useState('');
   const [creatingKey, setCreatingKey] = useState(false);
   const [newApiKey, setNewApiKey] = useState<{ key: string; prefix: string } | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export default function ApiKeysPage() {
       setLoading(true);
       try {
         const result = await apiClient.getApiKeys();
-        
+
         if (result.success && Array.isArray(result.data)) {
           setApiKeys(result.data);
         } else {
@@ -58,7 +58,7 @@ export default function ApiKeysPage() {
           setApiKeys([]);
         }
       } catch (error) {
-        console.error("Error loading API keys:", error);
+        console.error('Error loading API keys:', error);
         setApiKeys([]);
       } finally {
         setLoading(false);
@@ -74,17 +74,17 @@ export default function ApiKeysPage() {
     setCreatingKey(true);
     try {
       const result = await apiClient.createApiKey(newKeyName.trim());
-      
+
       if (result.success && result.data) {
         // result.data.key = the full raw API key (only shown once)
         // result.data.id = the database record ID
         setNewApiKey({
           key: result.data.key,
-          prefix: result.data.keyPrefix
+          prefix: result.data.keyPrefix,
         });
         setShowCreateModal(false);
-        setNewKeyName("");
-        
+        setNewKeyName('');
+
         // Ajouter la clé à la liste locale
         const newKey: ApiKey = {
           id: result.data.id,
@@ -93,16 +93,15 @@ export default function ApiKeysPage() {
           quotaRequestsPerMinute: result.data.quotaRequestsPerMinute || 20,
           quotaRequestsPerDay: result.data.quotaRequestsPerDay || 200,
           createdAt: result.data.createdAt,
-          usage: result.data.usage || { requestsToday: 0, requestsThisHour: 0, successRate: 100 }
+          usage: result.data.usage || { requestsToday: 0, requestsThisHour: 0, successRate: 100 },
         };
-        
+
         setApiKeys(prev => [newKey, ...prev]);
       } else {
         throw new Error(result.error || 'Failed to create API key');
       }
-      
     } catch (error) {
-      console.error("Error creating API key:", error);
+      console.error('Error creating API key:', error);
       setErrorMessage(error instanceof Error ? error.message : String(error));
       setTimeout(() => setErrorMessage(null), 6000);
     } finally {
@@ -111,21 +110,21 @@ export default function ApiKeysPage() {
   };
 
   const handleRevokeKey = async (keyId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir révoquer cette clé ? Cette action est irréversible.")) {
+    if (!confirm('Êtes-vous sûr de vouloir révoquer cette clé ? Cette action est irréversible.')) {
       return;
     }
 
     setRevokingKey(keyId);
     try {
       const result = await apiClient.revokeApiKey(keyId);
-      
+
       if (result.success) {
         setApiKeys(prev => prev.filter(key => key.id !== keyId));
       } else {
         throw new Error(result.error || 'Failed to revoke API key');
       }
     } catch (error) {
-      console.error("Error revoking API key:", error);
+      console.error('Error revoking API key:', error);
       setErrorMessage(error instanceof Error ? error.message : String(error));
       setTimeout(() => setErrorMessage(null), 6000);
     } finally {
@@ -145,7 +144,7 @@ export default function ApiKeysPage() {
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -166,7 +165,10 @@ export default function ApiKeysPage() {
               <p className="text-sm font-medium text-red-300">Erreur</p>
               <p className="text-sm text-red-400/80 mt-0.5">{errorMessage}</p>
             </div>
-            <button onClick={() => setErrorMessage(null)} className="text-red-400 hover:text-red-300">
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-red-400 hover:text-red-300"
+            >
               <XCircle className="w-4 h-4" />
             </button>
           </div>
@@ -222,7 +224,11 @@ export default function ApiKeysPage() {
           <div className="flex items-center justify-between mb-3">
             <Shield className="w-6 h-6 text-yellow-400" />
             <span className="text-2xl font-bold text-yellow-400">
-              {(apiKeys.reduce((sum, key) => sum + (key.usage?.successRate ?? 0), 0) / Math.max(apiKeys.length, 1)).toFixed(1)}%
+              {(
+                apiKeys.reduce((sum, key) => sum + (key.usage?.successRate ?? 0), 0) /
+                Math.max(apiKeys.length, 1)
+              ).toFixed(1)}
+              %
             </span>
           </div>
           <p className="text-gray-400 text-sm">Taux de succès</p>
@@ -250,8 +256,11 @@ export default function ApiKeysPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {apiKeys.map((apiKey) => (
-            <div key={apiKey.id} className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6 hover:border-purple-500/40 transition">
+          {apiKeys.map(apiKey => (
+            <div
+              key={apiKey.id}
+              className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6 hover:border-purple-500/40 transition"
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white mb-1">{apiKey.name}</h3>
@@ -263,17 +272,25 @@ export default function ApiKeysPage() {
                       onClick={() => handleCopyKey(apiKey.keyPrefix)}
                       className="text-purple-400 hover:text-purple-300 transition-colors"
                     >
-                      {copiedKey === apiKey.keyPrefix ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                      {copiedKey === apiKey.keyPrefix ? (
+                        <Check className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    apiKey.tier === 'free' || apiKey.keyPrefix.includes('free')
-                      ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                      : 'bg-green-500/20 text-green-400 border border-green-500/30'
-                  }`}>
-                    {apiKey.tier === 'free' || apiKey.keyPrefix.includes('free') ? 'Free' : 'Production'}
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      apiKey.tier === 'free' || apiKey.keyPrefix.includes('free')
+                        ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                        : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    }`}
+                  >
+                    {apiKey.tier === 'free' || apiKey.keyPrefix.includes('free')
+                      ? 'Free'
+                      : 'Production'}
                   </span>
                   <button
                     onClick={() => handleRevokeKey(apiKey.id)}
@@ -303,10 +320,15 @@ export default function ApiKeysPage() {
                     <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
-                          (apiKey.usage.requestsToday / apiKey.quotaRequestsPerDay) < 0.5 ? 'bg-green-500' :
-                          (apiKey.usage.requestsToday / apiKey.quotaRequestsPerDay) < 0.8 ? 'bg-yellow-500' : 'bg-red-500'
+                          apiKey.usage.requestsToday / apiKey.quotaRequestsPerDay < 0.5
+                            ? 'bg-green-500'
+                            : apiKey.usage.requestsToday / apiKey.quotaRequestsPerDay < 0.8
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500'
                         }`}
-                        style={{ width: `${Math.min((apiKey.usage.requestsToday / apiKey.quotaRequestsPerDay) * 100, 100)}%` }}
+                        style={{
+                          width: `${Math.min((apiKey.usage.requestsToday / apiKey.quotaRequestsPerDay) * 100, 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -316,16 +338,25 @@ export default function ApiKeysPage() {
                       <Clock className="w-3 h-3 text-blue-400" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-white">{apiKey.usage.requestsThisHour}</span>
-                      <span className="text-xs text-gray-500">/ {apiKey.quotaRequestsPerMinute}</span>
+                      <span className="font-semibold text-white">
+                        {apiKey.usage.requestsThisHour}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        / {apiKey.quotaRequestsPerMinute}
+                      </span>
                     </div>
                     <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
-                          (apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute) < 0.5 ? 'bg-green-500' :
-                          (apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute) < 0.8 ? 'bg-yellow-500' : 'bg-red-500'
+                          apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute < 0.5
+                            ? 'bg-green-500'
+                            : apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute < 0.8
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500'
                         }`}
-                        style={{ width: `${Math.min((apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute) * 100, 100)}%` }}
+                        style={{
+                          width: `${Math.min((apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute) * 100, 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -344,7 +375,9 @@ export default function ApiKeysPage() {
               <div className="flex items-center text-sm text-gray-500 border-t border-purple-500/10 pt-3">
                 <span>Créée le {formatDate(apiKey.createdAt)}</span>
                 {apiKey.lastUsedAt && (
-                  <span className="ml-4">• Dernière utilisation {formatDate(apiKey.lastUsedAt)}</span>
+                  <span className="ml-4">
+                    • Dernière utilisation {formatDate(apiKey.lastUsedAt)}
+                  </span>
                 )}
               </div>
             </div>
@@ -362,8 +395,10 @@ export default function ApiKeysPage() {
               <input
                 type="text"
                 value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && newKeyName.trim() && !creatingKey) handleCreateKey(); }}
+                onChange={e => setNewKeyName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newKeyName.trim() && !creatingKey) handleCreateKey();
+                }}
                 placeholder="Ex: Production, Développement..."
                 className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 autoFocus
@@ -377,7 +412,10 @@ export default function ApiKeysPage() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => { setShowCreateModal(false); setNewKeyName(""); }}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewKeyName('');
+                }}
                 className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition"
               >
                 Annuler
@@ -388,7 +426,9 @@ export default function ApiKeysPage() {
                 className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {creatingKey ? (
-                  <><RefreshCw className="w-4 h-4 animate-spin" /> Création...</>
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" /> Création...
+                  </>
                 ) : (
                   'Créer'
                 )}
@@ -422,7 +462,11 @@ export default function ApiKeysPage() {
                   onClick={() => handleCopyKey(newApiKey.key)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-green-400 hover:text-green-300"
                 >
-                  {copiedKey === newApiKey.key ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                  {copiedKey === newApiKey.key ? (
+                    <Check className="w-5 h-5" />
+                  ) : (
+                    <Copy className="w-5 h-5" />
+                  )}
                 </button>
               </div>
               {copiedKey === newApiKey.key && (
@@ -436,7 +480,10 @@ export default function ApiKeysPage() {
               </p>
             </div>
             <button
-              onClick={() => { setNewApiKey(null); setNewKeyName(""); }}
+              onClick={() => {
+                setNewApiKey(null);
+                setNewKeyName('');
+              }}
               className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition"
             >
               J&apos;ai sauvegardé ma clé

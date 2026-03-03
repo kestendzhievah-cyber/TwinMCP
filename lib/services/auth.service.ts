@@ -1,51 +1,51 @@
-import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs'
-import { Redis } from 'ioredis'
-import { logger } from '@/lib/logger'
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import { Redis } from 'ioredis';
+import { logger } from '@/lib/logger';
 
 export interface ApiKeyData {
-  id: string
-  userId: string
-  keyPrefix: string
-  tier: string
-  quotaDaily: number
-  quotaMonthly: number
-  permissions: unknown
-  quotaRequestsPerMinute: number
-  quotaRequestsPerDay: number
+  id: string;
+  userId: string;
+  keyPrefix: string;
+  tier: string;
+  quotaDaily: number;
+  quotaMonthly: number;
+  permissions: unknown;
+  quotaRequestsPerMinute: number;
+  quotaRequestsPerDay: number;
 }
 
 export interface AuthResult {
-  success: boolean
-  apiKeyData?: ApiKeyData
-  error?: string
-  errorCode?: 'INVALID_API_KEY' | 'RATE_LIMITED' | 'EXPIRED_API_KEY' | 'INACTIVE_API_KEY'
-  statusCode?: number
+  success: boolean;
+  apiKeyData?: ApiKeyData;
+  error?: string;
+  errorCode?: 'INVALID_API_KEY' | 'RATE_LIMITED' | 'EXPIRED_API_KEY' | 'INACTIVE_API_KEY';
+  statusCode?: number;
 }
 
 export class AuthService {
-  private db: PrismaClient
-  private redis: Redis
+  private db: PrismaClient;
+  private redis: Redis;
 
   constructor(db: PrismaClient, redis: Redis) {
-    this.db = db
-    this.redis = redis
+    this.db = db;
+    this.redis = redis;
   }
 
   async validateApiKey(apiKey: string): Promise<AuthResult> {
     try {
-      if (!apiKey || !apiKey.startsWith('twinmcp_')) {
+      if (!apiKey?.startsWith('twinmcp_')) {
         return {
           success: false,
           error: 'Invalid API key format',
           errorCode: 'INVALID_API_KEY',
-          statusCode: 401
-        }
+          statusCode: 401,
+        };
       }
 
       // Lookup by SHA-256 hash (primary method — used by new key generation)
-      const { createHash } = await import('crypto')
-      const keyHash = createHash('sha256').update(apiKey).digest('hex')
+      const { createHash } = await import('crypto');
+      const keyHash = createHash('sha256').update(apiKey).digest('hex');
 
       let apiKeyRecord = await this.db.apiKey.findUnique({
         where: { keyHash },
@@ -54,38 +54,38 @@ export class AuthService {
             select: {
               id: true,
               email: true,
-              clientId: true
-            }
-          }
-        }
-      })
+              clientId: true,
+            },
+          },
+        },
+      });
 
       // Fallback: lookup by prefix + bcrypt compare (legacy keys)
       if (!apiKeyRecord) {
-        const keyPrefix = apiKey.substring(0, 20)
+        const keyPrefix = apiKey.substring(0, 20);
         const candidates = await this.db.apiKey.findMany({
           where: {
             keyPrefix,
             revokedAt: null,
-            isActive: true
+            isActive: true,
           },
           include: {
             user: {
               select: {
                 id: true,
                 email: true,
-                clientId: true
-              }
-            }
-          }
-        })
+                clientId: true,
+              },
+            },
+          },
+        });
 
         for (const candidate of candidates) {
           try {
-            const isValid = await bcrypt.compare(apiKey, candidate.keyHash)
+            const isValid = await bcrypt.compare(apiKey, candidate.keyHash);
             if (isValid) {
-              apiKeyRecord = candidate
-              break
+              apiKeyRecord = candidate;
+              break;
             }
           } catch {
             // Not a bcrypt hash, skip
@@ -98,8 +98,8 @@ export class AuthService {
           success: false,
           error: 'API key not found or revoked',
           errorCode: 'INVALID_API_KEY',
-          statusCode: 401
-        }
+          statusCode: 401,
+        };
       }
 
       if (apiKeyRecord.expiresAt && apiKeyRecord.expiresAt < new Date()) {
@@ -107,28 +107,32 @@ export class AuthService {
           success: false,
           error: 'API key has expired',
           errorCode: 'EXPIRED_API_KEY',
-          statusCode: 401
-        }
+          statusCode: 401,
+        };
       }
 
       // Vérifier les quotas
-      const quotaCheck = await this.checkQuotas(apiKeyRecord.id, apiKeyRecord.quotaDaily, apiKeyRecord.quotaMonthly)
+      const quotaCheck = await this.checkQuotas(
+        apiKeyRecord.id,
+        apiKeyRecord.quotaDaily,
+        apiKeyRecord.quotaMonthly
+      );
       if (!quotaCheck.allowed) {
         return {
           success: false,
           error: quotaCheck.reason,
           errorCode: 'RATE_LIMITED',
-          statusCode: 429
-        }
+          statusCode: 429,
+        };
       }
 
       // Mettre à jour le dernier usage
       await this.db.apiKey.update({
         where: { id: apiKeyRecord.id },
-        data: { lastUsedAt: new Date() }
-      })
+        data: { lastUsedAt: new Date() },
+      });
 
-      const quotaRequestsPerMinute = Math.max(1, Math.floor(apiKeyRecord.quotaDaily / (24 * 60)))
+      const quotaRequestsPerMinute = Math.max(1, Math.floor(apiKeyRecord.quotaDaily / (24 * 60)));
 
       return {
         success: true,
@@ -141,66 +145,72 @@ export class AuthService {
           quotaMonthly: apiKeyRecord.quotaMonthly,
           permissions: apiKeyRecord.permissions,
           quotaRequestsPerMinute,
-          quotaRequestsPerDay: apiKeyRecord.quotaDaily
-        }
-      }
-
+          quotaRequestsPerDay: apiKeyRecord.quotaDaily,
+        },
+      };
     } catch (error) {
-      logger.error('Error validating API key:', error)
+      logger.error('Error validating API key:', error);
       return {
         success: false,
         error: 'Authentication failed',
         errorCode: 'INVALID_API_KEY',
-        statusCode: 401
-      }
+        statusCode: 401,
+      };
     }
   }
 
-  private async checkQuotas(apiKeyId: string, dailyLimit: number, monthlyLimit: number): Promise<{ allowed: boolean; reason?: string }> {
-    const now = new Date()
-    const dayKey = `quota:daily:${apiKeyId}:${now.toISOString().slice(0, 10)}`
-    const monthKey = `quota:monthly:${apiKeyId}:${now.toISOString().slice(0, 7)}`
+  private async checkQuotas(
+    apiKeyId: string,
+    dailyLimit: number,
+    monthlyLimit: number
+  ): Promise<{ allowed: boolean; reason?: string }> {
+    const now = new Date();
+    const dayKey = `quota:daily:${apiKeyId}:${now.toISOString().slice(0, 10)}`;
+    const monthKey = `quota:monthly:${apiKeyId}:${now.toISOString().slice(0, 7)}`;
 
     if (dailyLimit !== -1) {
-      const dayCount = await this.redis.incr(dayKey)
+      const dayCount = await this.redis.incr(dayKey);
       if (dayCount === 1) {
-        await this.redis.expire(dayKey, this.getSecondsUntilEndOfDay(now))
+        await this.redis.expire(dayKey, this.getSecondsUntilEndOfDay(now));
       }
 
       if (dayCount > dailyLimit) {
         return {
           allowed: false,
-          reason: 'Daily quota exceeded'
-        }
+          reason: 'Daily quota exceeded',
+        };
       }
     }
 
     if (monthlyLimit !== -1) {
-      const monthCount = await this.redis.incr(monthKey)
+      const monthCount = await this.redis.incr(monthKey);
       if (monthCount === 1) {
-        await this.redis.expire(monthKey, this.getSecondsUntilEndOfMonth(now))
+        await this.redis.expire(monthKey, this.getSecondsUntilEndOfMonth(now));
       }
 
       if (monthCount > monthlyLimit) {
         return {
           allowed: false,
-          reason: 'Monthly quota exceeded'
-        }
+          reason: 'Monthly quota exceeded',
+        };
       }
     }
 
-    return { allowed: true }
+    return { allowed: true };
   }
 
-  async generateApiKey(userId: string, name?: string): Promise<{ apiKey: string; prefix: string; id: string }> {
-    const { createHash, randomBytes } = await import('crypto')
-    const prefix = 'twinmcp_live_'
-    const randomPart = randomBytes(24).toString('hex')
-    const apiKey = prefix + randomPart
+  async generateApiKey(
+    userId: string,
+    name?: string
+  ): Promise<{ apiKey: string; prefix: string; id: string }> {
+    const { createHash, randomBytes } = await import('crypto');
+    const prefix = 'twinmcp_live_';
+    const randomPart = randomBytes(24).toString('hex');
+    const apiKey = prefix + randomPart;
 
     // Hash with SHA-256 (consistent with route-level key generation)
-    const keyHash = createHash('sha256').update(apiKey).digest('hex')
-    const keyPrefix = apiKey.substring(0, 20)
+    const keyHash = createHash('sha256').update(apiKey).digest('hex');
+    const keyPrefix = apiKey.substring(0, 20);
 
     // Sauvegarder dans la base de données
     const record = await this.db.apiKey.create({
@@ -211,15 +221,15 @@ export class AuthService {
         name: name || `API Key ${new Date().toISOString()}`,
         tier: 'free',
         quotaDaily: 200,
-        quotaMonthly: 6000
-      }
-    })
+        quotaMonthly: 6000,
+      },
+    });
 
     return {
       apiKey,
       prefix: keyPrefix,
-      id: record.id
-    }
+      id: record.id,
+    };
   }
 
   async revokeApiKey(apiKeyId: string, userId: string): Promise<boolean> {
@@ -228,18 +238,18 @@ export class AuthService {
         where: {
           id: apiKeyId,
           userId,
-          revokedAt: null
+          revokedAt: null,
         },
         data: {
           isActive: false,
-          revokedAt: new Date()
-        }
-      })
+          revokedAt: new Date(),
+        },
+      });
 
-      return result.count > 0
+      return result.count > 0;
     } catch (error) {
-      logger.error('Error revoking API key:', error)
-      return false
+      logger.error('Error revoking API key:', error);
+      return false;
     }
   }
 
@@ -247,7 +257,7 @@ export class AuthService {
     const keys = await this.db.apiKey.findMany({
       where: {
         userId,
-        revokedAt: null
+        revokedAt: null,
       },
       select: {
         id: true,
@@ -257,45 +267,54 @@ export class AuthService {
         quotaDaily: true,
         quotaMonthly: true,
         lastUsedAt: true,
-        createdAt: true
+        createdAt: true,
       },
       orderBy: {
-        createdAt: 'desc'
-      }
-    })
+        createdAt: 'desc',
+      },
+    });
 
-    return keys.map((key: typeof keys[number]) => ({
+    return keys.map((key: (typeof keys)[number]) => ({
       ...key,
       quotaRequestsPerMinute: Math.max(1, Math.floor(key.quotaDaily / (24 * 60))),
-      quotaRequestsPerDay: key.quotaDaily
-    }))
+      quotaRequestsPerDay: key.quotaDaily,
+    }));
   }
 
   private generateRandomString(length: number): string {
-    const { randomBytes } = require('crypto') as typeof import('crypto')
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    const bytes = randomBytes(length)
-    let result = ''
+    const { randomBytes } = require('crypto') as typeof import('crypto');
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = randomBytes(length);
+    let result = '';
     for (let i = 0; i < length; i++) {
-      result += chars.charAt(bytes[i] % chars.length)
+      result += chars.charAt(bytes[i] % chars.length);
     }
-    return result
+    return result;
   }
 
-  async logUsage(apiKeyId: string, toolName: string, libraryId?: string, query?: string, tokensReturned?: number, responseTimeMs?: number) {
+  async logUsage(
+    apiKeyId: string,
+    toolName: string,
+    libraryId?: string,
+    query?: string,
+    tokensReturned?: number,
+    responseTimeMs?: number
+  ) {
     try {
       const apiKeyRecord = await this.db.apiKey.findUnique({
         where: { id: apiKeyId },
-        select: { usedDaily: true, usedMonthly: true, lastUsedAt: true, userId: true }
-      })
+        select: { usedDaily: true, usedMonthly: true, lastUsedAt: true, userId: true },
+      });
 
-      const now = new Date()
-      const usedDaily = apiKeyRecord && this.isSameDay(apiKeyRecord.lastUsedAt, now)
-        ? apiKeyRecord.usedDaily + 1
-        : 1
-      const usedMonthly = apiKeyRecord && this.isSameMonth(apiKeyRecord.lastUsedAt, now)
-        ? apiKeyRecord.usedMonthly + 1
-        : 1
+      const now = new Date();
+      const usedDaily =
+        apiKeyRecord && this.isSameDay(apiKeyRecord.lastUsedAt, now)
+          ? apiKeyRecord.usedDaily + 1
+          : 1;
+      const usedMonthly =
+        apiKeyRecord && this.isSameMonth(apiKeyRecord.lastUsedAt, now)
+          ? apiKeyRecord.usedMonthly + 1
+          : 1;
 
       await this.db.$transaction([
         this.db.usageLog.create({
@@ -306,41 +325,41 @@ export class AuthService {
             libraryId,
             query,
             tokensReturned,
-            responseTimeMs
-          }
+            responseTimeMs,
+          },
         }),
         this.db.apiKey.update({
           where: { id: apiKeyId },
           data: {
             usedDaily,
             usedMonthly,
-            lastUsedAt: now
-          }
-        })
-      ])
+            lastUsedAt: now,
+          },
+        }),
+      ]);
     } catch (error) {
-      logger.error('Error logging usage:', error)
+      logger.error('Error logging usage:', error);
     }
   }
 
   private isSameDay(date: Date | null | undefined, now: Date): boolean {
-    if (!date) return false
-    return date.toISOString().slice(0, 10) === now.toISOString().slice(0, 10)
+    if (!date) return false;
+    return date.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
   }
 
   private isSameMonth(date: Date | null | undefined, now: Date): boolean {
-    if (!date) return false
-    return date.toISOString().slice(0, 7) === now.toISOString().slice(0, 7)
+    if (!date) return false;
+    return date.toISOString().slice(0, 7) === now.toISOString().slice(0, 7);
   }
 
   private getSecondsUntilEndOfDay(now: Date): number {
-    const endOfDay = new Date(now)
-    endOfDay.setHours(23, 59, 59, 999)
-    return Math.max(1, Math.floor((endOfDay.getTime() - now.getTime()) / 1000))
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+    return Math.max(1, Math.floor((endOfDay.getTime() - now.getTime()) / 1000));
   }
 
   private getSecondsUntilEndOfMonth(now: Date): number {
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-    return Math.max(1, Math.floor((endOfMonth.getTime() - now.getTime()) / 1000))
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return Math.max(1, Math.floor((endOfMonth.getTime() - now.getTime()) / 1000));
   }
 }

@@ -49,12 +49,29 @@
 | `ANTHROPIC_API_KEY` | Anthropic API key | — |
 | `GOOGLE_API_KEY` | Google Gemini API key | — |
 
-## Optional — Payments
+## Optional — Payments (Stripe)
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `STRIPE_SECRET_KEY` | Stripe secret key (`sk_test_` or `sk_live_`) | — |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | — |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_test_` or `pk_live_`) | — |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_...`) | — |
+| `STRIPE_PRO_MONTHLY_PRICE_ID` | Stripe Price ID for Pro monthly plan | — |
+| `STRIPE_PRO_YEARLY_PRICE_ID` | Stripe Price ID for Pro yearly plan | — |
+| `TRIAL_DAYS` | Number of trial days for Pro plan | `14` |
+
+> **Stripe setup:**
+> 1. Create a Stripe account at https://stripe.com
+> 2. Get your API keys from Dashboard > Developers > API keys
+> 3. Create a webhook endpoint pointing to `https://your-domain.com/api/webhook`
+> 4. Subscribe to events: `checkout.session.completed`, `customer.subscription.*`, `invoice.payment_succeeded`, `invoice.payment_failed`
+> 5. Optionally create Products + Prices in Stripe Dashboard and set the Price IDs above (otherwise prices are created on the fly)
+> 6. Configure the Customer Portal at https://dashboard.stripe.com/settings/billing/portal
+
+## Optional — Payments (PayPal)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
 | `PAYPAL_CLIENT_ID` | PayPal client ID | — |
 | `PAYPAL_CLIENT_SECRET` | PayPal client secret | — |
 | `PAYPAL_WEBHOOK_ID` | PayPal webhook ID | — |

@@ -80,7 +80,7 @@ export enum MCPErrorCodes {
   InternalError = -32603,
   // Application-level errors (MCP spec reserves -32000 to -32099)
   ToolNotFound = -32001,
-  ToolExecutionError = -32002
+  ToolExecutionError = -32002,
 }
 
 // Méthodes MCP valides
@@ -89,7 +89,7 @@ export enum MCPMethods {
   ToolsList = 'tools/list',
   ToolsCall = 'tools/call',
   NotificationsMessage = 'notifications/message',
-  NotificationsResourcesUpdated = 'notifications/resources/updated'
+  NotificationsResourcesUpdated = 'notifications/resources/updated',
 }
 
 // Interface pour les capacités du serveur

@@ -1,39 +1,41 @@
-import { v4 as uuidv4 } from 'uuid'
-import { QueueJob, ExecutionResult } from '../core/types'
-import { registry } from '../core/registry'
-import { logger } from '@/lib/logger'
+import { v4 as uuidv4 } from 'uuid';
+import { QueueJob, ExecutionResult } from '../core/types';
+import { registry } from '../core/registry';
+import { logger } from '@/lib/logger';
 
 interface QueueWorker {
-  id: string
-  isBusy: boolean
-  currentJob: QueueJob | null
-  processJob(job: QueueJob): Promise<void>
+  id: string;
+  isBusy: boolean;
+  currentJob: QueueJob | null;
+  processJob(job: QueueJob): Promise<void>;
 }
 
 export class MCPQueue {
-  private jobs: Map<string, QueueJob> = new Map()
-  private workers: QueueWorker[] = []
-  private maxWorkers: number = 3
-  private jobTimeout: number = 300000 // 5 minutes
-  private persistenceCallback?: (job: QueueJob) => Promise<void>
-  private webhookCallback?: (job: QueueJob) => Promise<void>
-  private retryTimers: Set<ReturnType<typeof setTimeout>> = new Set()
-  private maxCompletedJobs: number = 5000
+  private jobs: Map<string, QueueJob> = new Map();
+  private workers: QueueWorker[] = [];
+  private maxWorkers: number = 3;
+  private jobTimeout: number = 300000; // 5 minutes
+  private persistenceCallback?: (job: QueueJob) => Promise<void>;
+  private webhookCallback?: (job: QueueJob) => Promise<void>;
+  private retryTimers: Set<ReturnType<typeof setTimeout>> = new Set();
+  private maxCompletedJobs: number = 5000;
 
-  constructor(options: {
-    maxWorkers?: number
-    jobTimeout?: number
-    maxCompletedJobs?: number
-    persistenceCallback?: (job: QueueJob) => Promise<void>
-    webhookCallback?: (job: QueueJob) => Promise<void>
-  } = {}) {
-    this.maxWorkers = options.maxWorkers || 3
-    this.jobTimeout = options.jobTimeout || 300000
-    this.maxCompletedJobs = options.maxCompletedJobs || 5000
-    this.persistenceCallback = options.persistenceCallback
-    this.webhookCallback = options.webhookCallback
+  constructor(
+    options: {
+      maxWorkers?: number;
+      jobTimeout?: number;
+      maxCompletedJobs?: number;
+      persistenceCallback?: (job: QueueJob) => Promise<void>;
+      webhookCallback?: (job: QueueJob) => Promise<void>;
+    } = {}
+  ) {
+    this.maxWorkers = options.maxWorkers || 3;
+    this.jobTimeout = options.jobTimeout || 300000;
+    this.maxCompletedJobs = options.maxCompletedJobs || 5000;
+    this.persistenceCallback = options.persistenceCallback;
+    this.webhookCallback = options.webhookCallback;
 
-    this.initializeWorkers()
+    this.initializeWorkers();
   }
 
   private initializeWorkers(): void {
@@ -42,176 +44,178 @@ export class MCPQueue {
         id: `worker-${i + 1}`,
         isBusy: false,
         currentJob: null,
-        processJob: this.processJob.bind(this)
-      })
+        processJob: this.processJob.bind(this),
+      });
     }
 
-    logger.info(`Queue initialized with ${this.maxWorkers} workers`)
+    logger.info(`Queue initialized with ${this.maxWorkers} workers`);
   }
 
   async enqueue(job: Omit<QueueJob, 'id' | 'status' | 'createdAt' | 'retries'>): Promise<string> {
-    const jobId = uuidv4()
+    const jobId = uuidv4();
     const queueJob: QueueJob = {
       ...job,
       id: jobId,
       status: 'pending',
       createdAt: new Date(),
-      retries: 0
-    }
+      retries: 0,
+    };
 
-    this.jobs.set(jobId, queueJob)
+    this.jobs.set(jobId, queueJob);
 
     // Persister le job
     if (this.persistenceCallback) {
-      await this.persistenceCallback(queueJob)
+      await this.persistenceCallback(queueJob);
     }
 
-    logger.debug(`Job enqueued: ${jobId} (${job.toolId})`)
-    this.notifyWorkers()
+    logger.debug(`Job enqueued: ${jobId} (${job.toolId})`);
+    this.notifyWorkers();
 
-    return jobId
+    return jobId;
   }
 
   async getStatus(jobId: string): Promise<QueueJob | null> {
-    return this.jobs.get(jobId) || null
+    return this.jobs.get(jobId) || null;
   }
 
   async getJobsByUser(userId: string): Promise<QueueJob[]> {
     return Array.from(this.jobs.values())
       .filter(job => job.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async getJobsByStatus(status: QueueJob['status']): Promise<QueueJob[]> {
     return Array.from(this.jobs.values())
       .filter(job => job.status === status)
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
   async cancelJob(jobId: string, userId: string): Promise<boolean> {
-    const job = this.jobs.get(jobId)
-    if (!job || job.userId !== userId) {
-      return false
+    const job = this.jobs.get(jobId);
+    if (job?.userId !== userId) {
+      return false;
     }
 
     if (job.status === 'processing') {
-      return false // Ne peut pas annuler un job en cours
+      return false; // Ne peut pas annuler un job en cours
     }
 
-    job.status = 'failed'
-    job.error = 'Cancelled by user'
-    job.completedAt = new Date()
+    job.status = 'failed';
+    job.error = 'Cancelled by user';
+    job.completedAt = new Date();
 
     if (this.persistenceCallback) {
-      await this.persistenceCallback(job)
+      await this.persistenceCallback(job);
     }
 
-    logger.info(`Job cancelled: ${jobId}`)
-    return true
+    logger.info(`Job cancelled: ${jobId}`);
+    return true;
   }
 
   private async processJob(job: QueueJob): Promise<void> {
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     try {
-      logger.debug(`Processing job: ${job.id} (${job.toolId})`)
+      logger.debug(`Processing job: ${job.id} (${job.toolId})`);
 
       // Vérifier si l'outil existe
-      const tool = registry.get(job.toolId)
+      const tool = registry.get(job.toolId);
       if (!tool) {
-        throw new Error(`Tool not found: ${job.toolId}`)
+        throw new Error(`Tool not found: ${job.toolId}`);
       }
 
       // Vérifier les capacités asynchrones
       if (!tool.capabilities.async) {
-        throw new Error(`Tool ${job.toolId} does not support async execution`)
+        throw new Error(`Tool ${job.toolId} does not support async execution`);
       }
 
       // Exécuter l'outil
-      const result = await tool.execute(job.args, {})
+      const result = await tool.execute(job.args, {});
 
       // Mettre à jour le job
-      job.status = 'completed'
-      job.result = result
-      job.completedAt = new Date()
+      job.status = 'completed';
+      job.result = result;
+      job.completedAt = new Date();
 
-      logger.debug(`Job completed: ${job.id} (${Date.now() - startTime}ms)`)
+      logger.debug(`Job completed: ${job.id} (${Date.now() - startTime}ms)`);
 
       // Envoyer le webhook si configuré
       if (this.webhookCallback && tool.capabilities.webhook) {
-        await this.webhookCallback(job)
+        await this.webhookCallback(job);
       }
-
     } catch (error) {
-      logger.error(`Job failed: ${job.id}`, error)
+      logger.error(`Job failed: ${job.id}`, error);
 
       if (job.retries < job.maxRetries) {
-        job.retries++
-        job.status = 'pending'
-        logger.info(`Retrying job: ${job.id} (attempt ${job.retries})`)
+        job.retries++;
+        job.status = 'pending';
+        logger.info(`Retrying job: ${job.id} (attempt ${job.retries})`);
 
         // Attendre avant de retenter (backoff exponentiel)
-        const timer = setTimeout(() => {
-          this.retryTimers.delete(timer)
-          this.notifyWorkers()
-        }, Math.pow(2, job.retries) * 1000)
-        this.retryTimers.add(timer)
+        const timer = setTimeout(
+          () => {
+            this.retryTimers.delete(timer);
+            this.notifyWorkers();
+          },
+          Math.pow(2, job.retries) * 1000
+        );
+        this.retryTimers.add(timer);
       } else {
-        job.status = 'failed'
-        job.error = error instanceof Error ? error.message : 'Unknown error'
-        job.completedAt = new Date()
+        job.status = 'failed';
+        job.error = error instanceof Error ? error.message : 'Unknown error';
+        job.completedAt = new Date();
       }
     }
 
     // Persister les changements
     if (this.persistenceCallback) {
-      await this.persistenceCallback(job)
+      await this.persistenceCallback(job);
     }
 
     // Evict old completed/failed jobs to prevent unbounded growth
-    this.evictOldJobs()
+    this.evictOldJobs();
   }
 
   private evictOldJobs(): void {
-    const terminalJobs = Array.from(this.jobs.entries())
-      .filter(([, j]) => j.status === 'completed' || j.status === 'failed')
+    const terminalJobs = Array.from(this.jobs.entries()).filter(
+      ([, j]) => j.status === 'completed' || j.status === 'failed'
+    );
     if (terminalJobs.length > this.maxCompletedJobs) {
       // Sort by completedAt ascending, evict oldest
       terminalJobs.sort((a, b) => {
-        const aTime = a[1].completedAt?.getTime() || 0
-        const bTime = b[1].completedAt?.getTime() || 0
-        return aTime - bTime
-      })
-      const toEvict = terminalJobs.length - this.maxCompletedJobs
+        const aTime = a[1].completedAt?.getTime() || 0;
+        const bTime = b[1].completedAt?.getTime() || 0;
+        return aTime - bTime;
+      });
+      const toEvict = terminalJobs.length - this.maxCompletedJobs;
       for (let i = 0; i < toEvict; i++) {
-        this.jobs.delete(terminalJobs[i][0])
+        this.jobs.delete(terminalJobs[i][0]);
       }
     }
   }
 
   private notifyWorkers(): void {
     // Trouver un worker libre
-    const freeWorker = this.workers.find(w => !w.isBusy)
-    if (!freeWorker) return
+    const freeWorker = this.workers.find(w => !w.isBusy);
+    if (!freeWorker) return;
 
     // Trouver le prochain job à traiter (par priorité et date de création)
-    const nextJob = this.getNextJob()
-    if (!nextJob) return
+    const nextJob = this.getNextJob();
+    if (!nextJob) return;
 
     // Assigner le job au worker
-    freeWorker.isBusy = true
-    freeWorker.currentJob = nextJob
-    nextJob.status = 'processing'
-    nextJob.startedAt = new Date()
+    freeWorker.isBusy = true;
+    freeWorker.currentJob = nextJob;
+    nextJob.status = 'processing';
+    nextJob.startedAt = new Date();
 
     // Traiter le job de manière asynchrone
-    freeWorker.processJob(nextJob)
-      .finally(() => {
-        freeWorker.isBusy = false
-        freeWorker.currentJob = null
-        // Notifier pour le prochain job
-        setTimeout(() => this.notifyWorkers(), 100)
-      })
+    freeWorker.processJob(nextJob).finally(() => {
+      freeWorker.isBusy = false;
+      freeWorker.currentJob = null;
+      // Notifier pour le prochain job
+      setTimeout(() => this.notifyWorkers(), 100);
+    });
   }
 
   private getNextJob(): QueueJob | null {
@@ -219,19 +223,19 @@ export class MCPQueue {
       .filter(job => job.status === 'pending')
       .sort((a, b) => {
         // Trier par priorité (high > normal > low)
-        const priorityOrder = { high: 3, normal: 2, low: 1 }
-        const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority]
-        if (priorityDiff !== 0) return priorityDiff
+        const priorityOrder = { high: 3, normal: 2, low: 1 };
+        const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+        if (priorityDiff !== 0) return priorityDiff;
 
         // Puis par date de création (plus ancien d'abord)
-        return a.createdAt.getTime() - b.createdAt.getTime()
-      })
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      });
 
-    return pendingJobs[0] || null
+    return pendingJobs[0] || null;
   }
 
   getStats() {
-    const jobs = Array.from(this.jobs.values())
+    const jobs = Array.from(this.jobs.values());
     const stats = {
       total: jobs.length,
       pending: jobs.filter(j => j.status === 'pending').length,
@@ -240,91 +244,93 @@ export class MCPQueue {
       failed: jobs.filter(j => j.status === 'failed').length,
       workersBusy: this.workers.filter(w => w.isBusy).length,
       workersTotal: this.workers.length,
-      avgProcessingTime: 0
-    }
+      avgProcessingTime: 0,
+    };
 
-    const completedJobs = jobs.filter(j => j.status === 'completed' && j.startedAt && j.completedAt)
+    const completedJobs = jobs.filter(
+      j => j.status === 'completed' && j.startedAt && j.completedAt
+    );
     if (completedJobs.length > 0) {
       const totalTime = completedJobs.reduce((sum, job) => {
-        return sum + (job.completedAt!.getTime() - job.startedAt!.getTime())
-      }, 0)
-      stats.avgProcessingTime = totalTime / completedJobs.length
+        return sum + (job.completedAt!.getTime() - job.startedAt!.getTime());
+      }, 0);
+      stats.avgProcessingTime = totalTime / completedJobs.length;
     }
 
-    return stats
+    return stats;
   }
 
   async clear(): Promise<void> {
     // Annuler tous les jobs en attente
     for (const job of this.jobs.values()) {
       if (job.status === 'pending') {
-        job.status = 'failed'
-        job.error = 'Queue cleared'
-        job.completedAt = new Date()
+        job.status = 'failed';
+        job.error = 'Queue cleared';
+        job.completedAt = new Date();
       }
     }
 
-    logger.info('Queue cleared')
+    logger.info('Queue cleared');
   }
 
   async close(): Promise<void> {
-    logger.info('Queue shutting down...')
+    logger.info('Queue shutting down...');
 
     // 1. Mark all pending jobs as failed so no new work starts
     for (const job of this.jobs.values()) {
       if (job.status === 'pending') {
-        job.status = 'failed'
-        job.error = 'Queue shutdown'
-        job.completedAt = new Date()
+        job.status = 'failed';
+        job.error = 'Queue shutdown';
+        job.completedAt = new Date();
       }
     }
 
     // 2. Wait for active workers to finish (with timeout)
-    const maxWait = 30000 // 30 seconds max
-    const startTime = Date.now()
-    const busyWorkers = () => this.workers.filter(w => w.isBusy)
+    const maxWait = 30000; // 30 seconds max
+    const startTime = Date.now();
+    const busyWorkers = () => this.workers.filter(w => w.isBusy);
 
-    while (busyWorkers().length > 0 && (Date.now() - startTime) < maxWait) {
-      logger.debug(`Waiting for ${busyWorkers().length} worker(s) to finish...`)
-      await new Promise(resolve => setTimeout(resolve, 1000))
+    while (busyWorkers().length > 0 && Date.now() - startTime < maxWait) {
+      logger.debug(`Waiting for ${busyWorkers().length} worker(s) to finish...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     if (busyWorkers().length > 0) {
-      logger.warn(`${busyWorkers().length} worker(s) still busy after ${maxWait}ms timeout`)
+      logger.warn(`${busyWorkers().length} worker(s) still busy after ${maxWait}ms timeout`);
     }
 
     // 3. Clear retry timers
     for (const timer of this.retryTimers) {
-      clearTimeout(timer)
+      clearTimeout(timer);
     }
-    this.retryTimers.clear()
+    this.retryTimers.clear();
 
     // 4. Clear all state
-    this.jobs.clear()
-    this.workers = []
+    this.jobs.clear();
+    this.workers = [];
 
-    logger.info('Queue closed')
+    logger.info('Queue closed');
   }
 }
 
 // Instance globale
-let globalQueue: MCPQueue | null = null
+let globalQueue: MCPQueue | null = null;
 
 export function getQueue(): MCPQueue {
   if (!globalQueue) {
-    globalQueue = new MCPQueue()
+    globalQueue = new MCPQueue();
   }
-  return globalQueue
+  return globalQueue;
 }
 
 export async function initializeQueue(): Promise<void> {
-  const queue = getQueue()
-  logger.info('Queue system initialized')
+  const queue = getQueue();
+  logger.info('Queue system initialized');
 }
 
 export async function closeQueue(): Promise<void> {
   if (globalQueue) {
-    await globalQueue.close()
-    globalQueue = null
+    await globalQueue.close();
+    globalQueue = null;
   }
 }

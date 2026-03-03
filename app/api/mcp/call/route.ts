@@ -7,7 +7,7 @@
  * Preferred usage: POST /api/mcp with JSON-RPC 2.0 body.
  */
 
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': request.headers.get('x-api-key') || '',
-        'authorization': request.headers.get('authorization') || '',
-        'twinmcp_api_key': request.headers.get('twinmcp_api_key') || '',
+        authorization: request.headers.get('authorization') || '',
+        twinmcp_api_key: request.headers.get('twinmcp_api_key') || '',
       },
       body: JSON.stringify({
         jsonrpc: '2.0',

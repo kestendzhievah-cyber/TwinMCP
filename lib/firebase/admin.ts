@@ -19,11 +19,10 @@ const serviceAccount = {
 };
 
 // Vérifier si les informations d'identification sont présentes
-const hasServiceAccount = (
+const hasServiceAccount =
   serviceAccount.private_key &&
   serviceAccount.client_email &&
-  process.env['NEXT_PUBLIC_FIREBASE_PROJECT_ID']
-);
+  process.env['NEXT_PUBLIC_FIREBASE_PROJECT_ID'];
 
 let firebaseAdminApp: App | null = null;
 let initializationError: Error | null = null;
@@ -37,15 +36,17 @@ export function getFirebaseAdminApp(): App | null {
   // During build time, return null gracefully instead of throwing
   if (!hasServiceAccount) {
     if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
-      logger.error('Firebase Admin initialization error: Les informations d\'identification Firebase Admin sont manquantes');
+      logger.error(
+        "Firebase Admin initialization error: Les informations d'identification Firebase Admin sont manquantes"
+      );
       return null;
     }
-    throw new Error('Les informations d\'identification Firebase Admin sont manquantes');
+    throw new Error("Les informations d'identification Firebase Admin sont manquantes");
   }
 
   // Vérifier si une application a déjà été initialisée
   const [existingApp] = getApps();
-  
+
   if (existingApp) {
     firebaseAdminApp = existingApp;
     return firebaseAdminApp;
@@ -57,11 +58,11 @@ export function getFirebaseAdminApp(): App | null {
       credential: cert(serviceAccount as any),
       databaseURL: `https://${process.env['NEXT_PUBLIC_FIREBASE_PROJECT_ID']}.firebaseio.com`,
     });
-    
+
     logger.info('Firebase Admin initialisé avec succès');
     return firebaseAdminApp;
   } catch (error) {
-    logger.error('Erreur lors de l\'initialisation de Firebase Admin:', error);
+    logger.error("Erreur lors de l'initialisation de Firebase Admin:", error);
     // During build time, return null gracefully instead of throwing
     if (process.env.NODE_ENV === 'production') {
       initializationError = error as Error;
@@ -75,7 +76,9 @@ export function getFirebaseAdminApp(): App | null {
 export function getFirebaseAdminDb() {
   const app = getFirebaseAdminApp();
   if (!app) {
-    throw new Error('Firebase Admin non initialisé — vérifiez les variables d\'environnement FIREBASE_ADMIN_*');
+    throw new Error(
+      "Firebase Admin non initialisé — vérifiez les variables d'environnement FIREBASE_ADMIN_*"
+    );
   }
   return getFirestore(app);
 }
@@ -84,7 +87,9 @@ export function getFirebaseAdminDb() {
 export function getFirebaseAdminAuth() {
   const app = getFirebaseAdminApp();
   if (!app) {
-    throw new Error('Firebase Admin non initialisé — vérifiez les variables d\'environnement FIREBASE_ADMIN_*');
+    throw new Error(
+      "Firebase Admin non initialisé — vérifiez les variables d'environnement FIREBASE_ADMIN_*"
+    );
   }
   return getAuth(app);
 }
@@ -92,40 +97,53 @@ export function getFirebaseAdminAuth() {
 // Fonction utilitaire pour convertir un document Firestore en objet JavaScript
 export function formatDocument(doc: any) {
   if (!doc.exists) return null;
-  
+
   const data = doc.data();
   const formatted: any = { id: doc.id };
-  
+
   // Convertir les Timestamp en Date
   Object.keys(data).forEach(key => {
     const value = data[key];
-    
-    if (value && typeof value === 'object' && 'toDate' in value && typeof (value as any).toDate === 'function') {
+
+    if (
+      value &&
+      typeof value === 'object' &&
+      'toDate' in value &&
+      typeof (value as any).toDate === 'function'
+    ) {
       formatted[key] = (value as any).toDate().toISOString();
     } else if (value && typeof value === 'object' && 'seconds' in value && 'nanoseconds' in value) {
       // Gestion des Timestamp Firebase v9
       formatted[key] = new Date(value.seconds * 1000 + value.nanoseconds / 1000000).toISOString();
     } else if (Array.isArray(value)) {
       // Traitement récursif des tableaux
-      formatted[key] = value.map(item => 
-        item && typeof item === 'object' && 'toDate' in item 
-          ? (item as any).toDate().toISOString() 
+      formatted[key] = value.map(item =>
+        item && typeof item === 'object' && 'toDate' in item
+          ? (item as any).toDate().toISOString()
           : item
       );
     } else if (value && typeof value === 'object') {
       // Traitement récursif des objets imbriqués
-      formatted[key] = Object.entries(value).reduce((acc, [k, v]) => {
-        if (v && typeof v === 'object' && 'toDate' in v && typeof (v as any).toDate === 'function') {
-          acc[k] = (v as any).toDate().toISOString();
-        } else {
-          acc[k] = v;
-        }
-        return acc;
-      }, {} as Record<string, any>);
+      formatted[key] = Object.entries(value).reduce(
+        (acc, [k, v]) => {
+          if (
+            v &&
+            typeof v === 'object' &&
+            'toDate' in v &&
+            typeof (v as any).toDate === 'function'
+          ) {
+            acc[k] = (v as any).toDate().toISOString();
+          } else {
+            acc[k] = v;
+          }
+          return acc;
+        },
+        {} as Record<string, any>
+      );
     } else {
       formatted[key] = value;
     }
   });
-  
+
   return formatted;
 }

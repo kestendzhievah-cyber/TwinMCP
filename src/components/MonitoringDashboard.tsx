@@ -1,6 +1,5 @@
 'use client';
 
-import { logger } from '../utils/logger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -114,11 +113,13 @@ export default function MonitoringDashboard() {
       ]);
 
       setStatus(statusData);
-      setMetrics(metricsData.metrics || []);
+      // metricsData.metrics can be a single object (no period) or array (with period)
+      const rawMetrics = metricsData.metrics;
+      setMetrics(Array.isArray(rawMetrics) ? rawMetrics : rawMetrics ? [rawMetrics] : []);
       setAlerts(alertsData.alerts || []);
       setHealthChecks(healthData.services || []);
     } catch (error) {
-      logger.error('Error fetching monitoring data:', error);
+      console.error('Error fetching monitoring data:', error);
     } finally {
       setLoading(false);
     }

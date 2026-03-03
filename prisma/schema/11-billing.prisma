@@ -45,23 +45,26 @@ model Payment {
 }
 
 model Subscription {
-  id                String            @id @default(cuid())
-  userId            String            @map("user_id")
-  userProfile       UserProfile       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan              String
-  status            SubscriptionStatus @default(ACTIVE)
-  currentPeriodStart DateTime          @map("current_period_start")
-  currentPeriodEnd   DateTime          @map("current_period_end")
-  cancelAtPeriodEnd  Boolean           @default(false) @map("cancel_at_period_end")
-  amount            Decimal            @db.Decimal(10, 2)
-  currency          String
-  interval          SubscriptionInterval @default(MONTH)
-  intervalCount     Int               @default(1) @map("interval_count")
-  trialStart        DateTime?          @map("trial_start")
-  trialEnd          DateTime?          @map("trial_end")
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
-  metadata          Json               @default("{}")
+  id                    String            @id @default(cuid())
+  userId                String            @map("user_id")
+  userProfile           UserProfile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                  String
+  status                SubscriptionStatus @default(ACTIVE)
+  stripeSubscriptionId  String?           @unique @map("stripe_subscription_id")
+  stripeCustomerId      String?           @map("stripe_customer_id")
+  stripePriceId         String?           @map("stripe_price_id")
+  currentPeriodStart    DateTime          @map("current_period_start")
+  currentPeriodEnd      DateTime          @map("current_period_end")
+  cancelAtPeriodEnd     Boolean           @default(false) @map("cancel_at_period_end")
+  amount                Decimal           @db.Decimal(10, 2)
+  currency              String
+  interval              SubscriptionInterval @default(MONTH)
+  intervalCount         Int               @default(1) @map("interval_count")
+  trialStart            DateTime?         @map("trial_start")
+  trialEnd              DateTime?         @map("trial_end")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  metadata              Json              @default("{}")
   
   @@map("subscriptions")
 }
@@ -99,17 +102,20 @@ model BillingAlert {
 }
 
 model Plan {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  amount      Decimal  @db.Decimal(10, 2)
-  currency    String
-  interval    PlanInterval @default(MONTH)
-  features    String[]
-  limits      Json     @default("{}")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  metadata    Json     @default("{}")
+  id              String   @id @default(cuid())
+  name            String
+  slug            String?  @unique
+  description     String?
+  amount          Decimal  @db.Decimal(10, 2)
+  currency        String
+  interval        PlanInterval @default(MONTH)
+  stripePriceId   String?  @unique @map("stripe_price_id")
+  features        String[]
+  limits          Json     @default("{}")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  metadata        Json     @default("{}")
   
   @@map("plans")
 }

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiClient } from '@/lib/client/api-client';
@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    
+
     // Vérifier si un utilisateur est déjà connecté au chargement
     if (typeof window !== 'undefined') {
       try {
@@ -51,31 +51,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
     try {
-      // Simulation d'authentification (à remplacer par un vrai appel API)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulation de validation
-      if (email === 'admin@twinmcp.com' && password === 'admin123') {
-        const userData: User = {
-          id: '1',
-          email: 'admin@twinmcp.com',
-          name: 'TwinMCP Admin',
-          apiKey: 'twinmcp_live_test123' // Clé de test
-        };
-        
-        setUser(userData);
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('twinmcp_user', JSON.stringify(userData));
-          } catch {
-            // Ignore
-          }
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) return false;
+
+      const data = (await res.json()) as { user: User };
+      const userData = data.user;
+
+      setUser(userData);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('twinmcp_user', JSON.stringify(userData));
+        } catch {
+          // Ignore
         }
-        apiClient.setApiKey(userData.apiKey || '');
-        return true;
-      } else {
-        return false;
       }
+      apiClient.setApiKey(userData.apiKey || '');
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       return false;
@@ -116,14 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     loading,
-    setApiKey
+    setApiKey,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

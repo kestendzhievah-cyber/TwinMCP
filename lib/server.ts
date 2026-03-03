@@ -1,20 +1,20 @@
-import express, { Request, Response } from 'express'
-import cors from 'cors'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import { logger } from '@/lib/logger'
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { logger } from '@/lib/logger';
 
 // Configuration pour ES modules
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const app = express()
-const PORT = process.env.PORT || 3001
+const app = express();
+const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes API
 app.get('/api/health', (req: Request, res: Response) => {
@@ -22,9 +22,9 @@ app.get('/api/health', (req: Request, res: Response) => {
     status: 'OK',
     message: 'TwinMCP Express Server is running',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  })
-})
+    uptime: process.uptime(),
+  });
+});
 
 app.get('/api/agents', (req: Request, res: Response) => {
   res.json({
@@ -34,28 +34,28 @@ app.get('/api/agents', (req: Request, res: Response) => {
         name: 'Support Agent',
         status: 'active',
         model: 'gpt-4',
-        conversations: 1250
+        conversations: 1250,
       },
       {
         id: 2,
         name: 'Sales Agent',
         status: 'active',
         model: 'claude-3',
-        conversations: 890
-      }
+        conversations: 890,
+      },
     ],
-    total: 2
-  })
-})
+    total: 2,
+  });
+});
 
 app.post('/api/agents', (req: Request, res: Response): void => {
-  const { name, type, model } = req.body
+  const { name, type, model } = req.body;
 
   if (!name || !type) {
     res.status(400).json({
-      error: 'Name and type are required'
-    })
-    return
+      error: 'Name and type are required',
+    });
+    return;
   }
 
   res.json({
@@ -66,12 +66,12 @@ app.post('/api/agents', (req: Request, res: Response): void => {
       type,
       model: model || 'gpt-4',
       status: 'created',
-      createdAt: new Date().toISOString()
-    }
-  })
-})
+      createdAt: new Date().toISOString(),
+    },
+  });
+});
 
 // Démarrage du serveur
 app.listen(PORT, () => {
-  logger.info(`TwinMCP Express Server running on http://localhost:${PORT}`)
-})
+  logger.info(`TwinMCP Express Server running on http://localhost:${PORT}`);
+});

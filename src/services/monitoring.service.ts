@@ -178,13 +178,11 @@ export class MonitoringService extends EventEmitter {
         business: businessMetrics
       };
 
-      // Add to history
+      // Add to history (cap at 1000 entries to prevent memory leak)
       this.metricsHistory.push(metrics);
-      
-      // Limit history to retention period
-      const retentionMs = this.config.collection.retention * 24 * 60 * 60 * 1000;
-      const cutoffTime = new Date(Date.now() - retentionMs);
-      this.metricsHistory = this.metricsHistory.filter(m => m.timestamp > cutoffTime);
+      if (this.metricsHistory.length > 1000) {
+        this.metricsHistory = this.metricsHistory.slice(-1000);
+      }
 
       // Save to database
       await this.saveMetrics(metrics);
@@ -405,7 +403,11 @@ export class MonitoringService extends EventEmitter {
     try {
       // Calculate availability based on the SLO indicator
       const availability = await this.calculateAvailability(slo.service, slo.indicator, slo.window);
-      const errorBudget = Math.max(0, 100 - (100 - availability));
+      // Error budget = how much of the allowed downtime is remaining
+      // e.g. target=99.9%, availability=99.8% → allowed error=0.1%, actual error=0.2% → budget = max(0, 1 - 0.2/0.1) * 100 = 0%
+      const allowedError = 100 - slo.target;
+      const actualError = 100 - availability;
+      const errorBudget = allowedError > 0 ? Math.max(0, (1 - actualError / allowedError) * 100) : (actualError === 0 ? 100 : 0);
       const burnRate = await this.calculateBurnRate(slo.service, slo.indicator);
 
       return {
@@ -492,8 +494,76 @@ export class MonitoringService extends EventEmitter {
   }
 
   private async getSLAServices(period: { start: Date; end: Date }): Promise<any[]> {
-    // Placeholder implementation
-    return [];
+    try {
+      // Get all monitored services and their health check data for the period
+      const services = [
+        'api-gateway', 'auth-service', 'chat-service',
+        'llm-service', 'database', 'redis', 'vector-search'
+      ];
+
+      const results = await Promise.all(services.map(async (serviceName) => {
+        const healthResult = await this.db.query(`
+          SELECT
+            COUNT(*) as total_checks,
+            COUNT(*) FILTER (WHERE status = 'healthy') as healthy_checks,
+            COUNT(*) FILTER (WHERE status = 'unhealthy') as unhealthy_checks
+          FROM health_checks
+          WHERE service = $1 AND timestamp BETWEEN $2 AND $3
+        `, [serviceName, period.start, period.end]);
+
+        const row = healthResult.rows[0] || { total_checks: '0', healthy_checks: '0', unhealthy_checks: '0' };
+        const totalChecks = parseInt(row.total_checks) || 0;
+        const healthyChecks = parseInt(row.healthy_checks) || 0;
+        const unhealthyChecks = parseInt(row.unhealthy_checks) || 0;
+
+        const periodMs = period.end.getTime() - period.start.getTime();
+        const availability = totalChecks > 0 ? (healthyChecks / totalChecks) * 100 : 100;
+        const downtimeRatio = totalChecks > 0 ? unhealthyChecks / totalChecks : 0;
+        const downtime = Math.round(downtimeRatio * periodMs / 1000); // seconds
+        const uptime = Math.round((1 - downtimeRatio) * periodMs / 1000);
+
+        // Get incidents (periods of consecutive unhealthy checks)
+        const incidentResult = await this.db.query(`
+          SELECT id, created_at as start_time, resolved_at as end_time,
+                 severity, description
+          FROM alerts
+          WHERE source = 'health-check'
+            AND created_at BETWEEN $1 AND $2
+            AND (tags::text LIKE '%' || $3 || '%' OR metric LIKE '%' || $3 || '%')
+          ORDER BY created_at
+        `, [period.start, period.end, serviceName]);
+
+        const incidents = incidentResult.rows.map((inc: any) => ({
+          id: inc.id,
+          startTime: inc.start_time,
+          endTime: inc.end_time,
+          duration: inc.end_time
+            ? (new Date(inc.end_time).getTime() - new Date(inc.start_time).getTime()) / 1000
+            : (Date.now() - new Date(inc.start_time).getTime()) / 1000,
+          severity: inc.severity === 'critical' ? 'critical' : inc.severity === 'error' ? 'major' : 'minor',
+          description: inc.description || `${serviceName} unhealthy`,
+          impact: `Service ${serviceName} degraded or unavailable`
+        }));
+
+        return {
+          name: serviceName,
+          availability: Math.round(availability * 100) / 100,
+          uptime,
+          downtime,
+          incidents,
+          sli: {
+            name: 'availability',
+            value: Math.round(availability * 100) / 100,
+            target: 99.9
+          }
+        };
+      }));
+
+      return results;
+    } catch (error) {
+      logger.error('Error getting SLA services:', error);
+      return [];
+    }
   }
 
   private async loadActiveAlerts(): Promise<void> {
@@ -629,10 +699,12 @@ export class MonitoringService extends EventEmitter {
   }
 
   // Public API methods
-  getStatus(): { isRunning: boolean; uptime: number; alertsCount: number } {
+  getStatus(): { isRunning: boolean; uptime: number; uptimeSeconds: number; alertsCount: number } {
+    const uptimeSeconds = this.isRunning ? process.uptime() : 0;
     return {
       isRunning: this.isRunning,
-      uptime: this.isRunning ? process.uptime() : 0,
+      uptime: Math.round((uptimeSeconds / 3600) * 100) / 100, // hours
+      uptimeSeconds,
       alertsCount: this.activeAlerts.size
     };
   }

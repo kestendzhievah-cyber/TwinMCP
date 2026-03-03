@@ -1,5 +1,5 @@
 // src/app/api/analytics/export/route.ts
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsServices } from '../_shared';
 import { AnalyticsQuery } from '@/src/types/analytics.types';
@@ -8,10 +8,10 @@ export async function POST(request: NextRequest) {
   try {
     const { analyticsService } = await getAnalyticsServices();
     const body = await request.json();
-    
+
     // Validate required fields
     const { query, format } = body;
-    
+
     if (!query || !format) {
       return NextResponse.json(
         { error: 'Missing required fields: query, format' },
@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
       filters: query.filters || {},
       timeRange: {
         start: new Date(query.timeRange.start),
-        end: new Date(query.timeRange.end)
+        end: new Date(query.timeRange.end),
       },
       granularity: query.granularity || 'day',
       limit: query.limit,
-      offset: query.offset
+      offset: query.offset,
     };
 
     // Validate time range
@@ -64,15 +64,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       exportId: exportJob.id,
       status: exportJob.status,
-      message: 'Export job created successfully'
+      message: 'Export job created successfully',
     });
-    
   } catch (error) {
     logger.error('Error creating export job:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -81,31 +77,21 @@ export async function GET(request: NextRequest) {
     const { analyticsService } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
     const exportId = searchParams.get('exportId');
-    
+
     if (!exportId) {
-      return NextResponse.json(
-        { error: 'Missing required parameter: exportId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required parameter: exportId' }, { status: 400 });
     }
 
     // Get export status
     const exportStatus = await analyticsService.getExportStatus(exportId);
-    
+
     if (!exportStatus) {
-      return NextResponse.json(
-        { error: 'Export not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Export not found' }, { status: 404 });
     }
 
     return NextResponse.json(exportStatus);
-    
   } catch (error) {
     logger.error('Error fetching export status:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

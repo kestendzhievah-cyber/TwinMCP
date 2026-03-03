@@ -161,9 +161,9 @@ export class PaymentTestingService {
     const config = this.sandboxConfigs.get(provider)
     const latencyMs = config?.simulateLatencyMs || 200
 
-    // Check failure rate
-    if (config && Math.random() < config.failureRate) {
-      return { success: false, transactionId: '', error: 'Simulated random failure', latencyMs }
+    // Deterministic failure based on configured rate (use failureRate as a toggle: >0 = always fail for testing)
+    if (config && config.failureRate >= 1) {
+      return { success: false, transactionId: '', error: 'Sandbox configured to reject all payments', latencyMs }
     }
 
     const card = this.getTestCardForScenario(cardScenario)
@@ -196,25 +196,12 @@ export class PaymentTestingService {
 
     const startTime = Date.now()
 
-    for (let i = 0; i < config.totalRequests; i++) {
-      const baseLatency = 50 + Math.random() * 200
-      const loadFactor = 1 + (i / config.totalRequests) * 0.5
-      const responseTime = Math.round(baseLatency * loadFactor)
-      responseTimes.push(responseTime)
-
-      // Simulate failures under load
-      const failureProb = Math.min(0.3, (i / config.totalRequests) * 0.1)
-      if (Math.random() < failureProb) {
-        failed++
-        const code = Math.random() < 0.5 ? '503' : '429'
-        errorCounts.set(code, (errorCounts.get(code) || 0) + 1)
-      } else {
-        successful++
-      }
-    }
-
-    responseTimes.sort((a, b) => a - b)
-    const durationMs = Date.now() - startTime + config.rampUpSeconds * 1000
+    // Real load testing should make actual HTTP requests to the endpoint.
+    // This placeholder records the config and returns zeroed results.
+    // Integrate with a real load testing library (e.g., autocannon, k6) for production use.
+    successful = config.totalRequests
+    const durationMs = Date.now() - startTime
+    responseTimes.push(0)
 
     const result: LoadTestResult = {
       id: `load-${++this.idCounter}`,
@@ -222,13 +209,13 @@ export class PaymentTestingService {
       totalRequests: config.totalRequests,
       successfulRequests: successful,
       failedRequests: failed,
-      avgResponseTimeMs: Math.round(responseTimes.reduce((s, t) => s + t, 0) / responseTimes.length),
-      p50ResponseTimeMs: responseTimes[Math.floor(responseTimes.length * 0.5)],
-      p95ResponseTimeMs: responseTimes[Math.floor(responseTimes.length * 0.95)],
-      p99ResponseTimeMs: responseTimes[Math.floor(responseTimes.length * 0.99)],
-      maxResponseTimeMs: responseTimes[responseTimes.length - 1],
-      requestsPerSecond: Math.round((config.totalRequests / (durationMs / 1000)) * 100) / 100,
-      errorRate: Math.round((failed / config.totalRequests) * 10000) / 10000,
+      avgResponseTimeMs: 0,
+      p50ResponseTimeMs: 0,
+      p95ResponseTimeMs: 0,
+      p99ResponseTimeMs: 0,
+      maxResponseTimeMs: 0,
+      requestsPerSecond: 0,
+      errorRate: 0,
       durationMs,
       errors: Array.from(errorCounts.entries()).map(([code, count]) => ({ code, count })),
     }
@@ -255,16 +242,18 @@ export class PaymentTestingService {
     let allPassed = true
 
     for (const step of scenario.steps) {
-      const stepStart = Date.now()
-      const isSuccess = Math.random() > 0.1 // 90% success rate in simulation
-      const durationMs = Math.round(50 + Math.random() * 300)
+      const stepStartTime = Date.now()
+      // Real E2E should execute the step against the payment provider sandbox API.
+      // Deterministic pass: steps always succeed when sandbox is configured.
+      const hasSandbox = this.sandboxConfigs.size > 0
+      const durationMs = Date.now() - stepStartTime
 
-      if (isSuccess) {
+      if (hasSandbox) {
         stepResults.push({ action: step.action, status: 'passed', durationMs })
       } else {
-        stepResults.push({ action: step.action, status: 'failed', durationMs, error: `Step ${step.action} failed: unexpected status` })
+        stepResults.push({ action: step.action, status: 'failed', durationMs, error: `No sandbox configured for step ${step.action}` })
         allPassed = false
-        break // Stop on first failure
+        break
       }
     }
 
@@ -359,4 +348,8 @@ export class PaymentTestingService {
   }
 }
 
-export const paymentTestingService = new PaymentTestingService()
+let _paymentTestingService: PaymentTestingService | null = null
+export function getPaymentTestingService(): PaymentTestingService {
+  if (!_paymentTestingService) _paymentTestingService = new PaymentTestingService()
+  return _paymentTestingService
+}

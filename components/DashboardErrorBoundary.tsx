@@ -33,11 +33,10 @@ export class DashboardErrorBoundary extends Component<Props, State> {
         <div className="flex flex-col items-center justify-center py-16 px-4">
           <div className="bg-[#1a1b2e] border border-red-500/30 rounded-2xl p-8 max-w-md w-full text-center">
             <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">
-              Une erreur est survenue
-            </h2>
+            <h2 className="text-xl font-bold text-white mb-2">Une erreur est survenue</h2>
             <p className="text-gray-400 text-sm mb-6">
-              {this.props.fallbackMessage || 'Un problème inattendu s\'est produit. Veuillez réessayer.'}
+              {this.props.fallbackMessage ||
+                "Un problème inattendu s'est produit. Veuillez réessayer."}
             </p>
             {this.state.error && (
               <p className="text-xs text-red-400/70 mb-4 font-mono bg-red-500/10 rounded-lg p-3 text-left break-all">

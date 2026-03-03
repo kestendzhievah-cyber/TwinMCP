@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 
 /**
  * Centralized Secrets Management
@@ -15,17 +15,17 @@ import { logger } from '@/lib/logger'
 
 export interface SecretDefinition {
   /** Environment variable name */
-  key: string
+  key: string;
   /** Whether the app cannot start without this value */
-  required: boolean
+  required: boolean;
   /** Default value when not required and not set */
-  defaultValue?: string
+  defaultValue?: string;
   /** Human-readable description for error messages */
-  description: string
+  description: string;
   /** If true, value is masked in logs/diagnostics (default true) */
-  sensitive?: boolean
+  sensitive?: boolean;
   /** Optional regex pattern the value must match */
-  pattern?: RegExp
+  pattern?: RegExp;
 }
 
 const SECRET_DEFINITIONS: SecretDefinition[] = [
@@ -114,17 +114,17 @@ const SECRET_DEFINITIONS: SecretDefinition[] = [
     description: 'Node environment',
     sensitive: false,
   },
-]
+];
 
 export interface ValidationError {
-  key: string
-  message: string
+  key: string;
+  message: string;
 }
 
 export interface ValidationResult {
-  valid: boolean
-  errors: ValidationError[]
-  warnings: ValidationError[]
+  valid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationError[];
 }
 
 /**
@@ -132,18 +132,18 @@ export interface ValidationResult {
  * Returns a result object; does NOT throw.
  */
 export function checkSecrets(): ValidationResult {
-  const errors: ValidationError[] = []
-  const warnings: ValidationError[] = []
+  const errors: ValidationError[] = [];
+  const warnings: ValidationError[] = [];
 
   for (const def of SECRET_DEFINITIONS) {
-    const value = process.env[def.key]
+    const value = process.env[def.key];
 
     if (!value && def.required) {
       errors.push({
         key: def.key,
         message: `Missing required secret: ${def.key} — ${def.description}`,
-      })
-      continue
+      });
+      continue;
     }
 
     if (!value && !def.required) {
@@ -151,20 +151,20 @@ export function checkSecrets(): ValidationResult {
         warnings.push({
           key: def.key,
           message: `Optional secret not set: ${def.key} — ${def.description}`,
-        })
+        });
       }
-      continue
+      continue;
     }
 
     if (value && def.pattern && !def.pattern.test(value)) {
       errors.push({
         key: def.key,
         message: `Secret ${def.key} does not match expected pattern — ${def.description}`,
-      })
+      });
     }
   }
 
-  return { valid: errors.length === 0, errors, warnings }
+  return { valid: errors.length === 0, errors, warnings };
 }
 
 /**
@@ -172,20 +172,20 @@ export function checkSecrets(): ValidationResult {
  * Call this once at application startup.
  */
 export function validateSecrets(): void {
-  const result = checkSecrets()
+  const result = checkSecrets();
 
   if (result.warnings.length > 0) {
     for (const w of result.warnings) {
-      logger.warn(`[secrets] ${w.message}`)
+      logger.warn(`[secrets] ${w.message}`);
     }
   }
 
   if (!result.valid) {
-    const summary = result.errors.map(e => `  - ${e.message}`).join('\n')
+    const summary = result.errors.map(e => `  - ${e.message}`).join('\n');
     throw new Error(
       `[secrets] Missing or invalid secrets:\n${summary}\n\n` +
-      `Set these environment variables before starting the application.`
-    )
+        `Set these environment variables before starting the application.`
+    );
   }
 }
 
@@ -193,32 +193,32 @@ export function validateSecrets(): void {
  * Mask a secret value for safe logging (show first 4 and last 2 chars).
  */
 export function maskSecret(value: string): string {
-  if (!value || value.length <= 8) return '****'
-  return `${value.slice(0, 4)}${'*'.repeat(Math.min(value.length - 6, 20))}${value.slice(-2)}`
+  if (!value || value.length <= 8) return '****';
+  return `${value.slice(0, 4)}${'*'.repeat(Math.min(value.length - 6, 20))}${value.slice(-2)}`;
 }
 
 /**
  * Get a diagnostic summary of all secrets (values masked).
  */
 export function getSecretsDiagnostic(): Array<{
-  key: string
-  status: 'set' | 'default' | 'missing'
-  masked?: string
+  key: string;
+  status: 'set' | 'default' | 'missing';
+  masked?: string;
 }> {
   return SECRET_DEFINITIONS.map(def => {
-    const value = process.env[def.key]
+    const value = process.env[def.key];
     if (value) {
       return {
         key: def.key,
         status: 'set' as const,
         masked: def.sensitive !== false ? maskSecret(value) : value,
-      }
+      };
     }
     if (def.defaultValue) {
-      return { key: def.key, status: 'default' as const, masked: def.defaultValue }
+      return { key: def.key, status: 'default' as const, masked: def.defaultValue };
     }
-    return { key: def.key, status: 'missing' as const }
-  })
+    return { key: def.key, status: 'missing' as const };
+  });
 }
 
 /**
@@ -226,49 +226,49 @@ export function getSecretsDiagnostic(): Array<{
  */
 class SecretsAccessor {
   get DATABASE_URL(): string {
-    return this.getRequired('DATABASE_URL')
+    return this.getRequired('DATABASE_URL');
   }
   get REDIS_URL(): string {
-    return this.get('REDIS_URL', 'redis://localhost:6379')
+    return this.get('REDIS_URL', 'redis://localhost:6379');
   }
   get JWT_SECRET(): string {
-    return this.getRequired('JWT_SECRET')
+    return this.getRequired('JWT_SECRET');
   }
   get OPENAI_API_KEY(): string {
-    return this.get('OPENAI_API_KEY', '')
+    return this.get('OPENAI_API_KEY', '');
   }
   get ANTHROPIC_API_KEY(): string {
-    return this.get('ANTHROPIC_API_KEY', '')
+    return this.get('ANTHROPIC_API_KEY', '');
   }
   get GOOGLE_API_KEY(): string {
-    return this.get('GOOGLE_API_KEY', '')
+    return this.get('GOOGLE_API_KEY', '');
   }
   get STRIPE_SECRET_KEY(): string {
-    return this.get('STRIPE_SECRET_KEY', '')
+    return this.get('STRIPE_SECRET_KEY', '');
   }
   get STRIPE_WEBHOOK_SECRET(): string {
-    return this.get('STRIPE_WEBHOOK_SECRET', '')
+    return this.get('STRIPE_WEBHOOK_SECRET', '');
   }
   get NODE_ENV(): string {
-    return this.get('NODE_ENV', 'development')
+    return this.get('NODE_ENV', 'development');
   }
   get NEXT_PUBLIC_APP_URL(): string {
-    return this.get('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')
+    return this.get('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
   }
 
   /** Get an env var with a fallback. */
   get(key: string, fallback: string = ''): string {
-    return process.env[key] || fallback
+    return process.env[key] || fallback;
   }
 
   /** Get a required env var — throws if missing. */
   getRequired(key: string): string {
-    const value = process.env[key]
+    const value = process.env[key];
     if (!value) {
-      throw new Error(`[secrets] Required secret ${key} is not set`)
+      throw new Error(`[secrets] Required secret ${key} is not set`);
     }
-    return value
+    return value;
   }
 }
 
-export const secrets = new SecretsAccessor()
+export const secrets = new SecretsAccessor();

@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { 
-  Mail, 
-  Sparkles, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Mail,
+  Sparkles,
+  AlertCircle,
+  CheckCircle,
   ArrowLeft,
   ArrowRight,
-  Shield
+  Shield,
 } from 'lucide-react';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
           errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
           break;
         default:
-          errorMessage = err.message || 'Erreur lors de l\'envoi de l\'email';
+          errorMessage = err.message || "Erreur lors de l'envoi de l'email";
       }
       setError(errorMessage);
     } finally {
@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Back Button */}
-          <Link 
+          <Link
             href="/auth"
             className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition mb-6 group"
           >
@@ -89,8 +89,9 @@ export default function ForgotPasswordPage() {
                   Email envoyé !
                 </h1>
                 <p className="text-gray-500 text-center mb-6">
-                  Si un compte existe avec l'adresse <strong className="text-gray-700">{email}</strong>, 
-                  vous recevrez un email avec les instructions pour réinitialiser votre mot de passe.
+                  Si un compte existe avec l'adresse{' '}
+                  <strong className="text-gray-700">{email}</strong>, vous recevrez un email avec
+                  les instructions pour réinitialiser votre mot de passe.
                 </p>
                 <p className="text-sm text-gray-400 text-center mb-6">
                   Vérifiez également votre dossier spam. Le lien expire dans 1 heure.
@@ -129,7 +130,7 @@ export default function ForgotPasswordPage() {
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={e => setEmail(e.target.value)}
                       placeholder="Entrez votre adresse email"
                       required
                       autoFocus
@@ -158,7 +159,10 @@ export default function ForgotPasswordPage() {
                 {/* Back to login */}
                 <p className="mt-6 text-center text-gray-500">
                   Vous vous souvenez de votre mot de passe ?{' '}
-                  <Link href="/auth" className="text-purple-600 hover:text-purple-700 font-semibold underline">
+                  <Link
+                    href="/auth"
+                    className="text-purple-600 hover:text-purple-700 font-semibold underline"
+                  >
                     Se connecter
                   </Link>
                 </p>
@@ -212,8 +216,8 @@ export default function ForgotPasswordPage() {
               <div>
                 <p className="text-white font-medium">Sécurité renforcée</p>
                 <p className="text-gray-400 text-sm mt-1">
-                  Pour votre sécurité, le lien de réinitialisation expire après 1 heure.
-                  Si vous n'avez pas fait cette demande, ignorez simplement l'email.
+                  Pour votre sécurité, le lien de réinitialisation expire après 1 heure. Si vous
+                  n'avez pas fait cette demande, ignorez simplement l'email.
                 </p>
               </div>
             </div>

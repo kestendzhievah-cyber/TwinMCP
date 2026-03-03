@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
@@ -7,13 +7,13 @@ import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
 export async function GET(request: NextRequest) {
   const start = Date.now();
   try {
-    const auth = await validateAuthWithApiKey(request.headers.get('authorization'), request.headers.get('x-api-key'));
-    
+    const auth = await validateAuthWithApiKey(
+      request.headers.get('authorization'),
+      request.headers.get('x-api-key')
+    );
+
     if (!auth.valid) {
-      return NextResponse.json(
-        { success: false, error: auth.error },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
     }
 
     const userId = auth.userId!;
@@ -23,25 +23,19 @@ export async function GET(request: NextRequest) {
 
     // Find user in database
     const user = await prisma.user.findFirst({
-      where: { 
-        OR: [
-          { id: userId },
-          { oauthId: userId }
-        ]
-      }
+      where: {
+        OR: [{ id: userId }, { oauthId: userId }],
+      },
     });
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
     // Calculate time boundaries
     const now = new Date();
     let startDate: Date;
-    
+
     switch (timeRange) {
       case '7d':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -56,7 +50,7 @@ export async function GET(request: NextRequest) {
     // Build query conditions
     const whereConditions: { userId: string; createdAt: { gte: Date }; apiKeyId?: string } = {
       userId: user.id,
-      createdAt: { gte: startDate }
+      createdAt: { gte: startDate },
     };
 
     if (keyId) {
@@ -74,29 +68,33 @@ export async function GET(request: NextRequest) {
         success: true,
         responseTimeMs: true,
         createdAt: true,
-        apiKeyId: true
-      }
+        apiKeyId: true,
+      },
     });
 
     // Calculate statistics
     const totalRequests = logs.length;
-    const successfulRequests = logs.filter((l: typeof logs[number]) => l.success).length;
+    const successfulRequests = logs.filter((l: (typeof logs)[number]) => l.success).length;
     const failedRequests = totalRequests - successfulRequests;
-    const successRate = totalRequests > 0 ? Math.round((successfulRequests / totalRequests) * 1000) / 10 : 100;
-    
+    const successRate =
+      totalRequests > 0 ? Math.round((successfulRequests / totalRequests) * 1000) / 10 : 100;
+
     const responseTimes = logs
-      .map((l: typeof logs[number]) => l.responseTimeMs)
+      .map((l: (typeof logs)[number]) => l.responseTimeMs)
       .filter((t: number | null): t is number => t !== null);
-    
-    const avgResponseTime = responseTimes.length > 0
-      ? Math.round(responseTimes.reduce((a: number, b: number) => a + b, 0) / responseTimes.length)
-      : 0;
+
+    const avgResponseTime =
+      responseTimes.length > 0
+        ? Math.round(
+            responseTimes.reduce((a: number, b: number) => a + b, 0) / responseTimes.length
+          )
+        : 0;
 
     // Get usage by hour for the chart
     const hourlyUsage: { hour: string; count: number; success: number; failed: number }[] = [];
     const hoursMap = new Map<string, { count: number; success: number; failed: number }>();
-    
-    logs.forEach((log: typeof logs[number]) => {
+
+    logs.forEach((log: (typeof logs)[number]) => {
       const hourKey = log.createdAt.toISOString().slice(0, 13); // YYYY-MM-DDTHH
       const existing = hoursMap.get(hourKey) || { count: 0, success: 0, failed: 0 };
       existing.count++;
@@ -114,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     // Get usage by tool
     const toolUsage = new Map<string, { count: number; success: number; totalTime: number }>();
-    logs.forEach((log: typeof logs[number]) => {
+    logs.forEach((log: (typeof logs)[number]) => {
       const existing = toolUsage.get(log.toolName) || { count: 0, success: 0, totalTime: 0 };
       existing.count++;
       if (log.success) existing.success++;
@@ -126,76 +124,75 @@ export async function GET(request: NextRequest) {
       tool,
       count: data.count,
       successRate: Math.round((data.success / data.count) * 1000) / 10,
-      avgResponseTime: Math.round(data.totalTime / data.count)
+      avgResponseTime: Math.round(data.totalTime / data.count),
     }));
 
     // Get current quotas
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const todayUsage = await prisma.usageLog.count({
       where: {
         userId: user.id,
-        createdAt: { gte: today }
-      }
+        createdAt: { gte: today },
+      },
     });
 
     // Get user's subscription tier
     const userProfile = await prisma.userProfile.findUnique({
       where: { userId: user.id },
-      include: { subscriptions: { where: { status: 'ACTIVE' } } }
+      include: { subscriptions: { where: { status: 'ACTIVE' } } },
     });
 
     const plan = userProfile?.subscriptions?.[0]?.plan || 'free';
     const LIMITS: Record<string, { daily: number; monthly: number }> = {
       free: { daily: 200, monthly: 6000 },
       pro: { daily: 10000, monthly: 300000 },
-      enterprise: { daily: 100000, monthly: 3000000 }
+      enterprise: { daily: 100000, monthly: 3000000 },
     };
 
     const limits = LIMITS[plan] || LIMITS.free;
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        summary: {
-          totalRequests,
-          successfulRequests,
-          failedRequests,
-          successRate,
-          avgResponseTime,
-          timeRange
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          summary: {
+            totalRequests,
+            successfulRequests,
+            failedRequests,
+            successRate,
+            avgResponseTime,
+            timeRange,
+          },
+          quota: {
+            plan,
+            dailyLimit: limits.daily,
+            dailyUsed: todayUsage,
+            dailyRemaining: Math.max(0, limits.daily - todayUsage),
+            percentUsed: Math.round((todayUsage / limits.daily) * 100),
+          },
+          hourlyUsage,
+          toolBreakdown,
+          recentActivity: logs.slice(0, 50).map((log: (typeof logs)[number]) => ({
+            id: log.id,
+            tool: log.toolName,
+            success: log.success,
+            responseTime: log.responseTimeMs,
+            timestamp: log.createdAt.toISOString(),
+          })),
         },
-        quota: {
-          plan,
-          dailyLimit: limits.daily,
-          dailyUsed: todayUsage,
-          dailyRemaining: Math.max(0, limits.daily - todayUsage),
-          percentUsed: Math.round((todayUsage / limits.daily) * 100)
+        timestamp: new Date().toISOString(),
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=15, stale-while-revalidate=10',
+          'X-Response-Time': `${Date.now() - start}ms`,
         },
-        hourlyUsage,
-        toolBreakdown,
-        recentActivity: logs.slice(0, 50).map((log: typeof logs[number]) => ({
-          id: log.id,
-          tool: log.toolName,
-          success: log.success,
-          responseTime: log.responseTimeMs,
-          timestamp: log.createdAt.toISOString()
-        }))
-      },
-      timestamp: new Date().toISOString()
-    }, {
-      headers: {
-        'Cache-Control': 'private, max-age=15, stale-while-revalidate=10',
-        'X-Response-Time': `${Date.now() - start}ms`,
-      },
-    });
-
+      }
+    );
   } catch (error) {
     logger.error('Usage stats error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

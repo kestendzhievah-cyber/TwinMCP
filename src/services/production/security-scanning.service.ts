@@ -105,12 +105,9 @@ export class SecurityScanningService {
 
   getSASTScans(): SASTScan[] { return [...this.sastScans] }
 
-  private generateSASTFindings(target: string): SecurityFinding[] {
-    return [
-      { id: `f-${++this.idCounter}`, type: 'sast', severity: 'medium', title: 'Hardcoded credential detected', description: `Potential hardcoded credential in ${target}`, location: `${target}:42`, cweId: 'CWE-798', remediation: 'Use environment variables or secrets manager', status: 'open' },
-      { id: `f-${++this.idCounter}`, type: 'sast', severity: 'low', title: 'Missing input validation', description: 'User input not validated before use', location: `${target}:87`, cweId: 'CWE-20', remediation: 'Add input validation and sanitization', status: 'open' },
-      { id: `f-${++this.idCounter}`, type: 'sast', severity: 'info', title: 'TODO comment found', description: 'TODO comment may indicate incomplete implementation', location: `${target}:15`, remediation: 'Review and resolve TODO items', status: 'open' },
-    ]
+  private generateSASTFindings(_target: string): SecurityFinding[] {
+    // Real implementation should integrate with Snyk, SonarQube, or Semgrep
+    return []
   }
 
   // ── DAST Scanning ──────────────────────────────────────────
@@ -120,7 +117,7 @@ export class SecurityScanningService {
     const scan: DASTScan = {
       id: `dast-${++this.idCounter}`, targetUrl,
       status: 'completed', startedAt: new Date().toISOString(), completedAt: new Date().toISOString(),
-      findings, pagesScanned: 25, requestsMade: 150,
+      findings, pagesScanned: 0, requestsMade: 0,
     }
     this.dastScans.push(scan)
     return scan
@@ -128,11 +125,9 @@ export class SecurityScanningService {
 
   getDASTScans(): DASTScan[] { return [...this.dastScans] }
 
-  private generateDASTFindings(url: string): SecurityFinding[] {
-    return [
-      { id: `f-${++this.idCounter}`, type: 'dast', severity: 'high', title: 'Missing security headers', description: 'X-Content-Type-Options header not set', location: url, remediation: 'Add X-Content-Type-Options: nosniff header', status: 'open' },
-      { id: `f-${++this.idCounter}`, type: 'dast', severity: 'medium', title: 'Cookie without Secure flag', description: 'Session cookie missing Secure attribute', location: `${url}/auth`, cweId: 'CWE-614', remediation: 'Set Secure flag on all cookies', status: 'open' },
-    ]
+  private generateDASTFindings(_url: string): SecurityFinding[] {
+    // Real implementation should integrate with OWASP ZAP, Burp Suite, or Nuclei
+    return []
   }
 
   // ── Vulnerability Management ───────────────────────────────
@@ -241,4 +236,8 @@ export class SecurityScanningService {
   removeSecretRotation(id: string): boolean { return this.secretRotations.delete(id) }
 }
 
-export const securityScanningService = new SecurityScanningService()
+let _securityScanningService: SecurityScanningService | null = null
+export function getSecurityScanningService(): SecurityScanningService {
+  if (!_securityScanningService) _securityScanningService = new SecurityScanningService()
+  return _securityScanningService
+}

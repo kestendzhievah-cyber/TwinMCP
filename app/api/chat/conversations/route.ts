@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -35,10 +35,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ conversations: formatted });
   } catch (error) {
     logger.error('Error fetching conversations:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch conversations' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 });
   }
 }
 
@@ -48,10 +45,7 @@ export async function POST(req: NextRequest) {
     const { title, provider, model, userId } = body;
 
     if (!title || !provider || !model || !userId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const conversation = await prisma.conversation.create({
@@ -79,9 +73,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ conversation });
   } catch (error) {
     logger.error('Error creating conversation:', error);
-    return NextResponse.json(
-      { error: 'Failed to create conversation' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
   }
 }

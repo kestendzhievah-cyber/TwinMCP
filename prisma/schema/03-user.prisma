@@ -42,9 +42,11 @@ model UserProfile {
   city       String?
   state      String?
   country    String?
-  postalCode String?  @map("postal_code")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  postalCode       String?  @map("postal_code")
+  stripeCustomerId String?  @unique @map("stripe_customer_id")
+  plan             String   @default("free")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
   
   invoices   Invoice[]
   payments   Payment[]

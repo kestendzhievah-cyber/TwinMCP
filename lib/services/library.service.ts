@@ -1,27 +1,27 @@
-import { PrismaClient } from '@prisma/client'
-import { logger } from '@/lib/logger'
+import { PrismaClient } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 export interface LibraryInfo {
-  id: string
-  name: string
-  displayName: string
-  description?: string
-  defaultVersion?: string
-  vendor?: string
-  docsUrl?: string
-  language: string
-  ecosystem: string
-  tags: string[]
-  popularityScore: number
-  totalSnippets: number
-  totalTokens: number
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  defaultVersion?: string;
+  vendor?: string;
+  docsUrl?: string;
+  language: string;
+  ecosystem: string;
+  tags: string[];
+  popularityScore: number;
+  totalSnippets: number;
+  totalTokens: number;
 }
 
 export class LibraryService {
-  private db: PrismaClient
+  private db: PrismaClient;
 
   constructor(db: PrismaClient) {
-    this.db = db
+    this.db = db;
   }
 
   async getLibrary(libraryId: string): Promise<LibraryInfo | null> {
@@ -31,18 +31,18 @@ export class LibraryService {
         include: {
           versions: {
             where: { isLatest: true },
-            take: 1
+            take: 1,
           },
           _count: {
             select: {
-              documentationChunks: true
-            }
-          }
-        }
-      })
+              documentationChunks: true,
+            },
+          },
+        },
+      });
 
       if (!library) {
-        return null
+        return null;
       }
 
       return {
@@ -58,11 +58,13 @@ export class LibraryService {
         tags: library.tags,
         popularityScore: library.popularityScore,
         totalSnippets: library.totalSnippets,
-        totalTokens: library.totalTokens
-      }
+        totalTokens: library.totalTokens,
+      };
     } catch (error) {
-      logger.error(`Error fetching library ${libraryId}:`, error)
-      throw new Error(`Failed to fetch library: ${error instanceof Error ? error.message : String(error)}`)
+      logger.error(`Error fetching library ${libraryId}:`, error);
+      throw new Error(
+        `Failed to fetch library: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -74,24 +76,21 @@ export class LibraryService {
             { name: { contains: query, mode: 'insensitive' } },
             { displayName: { contains: query, mode: 'insensitive' } },
             { description: { contains: query, mode: 'insensitive' } },
-            { tags: { hasSome: [query] } }
-          ]
+            { tags: { hasSome: [query] } },
+          ],
         },
-        orderBy: [
-          { popularityScore: 'desc' },
-          { totalSnippets: 'desc' }
-        ],
+        orderBy: [{ popularityScore: 'desc' }, { totalSnippets: 'desc' }],
         take: limit,
         include: {
           _count: {
             select: {
-              documentationChunks: true
-            }
-          }
-        }
-      })
+              documentationChunks: true,
+            },
+          },
+        },
+      });
 
-      return libraries.map((library: typeof libraries[number]) => ({
+      return libraries.map((library: (typeof libraries)[number]) => ({
         id: library.id,
         name: library.name,
         displayName: library.displayName,
@@ -104,32 +103,31 @@ export class LibraryService {
         tags: library.tags,
         popularityScore: library.popularityScore,
         totalSnippets: library.totalSnippets,
-        totalTokens: library.totalTokens
-      }))
+        totalTokens: library.totalTokens,
+      }));
     } catch (error) {
-      logger.error(`Error searching libraries with query "${query}":`, error)
-      throw new Error(`Failed to search libraries: ${error instanceof Error ? error.message : String(error)}`)
+      logger.error(`Error searching libraries with query "${query}":`, error);
+      throw new Error(
+        `Failed to search libraries: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   async getPopularLibraries(limit: number = 20): Promise<LibraryInfo[]> {
     try {
       const libraries = await this.db.library.findMany({
-        orderBy: [
-          { popularityScore: 'desc' },
-          { totalSnippets: 'desc' }
-        ],
+        orderBy: [{ popularityScore: 'desc' }, { totalSnippets: 'desc' }],
         take: limit,
         include: {
           _count: {
             select: {
-              documentationChunks: true
-            }
-          }
-        }
-      })
+              documentationChunks: true,
+            },
+          },
+        },
+      });
 
-      return libraries.map((library: typeof libraries[number]) => ({
+      return libraries.map((library: (typeof libraries)[number]) => ({
         id: library.id,
         name: library.name,
         displayName: library.displayName,
@@ -142,11 +140,13 @@ export class LibraryService {
         tags: library.tags,
         popularityScore: library.popularityScore,
         totalSnippets: library.totalSnippets,
-        totalTokens: library.totalTokens
-      }))
+        totalTokens: library.totalTokens,
+      }));
     } catch (error) {
-      logger.error('Error fetching popular libraries:', error)
-      throw new Error(`Failed to fetch popular libraries: ${error instanceof Error ? error.message : String(error)}`)
+      logger.error('Error fetching popular libraries:', error);
+      throw new Error(
+        `Failed to fetch popular libraries: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -155,13 +155,15 @@ export class LibraryService {
       const versions = await this.db.libraryVersion.findMany({
         where: { libraryId },
         orderBy: { releaseDate: 'desc' },
-        select: { version: true }
-      })
+        select: { version: true },
+      });
 
-      return versions.map((v: typeof versions[number]) => v.version)
+      return versions.map((v: (typeof versions)[number]) => v.version);
     } catch (error) {
-      logger.error(`Error fetching versions for library ${libraryId}:`, error)
-      throw new Error(`Failed to fetch library versions: ${error instanceof Error ? error.message : String(error)}`)
+      logger.error(`Error fetching versions for library ${libraryId}:`, error);
+      throw new Error(
+        `Failed to fetch library versions: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -169,13 +171,15 @@ export class LibraryService {
     try {
       const aliases = await this.db.libraryAlias.findMany({
         where: { libraryId },
-        select: { alias: true }
-      })
+        select: { alias: true },
+      });
 
-      return aliases.map((a: typeof aliases[number]) => a.alias)
+      return aliases.map((a: (typeof aliases)[number]) => a.alias);
     } catch (error) {
-      logger.error(`Error fetching aliases for library ${libraryId}:`, error)
-      throw new Error(`Failed to fetch library aliases: ${error instanceof Error ? error.message : String(error)}`)
+      logger.error(`Error fetching aliases for library ${libraryId}:`, error);
+      throw new Error(
+        `Failed to fetch library aliases: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -183,13 +187,15 @@ export class LibraryService {
     try {
       const libraryAlias = await this.db.libraryAlias.findUnique({
         where: { alias } as any,
-        select: { libraryId: true }
-      })
+        select: { libraryId: true },
+      });
 
-      return libraryAlias?.libraryId || null
+      return libraryAlias?.libraryId || null;
     } catch (error) {
-      logger.error(`Error resolving alias "${alias}":`, error)
-      throw new Error(`Failed to resolve alias: ${error instanceof Error ? error.message : String(error)}`)
+      logger.error(`Error resolving alias "${alias}":`, error);
+      throw new Error(
+        `Failed to resolve alias: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 }

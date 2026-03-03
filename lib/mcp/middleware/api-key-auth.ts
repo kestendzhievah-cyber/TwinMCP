@@ -1,74 +1,80 @@
-import type { ApiKeyData } from '@/lib/services/auth.service'
-import { authService as legacyAuthService } from '@/lib/mcp/middleware/auth'
+import type { ApiKeyData } from '@/lib/services/auth.service';
+import { authService as legacyAuthService } from '@/lib/mcp/middleware/auth';
 
 export interface McpAuthContext {
-  userId: string
-  permissions: Array<{ resource: string; actions: string[] }>
-  isAuthenticated: boolean
-  authMethod: 'api_key' | 'jwt' | 'none'
-  apiKeyId?: string
-  tier?: string
-  quotaDaily?: number
-  quotaMonthly?: number
+  userId: string;
+  permissions: Array<{ resource: string; actions: string[] }>;
+  isAuthenticated: boolean;
+  authMethod: 'api_key' | 'jwt' | 'none';
+  apiKeyId?: string;
+  tier?: string;
+  quotaDaily?: number;
+  quotaMonthly?: number;
   rateLimit?: {
-    requests: number
-    period: string
-    strategy: 'fixed' | 'sliding' | 'token-bucket'
-  }
+    requests: number;
+    period: string;
+    strategy: 'fixed' | 'sliding' | 'token-bucket';
+  };
 }
 
 // Lazy-init singleton — avoids DB/Redis connections at import time
-let _mcpDbAuthService: any = null
+let _mcpDbAuthService: any = null;
 async function getMcpDbAuthService() {
   if (!_mcpDbAuthService) {
-    const { prisma } = await import('@/lib/prisma')
-    const { redis } = await import('@/lib/redis')
-    const { AuthService: DbAuthService } = await import('@/lib/services/auth.service')
-    _mcpDbAuthService = new DbAuthService(prisma, redis)
+    const { prisma } = await import('@/lib/prisma');
+    const { redis } = await import('@/lib/redis');
+    const { AuthService: DbAuthService } = await import('@/lib/services/auth.service');
+    _mcpDbAuthService = new DbAuthService(prisma, redis);
   }
-  return _mcpDbAuthService
+  return _mcpDbAuthService;
 }
 
 // Backward-compatible export (callers must await before using)
 export const mcpDbAuthService = {
   async validateApiKey(key: string) {
-    const svc = await getMcpDbAuthService()
-    return svc.validateApiKey(key)
+    const svc = await getMcpDbAuthService();
+    return svc.validateApiKey(key);
   },
   async logUsage(...args: any[]) {
-    const svc = await getMcpDbAuthService()
-    return svc.logUsage(...args)
-  }
-}
+    const svc = await getMcpDbAuthService();
+    return svc.logUsage(...args);
+  },
+};
 
 export async function authenticateMcpRequest(request: Request): Promise<McpAuthContext> {
-  const apiKey = getApiKeyFromRequest(request)
+  const apiKey = getApiKeyFromRequest(request);
 
   if (!apiKey) {
-    const error = new Error('API key required') as Error & { statusCode?: number; code?: string }
-    error.statusCode = 401
-    error.code = 'MISSING_API_KEY'
-    throw error
+    const error = new Error('API key required') as Error & { statusCode?: number; code?: string };
+    error.statusCode = 401;
+    error.code = 'MISSING_API_KEY';
+    throw error;
   }
 
   if (apiKey.startsWith('twinmcp_')) {
-    const result = await mcpDbAuthService.validateApiKey(apiKey)
+    const result = await mcpDbAuthService.validateApiKey(apiKey);
     if (!result.success || !result.apiKeyData) {
-      const error = new Error(result.error || 'Authentication failed') as Error & { statusCode?: number; code?: string }
-      error.statusCode = result.statusCode ?? 401
-      error.code = result.errorCode ?? 'INVALID_API_KEY'
-      throw error
+      const error = new Error(result.error || 'Authentication failed') as Error & {
+        statusCode?: number;
+        code?: string;
+      };
+      error.statusCode = result.statusCode ?? 401;
+      error.code = result.errorCode ?? 'INVALID_API_KEY';
+      throw error;
     }
 
-    return buildContextFromApiKey(result.apiKeyData)
+    return buildContextFromApiKey(result.apiKeyData);
   }
 
-  const legacyContext = await legacyAuthService.authenticate(request)
+  const legacyContext = await legacyAuthService.authenticate(request);
   if (!legacyContext.isAuthenticated) {
-    const error = new Error('Authentication required') as Error & { statusCode?: number; code?: string }
-    error.statusCode = 401
-    error.code = 'UNAUTHORIZED'
-    throw error
+    const error = new Error('Authentication required') as Error & {
+      statusCode?: number;
+      code?: string;
+    };
+    error.statusCode = 401;
+    error.code = 'UNAUTHORIZED';
+    throw error;
   }
 
   return {
@@ -76,17 +82,17 @@ export async function authenticateMcpRequest(request: Request): Promise<McpAuthC
     permissions: legacyContext.permissions,
     isAuthenticated: true,
     authMethod: legacyContext.authMethod,
-    rateLimit: legacyContext.rateLimit
-  }
+    rateLimit: legacyContext.rateLimit,
+  };
 }
 
 function buildContextFromApiKey(apiKeyData: ApiKeyData): McpAuthContext {
-  const permissions = parsePermissions(apiKeyData.permissions)
+  const permissions = parsePermissions(apiKeyData.permissions);
   const rateLimit = {
     requests: apiKeyData.quotaRequestsPerMinute,
     period: '1m',
-    strategy: 'sliding' as const
-  }
+    strategy: 'sliding' as const,
+  };
 
   return {
     userId: apiKeyData.userId,
@@ -97,41 +103,43 @@ function buildContextFromApiKey(apiKeyData: ApiKeyData): McpAuthContext {
     tier: apiKeyData.tier,
     quotaDaily: apiKeyData.quotaDaily,
     quotaMonthly: apiKeyData.quotaMonthly,
-    rateLimit
-  }
+    rateLimit,
+  };
 }
 
-function parsePermissions(permissions: ApiKeyData['permissions']): Array<{ resource: string; actions: string[] }> {
+function parsePermissions(
+  permissions: ApiKeyData['permissions']
+): Array<{ resource: string; actions: string[] }> {
   if (Array.isArray(permissions)) {
-    return permissions as Array<{ resource: string; actions: string[] }>
+    return permissions as Array<{ resource: string; actions: string[] }>;
   }
 
   if (typeof permissions === 'string') {
     try {
-      const parsed = JSON.parse(permissions)
+      const parsed = JSON.parse(permissions);
       if (Array.isArray(parsed)) {
-        return parsed as Array<{ resource: string; actions: string[] }>
+        return parsed as Array<{ resource: string; actions: string[] }>;
       }
     } catch {
-      return []
+      return [];
     }
   }
 
-  return []
+  return [];
 }
 
 function getApiKeyFromRequest(request: Request): string | null {
-  const apiKeyHeader = request.headers.get('x-api-key')
-  if (apiKeyHeader) return apiKeyHeader
+  const apiKeyHeader = request.headers.get('x-api-key');
+  if (apiKeyHeader) return apiKeyHeader;
 
-  const url = new URL(request.url)
-  const apiKeyQuery = url.searchParams.get('api_key')
-  if (apiKeyQuery) return apiKeyQuery
+  const url = new URL(request.url);
+  const apiKeyQuery = url.searchParams.get('api_key');
+  if (apiKeyQuery) return apiKeyQuery;
 
-  const authHeader = request.headers.get('authorization')
+  const authHeader = request.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7)
+    return authHeader.substring(7);
   }
 
-  return null
+  return null;
 }

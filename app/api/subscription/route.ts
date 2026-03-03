@@ -1,28 +1,46 @@
-import { logger } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
+﻿import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { isStripeConfigured } from '@/lib/services/stripe-billing.service';
+import { validateAuth } from '@/lib/firebase-admin-auth';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('STRIPE_SECRET_KEY is not configured');
+  return new Stripe(key);
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { priceId, customerEmail } = body
+    if (!isStripeConfigured()) {
+      return NextResponse.json(
+        { error: 'Service de paiement non configuré' },
+        { status: 503 }
+      );
+    }
+
+    const auth = await validateAuth(req.headers.get('authorization'));
+    if (!auth.valid) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
+    const stripe = getStripe();
+    const body = await req.json();
+    const { priceId, customerEmail } = body;
 
     if (!priceId || !customerEmail) {
-      return NextResponse.json(
-        { error: 'Price ID et email requis' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Price ID et email requis' }, { status: 400 });
     }
 
     // Create or retrieve customer
-    let customer = await stripe.customers.list({ email: customerEmail }).then(res => res.data[0])
+    let customer = await stripe.customers
+      .list({ email: customerEmail, limit: 1 })
+      .then((res) => res.data[0]);
 
     if (!customer) {
       customer = await stripe.customers.create({
         email: customerEmail,
-      })
+      });
     }
 
     // Create subscription
@@ -31,38 +49,55 @@ export async function POST(req: NextRequest) {
       items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
       expand: ['latest_invoice.payment_intent'],
-    })
+    });
 
     return NextResponse.json({
       subscriptionId: subscription.id,
-      clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
-    })
+      clientSecret: (subscription.latest_invoice as any)?.payment_intent
+        ?.client_secret,
+    });
   } catch (error) {
-    logger.error('Erreur lors de la crÃ©ation de l\'abonnement:', error)
+    logger.error("Erreur lors de la création de l'abonnement:", error);
     return NextResponse.json(
       { error: 'Erreur interne du serveur' },
       { status: 500 }
-    )
+    );
   }
 }
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url)
-  const subscriptionId = url.searchParams.get('subscriptionId')
+  try {
+    if (!isStripeConfigured()) {
+      return NextResponse.json(
+        { error: 'Service de paiement non configuré' },
+        { status: 503 }
+      );
+    }
 
-  if (!subscriptionId) {
+    const stripe = getStripe();
+    const url = new URL(req.url);
+    const subscriptionId = url.searchParams.get('subscriptionId');
+
+    if (!subscriptionId) {
+      return NextResponse.json(
+        { error: 'Subscription ID requis' },
+        { status: 400 }
+      );
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['latest_invoice.payment_intent'],
+    });
+
+    return NextResponse.json({
+      status: subscription.status,
+      current_period_end: (subscription as any).current_period_end,
+    });
+  } catch (error) {
+    logger.error('Erreur récupération abonnement:', error);
     return NextResponse.json(
-      { error: 'Subscription ID requis' },
-      { status: 400 }
-    )
+      { error: 'Erreur interne du serveur' },
+      { status: 500 }
+    );
   }
-
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-    expand: ['latest_invoice.payment_intent']
-  }) as Stripe.Subscription
-
-  return NextResponse.json({
-    status: subscription.status,
-    current_period_end: (subscription as any).current_period_end,
-  })
 }

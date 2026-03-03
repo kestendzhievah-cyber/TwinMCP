@@ -93,7 +93,7 @@ export const useChat = () => {
     } catch (error) {
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error',
         isLoading: false
       }));
     }
@@ -124,7 +124,7 @@ export const useChat = () => {
 
       return data.conversation;
     } catch (error) {
-      setState(prev => ({ ...prev, error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' }));
+      setState(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Unknown error' }));
       throw error;
     }
   }, [state.settings]);
@@ -351,9 +351,9 @@ export const useChat = () => {
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `Erreur: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`,
+        content: `Erreur: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: new Date(),
-        metadata: { error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' },
+        metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
         status: 'error'
       };
 
@@ -364,7 +364,7 @@ export const useChat = () => {
             ? { ...conv, messages: [...conv.messages, errorMessage] }
             : conv
         ),
-        error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error'
       }));
     }
   }, [state.activeConversation, createConversation, contextEnabled, processContext]);
@@ -405,7 +405,7 @@ export const useChat = () => {
         activeConversation: prev.activeConversation === id ? null : prev.activeConversation
       }));
     } catch (error) {
-      setState(prev => ({ ...prev, error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error' }));
+      setState(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Unknown error' }));
     }
   }, []);
 

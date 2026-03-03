@@ -25,7 +25,8 @@ export const toolsData: Record<string, MCPToolData> = {
     category: 'CLOUD',
     author: 'awslabs',
     description: 'Point de départ pour utiliser les serveurs MCP awslabs.',
-    longDescription: 'AWS Core est le serveur MCP de référence pour interagir avec les services AWS. Il fournit une interface unifiée pour accéder aux ressources cloud Amazon.',
+    longDescription:
+      'AWS Core est le serveur MCP de référence pour interagir avec les services AWS. Il fournit une interface unifiée pour accéder aux ressources cloud Amazon.',
     iconBg: 'from-orange-500 to-yellow-500',
     users: 156,
     downloads: '500K+',
@@ -34,17 +35,29 @@ export const toolsData: Record<string, MCPToolData> = {
     lastUpdate: '2 jours',
     repository: 'https://github.com/awslabs/mcp-server-aws',
     documentation: 'https://docs.aws.amazon.com/mcp',
-    features: ['Gestion des instances EC2', 'Accès aux buckets S3', 'Invocation de fonctions Lambda', 'Requêtes DynamoDB'],
+    features: [
+      'Gestion des instances EC2',
+      'Accès aux buckets S3',
+      'Invocation de fonctions Lambda',
+      'Requêtes DynamoDB',
+    ],
     installation: 'npx @awslabs/mcp-server-aws',
-    configuration: '{\n  "mcpServers": {\n    "aws": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-aws"]\n    }\n  }\n}',
-    examples: [{ title: 'Lister les instances EC2', code: 'Utilise l\'outil AWS pour lister toutes mes instances EC2.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "aws": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-aws"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Lister les instances EC2',
+        code: "Utilise l'outil AWS pour lister toutes mes instances EC2.",
+      },
+    ],
   },
   '2': {
     name: 'AWS Bedrock AgentCore',
     category: 'CLOUD',
     author: 'awslabs',
     description: 'Documentation sur les services de la plateforme AgentCore.',
-    longDescription: 'AWS Bedrock AgentCore permet d\'accéder à la documentation et aux fonctionnalités de la plateforme AgentCore d\'Amazon.',
+    longDescription:
+      "AWS Bedrock AgentCore permet d'accéder à la documentation et aux fonctionnalités de la plateforme AgentCore d'Amazon.",
     iconBg: 'from-orange-500 to-yellow-500',
     users: 89,
     downloads: '200K+',
@@ -53,17 +66,28 @@ export const toolsData: Record<string, MCPToolData> = {
     lastUpdate: '1 semaine',
     repository: 'https://github.com/awslabs/mcp-server-bedrock',
     documentation: 'https://docs.aws.amazon.com/bedrock',
-    features: ['Accès aux modèles de fondation', 'Création d\'agents personnalisés', 'Gestion des knowledge bases'],
+    features: [
+      'Accès aux modèles de fondation',
+      "Création d'agents personnalisés",
+      'Gestion des knowledge bases',
+    ],
     installation: 'npx @awslabs/mcp-server-bedrock',
-    configuration: '{\n  "mcpServers": {\n    "bedrock": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-bedrock"]\n    }\n  }\n}',
-    examples: [{ title: 'Interroger un modèle', code: 'Utilise Bedrock pour générer une réponse avec Claude 3.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "bedrock": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-bedrock"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Interroger un modèle',
+        code: 'Utilise Bedrock pour générer une réponse avec Claude 3.',
+      },
+    ],
   },
   '3': {
     name: 'Amazon Kendra Index',
     category: 'CLOUD',
     author: 'awslabs',
-    description: 'Recherche d\'entreprise et amélioration RAG.',
-    longDescription: 'Amazon Kendra Index permet d\'effectuer des recherches sémantiques sur vos documents d\'entreprise.',
+    description: "Recherche d'entreprise et amélioration RAG.",
+    longDescription:
+      "Amazon Kendra Index permet d'effectuer des recherches sémantiques sur vos documents d'entreprise.",
     iconBg: 'from-orange-500 to-yellow-500',
     users: 45,
     downloads: '100K+',
@@ -74,15 +98,19 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://docs.aws.amazon.com/kendra',
     features: ['Recherche sémantique', 'Indexation de documents', 'Filtrage par métadonnées'],
     installation: 'npx @awslabs/mcp-server-kendra',
-    configuration: '{\n  "mcpServers": {\n    "kendra": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-kendra"]\n    }\n  }\n}',
-    examples: [{ title: 'Rechercher', code: 'Recherche les informations sur la politique de sécurité.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "kendra": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-kendra"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Rechercher', code: 'Recherche les informations sur la politique de sécurité.' },
+    ],
   },
   '4': {
     name: 'Amazon Neptune',
     category: 'DATABASE',
     author: 'awslabs',
     description: 'Requêtes sur base graphe avec Cypher et Gremlin.',
-    longDescription: 'Amazon Neptune MCP permet d\'interagir avec les bases de données graphe Neptune.',
+    longDescription:
+      "Amazon Neptune MCP permet d'interagir avec les bases de données graphe Neptune.",
     iconBg: 'from-blue-500 to-cyan-500',
     users: 34,
     downloads: '80K+',
@@ -93,15 +121,19 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://docs.aws.amazon.com/neptune',
     features: ['Requêtes Cypher', 'Requêtes Gremlin', 'Visualisation de graphes'],
     installation: 'npx @awslabs/mcp-server-neptune',
-    configuration: '{\n  "mcpServers": {\n    "neptune": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-neptune"]\n    }\n  }\n}',
-    examples: [{ title: 'Requête de relations', code: 'Trouve tous les utilisateurs connectés à Alice.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "neptune": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-neptune"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Requête de relations', code: 'Trouve tous les utilisateurs connectés à Alice.' },
+    ],
   },
   '5': {
     name: 'Amazon Q Business',
     category: 'AI',
     author: 'awslabs',
     description: 'Assistant IA pour contenu ingéré avec accès anonyme.',
-    longDescription: 'Amazon Q Business est un assistant IA d\'entreprise qui permet d\'interroger vos données internes.',
+    longDescription:
+      "Amazon Q Business est un assistant IA d'entreprise qui permet d'interroger vos données internes.",
     iconBg: 'from-purple-500 to-pink-500',
     users: 67,
     downloads: '150K+',
@@ -112,15 +144,19 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://docs.aws.amazon.com/amazonq',
     features: ['Recherche intelligente', 'Réponses contextuelles', 'Intégration SSO'],
     installation: 'npx @awslabs/mcp-server-q-business',
-    configuration: '{\n  "mcpServers": {\n    "q-business": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-q-business"]\n    }\n  }\n}',
-    examples: [{ title: 'Poser une question', code: 'Quelles sont les procédures de déploiement ?' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "q-business": {\n      "command": "npx",\n      "args": ["@awslabs/mcp-server-q-business"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Poser une question', code: 'Quelles sont les procédures de déploiement ?' },
+    ],
   },
   '6': {
     name: 'Azure Kubernetes (AKS)',
     category: 'CLOUD',
     author: 'Azure',
     description: 'Serveur MCP officiel AKS.',
-    longDescription: 'Le serveur MCP Azure Kubernetes Service permet de gérer vos clusters Kubernetes sur Azure.',
+    longDescription:
+      'Le serveur MCP Azure Kubernetes Service permet de gérer vos clusters Kubernetes sur Azure.',
     iconBg: 'from-blue-500 to-blue-600',
     users: 78,
     downloads: '200K+',
@@ -129,17 +165,19 @@ export const toolsData: Record<string, MCPToolData> = {
     lastUpdate: '4 jours',
     repository: 'https://github.com/Azure/mcp-server-aks',
     documentation: 'https://docs.microsoft.com/azure/aks',
-    features: ['Gestion des clusters', 'Déploiement d\'applications', 'Scaling automatique'],
+    features: ['Gestion des clusters', "Déploiement d'applications", 'Scaling automatique'],
     installation: 'npx @azure/mcp-server-aks',
-    configuration: '{\n  "mcpServers": {\n    "aks": {\n      "command": "npx",\n      "args": ["@azure/mcp-server-aks"]\n    }\n  }\n}',
-    examples: [{ title: 'Lister les pods', code: 'Liste tous les pods du namespace production.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "aks": {\n      "command": "npx",\n      "args": ["@azure/mcp-server-aks"]\n    }\n  }\n}',
+    examples: [{ title: 'Lister les pods', code: 'Liste tous les pods du namespace production.' }],
   },
   '7': {
     name: 'Brave Search',
     category: 'SEARCH',
     author: 'brave',
-    description: 'Recherche Web via l\'API Brave Search.',
-    longDescription: 'Brave Search MCP permet d\'effectuer des recherches web privées et sans tracking.',
+    description: "Recherche Web via l'API Brave Search.",
+    longDescription:
+      "Brave Search MCP permet d'effectuer des recherches web privées et sans tracking.",
     iconBg: 'from-orange-500 to-red-500',
     users: 234,
     downloads: '1M+',
@@ -148,17 +186,19 @@ export const toolsData: Record<string, MCPToolData> = {
     lastUpdate: '1 jour',
     repository: 'https://github.com/brave/mcp-server-brave-search',
     documentation: 'https://brave.com/search/api',
-    features: ['Recherche web privée', 'Recherche d\'images', 'Actualités en temps réel'],
+    features: ['Recherche web privée', "Recherche d'images", 'Actualités en temps réel'],
     installation: 'npx @brave/mcp-server-brave-search',
-    configuration: '{\n  "mcpServers": {\n    "brave-search": {\n      "command": "npx",\n      "args": ["@brave/mcp-server-brave-search"]\n    }\n  }\n}',
-    examples: [{ title: 'Recherche web', code: 'Recherche les dernières actualités sur l\'IA.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "brave-search": {\n      "command": "npx",\n      "args": ["@brave/mcp-server-brave-search"]\n    }\n  }\n}',
+    examples: [{ title: 'Recherche web', code: "Recherche les dernières actualités sur l'IA." }],
   },
   '8': {
     name: 'Perplexity',
     category: 'AI',
     author: 'perplexityai',
-    description: 'Connecteur à l\'API Perplexity pour la recherche web temps réel.',
-    longDescription: 'Perplexity MCP connecte votre assistant IA à l\'API Perplexity pour des recherches web en temps réel.',
+    description: "Connecteur à l'API Perplexity pour la recherche web temps réel.",
+    longDescription:
+      "Perplexity MCP connecte votre assistant IA à l'API Perplexity pour des recherches web en temps réel.",
     iconBg: 'from-teal-500 to-cyan-500',
     users: 189,
     downloads: '800K+',
@@ -169,8 +209,11 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://docs.perplexity.ai',
     features: ['Recherche temps réel', 'Réponses sourcées', 'Citations automatiques'],
     installation: 'npx @perplexityai/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "perplexity": {\n      "command": "npx",\n      "args": ["@perplexityai/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Recherche avec sources', code: 'Quelles sont les dernières avancées en IA ?' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "perplexity": {\n      "command": "npx",\n      "args": ["@perplexityai/mcp-server"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Recherche avec sources', code: 'Quelles sont les dernières avancées en IA ?' },
+    ],
   },
   '9': {
     name: 'Context7',
@@ -188,15 +231,17 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://context7.dev/docs',
     features: ['Documentation à jour', 'Support multi-langages', 'Cache intelligent'],
     installation: 'npx @upstash/context7',
-    configuration: '{\n  "mcpServers": {\n    "context7": {\n      "command": "npx",\n      "args": ["@upstash/context7"]\n    }\n  }\n}',
-    examples: [{ title: 'Obtenir la doc', code: 'Montre-moi la documentation de Next.js 14.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "context7": {\n      "command": "npx",\n      "args": ["@upstash/context7"]\n    }\n  }\n}',
+    examples: [{ title: 'Obtenir la doc', code: 'Montre-moi la documentation de Next.js 14.' }],
   },
   '10': {
     name: 'TwinMCP',
     category: 'DEVOPS',
     author: 'twinmcp',
     description: 'Documentation de code à jour pour LLMs et éditeurs de code IA.',
-    longDescription: 'TwinMCP est votre serveur MCP de référence pour accéder à la documentation de code la plus récente.',
+    longDescription:
+      'TwinMCP est votre serveur MCP de référence pour accéder à la documentation de code la plus récente.',
     iconBg: 'from-purple-500 to-pink-500',
     users: 312,
     downloads: '1M+',
@@ -205,17 +250,28 @@ export const toolsData: Record<string, MCPToolData> = {
     lastUpdate: '1 jour',
     repository: 'https://github.com/twinmcp/twinmcp-server',
     documentation: 'https://twinmcp.dev/docs',
-    features: ['Documentation temps réel', 'Plus de 500 bibliothèques', 'Snippets de code', 'Support TypeScript'],
+    features: [
+      'Documentation temps réel',
+      'Plus de 500 bibliothèques',
+      'Snippets de code',
+      'Support TypeScript',
+    ],
     installation: 'npx @twinmcp/server',
-    configuration: '{\n  "mcpServers": {\n    "twinmcp": {\n      "command": "npx",\n      "args": ["@twinmcp/server"]\n    }\n  }\n}',
-    examples: [{ title: 'Rechercher une bibliothèque', code: 'Utilise TwinMCP pour trouver la doc de React Query v5.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "twinmcp": {\n      "command": "npx",\n      "args": ["@twinmcp/server"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Rechercher une bibliothèque',
+        code: 'Utilise TwinMCP pour trouver la doc de React Query v5.',
+      },
+    ],
   },
   '11': {
     name: 'Couchbase',
     category: 'DATABASE',
     author: 'Couchbase-Ecosystem',
     description: 'Base de données document distribuée.',
-    longDescription: 'Couchbase MCP permet d\'interagir avec vos bases de données Couchbase.',
+    longDescription: "Couchbase MCP permet d'interagir avec vos bases de données Couchbase.",
     iconBg: 'from-red-500 to-red-600',
     users: 67,
     downloads: '150K+',
@@ -226,15 +282,22 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://docs.couchbase.com',
     features: ['Requêtes N1QL', 'Recherche full-text', 'Analytics intégré'],
     installation: 'npx @couchbase/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "couchbase": {\n      "command": "npx",\n      "args": ["@couchbase/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Requête N1QL', code: 'Exécute une requête pour trouver tous les utilisateurs actifs.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "couchbase": {\n      "command": "npx",\n      "args": ["@couchbase/mcp-server"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Requête N1QL',
+        code: 'Exécute une requête pour trouver tous les utilisateurs actifs.',
+      },
+    ],
   },
   '12': {
     name: 'MongoDB',
     category: 'DATABASE',
     author: 'mongodb-js',
     description: 'Connexion aux bases MongoDB et clusters MongoDB Atlas.',
-    longDescription: 'MongoDB MCP offre une interface complète pour interagir avec vos bases de données MongoDB.',
+    longDescription:
+      'MongoDB MCP offre une interface complète pour interagir avec vos bases de données MongoDB.',
     iconBg: 'from-green-500 to-green-600',
     users: 234,
     downloads: '800K+',
@@ -245,15 +308,19 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://docs.mongodb.com',
     features: ['Requêtes MongoDB', 'Agrégations', 'Atlas intégration'],
     installation: 'npx @mongodb-js/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "mongodb": {\n      "command": "npx",\n      "args": ["@mongodb-js/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Trouver des documents', code: 'Trouve tous les utilisateurs créés ce mois-ci.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "mongodb": {\n      "command": "npx",\n      "args": ["@mongodb-js/mcp-server"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Trouver des documents', code: 'Trouve tous les utilisateurs créés ce mois-ci.' },
+    ],
   },
   '13': {
     name: 'Elasticsearch',
     category: 'DATABASE',
     author: 'elastic',
     description: 'Interaction en langage naturel avec Elasticsearch.',
-    longDescription: 'Elasticsearch MCP permet d\'interroger vos index Elasticsearch en langage naturel.',
+    longDescription:
+      "Elasticsearch MCP permet d'interroger vos index Elasticsearch en langage naturel.",
     iconBg: 'from-yellow-500 to-orange-500',
     users: 156,
     downloads: '500K+',
@@ -264,15 +331,19 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://elastic.co/docs',
     features: ['Recherche full-text', 'Analyse de logs', 'Agrégations'],
     installation: 'npx @elastic/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "elasticsearch": {\n      "command": "npx",\n      "args": ["@elastic/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Recherche de logs', code: 'Recherche les erreurs 500 des dernières 24h.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "elasticsearch": {\n      "command": "npx",\n      "args": ["@elastic/mcp-server"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Recherche de logs', code: 'Recherche les erreurs 500 des dernières 24h.' },
+    ],
   },
   '14': {
     name: 'Neon',
     category: 'DATABASE',
     author: 'neondatabase',
-    description: 'Interaction avec l\'API Neon.',
-    longDescription: 'Neon MCP permet de gérer vos bases de données PostgreSQL serverless sur Neon.',
+    description: "Interaction avec l'API Neon.",
+    longDescription:
+      'Neon MCP permet de gérer vos bases de données PostgreSQL serverless sur Neon.',
     iconBg: 'from-green-400 to-emerald-500',
     users: 89,
     downloads: '300K+',
@@ -283,15 +354,16 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://neon.tech/docs',
     features: ['PostgreSQL serverless', 'Branching de bases', 'Scaling automatique'],
     installation: 'npx @neondatabase/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "neon": {\n      "command": "npx",\n      "args": ["@neondatabase/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Créer une branche', code: 'Crée une nouvelle branche de développement.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "neon": {\n      "command": "npx",\n      "args": ["@neondatabase/mcp-server"]\n    }\n  }\n}',
+    examples: [{ title: 'Créer une branche', code: 'Crée une nouvelle branche de développement.' }],
   },
   '15': {
     name: 'Airtable',
     category: 'DATABASE',
     author: 'domdomegg',
     description: 'Accès direct aux bases Airtable.',
-    longDescription: 'Airtable MCP permet d\'accéder et de manipuler vos bases Airtable.',
+    longDescription: "Airtable MCP permet d'accéder et de manipuler vos bases Airtable.",
     iconBg: 'from-blue-400 to-blue-500',
     users: 123,
     downloads: '400K+',
@@ -302,15 +374,19 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://airtable.com/developers/web/api',
     features: ['Lecture/écriture de données', 'Gestion des vues', 'Filtrage avancé'],
     installation: 'npx mcp-server-airtable',
-    configuration: '{\n  "mcpServers": {\n    "airtable": {\n      "command": "npx",\n      "args": ["mcp-server-airtable"]\n    }\n  }\n}',
-    examples: [{ title: 'Lire une table', code: 'Liste tous les enregistrements de la table Projets.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "airtable": {\n      "command": "npx",\n      "args": ["mcp-server-airtable"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Lire une table', code: 'Liste tous les enregistrements de la table Projets.' },
+    ],
   },
   '16': {
     name: 'Desktop Commander',
     category: 'DEVOPS',
     author: 'wonderwhy-er',
     description: 'Gestion de fichiers et exécution de commandes terminal.',
-    longDescription: 'Desktop Commander permet à votre assistant IA de gérer vos fichiers locaux et d\'exécuter des commandes.',
+    longDescription:
+      "Desktop Commander permet à votre assistant IA de gérer vos fichiers locaux et d'exécuter des commandes.",
     iconBg: 'from-slate-600 to-slate-700',
     users: 178,
     downloads: '600K+',
@@ -321,15 +397,22 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://github.com/wonderwhy-er/mcp-desktop-commander#readme',
     features: ['Gestion de fichiers', 'Exécution de commandes', 'Recherche de fichiers'],
     installation: 'npx mcp-desktop-commander',
-    configuration: '{\n  "mcpServers": {\n    "desktop-commander": {\n      "command": "npx",\n      "args": ["mcp-desktop-commander"]\n    }\n  }\n}',
-    examples: [{ title: 'Rechercher des fichiers', code: 'Trouve tous les fichiers TypeScript modifiés cette semaine.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "desktop-commander": {\n      "command": "npx",\n      "args": ["mcp-desktop-commander"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Rechercher des fichiers',
+        code: 'Trouve tous les fichiers TypeScript modifiés cette semaine.',
+      },
+    ],
   },
   '17': {
     name: 'Docker Hub',
     category: 'DEVOPS',
     author: 'docker',
     description: 'Serveur MCP officiel Docker Hub.',
-    longDescription: 'Docker Hub MCP permet d\'interagir avec Docker Hub pour rechercher des images et gérer vos repositories.',
+    longDescription:
+      "Docker Hub MCP permet d'interagir avec Docker Hub pour rechercher des images et gérer vos repositories.",
     iconBg: 'from-blue-500 to-blue-600',
     users: 289,
     downloads: '1M+',
@@ -338,10 +421,16 @@ export const toolsData: Record<string, MCPToolData> = {
     lastUpdate: '3 jours',
     repository: 'https://github.com/docker/mcp-server',
     documentation: 'https://docs.docker.com',
-    features: ['Recherche d\'images', 'Gestion des repositories', 'Tags et versions'],
+    features: ["Recherche d'images", 'Gestion des repositories', 'Tags et versions'],
     installation: 'npx @docker/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "docker-hub": {\n      "command": "npx",\n      "args": ["@docker/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Rechercher une image', code: 'Recherche les images Docker officielles pour Node.js.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "docker-hub": {\n      "command": "npx",\n      "args": ["@docker/mcp-server"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Rechercher une image',
+        code: 'Recherche les images Docker officielles pour Node.js.',
+      },
+    ],
   },
   '18': {
     name: 'GitHub Official',
@@ -359,15 +448,21 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://docs.github.com',
     features: ['Gestion des repositories', 'Issues et PRs', 'GitHub Actions', 'Code search'],
     installation: 'npx @github/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "github": {\n      "command": "npx",\n      "args": ["@github/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Créer une issue', code: 'Crée une issue avec le titre "Bug: erreur de connexion".' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "github": {\n      "command": "npx",\n      "args": ["@github/mcp-server"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Créer une issue',
+        code: 'Crée une issue avec le titre "Bug: erreur de connexion".',
+      },
+    ],
   },
   '19': {
     name: 'Playwright',
     category: 'DEVOPS',
     author: 'microsoft',
-    description: 'Serveur MCP Playwright pour l\'automatisation de navigateurs.',
-    longDescription: 'Playwright MCP permet d\'automatiser les navigateurs web.',
+    description: "Serveur MCP Playwright pour l'automatisation de navigateurs.",
+    longDescription: "Playwright MCP permet d'automatiser les navigateurs web.",
     iconBg: 'from-slate-700 to-slate-800',
     users: 234,
     downloads: '800K+',
@@ -378,15 +473,17 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://playwright.dev',
     features: ['Automatisation de navigateurs', 'Screenshots', 'Tests E2E'],
     installation: 'npx @playwright/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "playwright": {\n      "command": "npx",\n      "args": ["@playwright/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Prendre un screenshot', code: 'Prends un screenshot de google.com.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "playwright": {\n      "command": "npx",\n      "args": ["@playwright/mcp-server"]\n    }\n  }\n}',
+    examples: [{ title: 'Prendre un screenshot', code: 'Prends un screenshot de google.com.' }],
   },
   '20': {
     name: 'Heroku',
     category: 'CLOUD',
     author: 'heroku',
     description: 'Serveur MCP Heroku basé sur le CLI Heroku.',
-    longDescription: 'Heroku MCP permet de gérer vos applications Heroku directement depuis votre assistant IA.',
+    longDescription:
+      'Heroku MCP permet de gérer vos applications Heroku directement depuis votre assistant IA.',
     iconBg: 'from-purple-500 to-purple-600',
     users: 145,
     downloads: '400K+',
@@ -395,17 +492,18 @@ export const toolsData: Record<string, MCPToolData> = {
     lastUpdate: '5 jours',
     repository: 'https://github.com/heroku/mcp-server',
     documentation: 'https://devcenter.heroku.com',
-    features: ['Déploiement d\'apps', 'Scaling', 'Logs en temps réel'],
+    features: ["Déploiement d'apps", 'Scaling', 'Logs en temps réel'],
     installation: 'npx @heroku/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "heroku": {\n      "command": "npx",\n      "args": ["@heroku/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Déployer une app', code: 'Déploie la branche main sur mon-app-prod.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "heroku": {\n      "command": "npx",\n      "args": ["@heroku/mcp-server"]\n    }\n  }\n}',
+    examples: [{ title: 'Déployer une app', code: 'Déploie la branche main sur mon-app-prod.' }],
   },
   '21': {
     name: 'Grafana',
     category: 'MONITORING',
     author: 'grafana',
     description: 'Serveur MCP pour Grafana.',
-    longDescription: 'Grafana MCP permet d\'interagir avec vos dashboards Grafana.',
+    longDescription: "Grafana MCP permet d'interagir avec vos dashboards Grafana.",
     iconBg: 'from-orange-500 to-orange-600',
     users: 167,
     downloads: '500K+',
@@ -416,15 +514,19 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://grafana.com/docs',
     features: ['Requêtes de métriques', 'Gestion des dashboards', 'Alerting'],
     installation: 'npx @grafana/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "grafana": {\n      "command": "npx",\n      "args": ["@grafana/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Requête de métriques', code: 'Montre l\'utilisation CPU des dernières 24h.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "grafana": {\n      "command": "npx",\n      "args": ["@grafana/mcp-server"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Requête de métriques', code: "Montre l'utilisation CPU des dernières 24h." },
+    ],
   },
   '22': {
     name: 'Slack',
     category: 'COMMUNICATION',
     author: 'modelcontextprotocol',
     description: 'Interaction avec les Workspaces Slack.',
-    longDescription: 'Slack MCP permet d\'envoyer des messages et d\'interagir avec votre workspace Slack.',
+    longDescription:
+      "Slack MCP permet d'envoyer des messages et d'interagir avec votre workspace Slack.",
     iconBg: 'from-purple-600 to-purple-700',
     users: 198,
     downloads: '700K+',
@@ -435,15 +537,17 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://api.slack.com',
     features: ['Envoi de messages', 'Lecture de canaux', 'Gestion des threads'],
     installation: 'npx @modelcontextprotocol/mcp-server-slack',
-    configuration: '{\n  "mcpServers": {\n    "slack": {\n      "command": "npx",\n      "args": ["@modelcontextprotocol/mcp-server-slack"]\n    }\n  }\n}',
-    examples: [{ title: 'Envoyer un message', code: 'Envoie un message dans #general.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "slack": {\n      "command": "npx",\n      "args": ["@modelcontextprotocol/mcp-server-slack"]\n    }\n  }\n}',
+    examples: [{ title: 'Envoyer un message', code: 'Envoie un message dans #general.' }],
   },
   '23': {
     name: 'Notion',
     category: 'PRODUCTIVITY',
     author: 'makenotion',
     description: 'Serveur MCP officiel Notion.',
-    longDescription: 'Notion MCP permet de créer, lire et modifier vos pages et bases de données Notion.',
+    longDescription:
+      'Notion MCP permet de créer, lire et modifier vos pages et bases de données Notion.',
     iconBg: 'from-gray-700 to-gray-800',
     users: 345,
     downloads: '1M+',
@@ -454,8 +558,9 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://developers.notion.com',
     features: ['Création de pages', 'Bases de données', 'Recherche de contenu'],
     installation: 'npx @notionhq/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "notion": {\n      "command": "npx",\n      "args": ["@notionhq/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Créer une page', code: 'Crée une page "Notes de réunion - 29 janvier".' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "notion": {\n      "command": "npx",\n      "args": ["@notionhq/mcp-server"]\n    }\n  }\n}',
+    examples: [{ title: 'Créer une page', code: 'Crée une page "Notes de réunion - 29 janvier".' }],
   },
   '24': {
     name: 'Stripe',
@@ -473,15 +578,17 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://stripe.com/docs',
     features: ['Gestion des paiements', 'Abonnements', 'Clients et factures'],
     installation: 'npx @stripe/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "stripe": {\n      "command": "npx",\n      "args": ["@stripe/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Lister les clients', code: 'Liste les 10 derniers clients créés.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "stripe": {\n      "command": "npx",\n      "args": ["@stripe/mcp-server"]\n    }\n  }\n}',
+    examples: [{ title: 'Lister les clients', code: 'Liste les 10 derniers clients créés.' }],
   },
   '25': {
     name: 'Apify',
     category: 'AUTOMATION',
     author: 'apify',
     description: 'Accès aux outils Apify pour scraping et automatisation.',
-    longDescription: 'Apify MCP donne accès à la plateforme Apify pour le web scraping et l\'automatisation.',
+    longDescription:
+      "Apify MCP donne accès à la plateforme Apify pour le web scraping et l'automatisation.",
     iconBg: 'from-green-500 to-teal-500',
     users: 156,
     downloads: '500K+',
@@ -492,15 +599,17 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://docs.apify.com',
     features: ['Web scraping', 'Extraction de données', 'Actors marketplace'],
     installation: 'npx @apify/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "apify": {\n      "command": "npx",\n      "args": ["@apify/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Scraper un site', code: 'Extrais les prix des produits de cette page.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "apify": {\n      "command": "npx",\n      "args": ["@apify/mcp-server"]\n    }\n  }\n}',
+    examples: [{ title: 'Scraper un site', code: 'Extrais les prix des produits de cette page.' }],
   },
   '26': {
     name: 'Arm',
     category: 'HARDWARE',
     author: 'arm',
     description: 'Outils pour développement sur architecture Arm.',
-    longDescription: 'Arm MCP fournit des outils pour le développement et l\'optimisation sur architecture Arm.',
+    longDescription:
+      "Arm MCP fournit des outils pour le développement et l'optimisation sur architecture Arm.",
     iconBg: 'from-blue-500 to-cyan-500',
     users: 67,
     downloads: '150K+',
@@ -511,15 +620,19 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://developer.arm.com',
     features: ['Documentation Arm', 'Optimisation de code', 'Support NEON/SVE'],
     installation: 'npx @arm/mcp-server',
-    configuration: '{\n  "mcpServers": {\n    "arm": {\n      "command": "npx",\n      "args": ["@arm/mcp-server"]\n    }\n  }\n}',
-    examples: [{ title: 'Optimiser du code', code: 'Comment optimiser cette fonction pour Arm Cortex-A ?' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "arm": {\n      "command": "npx",\n      "args": ["@arm/mcp-server"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Optimiser du code', code: 'Comment optimiser cette fonction pour Arm Cortex-A ?' },
+    ],
   },
   '27': {
     name: 'ArXiv',
     category: 'RESEARCH',
     author: 'jasonleinart',
     description: 'Accès et gestion de papiers arXiv.',
-    longDescription: 'ArXiv MCP permet de rechercher, télécharger et analyser des papiers scientifiques depuis arXiv.',
+    longDescription:
+      'ArXiv MCP permet de rechercher, télécharger et analyser des papiers scientifiques depuis arXiv.',
     iconBg: 'from-red-500 to-pink-500',
     users: 89,
     downloads: '200K+',
@@ -530,15 +643,22 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://arxiv.org/help/api',
     features: ['Recherche de papiers', 'Téléchargement PDF', 'Résumés automatiques'],
     installation: 'npx mcp-server-arxiv',
-    configuration: '{\n  "mcpServers": {\n    "arxiv": {\n      "command": "npx",\n      "args": ["mcp-server-arxiv"]\n    }\n  }\n}',
-    examples: [{ title: 'Rechercher des papiers', code: 'Trouve les derniers papiers sur les transformers.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "arxiv": {\n      "command": "npx",\n      "args": ["mcp-server-arxiv"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Rechercher des papiers',
+        code: 'Trouve les derniers papiers sur les transformers.',
+      },
+    ],
   },
   '28': {
     name: 'AIS Fleet',
     category: 'SPECIALIZED',
     author: 'ais-fleet',
     description: 'Analyse des données AIS de trafic maritime.',
-    longDescription: 'AIS Fleet MCP permet d\'analyser les données AIS pour le suivi du trafic maritime mondial.',
+    longDescription:
+      "AIS Fleet MCP permet d'analyser les données AIS pour le suivi du trafic maritime mondial.",
     iconBg: 'from-blue-600 to-blue-700',
     users: 23,
     downloads: '50K+',
@@ -549,15 +669,17 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://ais-fleet.dev/docs',
     features: ['Suivi de navires', 'Données AIS temps réel', 'Historique de positions'],
     installation: 'npx mcp-server-ais-fleet',
-    configuration: '{\n  "mcpServers": {\n    "ais-fleet": {\n      "command": "npx",\n      "args": ["mcp-server-ais-fleet"]\n    }\n  }\n}',
-    examples: [{ title: 'Suivre un navire', code: 'Montre la position du navire MMSI 123456789.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "ais-fleet": {\n      "command": "npx",\n      "args": ["mcp-server-ais-fleet"]\n    }\n  }\n}',
+    examples: [{ title: 'Suivre un navire', code: 'Montre la position du navire MMSI 123456789.' }],
   },
   '29': {
     name: 'Fetch (Reference)',
     category: 'DEVOPS',
     author: 'modelcontextprotocol',
     description: 'Récupère une URL et extrait son contenu en markdown.',
-    longDescription: 'Fetch est un outil de référence MCP qui permet de récupérer le contenu d\'une URL.',
+    longDescription:
+      "Fetch est un outil de référence MCP qui permet de récupérer le contenu d'une URL.",
     iconBg: 'from-purple-500 to-pink-500',
     users: 312,
     downloads: '1M+',
@@ -566,17 +688,21 @@ export const toolsData: Record<string, MCPToolData> = {
     lastUpdate: '1 semaine',
     repository: 'https://github.com/modelcontextprotocol/servers',
     documentation: 'https://modelcontextprotocol.io/docs',
-    features: ['Fetch d\'URLs', 'Conversion markdown', 'Extraction de contenu'],
+    features: ["Fetch d'URLs", 'Conversion markdown', 'Extraction de contenu'],
     installation: 'npx @modelcontextprotocol/server-fetch',
-    configuration: '{\n  "mcpServers": {\n    "fetch": {\n      "command": "npx",\n      "args": ["@modelcontextprotocol/server-fetch"]\n    }\n  }\n}',
-    examples: [{ title: 'Récupérer une page', code: 'Récupère le contenu de https://example.com.' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "fetch": {\n      "command": "npx",\n      "args": ["@modelcontextprotocol/server-fetch"]\n    }\n  }\n}',
+    examples: [
+      { title: 'Récupérer une page', code: 'Récupère le contenu de https://example.com.' },
+    ],
   },
   '30': {
     name: 'Time (Reference)',
     category: 'DEVOPS',
     author: 'modelcontextprotocol',
     description: 'Conversion de temps et fuseaux horaires.',
-    longDescription: 'Time est un outil de référence MCP pour la gestion du temps et des fuseaux horaires.',
+    longDescription:
+      'Time est un outil de référence MCP pour la gestion du temps et des fuseaux horaires.',
     iconBg: 'from-purple-500 to-pink-500',
     users: 145,
     downloads: '500K+',
@@ -587,7 +713,13 @@ export const toolsData: Record<string, MCPToolData> = {
     documentation: 'https://modelcontextprotocol.io/docs',
     features: ['Heure actuelle', 'Conversion de fuseaux', 'Calcul de différences'],
     installation: 'npx @modelcontextprotocol/server-time',
-    configuration: '{\n  "mcpServers": {\n    "time": {\n      "command": "npx",\n      "args": ["@modelcontextprotocol/server-time"]\n    }\n  }\n}',
-    examples: [{ title: 'Conversion de timezone', code: 'Quelle heure est-il à Tokyo quand il est 14h à Paris ?' }]
+    configuration:
+      '{\n  "mcpServers": {\n    "time": {\n      "command": "npx",\n      "args": ["@modelcontextprotocol/server-time"]\n    }\n  }\n}',
+    examples: [
+      {
+        title: 'Conversion de timezone',
+        code: 'Quelle heure est-il à Tokyo quand il est 14h à Paris ?',
+      },
+    ],
   },
 };

@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillingServices } from '../_shared';
 import { InvoiceStatus, BillingPeriod, BillingPeriodType } from '@/src/types/invoice.types';
@@ -13,10 +13,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
     const invoices = await invoiceService.getUserInvoices(
@@ -32,13 +29,16 @@ export async function GET(request: NextRequest) {
         invoices,
         count: invoices.length,
         limit,
-        offset
-      }
+        offset,
+      },
     });
   } catch (error) {
     logger.error('Error fetching invoices:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch invoices', message: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Failed to fetch invoices',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }
@@ -51,28 +51,23 @@ export async function POST(request: NextRequest) {
     const { userId, period, options } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
-    if (!period || !period.type || !period.startDate || !period.endDate) {
-      return NextResponse.json(
-        { error: 'Valid billing period is required' },
-        { status: 400 }
-      );
+    if (!period?.type || !period.startDate || !period.endDate) {
+      return NextResponse.json({ error: 'Valid billing period is required' }, { status: 400 });
     }
 
     const billingPeriod: BillingPeriod = {
       type: period.type as BillingPeriodType,
       startDate: new Date(period.startDate),
-      endDate: new Date(period.endDate)
+      endDate: new Date(period.endDate),
     };
 
     const requestContext = {
-      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-      userAgent: request.headers.get('user-agent') || 'unknown'
+      ipAddress:
+        request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
     };
 
     const invoice = await invoiceService.generateInvoice(
@@ -82,14 +77,20 @@ export async function POST(request: NextRequest) {
       requestContext
     );
 
-    return NextResponse.json({
-      success: true,
-      data: { invoice }
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: { invoice },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     logger.error('Error generating invoice:', error);
     return NextResponse.json(
-      { error: 'Failed to generate invoice', message: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Failed to generate invoice',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }

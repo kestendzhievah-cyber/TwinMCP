@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripeWebhookServices } from '../_shared';
 import { PaymentStatus, InvoiceStatus } from '@/src/types/invoice.types';
@@ -12,10 +12,7 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('stripe-signature');
 
     if (!signature) {
-      return NextResponse.json(
-        { error: 'Missing stripe-signature header' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
     }
 
     const event = await svc.stripeService.constructWebhookEvent(body, signature);
@@ -30,21 +27,21 @@ export async function POST(request: NextRequest) {
       case 'payment_intent.succeeded':
         await handlePaymentIntentSucceeded(svc, event.data.object);
         break;
-      
+
       case 'payment_intent.payment_failed':
         await handlePaymentIntentFailed(svc, event.data.object);
         break;
-      
+
       case 'charge.refunded':
         await handleChargeRefunded(svc, event.data.object);
         break;
-      
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
         await handleSubscriptionEvent(svc, event.type, event.data.object);
         break;
-      
+
       default:
         logger.info(`Unhandled event type: ${event.type}`);
     }
@@ -57,11 +54,8 @@ export async function POST(request: NextRequest) {
       'high',
       `Webhook processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
-    
-    return NextResponse.json(
-      { error: 'Webhook processing failed' },
-      { status: 400 }
-    );
+
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 400 });
   }
 }
 
@@ -79,15 +73,11 @@ async function handlePaymentIntentSucceeded(svc: Services, paymentIntent: any) {
     }
 
     if (invoiceId) {
-      await svc.invoiceService.updateInvoiceStatus(
-        invoiceId,
-        InvoiceStatus.PAID,
-        {
-          paidVia: 'stripe',
-          stripePaymentIntentId: paymentIntent.id,
-          paidAt: new Date()
-        }
-      );
+      await svc.invoiceService.updateInvoiceStatus(invoiceId, InvoiceStatus.PAID, {
+        paidVia: 'stripe',
+        stripePaymentIntentId: paymentIntent.id,
+        paidAt: new Date(),
+      });
     }
 
     await svc.auditService.logSecurityEvent(
@@ -129,7 +119,7 @@ async function handlePaymentIntentFailed(svc: Services, paymentIntent: any) {
 async function handleChargeRefunded(svc: Services, charge: any) {
   try {
     const paymentIntent = charge.payment_intent;
-    
+
     await svc.auditService.logSecurityEvent(
       'charge_refunded',
       'low',

@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createDownloadSchema, parseBody } from '@/lib/validations/api-schemas';
 
@@ -6,7 +6,8 @@ let _downloadManager: any = null;
 async function getDownloadManager() {
   if (!_downloadManager) {
     const { pool: db } = await import('@/lib/prisma');
-    const { DownloadManagerService } = await import('../../../src/services/download-manager.service');
+    const { DownloadManagerService } =
+      await import('../../../src/services/download-manager.service');
     const { DOWNLOAD_CONFIG, STORAGE_CONFIG } = await import('../../../src/config/download.config');
     _downloadManager = new DownloadManagerService(db, STORAGE_CONFIG, DOWNLOAD_CONFIG);
   }
@@ -26,7 +27,10 @@ export async function POST(request: NextRequest) {
 
     const parsed = parseBody(createDownloadSchema, rawBody);
     if (!parsed.success) {
-      return NextResponse.json({ success: false, error: parsed.error, details: parsed.details }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: parsed.error, details: parsed.details },
+        { status: 400 }
+      );
     }
     const body = parsed.data;
 
@@ -98,10 +102,7 @@ export async function GET(request: NextRequest) {
       const task = await downloadManager.getDownloadStatus(taskId);
 
       if (!task) {
-        return NextResponse.json(
-          { success: false, error: 'Task not found' },
-          { status: 404 }
-        );
+        return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
       }
 
       return NextResponse.json({ success: true, task });

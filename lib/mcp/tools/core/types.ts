@@ -8,8 +8,8 @@ export type {
   MCPTool,
   ToolCapabilities,
   RateLimitConfig,
-  CacheConfig
-} from '../../core/types'
+  CacheConfig,
+} from '../../core/types';
 
 // Tool-specific types that are unique to this file
 export interface ToolContext {

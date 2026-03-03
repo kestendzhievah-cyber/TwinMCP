@@ -1,46 +1,47 @@
-import { logger } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
-import { registry } from '@/lib/mcp/tools'
-import { authenticateMcpRequest } from '@/lib/mcp/middleware/api-key-auth'
-import { validator } from '@/lib/mcp/core/validator'
-import { rateLimiter } from '@/lib/mcp/middleware/rate-limit'
-import { getMetrics } from '@/lib/mcp/utils/metrics'
-import { ensureMCPInitialized } from '@/lib/mcp/ensure-init'
+﻿import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from 'next/server';
+import { registry } from '@/lib/mcp/tools';
+import { authenticateMcpRequest } from '@/lib/mcp/middleware/api-key-auth';
+import { validator } from '@/lib/mcp/core/validator';
+import { rateLimiter } from '@/lib/mcp/middleware/rate-limit';
+import { getMetrics } from '@/lib/mcp/utils/metrics';
+import { ensureMCPInitialized } from '@/lib/mcp/ensure-init';
 
 // GET /api/v1/mcp/tools - Liste des outils disponibles
 export async function GET(request: NextRequest) {
-  const startTime = Date.now()
+  const startTime = Date.now();
 
   try {
     // Ensure MCP system is initialized (lazy init)
-    await ensureMCPInitialized()
+    await ensureMCPInitialized();
 
     // Authentification
-    const authContext = await authenticateMcpRequest(request)
+    const authContext = await authenticateMcpRequest(request);
 
     // Rate limiting
-    const rateLimitCheck = await rateLimiter.checkUserLimit(authContext.userId, 'tools_list', authContext.rateLimit)
+    const rateLimitCheck = await rateLimiter.checkUserLimit(
+      authContext.userId,
+      'tools_list',
+      authContext.rateLimit
+    );
     if (!rateLimitCheck) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded for tools list' },
-        { status: 429 }
-      )
+      return NextResponse.json({ error: 'Rate limit exceeded for tools list' }, { status: 429 });
     }
 
-    // Obtenir les outils (filtrÃ©s selon les permissions)
+    // Obtenir les outils (filtrés selon les permissions)
     const tools = registry.getAll().filter(tool => {
       return authContext.permissions.some(permission => {
         if (permission.resource === 'global') {
-          return permission.actions.includes('read')
+          return permission.actions.includes('read');
         }
         if (permission.resource === tool.id) {
-          return permission.actions.includes('read')
+          return permission.actions.includes('read');
         }
-        return false
-      })
-    })
+        return false;
+      });
+    });
 
-    // Tracker les mÃ©triques
+    // Tracker les métriques
     getMetrics().track({
       toolId: 'tools_list',
       userId: authContext.userId,
@@ -49,8 +50,8 @@ export async function GET(request: NextRequest) {
       cacheHit: false,
       success: true,
       apiCallsCount: 1,
-      estimatedCost: 0.0001
-    })
+      estimatedCost: 0.0001,
+    });
 
     return NextResponse.json({
       tools: tools.map(tool => ({
@@ -64,11 +65,14 @@ export async function GET(request: NextRequest) {
         capabilities: tool.capabilities,
         rateLimit: tool.rateLimit,
         cache: tool.cache,
-        inputSchema: tool.inputSchema instanceof Object ? {
-          type: 'object',
-          properties: {},
-          required: []
-        } : tool.inputSchema // SimplifiÃ© pour l'API
+        inputSchema:
+          tool.inputSchema instanceof Object
+            ? {
+                type: 'object',
+                properties: {},
+                required: [],
+              }
+            : tool.inputSchema, // Simplifié pour l'API
       })),
       totalCount: tools.length,
       apiVersion: 'v1',
@@ -76,10 +80,9 @@ export async function GET(request: NextRequest) {
         executionTime: Date.now() - startTime,
         authenticated: authContext.isAuthenticated,
         authMethod: authContext.authMethod,
-        plan: authContext.tier
-      }
-    })
-
+        plan: authContext.tier,
+      },
+    });
   } catch (error: any) {
     getMetrics().track({
       toolId: 'tools_list',
@@ -90,13 +93,13 @@ export async function GET(request: NextRequest) {
       success: false,
       errorType: error.name || 'ToolsListError',
       apiCallsCount: 1,
-      estimatedCost: 0
-    })
+      estimatedCost: 0,
+    });
 
-    logger.error('Tools list error:', error)
+    logger.error('Tools list error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to list tools', code: error.code },
       { status: error.statusCode || 500 }
-    )
+    );
   }
 }

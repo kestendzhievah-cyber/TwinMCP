@@ -3,14 +3,14 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { 
-  XCircle, 
-  Sparkles, 
-  ArrowLeft, 
+import {
+  XCircle,
+  Sparkles,
+  ArrowLeft,
   RefreshCw,
   MessageCircle,
   HelpCircle,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 
 function PaymentCancelContent() {
@@ -73,10 +73,11 @@ function PaymentCancelContent() {
               <HelpCircle className="w-4 h-4" />
               Pourquoi annuler ?
             </h3>
-            
+
             <div className="space-y-3">
               <p className="text-gray-300 text-sm">
-                Si vous avez rencontré un problème ou si vous avez des questions, nous sommes là pour vous aider :
+                Si vous avez rencontré un problème ou si vous avez des questions, nous sommes là
+                pour vous aider :
               </p>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li className="flex items-start gap-2">
@@ -115,7 +116,7 @@ function PaymentCancelContent() {
           </div>
 
           {/* Back to home */}
-          <Link 
+          <Link
             href="/"
             className="inline-flex items-center gap-2 text-gray-400 hover:text-white mt-8 transition"
           >

@@ -15,7 +15,9 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<'stripe' | 'paypal' | 'wise'>('stripe');
-  const [paymentMethodType, setPaymentMethodType] = useState<'card' | 'bank_account' | 'sepa'>('card');
+  const [paymentMethodType, setPaymentMethodType] = useState<'card' | 'bank_account' | 'sepa'>(
+    'card'
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,10 +29,10 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
         id: `pm_${Date.now()}`,
         userId: invoice.userId,
         type: paymentMethodType,
-        provider: provider,
+        provider,
         isDefault: false,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       } as any as PaymentMethod;
 
       const response = await fetch('/api/billing/payments', {
@@ -44,7 +46,7 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
           amount: invoice.total,
           currency: invoice.currency,
           paymentMethod,
-          provider
+          provider,
         }),
       });
 
@@ -54,7 +56,7 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         if (onSuccess) {
           onSuccess();
@@ -72,7 +74,7 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: currency
+      currency,
     }).format(amount);
   };
 
@@ -95,12 +97,10 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Payment Provider
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Payment Provider</label>
           <select
             value={provider}
-            onChange={(e) => setProvider(e.target.value as 'stripe' | 'paypal' | 'wise')}
+            onChange={e => setProvider(e.target.value as 'stripe' | 'paypal' | 'wise')}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={loading}
           >
@@ -111,12 +111,10 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Payment Method
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
           <select
             value={paymentMethodType}
-            onChange={(e) => setPaymentMethodType(e.target.value as 'card' | 'bank_account' | 'sepa')}
+            onChange={e => setPaymentMethodType(e.target.value as 'card' | 'bank_account' | 'sepa')}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={loading}
           >
@@ -133,20 +131,11 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
         )}
 
         <div className="flex gap-3 pt-4">
-          <Button
-            type="submit"
-            disabled={loading}
-            className="flex-1"
-          >
+          <Button type="submit" disabled={loading} className="flex-1">
             {loading ? 'Processing...' : `Pay ${formatCurrency(invoice.total, invoice.currency)}`}
           </Button>
           {onCancel && (
-            <Button
-              type="button"
-              onClick={onCancel}
-              variant="outline"
-              disabled={loading}
-            >
+            <Button type="button" onClick={onCancel} variant="outline" disabled={loading}>
               Cancel
             </Button>
           )}

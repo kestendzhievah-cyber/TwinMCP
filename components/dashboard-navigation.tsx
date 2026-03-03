@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
-import { 
-  Settings, 
-  Key, 
-  BarChart3, 
-  Users, 
-  Package, 
-  FileText, 
-  Shield, 
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
+import {
+  Settings,
+  Key,
+  BarChart3,
+  Users,
+  Package,
+  FileText,
+  Shield,
   LogOut,
   Home,
   BookOpen,
   Code,
   Zap,
-  Terminal
-} from "lucide-react";
+  Terminal,
+} from 'lucide-react';
 
 interface NavItem {
   id: string;
@@ -39,7 +39,7 @@ export function DashboardNavigation() {
       label: 'Dashboard',
       icon: Home,
       href: '/dashboard',
-      description: 'Vue d\'ensemble'
+      description: "Vue d'ensemble",
     },
     {
       id: 'api-keys',
@@ -47,50 +47,50 @@ export function DashboardNavigation() {
       icon: Key,
       href: '/dashboard/api-keys',
       badge: 2, // Nombre de clés (à dynamiser)
-      description: 'Gérer vos clés d\'accès API'
+      description: "Gérer vos clés d'accès API",
     },
     {
       id: 'libraries',
       label: 'Bibliothèques',
       icon: Code,
       href: '/dashboard/libraries',
-      description: 'Catalogue des bibliothèques'
+      description: 'Catalogue des bibliothèques',
     },
     {
       id: 'usage',
       label: 'Utilisation',
       icon: BarChart3,
       href: '/dashboard/usage',
-      description: 'Statistiques d\'utilisation'
+      description: "Statistiques d'utilisation",
     },
     {
       id: 'members',
       label: 'Membres',
       icon: Users,
       href: '/dashboard/members',
-      description: 'Gestion des membres'
+      description: 'Gestion des membres',
     },
     {
       id: 'rules',
       label: 'Règles',
       icon: Terminal,
       href: '/dashboard/rules',
-      description: 'Configuration des règles'
+      description: 'Configuration des règles',
     },
     {
       id: 'docs',
       label: 'Documentation',
       icon: FileText,
       href: '/dashboard/docs',
-      description: 'Documentation API'
+      description: 'Documentation API',
     },
     {
       id: 'settings',
       label: 'Paramètres',
       icon: Settings,
       href: '/dashboard/settings',
-      description: 'Paramètres du compte'
-    }
+      description: 'Paramètres du compte',
+    },
   ];
 
   const isActive = (href: string) => {
@@ -119,19 +119,20 @@ export function DashboardNavigation() {
 
           {/* Navigation Desktop */}
           <div className="hidden md:flex items-center space-x-1">
-            {navigation.map((item) => {
+            {navigation.map(item => {
               const Icon = item.icon;
               const active = isActive(item.href);
-              
+
               return (
                 <Link
                   key={item.id}
                   href={item.href}
                   className={`
                     relative group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200
-                    ${active 
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/30' 
-                      : 'text-gray-300 hover:text-white hover:bg-purple-900/30'
+                    ${
+                      active
+                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/30'
+                        : 'text-gray-300 hover:text-white hover:bg-purple-900/30'
                     }
                   `}
                   title={item.description}
@@ -139,13 +140,12 @@ export function DashboardNavigation() {
                   <Icon className="w-4 h-4" />
                   <span className="text-sm font-medium">{item.label}</span>
                   {item.badge && (
-                    <span className={`
+                    <span
+                      className={`
                       absolute -top-1 -right-1 px-2 py-0.5 text-xs rounded-full
-                      ${active 
-                        ? 'bg-white text-purple-600' 
-                        : 'bg-purple-500 text-white'
-                      }
-                    `}>
+                      ${active ? 'bg-white text-purple-600' : 'bg-purple-500 text-white'}
+                    `}
+                    >
                       {item.badge}
                     </span>
                   )}
@@ -195,12 +195,12 @@ export function DashboardNavigation() {
                   <div className="w-6 h-0.5 bg-gray-400"></div>
                 </button>
               </div>
-              
+
               <div className="space-y-2">
-                {navigation.map((item) => {
+                {navigation.map(item => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
-                  
+
                   return (
                     <Link
                       key={item.id}
@@ -208,9 +208,10 @@ export function DashboardNavigation() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={`
                         flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
-                        ${active 
-                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white' 
-                          : 'text-gray-300 hover:text-white hover:bg-purple-900/30'
+                        ${
+                          active
+                            ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                            : 'text-gray-300 hover:text-white hover:bg-purple-900/30'
                         }
                       `}
                     >
@@ -220,13 +221,12 @@ export function DashboardNavigation() {
                         <div className="text-xs text-gray-400">{item.description}</div>
                       </div>
                       {item.badge && (
-                        <span className={`
+                        <span
+                          className={`
                           px-2 py-0.5 text-xs rounded-full
-                          ${active 
-                            ? 'bg-white text-purple-600' 
-                            : 'bg-purple-500 text-white'
-                          }
-                        `}>
+                          ${active ? 'bg-white text-purple-600' : 'bg-purple-500 text-white'}
+                        `}
+                        >
                           {item.badge}
                         </span>
                       )}

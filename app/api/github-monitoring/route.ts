@@ -1,7 +1,7 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { pool as db } from '@/lib/prisma'
+import { pool as db } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {

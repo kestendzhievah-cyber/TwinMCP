@@ -1,31 +1,37 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
-import { Button } from '../../components/ui/button'
+import { useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 
 interface OptimizationSuggestion {
-  id: string
-  title: string
-  description: string
-  impact: 'high' | 'medium' | 'low'
-  effort: 'high' | 'medium' | 'low'
+  id: string;
+  title: string;
+  description: string;
+  impact: 'high' | 'medium' | 'low';
+  effort: 'high' | 'medium' | 'low';
 }
 
 export default function Optimize() {
   const [metrics, setMetrics] = useState({
     latency: '',
     cost: '',
-    satisfaction: ''
-  })
-  const [suggestions, setSuggestions] = useState<OptimizationSuggestion[]>([])
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
+    satisfaction: '',
+  });
+  const [suggestions, setSuggestions] = useState<OptimizationSuggestion[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleAnalyze = async () => {
-    setIsAnalyzing(true)
+    setIsAnalyzing(true);
 
     // Simulate AI analysis
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Mock suggestions based on input
     const mockSuggestions: OptimizationSuggestion[] = [
@@ -34,52 +40,60 @@ export default function Optimize() {
         title: 'Optimiser les prompts',
         description: 'Vos prompts peuvent être simplifiés pour réduire les coûts de 15%',
         impact: 'medium',
-        effort: 'low'
+        effort: 'low',
       },
       {
         id: '2',
         title: 'Utiliser un modèle plus petit',
         description: 'Passer de Gemini Pro à Gemini Nano pourrait réduire la latence de 30%',
         impact: 'high',
-        effort: 'medium'
+        effort: 'medium',
       },
       {
         id: '3',
         title: 'Implémenter le cache',
         description: 'Ajouter un système de cache pour les réponses fréquentes',
         impact: 'high',
-        effort: 'high'
-      }
-    ]
+        effort: 'high',
+      },
+    ];
 
-    setSuggestions(mockSuggestions)
-    setIsAnalyzing(false)
-  }
+    setSuggestions(mockSuggestions);
+    setIsAnalyzing(false);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMetrics(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
-    }))
-  }
+      [e.target.name]: e.target.value,
+    }));
+  };
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
-      case 'high': return 'text-red-600'
-      case 'medium': return 'text-yellow-600'
-      case 'low': return 'text-green-600'
-      default: return 'text-gray-600'
+      case 'high':
+        return 'text-red-600';
+      case 'medium':
+        return 'text-yellow-600';
+      case 'low':
+        return 'text-green-600';
+      default:
+        return 'text-gray-600';
     }
-  }
+  };
 
   const getEffortColor = (effort: string) => {
     switch (effort) {
-      case 'high': return 'text-red-600'
-      case 'medium': return 'text-yellow-600'
-      case 'low': return 'text-green-600'
-      default: return 'text-gray-600'
+      case 'high':
+        return 'text-red-600';
+      case 'medium':
+        return 'text-yellow-600';
+      case 'low':
+        return 'text-green-600';
+      default:
+        return 'text-gray-600';
     }
-  }
+  };
 
   return (
     <div className="space-y-8">
@@ -95,9 +109,7 @@ export default function Optimize() {
         <Card>
           <CardHeader>
             <CardTitle>Métriques actuelles</CardTitle>
-            <CardDescription>
-              Entrez les métriques de performance de votre agent
-            </CardDescription>
+            <CardDescription>Entrez les métriques de performance de votre agent</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -131,7 +143,10 @@ export default function Optimize() {
             </div>
 
             <div>
-              <label htmlFor="satisfaction" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="satisfaction"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Score de satisfaction (1-10)
               </label>
               <input
@@ -147,11 +162,7 @@ export default function Optimize() {
               />
             </div>
 
-            <Button
-              onClick={handleAnalyze}
-              className="w-full"
-              disabled={isAnalyzing}
-            >
+            <Button onClick={handleAnalyze} className="w-full" disabled={isAnalyzing}>
               {isAnalyzing ? 'Analyse en cours...' : 'Analyser et optimiser'}
             </Button>
           </CardContent>
@@ -161,9 +172,7 @@ export default function Optimize() {
         <Card>
           <CardHeader>
             <CardTitle>Suggestions d&apos;optimisation</CardTitle>
-            <CardDescription>
-              Recommandations basées sur l&apos;analyse IA
-            </CardDescription>
+            <CardDescription>Recommandations basées sur l&apos;analyse IA</CardDescription>
           </CardHeader>
           <CardContent>
             {suggestions.length === 0 ? (
@@ -172,7 +181,7 @@ export default function Optimize() {
               </div>
             ) : (
               <div className="space-y-4">
-                {suggestions.map((suggestion) => (
+                {suggestions.map(suggestion => (
                   <div key={suggestion.id} className="p-4 border rounded-lg">
                     <h3 className="font-medium mb-2">{suggestion.title}</h3>
                     <p className="text-sm text-gray-600 mb-3">{suggestion.description}</p>
@@ -197,22 +206,16 @@ export default function Optimize() {
         <Card>
           <CardHeader>
             <CardTitle>Performance actuelle</CardTitle>
-            <CardDescription>
-              Résumé des métriques saisies
-            </CardDescription>
+            <CardDescription>Résumé des métriques saisies</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {metrics.latency || '—'}ms
-                </div>
+                <div className="text-2xl font-bold text-blue-600">{metrics.latency || '—'}ms</div>
                 <div className="text-sm text-gray-600">Latence</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  €{metrics.cost || '—'}
-                </div>
+                <div className="text-2xl font-bold text-green-600">€{metrics.cost || '—'}</div>
                 <div className="text-sm text-gray-600">Coût mensuel</div>
               </div>
               <div className="text-center">
@@ -226,5 +229,5 @@ export default function Optimize() {
         </Card>
       )}
     </div>
-  )
+  );
 }

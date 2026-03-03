@@ -25,7 +25,7 @@ export function InvoiceList({ userId, onViewInvoice }: InvoiceListProps) {
       setLoading(true);
       const statusParam = filter !== 'ALL' ? `&status=${filter}` : '';
       const response = await fetch(`/api/billing/invoices?userId=${userId}${statusParam}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch invoices');
       }
@@ -43,7 +43,7 @@ export function InvoiceList({ userId, onViewInvoice }: InvoiceListProps) {
   const downloadPDF = async (invoiceId: string, invoiceNumber: string) => {
     try {
       const response = await fetch(`/api/billing/invoices/${invoiceId}/pdf?userId=${userId}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to download PDF');
       }
@@ -82,14 +82,14 @@ export function InvoiceList({ userId, onViewInvoice }: InvoiceListProps) {
     return new Date(date).toLocaleDateString('fr-FR', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: currency
+      currency,
     }).format(amount);
   };
 
@@ -119,7 +119,7 @@ export function InvoiceList({ userId, onViewInvoice }: InvoiceListProps) {
         <div className="flex gap-2">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as InvoiceStatus | 'ALL')}
+            onChange={e => setFilter(e.target.value as InvoiceStatus | 'ALL')}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="ALL">All Invoices</option>
@@ -138,13 +138,15 @@ export function InvoiceList({ userId, onViewInvoice }: InvoiceListProps) {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {invoices.map((invoice) => (
+          {invoices.map(invoice => (
             <Card key={invoice.id} className="p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold">{invoice.number}</h3>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(invoice.status)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(invoice.status)}`}
+                    >
                       {invoice.status}
                     </span>
                   </div>
@@ -173,17 +175,11 @@ export function InvoiceList({ userId, onViewInvoice }: InvoiceListProps) {
                 </div>
                 <div className="flex gap-2 ml-4">
                   {onViewInvoice && (
-                    <Button
-                      onClick={() => onViewInvoice(invoice)}
-                      variant="outline"
-                    >
+                    <Button onClick={() => onViewInvoice(invoice)} variant="outline">
                       View
                     </Button>
                   )}
-                  <Button
-                    onClick={() => downloadPDF(invoice.id, invoice.number)}
-                    variant="default"
-                  >
+                  <Button onClick={() => downloadPDF(invoice.id, invoice.number)} variant="default">
                     Download PDF
                   </Button>
                 </div>

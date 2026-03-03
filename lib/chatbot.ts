@@ -11,7 +11,7 @@ import {
   where,
   orderBy,
   limit,
-  Timestamp
+  Timestamp,
 } from 'firebase/firestore';
 import { db as _db } from './firebase';
 const db = _db!;
@@ -86,7 +86,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
 
     return {
       id: userSnap.id,
-      ...userSnap.data()
+      ...userSnap.data(),
     } as User;
   } catch (error) {
     console.error('Error getting user profile:', error);
@@ -105,7 +105,7 @@ export async function getChatbot(chatbotId: string): Promise<Chatbot | null> {
 
     return {
       id: chatbotSnap.id,
-      ...chatbotSnap.data()
+      ...chatbotSnap.data(),
     } as Chatbot;
   } catch (error) {
     console.error('Error getting chatbot:', error);
@@ -121,7 +121,7 @@ export async function createChatbot(userId: string, data: CreateChatbotRequest):
       userId,
       status: 'active',
       createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+      updatedAt: Timestamp.now(),
     };
 
     const docRef = await addDoc(chatbotsRef, chatbotData);
@@ -135,19 +135,15 @@ export async function createChatbot(userId: string, data: CreateChatbotRequest):
 export async function getUserChatbots(userId: string): Promise<Chatbot[]> {
   try {
     const chatbotsRef = collection(db, 'chatbots');
-    const q = query(
-      chatbotsRef,
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
+    const q = query(chatbotsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
 
     const querySnapshot = await getDocs(q);
     const chatbots: Chatbot[] = [];
 
-    querySnapshot.forEach((doc) => {
+    querySnapshot.forEach(doc => {
       chatbots.push({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       } as Chatbot);
     });
 
@@ -158,15 +154,12 @@ export async function getUserChatbots(userId: string): Promise<Chatbot[]> {
   }
 }
 
-export async function updateChatbot(
-  chatbotId: string, 
-  updates: Partial<Chatbot>
-): Promise<void> {
+export async function updateChatbot(chatbotId: string, updates: Partial<Chatbot>): Promise<void> {
   try {
     const chatbotRef = doc(db, 'chatbots', chatbotId);
     await updateDoc(chatbotRef, {
       ...updates,
-      updatedAt: Timestamp.now()
+      updatedAt: Timestamp.now(),
     });
   } catch (error) {
     console.error('Error updating chatbot:', error);

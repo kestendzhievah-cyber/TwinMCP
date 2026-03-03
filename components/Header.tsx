@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Header() {
   return (
     <header className="bg-white shadow-sm border-b">
@@ -7,10 +9,27 @@ export default function Header() {
             <h1 className="text-xl font-bold text-gray-900">TwinMCP</h1>
           </div>
           <nav className="flex space-x-8">
-            <a href="/" className="text-gray-500 hover:text-gray-900">Accueil</a>
-            <a href="/dashboard" className="text-gray-500 hover:text-gray-900">Dashboard</a>
-            <a href="/pricing" className="text-gray-500 hover:text-gray-900">Tarifs</a>
-            <a href="/contact" className="text-gray-500 hover:text-gray-900">Contact</a>
+            <Link href="/" className="text-gray-500 hover:text-gray-900">
+              Accueil
+            </Link>
+            <Link
+              href="/dashboard"
+              className="text-gray-500 hover:text-gray-900"
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/pricing"
+              className="text-gray-500 hover:text-gray-900"
+            >
+              Tarifs
+            </Link>
+            <Link
+              href="/contact"
+              className="text-gray-500 hover:text-gray-900"
+            >
+              Contact
+            </Link>
           </nav>
         </div>
       </div>

@@ -29,8 +29,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # env files
-.env*.local
 .env
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -49,9 +50,22 @@ mcp-server-demo
 # compiled output
 /dist/
 
+# TypeScript compiled artifacts in source directories
+components/**/*.d.ts
+components/**/*.d.ts.map
+components/**/*.jsx
+components/**/*.jsx.map
+scripts/**/*.d.ts
+scripts/**/*.d.ts.map
+scripts/**/*.js.map
+examples/**/*.d.ts
+examples/**/*.d.ts.map
+examples/**/*.js.map
+prisma/seed.d.ts*
+prisma/seed.js*
+
 # log files
 /logs/
 
-# Environment files
-*.env
-*.env.*
+# Environment files (covered by .env pattern above)
+# Keep .env.example tracked for developer onboarding

@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -58,7 +58,7 @@ function parseBitbucketUrl(url: string): { owner: string; repo: string } | null 
 // Determine ecosystem from source/URL
 function determineEcosystem(source: string, url: string): string {
   const lowerUrl = url.toLowerCase();
-  
+
   if (lowerUrl.includes('python') || lowerUrl.includes('pip') || lowerUrl.includes('pypi')) {
     return 'pip';
   }
@@ -68,15 +68,20 @@ function determineEcosystem(source: string, url: string): string {
   if (lowerUrl.includes('php') || lowerUrl.includes('composer') || lowerUrl.includes('packagist')) {
     return 'composer';
   }
-  
+
   return 'npm';
 }
 
 // Determine language from source/URL
 function determineLanguage(source: string, url: string): string {
   const lowerUrl = url.toLowerCase();
-  
-  if (lowerUrl.includes('python') || lowerUrl.includes('pip') || lowerUrl.includes('pypi') || lowerUrl.includes('.py')) {
+
+  if (
+    lowerUrl.includes('python') ||
+    lowerUrl.includes('pip') ||
+    lowerUrl.includes('pypi') ||
+    lowerUrl.includes('.py')
+  ) {
     return 'Python';
   }
   if (lowerUrl.includes('rust') || lowerUrl.includes('cargo') || lowerUrl.includes('.rs')) {
@@ -91,7 +96,7 @@ function determineLanguage(source: string, url: string): string {
   if (lowerUrl.includes('go') || lowerUrl.includes('golang')) {
     return 'Go';
   }
-  
+
   return 'JavaScript/TypeScript';
 }
 
@@ -100,26 +105,26 @@ async function fetchGitHubMetadata(owner: string, repo: string): Promise<RepoMet
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    
+
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-      headers: { 
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'TwinMCP-Import'
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'TwinMCP-Import',
       },
       signal: controller.signal,
-      next: { revalidate: 3600 } // Cache for 1 hour
+      next: { revalidate: 3600 }, // Cache for 1 hour
     });
     clearTimeout(timeout);
-    
+
     if (!res.ok) return null;
-    
+
     const data = await res.json();
     return {
       description: data.description || '',
       stars: data.stargazers_count || 0,
       language: data.language || '',
       defaultBranch: data.default_branch || 'main',
-      topics: data.topics || []
+      topics: data.topics || [],
     };
   } catch {
     return null; // Graceful fallback if API is unreachable
@@ -131,24 +136,24 @@ async function fetchGitLabMetadata(owner: string, repo: string): Promise<RepoMet
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    
+
     const projectPath = encodeURIComponent(`${owner}/${repo}`);
     const res = await fetch(`https://gitlab.com/api/v4/projects/${projectPath}`, {
       headers: { 'User-Agent': 'TwinMCP-Import' },
       signal: controller.signal,
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 },
     });
     clearTimeout(timeout);
-    
+
     if (!res.ok) return null;
-    
+
     const data = await res.json();
     return {
       description: data.description || '',
       stars: data.star_count || 0,
       language: '',
       defaultBranch: data.default_branch || 'main',
-      topics: data.topics || data.tag_list || []
+      topics: data.topics || data.tag_list || [],
     };
   } catch {
     return null;
@@ -162,17 +167,11 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!source) {
-      return NextResponse.json(
-        { success: false, error: 'La source est requise' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'La source est requise' }, { status: 400 });
     }
 
-    if (!url || !url.trim()) {
-      return NextResponse.json(
-        { success: false, error: "L'URL est requise" },
-        { status: 400 }
-      );
+    if (!url?.trim()) {
+      return NextResponse.json({ success: false, error: "L'URL est requise" }, { status: 400 });
     }
 
     // Validate URL format and protocol
@@ -181,26 +180,25 @@ export async function POST(request: NextRequest) {
       const parsedUrl = new URL(trimmedUrl);
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
         return NextResponse.json(
-          { success: false, error: 'Seules les URLs HTTP et HTTPS sont acceptÃ©es' },
+          { success: false, error: 'Seules les URLs HTTP et HTTPS sont acceptées' },
           { status: 400 }
         );
       }
     } catch {
-      return NextResponse.json(
-        { success: false, error: "Format d'URL invalide" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Format d'URL invalide" }, { status: 400 });
     }
 
     // Sanitize name input
-    const sanitizedName = name ? name.replace(/<[^>]*>/g, '').trim().slice(0, 100) : undefined;
+    const sanitizedName = name
+      ? name
+          .replace(/<[^>]*>/g, '')
+          .trim()
+          .slice(0, 100)
+      : undefined;
 
     const validSources = ['github', 'gitlab', 'bitbucket', 'openapi', 'llms', 'website'];
     if (!validSources.includes(source)) {
-      return NextResponse.json(
-        { success: false, error: 'Source non valide' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Source non valide' }, { status: 400 });
     }
 
     // Get user ID from auth header (optional)
@@ -214,7 +212,7 @@ export async function POST(request: NextRequest) {
     let libraryName = '';
     let libraryId = '';
     let vendor = '';
-    let repoUrl = trimmedUrl;
+    const repoUrl = trimmedUrl;
     let docsUrl = '';
     let repoMetadata: RepoMetadata | null = null;
 
@@ -254,7 +252,10 @@ export async function POST(request: NextRequest) {
         const parsed = parseBitbucketUrl(trimmedUrl);
         if (!parsed) {
           return NextResponse.json(
-            { success: false, error: 'URL Bitbucket invalide. Format: https://bitbucket.org/owner/repo' },
+            {
+              success: false,
+              error: 'URL Bitbucket invalide. Format: https://bitbucket.org/owner/repo',
+            },
             { status: 400 }
           );
         }
@@ -265,7 +266,13 @@ export async function POST(request: NextRequest) {
         break;
       }
       case 'openapi': {
-        const filename = trimmedUrl.split('/').pop()?.replace('.json', '').replace('.yaml', '').replace('.yml', '') || 'openapi-spec';
+        const filename =
+          trimmedUrl
+            .split('/')
+            .pop()
+            ?.replace('.json', '')
+            .replace('.yaml', '')
+            .replace('.yml', '') || 'openapi-spec';
         libraryName = sanitizedName || filename;
         libraryId = `openapi-${filename}-${Date.now()}`.toLowerCase();
         vendor = 'OpenAPI';
@@ -298,13 +305,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Use real metadata if available, otherwise estimate
-    const repoDescription = repoMetadata?.description || `Documentation importÃ©e depuis ${source}`;
-    const popularity = repoMetadata?.stars ? Math.min(100, Math.round(Math.log10(repoMetadata.stars + 1) * 25)) : 50;
+    const repoDescription = repoMetadata?.description || `Documentation importée depuis ${source}`;
+    const popularity = repoMetadata?.stars
+      ? Math.min(100, Math.round(Math.log10(repoMetadata.stars + 1) * 25))
+      : 50;
     const language = repoMetadata?.language || determineLanguage(source, trimmedUrl);
     const ecosystem = determineEcosystem(source, trimmedUrl);
     const extraTags = repoMetadata?.topics || [];
     // Estimate tokens based on repo size heuristic (real indexing happens async)
-    const tokensCount = repoMetadata?.stars 
+    const tokensCount = repoMetadata?.stars
       ? Math.min(500000, Math.max(50000, repoMetadata.stars * 50))
       : 100000;
     const snippetsCount = Math.round(tokensCount / 200);
@@ -329,7 +338,7 @@ export async function POST(request: NextRequest) {
       tags: [...new Set([source, ecosystem, language.toLowerCase(), ...extraTags])],
       lastCrawled: new Date().toISOString(),
       createdAt: new Date().toISOString(),
-      isUserImported: true
+      isUserImported: true,
     };
 
     // Try to save to database
@@ -339,13 +348,13 @@ export async function POST(request: NextRequest) {
       let client = await prisma.client.findFirst({ where: { name: 'default' } });
       if (!client) {
         client = await prisma.client.create({
-          data: { name: 'default', apiKeys: {} }
+          data: { name: 'default', apiKeys: {} },
         });
       }
 
       // Check if library already exists
       const existingLibrary = await prisma.library.findUnique({
-        where: { id: libraryId }
+        where: { id: libraryId },
       });
 
       if (existingLibrary) {
@@ -359,8 +368,8 @@ export async function POST(request: NextRequest) {
             lastCrawledAt: new Date(),
             totalTokens: tokensCount,
             totalSnippets: snippetsCount,
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         });
         savedToDb = true;
       } else {
@@ -385,21 +394,21 @@ export async function POST(request: NextRequest) {
               importSource: source,
               originalUrl: trimmedUrl,
               importedBy: userId,
-              importedAt: new Date().toISOString()
+              importedAt: new Date().toISOString(),
             },
             clientId: client.id,
-            lastCrawledAt: new Date()
-          }
+            lastCrawledAt: new Date(),
+          },
         });
 
         // Create default version
         await prisma.libraryVersion.create({
           data: {
-            libraryId: libraryId,
+            libraryId,
             version: '1.0.0',
             isLatest: true,
-            releaseDate: new Date()
-          }
+            releaseDate: new Date(),
+          },
         });
         savedToDb = true;
       }
@@ -411,9 +420,9 @@ export async function POST(request: NextRequest) {
     // The client will store this in localStorage if needed
     return NextResponse.json({
       success: true,
-      message: savedToDb 
-        ? 'BibliothÃ¨que importÃ©e avec succÃ¨s' 
-        : 'BibliothÃ¨que importÃ©e (stockage local)',
+      message: savedToDb
+        ? 'Bibliothèque importée avec succès'
+        : 'Bibliothèque importée (stockage local)',
       savedToDb,
       data: {
         libraryId: libraryData.id,
@@ -424,14 +433,13 @@ export async function POST(request: NextRequest) {
         snippetsCount: libraryData.snippets,
         createdAt: libraryData.createdAt,
         // Include full library data for client-side storage
-        library: libraryData
-      }
+        library: libraryData,
+      },
     });
-
   } catch (error) {
-    logger.error('Erreur lors de l\'import:', error);
+    logger.error("Erreur lors de l'import:", error);
     return NextResponse.json(
-      { success: false, error: 'Erreur interne du serveur. Veuillez rÃ©essayer.' },
+      { success: false, error: 'Erreur interne du serveur. Veuillez réessayer.' },
       { status: 500 }
     );
   }
@@ -440,12 +448,32 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     sources: [
-      { id: 'github', name: 'GitHub', available: true, description: 'Importer depuis un dÃ©pÃ´t GitHub' },
+      {
+        id: 'github',
+        name: 'GitHub',
+        available: true,
+        description: 'Importer depuis un dépôt GitHub',
+      },
       { id: 'gitlab', name: 'GitLab', available: true, description: 'Importer depuis GitLab' },
-      { id: 'bitbucket', name: 'Bitbucket', available: true, description: 'Importer depuis Bitbucket' },
-      { id: 'openapi', name: 'OpenAPI', available: true, description: 'SpÃ©cification OpenAPI/Swagger' },
+      {
+        id: 'bitbucket',
+        name: 'Bitbucket',
+        available: true,
+        description: 'Importer depuis Bitbucket',
+      },
+      {
+        id: 'openapi',
+        name: 'OpenAPI',
+        available: true,
+        description: 'Spécification OpenAPI/Swagger',
+      },
       { id: 'llms', name: 'LLMs.txt', available: true, description: 'Fichier LLMs.txt' },
-      { id: 'website', name: 'Site Web', available: true, description: 'Extraire depuis un site web' }
-    ]
+      {
+        id: 'website',
+        name: 'Site Web',
+        available: true,
+        description: 'Extraire depuis un site web',
+      },
+    ],
   });
 }

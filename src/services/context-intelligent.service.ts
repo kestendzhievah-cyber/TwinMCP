@@ -94,7 +94,7 @@ export class ContextIntelligentService {
 
     } catch (error) {
       logger.error('Error processing context query:', error);
-      throw new Error(`Context query failed: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`);
+      throw new Error(`Context query failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

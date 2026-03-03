@@ -175,21 +175,17 @@ export class CDNIntegrationService {
 
   // ── Analytics ──────────────────────────────────────────────
 
-  generateStats(totalRequests: number = 10000): CDNStats {
-    const hitRate = 0.85 + Math.random() * 0.1
-    const cacheHits = Math.round(totalRequests * hitRate)
+  generateStats(): CDNStats {
+    // Real implementation should query CDN provider API (CloudFront/Cloudflare/Fastly)
     return {
-      totalRequests, cacheHits, cacheMisses: totalRequests - cacheHits,
-      hitRate: Math.round(hitRate * 10000) / 10000,
-      bandwidthGB: Math.round(totalRequests * 0.05 * 100) / 100,
-      errorRate: Math.round(Math.random() * 0.02 * 10000) / 10000,
-      topPaths: [
-        { path: '/api/v1/libraries', requests: Math.round(totalRequests * 0.3), hitRate: 0.92 },
-        { path: '/static/js/main.js', requests: Math.round(totalRequests * 0.2), hitRate: 0.99 },
-        { path: '/api/v1/docs', requests: Math.round(totalRequests * 0.15), hitRate: 0.88 },
-      ],
+      totalRequests: 0, cacheHits: 0, cacheMisses: 0,
+      hitRate: 0, bandwidthGB: 0, errorRate: 0, topPaths: [],
     }
   }
 }
 
-export const cdnIntegrationService = new CDNIntegrationService()
+let _cdnIntegrationService: CDNIntegrationService | null = null
+export function getCdnIntegrationService(): CDNIntegrationService {
+  if (!_cdnIntegrationService) _cdnIntegrationService = new CDNIntegrationService()
+  return _cdnIntegrationService
+}

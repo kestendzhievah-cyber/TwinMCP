@@ -1,12 +1,12 @@
 /**
  * GET /api/auth/session
  * Get current session info
- * 
+ *
  * POST /api/auth/session
  * Refresh session
  */
 
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Authenticate request
     const { context, error } = await authenticateRequest(request, {
       required: false,
-      rateLimitConfig: 'api'
+      rateLimitConfig: 'api',
     });
 
     if (error) {
@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
         data: {
           authenticated: false,
           session: null,
-          user: null
-        }
+          user: null,
+        },
       });
     }
 
@@ -54,17 +54,18 @@ export async function GET(request: NextRequest) {
       data: {
         authenticated: true,
         session,
-        user: context.user ? {
-          id: context.user.id,
-          email: context.user.email,
-          name: context.user.name,
-          avatar: context.user.avatar,
-          plan: context.user.plan,
-          role: context.user.role
-        } : null
-      }
+        user: context.user
+          ? {
+              id: context.user.id,
+              email: context.user.email,
+              name: context.user.name,
+              avatar: context.user.avatar,
+              plan: context.user.plan,
+              role: context.user.role,
+            }
+          : null,
+      },
     });
-
   } catch (error) {
     logger.error('[Auth Session GET] Error:', error);
     return NextResponse.json(
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     // Authenticate request
     const { context, error } = await authenticateRequest(request, {
       required: true,
-      rateLimitConfig: 'auth'
+      rateLimitConfig: 'auth',
     });
 
     if (error) {
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
       email: context.user.email,
       name: context.user.name,
       avatar: context.user.avatar,
-      role: context.user.role
+      role: context.user.role,
     });
 
     return NextResponse.json({
@@ -113,11 +114,10 @@ export async function POST(request: NextRequest) {
           name: context.user.name,
           avatar: context.user.avatar,
           plan: context.user.plan,
-          role: context.user.role
-        }
-      }
+          role: context.user.role,
+        },
+      },
     });
-
   } catch (error) {
     logger.error('[Auth Session POST] Error:', error);
     return NextResponse.json(

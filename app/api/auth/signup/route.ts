@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -20,31 +20,28 @@ export async function POST(request: NextRequest) {
     }
     const { email, password, recaptchaToken } = parsed.data;
 
-    // VÃ©rifier le token reCAPTCHA si fourni
+    // Vérifier le token reCAPTCHA si fourni
     if (recaptchaToken) {
       const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
       if (!isRecaptchaValid) {
-        return NextResponse.json(
-          { error: 'VÃ©rification reCAPTCHA Ã©chouÃ©e' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Vérification reCAPTCHA échouée' }, { status: 400 });
       }
     }
 
-    // CrÃ©er l'utilisateur avec Firebase
+    // Créer l'utilisateur avec Firebase
     if (!auth) {
       return NextResponse.json(
-        { error: 'Service d\'authentification non disponible' },
+        { error: "Service d'authentification non disponible" },
         { status: 503 }
       );
     }
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-    // Retourner les informations de l'utilisateur crÃ©Ã©
+    // Retourner les informations de l'utilisateur créé
     const user = userCredential.user;
 
     return NextResponse.json({
-      message: 'Compte crÃ©Ã© avec succÃ¨s',
+      message: 'Compte créé avec succès',
       user: {
         uid: user.uid,
         email: user.email,
@@ -52,33 +49,29 @@ export async function POST(request: NextRequest) {
         emailVerified: user.emailVerified,
       },
     });
-
   } catch (error: any) {
-    logger.error('Erreur lors de l\'inscription:', error);
+    logger.error("Erreur lors de l'inscription:", error);
 
     // Gestion des erreurs Firebase
-    let errorMessage = 'Erreur lors de l\'inscription';
+    let errorMessage = "Erreur lors de l'inscription";
 
     switch (error.code) {
       case 'auth/email-already-in-use':
-        errorMessage = 'Cette adresse email est dÃ©jÃ  utilisÃ©e';
+        errorMessage = 'Cette adresse email est déjà utilisée';
         break;
       case 'auth/invalid-email':
         errorMessage = 'Adresse email invalide';
         break;
       case 'auth/operation-not-allowed':
-        errorMessage = 'L\'inscription par email n\'est pas activÃ©e';
+        errorMessage = "L'inscription par email n'est pas activée";
         break;
       case 'auth/weak-password':
         errorMessage = 'Le mot de passe est trop faible';
         break;
       default:
-        errorMessage = error.message || 'Erreur lors de l\'inscription';
+        errorMessage = error.message || "Erreur lors de l'inscription";
     }
 
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 400 });
   }
 }

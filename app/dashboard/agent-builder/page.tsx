@@ -4,9 +4,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { 
-  Github, 
-  ChevronRight, 
+import {
+  Github,
+  ChevronRight,
   Sparkles,
   ArrowRight,
   Globe,
@@ -25,19 +25,19 @@ import {
   RefreshCw,
   Plus,
   Rocket,
-  Library
+  Library,
 } from 'lucide-react';
 
 // Icônes personnalisées pour les sources
 const GitLabIcon = () => (
   <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-    <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
+    <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z" />
   </svg>
 );
 
 const BitbucketIcon = () => (
   <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-    <path d="M.778 1.213a.768.768 0 0 0-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 0 0 .77-.646l3.27-20.03a.768.768 0 0 0-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z"/>
+    <path d="M.778 1.213a.768.768 0 0 0-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 0 0 .77-.646l3.27-20.03a.768.768 0 0 0-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z" />
   </svg>
 );
 
@@ -76,11 +76,11 @@ interface ImportResult {
 // Helper to save library to localStorage
 function saveLibraryToLocalStorage(library: any) {
   if (typeof window === 'undefined') return;
-  
+
   try {
     const stored = localStorage.getItem('twinmcp_user_libraries');
     const libraries = stored ? JSON.parse(stored) : [];
-    
+
     // Check if already exists
     const existingIndex = libraries.findIndex((lib: any) => lib.id === library.id);
     if (existingIndex >= 0) {
@@ -88,7 +88,7 @@ function saveLibraryToLocalStorage(library: any) {
     } else {
       libraries.unshift(library);
     }
-    
+
     // Keep only last 50 libraries
     const trimmed = libraries.slice(0, 50);
     localStorage.setItem('twinmcp_user_libraries', JSON.stringify(trimmed));
@@ -100,7 +100,7 @@ function saveLibraryToLocalStorage(library: any) {
 // Helper to get libraries from localStorage
 function getLibrariesFromLocalStorage(): any[] {
   if (typeof window === 'undefined') return [];
-  
+
   try {
     const stored = localStorage.getItem('twinmcp_user_libraries');
     return stored ? JSON.parse(stored) : [];
@@ -129,7 +129,7 @@ export default function AjouterBibliotheques() {
       status: 'completed',
       tokensCount: lib.tokens,
       snippetsCount: lib.snippets,
-      createdAt: lib.createdAt
+      createdAt: lib.createdAt,
     }));
     setRecentImports(recent);
   }, []);
@@ -141,7 +141,7 @@ export default function AjouterBibliotheques() {
       icon: <Github className="w-6 h-6" />,
       description: 'Importer depuis un dépôt GitHub public ou privé',
       placeholder: 'https://github.com/utilisateur/depot',
-      available: true
+      available: true,
     },
     {
       id: 'gitlab',
@@ -149,7 +149,7 @@ export default function AjouterBibliotheques() {
       icon: <GitLabIcon />,
       description: 'Importer depuis un projet GitLab',
       placeholder: 'https://gitlab.com/utilisateur/projet',
-      available: true
+      available: true,
     },
     {
       id: 'bitbucket',
@@ -157,7 +157,7 @@ export default function AjouterBibliotheques() {
       icon: <BitbucketIcon />,
       description: 'Importer depuis un dépôt Bitbucket',
       placeholder: 'https://bitbucket.org/utilisateur/depot',
-      available: true
+      available: true,
     },
     {
       id: 'openapi',
@@ -165,7 +165,7 @@ export default function AjouterBibliotheques() {
       icon: <OpenAPIIcon />,
       description: 'Spécification OpenAPI/Swagger JSON ou YAML',
       placeholder: 'https://api.exemple.com/openapi.json',
-      available: true
+      available: true,
     },
     {
       id: 'llms',
@@ -173,7 +173,7 @@ export default function AjouterBibliotheques() {
       icon: <FileText className="w-6 h-6" />,
       description: 'Fichier llms.txt pour documentation LLM',
       placeholder: 'https://exemple.com/llms.txt',
-      available: true
+      available: true,
     },
     {
       id: 'website',
@@ -181,8 +181,8 @@ export default function AjouterBibliotheques() {
       icon: <Globe className="w-6 h-6" />,
       description: 'Extraire la documentation depuis un site web',
       placeholder: 'https://docs.exemple.com',
-      available: true
-    }
+      available: true,
+    },
   ];
 
   const handleImport = useCallback(async () => {
@@ -224,7 +224,7 @@ export default function AjouterBibliotheques() {
         if (result.data.library) {
           saveLibraryToLocalStorage(result.data.library);
         }
-        
+
         setRecentImports(prev => [result.data!, ...prev.slice(0, 4)]);
         // Réinitialiser le formulaire après succès et rediriger vers la bibliothèque
         setTimeout(() => {
@@ -237,18 +237,21 @@ export default function AjouterBibliotheques() {
     } catch (error) {
       setImportResult({
         success: false,
-        error: 'Erreur de connexion. Veuillez réessayer.'
+        error: 'Erreur de connexion. Veuillez réessayer.',
       });
     } finally {
       setIsImporting(false);
     }
   }, [importUrl, selectedSource, libraryName, router, user]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && importUrl.trim() && !isImporting) {
-      handleImport();
-    }
-  }, [importUrl, isImporting, handleImport]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && importUrl.trim() && !isImporting) {
+        handleImport();
+      }
+    },
+    [importUrl, isImporting, handleImport]
+  );
 
   // Client-side URL validation
   const isValidUrl = useCallback((url: string): boolean => {
@@ -281,7 +284,7 @@ export default function AjouterBibliotheques() {
           <div className="absolute top-4 left-8 w-32 h-32 bg-purple-500 rounded-full blur-3xl" />
           <div className="absolute bottom-4 right-8 w-40 h-40 bg-pink-500 rounded-full blur-3xl" />
         </div>
-        
+
         <div className="relative p-6 lg:p-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {/* Left Content */}
@@ -299,7 +302,7 @@ export default function AjouterBibliotheques() {
                   </p>
                 </div>
               </div>
-              
+
               {/* Features Pills */}
               <div className="flex flex-wrap gap-2 mt-4">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 border border-purple-500/30 rounded-full text-sm text-purple-300">
@@ -324,10 +327,12 @@ export default function AjouterBibliotheques() {
                 <div className="text-xs text-gray-400">Sources</div>
               </div>
               <div className="text-center p-4 bg-[#1a1b2e]/50 rounded-xl border border-purple-500/20">
-                <div className="text-2xl lg:text-3xl font-bold text-purple-400">{recentImports.length}</div>
+                <div className="text-2xl lg:text-3xl font-bold text-purple-400">
+                  {recentImports.length}
+                </div>
                 <div className="text-xs text-gray-400">Importés</div>
               </div>
-              <Link 
+              <Link
                 href="/dashboard/library"
                 className="hidden lg:flex flex-col items-center justify-center p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30 hover:border-purple-500/50 transition group"
               >
@@ -348,9 +353,9 @@ export default function AjouterBibliotheques() {
               <Database className="w-5 h-5 text-purple-400" />
               Choisir une source
             </h2>
-            
+
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {librarySources.map((source) => (
+              {librarySources.map(source => (
                 <button
                   key={source.id}
                   onClick={() => {
@@ -367,21 +372,23 @@ export default function AjouterBibliotheques() {
                   }`}
                   data-testid={`source-${source.id}`}
                 >
-                  <div className={`mb-2 ${
-                    selectedSource === source.id 
-                      ? 'text-purple-400' 
-                      : 'text-gray-400 group-hover:text-purple-400'
-                  }`}>
+                  <div
+                    className={`mb-2 ${
+                      selectedSource === source.id
+                        ? 'text-purple-400'
+                        : 'text-gray-400 group-hover:text-purple-400'
+                    }`}
+                  >
                     {source.icon}
                   </div>
-                  <p className={`font-medium text-sm ${
-                    selectedSource === source.id ? 'text-white' : 'text-gray-300'
-                  }`}>
+                  <p
+                    className={`font-medium text-sm ${
+                      selectedSource === source.id ? 'text-white' : 'text-gray-300'
+                    }`}
+                  >
                     {source.name}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                    {source.description}
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{source.description}</p>
                 </button>
               ))}
             </div>
@@ -408,7 +415,7 @@ export default function AjouterBibliotheques() {
                   <input
                     type="url"
                     value={importUrl}
-                    onChange={(e) => setImportUrl(e.target.value)}
+                    onChange={e => setImportUrl(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={selectedSourceData.placeholder}
                     className={`w-full px-4 py-3 bg-[#0f1020] border rounded-xl text-white placeholder-gray-500 outline-none transition ${
@@ -434,7 +441,7 @@ export default function AjouterBibliotheques() {
                   <input
                     type="text"
                     value={libraryName}
-                    onChange={(e) => setLibraryName(e.target.value)}
+                    onChange={e => setLibraryName(e.target.value)}
                     placeholder="Ex: Ma Bibliothèque"
                     className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/20 rounded-xl text-white placeholder-gray-500 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition"
                     data-testid="import-name-input"
@@ -443,11 +450,13 @@ export default function AjouterBibliotheques() {
 
                 {/* Result Message */}
                 {importResult && (
-                  <div className={`p-4 rounded-xl flex items-start gap-3 ${
-                    importResult.success 
-                      ? 'bg-green-500/10 border border-green-500/30' 
-                      : 'bg-red-500/10 border border-red-500/30'
-                  }`}>
+                  <div
+                    className={`p-4 rounded-xl flex items-start gap-3 ${
+                      importResult.success
+                        ? 'bg-green-500/10 border border-green-500/30'
+                        : 'bg-red-500/10 border border-red-500/30'
+                    }`}
+                  >
                     {importResult.success ? (
                       <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
                     ) : (
@@ -459,9 +468,22 @@ export default function AjouterBibliotheques() {
                       </p>
                       {importResult.success && importResult.data && (
                         <div className="mt-2 text-sm text-gray-400">
-                          <p>Bibliothèque: <span className="text-white">{importResult.data.name}</span></p>
-                          <p>Tokens estimés: <span className="text-white">{importResult.data.tokensCount?.toLocaleString()}</span></p>
-                          <p>Snippets: <span className="text-white">{importResult.data.snippetsCount?.toLocaleString()}</span></p>
+                          <p>
+                            Bibliothèque:{' '}
+                            <span className="text-white">{importResult.data.name}</span>
+                          </p>
+                          <p>
+                            Tokens estimés:{' '}
+                            <span className="text-white">
+                              {importResult.data.tokensCount?.toLocaleString()}
+                            </span>
+                          </p>
+                          <p>
+                            Snippets:{' '}
+                            <span className="text-white">
+                              {importResult.data.snippetsCount?.toLocaleString()}
+                            </span>
+                          </p>
                           <p className="mt-2 text-purple-400 flex items-center gap-1">
                             <Loader2 className="w-3 h-3 animate-spin" />
                             Redirection vers la bibliothèque...
@@ -470,7 +492,7 @@ export default function AjouterBibliotheques() {
                       )}
                     </div>
                     {importResult.success && (
-                      <Link 
+                      <Link
                         href="/dashboard/library"
                         className="text-purple-400 hover:text-purple-300 transition flex-shrink-0"
                         title="Voir dans la bibliothèque"
@@ -513,7 +535,7 @@ export default function AjouterBibliotheques() {
               <Clock className="w-5 h-5 text-blue-400" />
               Imports récents
             </h3>
-            
+
             {recentImports.length > 0 ? (
               <div className="space-y-3">
                 {recentImports.map((imp, index) => (
@@ -560,7 +582,7 @@ export default function AjouterBibliotheques() {
                 <span>Les mises à jour sont synchronisées automatiquement</span>
               </li>
             </ul>
-            
+
             <Link
               href="/dashboard/docs"
               className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl hover:bg-purple-500/30 transition text-sm font-medium"

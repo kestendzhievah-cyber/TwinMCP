@@ -33,8 +33,13 @@ function ensureCleanup() {
   cleanupInterval = setInterval(() => {
     const now = Date.now();
     for (const [id, session] of sseSessions) {
-      if (now - session.lastActivity > 300_000) { // 5 minutes timeout
-        try { session.controller.close(); } catch { /* ok */ }
+      if (now - session.lastActivity > 300_000) {
+        // 5 minutes timeout
+        try {
+          session.controller.close();
+        } catch {
+          /* ok */
+        }
         sseSessions.delete(id);
       }
     }
@@ -66,7 +71,7 @@ function sendSSE(controller: ReadableStreamDefaultController, event: string, dat
 // ---------------------------------------------------------------------------
 
 function generateSessionId(): string {
-  return `sse_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  return `sse_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').substring(0, 11)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,15 +109,24 @@ async function ensureServices() {
   try {
     const { prisma } = await import('@/lib/prisma');
     let redis: any = null;
-    try { redis = (await import('@/lib/redis')).redis; } catch { /* ok */ }
     try {
-      const { LibraryResolutionService } = await import('@/lib/services/library-resolution.service');
+      redis = (await import('@/lib/redis')).redis;
+    } catch {
+      /* ok */
+    }
+    try {
+      const { LibraryResolutionService } =
+        await import('@/lib/services/library-resolution.service');
       _libraryService = new LibraryResolutionService(prisma, redis);
-    } catch { /* ok */ }
+    } catch {
+      /* ok */
+    }
     try {
       const { VectorSearchService } = await import('@/lib/services/vector-search.service');
       _vectorService = new VectorSearchService(prisma, redis);
-    } catch { /* ok */ }
+    } catch {
+      /* ok */
+    }
   } catch {
     _servicesReady = false;
   }
@@ -144,7 +158,13 @@ async function executeTool(toolName: string, toolArgs: any): Promise<any> {
         context_limit: toolArgs.maxTokens || 4000,
       });
     }
-    return { libraryId: toolArgs.libraryId, query: toolArgs.query, results: [], totalResults: 0, totalTokens: 0 };
+    return {
+      libraryId: toolArgs.libraryId,
+      query: toolArgs.query,
+      results: [],
+      totalResults: 0,
+      totalTokens: 0,
+    };
   }
 
   throw new Error(`Unknown tool: ${toolName}`);
@@ -157,24 +177,39 @@ async function executeTool(toolName: string, toolArgs: any): Promise<any> {
 const MCP_TOOLS = [
   {
     name: 'resolve-library-id',
-    description: 'Resolve library names and find matching software libraries. Use this to find the TwinMCP library ID for a given library name before querying documentation.',
+    description:
+      'Resolve library names and find matching software libraries. Use this to find the TwinMCP library ID for a given library name before querying documentation.',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'User question or task to help contextualise the search' },
-        libraryName: { type: 'string', description: 'Human name of the library (e.g. "React", "Next.js", "MongoDB")' },
+        query: {
+          type: 'string',
+          description: 'User question or task to help contextualise the search',
+        },
+        libraryName: {
+          type: 'string',
+          description: 'Human name of the library (e.g. "React", "Next.js", "MongoDB")',
+        },
       },
       required: ['query', 'libraryName'],
     },
   },
   {
     name: 'query-docs',
-    description: 'Search documentation for a specific library. Returns code snippets, guides, and API references optimised for LLM context.',
+    description:
+      'Search documentation for a specific library. Returns code snippets, guides, and API references optimised for LLM context.',
     inputSchema: {
       type: 'object',
       properties: {
-        libraryId: { type: 'string', description: 'TwinMCP library ID in format /vendor/lib (e.g. /mongodb/docs, /vercel/next.js)' },
-        query: { type: 'string', description: 'Question or task (setup, code example, configuration, etc.)' },
+        libraryId: {
+          type: 'string',
+          description:
+            'TwinMCP library ID in format /vendor/lib (e.g. /mongodb/docs, /vercel/next.js)',
+        },
+        query: {
+          type: 'string',
+          description: 'Question or task (setup, code example, configuration, etc.)',
+        },
         version: { type: 'string', description: 'Optional specific version of the library' },
         maxResults: { type: 'number', description: 'Maximum number of results (default: 10)' },
         maxTokens: { type: 'number', description: 'Maximum tokens in response (default: 4000)' },
@@ -216,7 +251,11 @@ async function processMessage(message: any): Promise<any> {
     case 'tools/call': {
       const { name: toolName, arguments: toolArgs } = message.params ?? {};
       if (!toolName) {
-        return { jsonrpc: '2.0', id, error: { code: -32602, message: 'Invalid params: tool name required' } };
+        return {
+          jsonrpc: '2.0',
+          id,
+          error: { code: -32602, message: 'Invalid params: tool name required' },
+        };
       }
       try {
         const result = await executeTool(toolName, toolArgs ?? {});
@@ -239,7 +278,11 @@ async function processMessage(message: any): Promise<any> {
 
     default:
       if (id === null || id === undefined) return null; // Notification — no response
-      return { jsonrpc: '2.0', id, error: { code: -32601, message: `Method not found: ${message.method}` } };
+      return {
+        jsonrpc: '2.0',
+        id,
+        error: { code: -32601, message: `Method not found: ${message.method}` },
+      };
   }
 }
 
@@ -250,10 +293,7 @@ async function processMessage(message: any): Promise<any> {
 export async function GET(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (!auth) {
-    return NextResponse.json(
-      { error: 'Invalid or missing API key' },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: 'Invalid or missing API key' }, { status: 401 });
   }
 
   ensureCleanup();
@@ -287,7 +327,11 @@ export async function GET(request: NextRequest) {
       request.signal.addEventListener('abort', () => {
         clearInterval(pingTimer);
         sseSessions.delete(sessionId);
-        try { controller.close(); } catch { /* ok */ }
+        try {
+          controller.close();
+        } catch {
+          /* ok */
+        }
       });
     },
     cancel() {
@@ -300,7 +344,7 @@ export async function GET(request: NextRequest) {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     },
   });
@@ -316,7 +360,11 @@ export async function POST(request: NextRequest) {
 
   if (!sessionId || !sseSessions.has(sessionId)) {
     return NextResponse.json(
-      { jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Invalid or missing sessionId' } },
+      {
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32000, message: 'Invalid or missing sessionId' },
+      },
       { status: 400 }
     );
   }
@@ -357,7 +405,7 @@ export async function POST(request: NextRequest) {
   };
 
   // Fire and forget
-  processAndSend().catch((err) => {
+  processAndSend().catch(err => {
     logger.error('[MCP SSE] Error processing message:', err);
   });
 

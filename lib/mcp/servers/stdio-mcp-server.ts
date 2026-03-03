@@ -1,5 +1,11 @@
 import { Readable, Writable } from 'stream';
-import { MCPMessage, MCPErrorCodes, MCPMethods, MCPInitializeResponse, MCPServerTool } from '../types';
+import {
+  MCPMessage,
+  MCPErrorCodes,
+  MCPMethods,
+  MCPInitializeResponse,
+  MCPServerTool,
+} from '../types';
 import { logger } from '@/lib/logger';
 
 export class StdioMCPServer {
@@ -12,12 +18,12 @@ export class StdioMCPServer {
   constructor(config: { tools: MCPServerTool[]; input?: Readable; output?: Writable }) {
     this.input = config.input || process.stdin;
     this.output = config.output || process.stdout;
-    
+
     // Enregistrer les outils
     config.tools.forEach(tool => {
       this.tools.set(tool.name, tool);
     });
-    
+
     this.setupEventHandlers();
   }
 
@@ -26,12 +32,12 @@ export class StdioMCPServer {
     this.input.on('data', (chunk: string) => {
       this.handleIncomingData(chunk);
     });
-    
-    this.input.on('error', (error) => {
+
+    this.input.on('error', error => {
       this.handleError('Input stream error', error);
     });
-    
-    this.output.on('error', (error) => {
+
+    this.output.on('error', error => {
       this.handleError('Output stream error', error);
     });
 
@@ -47,11 +53,11 @@ export class StdioMCPServer {
 
   private handleIncomingData(chunk: string): void {
     this.buffer += chunk;
-    
+
     // Traiter chaque message complet (séparé par \n)
     const messages = this.buffer.split('\n');
     this.buffer = messages.pop() || '';
-    
+
     messages.forEach(message => {
       if (message.trim()) {
         this.processMessage(message);
@@ -62,7 +68,7 @@ export class StdioMCPServer {
   private async processMessage(rawMessage: string): Promise<void> {
     try {
       const message: MCPMessage = JSON.parse(rawMessage);
-      
+
       // Valider le format JSON-RPC
       if (message.jsonrpc !== '2.0') {
         this.sendError(message.id, MCPErrorCodes.InvalidRequest, 'Invalid JSON-RPC version');
@@ -80,10 +86,19 @@ export class StdioMCPServer {
       } else if (message.method === MCPMethods.ToolsCall) {
         await this.handleToolCall(message);
       } else {
-        this.sendError(message.id, MCPErrorCodes.MethodNotFound, `Method not found: ${message.method}`);
+        this.sendError(
+          message.id,
+          MCPErrorCodes.MethodNotFound,
+          `Method not found: ${message.method}`
+        );
       }
     } catch (error) {
-      this.sendError(null, MCPErrorCodes.ParseError, 'Parse error', error instanceof Error ? error.message : String(error));
+      this.sendError(
+        null,
+        MCPErrorCodes.ParseError,
+        'Parse error',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
@@ -99,18 +114,18 @@ export class StdioMCPServer {
       protocolVersion: '2024-11-05',
       capabilities: {
         tools: {},
-        logging: {}
+        logging: {},
       },
       serverInfo: {
         name: 'twinmcp-server',
-        version: '1.0.0'
-      }
+        version: '1.0.0',
+      },
     };
-    
+
     this.sendMessage({
       jsonrpc: '2.0' as const,
       id: message.id!,
-      result: response
+      result: response,
     });
   }
 
@@ -118,15 +133,15 @@ export class StdioMCPServer {
     const tools = Array.from(this.tools.values()).map(tool => ({
       name: tool.name,
       description: tool.description,
-      inputSchema: tool.inputSchema
+      inputSchema: tool.inputSchema,
     }));
-    
+
     const response: MCPMessage = {
       jsonrpc: '2.0' as const,
       id: message.id!,
-      result: { tools }
+      result: { tools },
     };
-    
+
     this.sendMessage(response);
   }
 
@@ -137,21 +152,21 @@ export class StdioMCPServer {
     }
 
     const { name, arguments: args } = message.params;
-    
+
     if (!name || typeof name !== 'string') {
       this.sendError(message.id, MCPErrorCodes.InvalidParams, 'Tool name is required');
       return;
     }
-    
+
     if (!this.tools.has(name)) {
       this.sendError(message.id, MCPErrorCodes.ToolNotFound, 'Tool not found', name);
       return;
     }
-    
+
     try {
       const tool = this.tools.get(name)!;
       const result = await tool.run(args || {});
-      
+
       const response: MCPMessage = {
         jsonrpc: '2.0' as const,
         id: message.id!,
@@ -159,18 +174,18 @@ export class StdioMCPServer {
           content: [
             {
               type: 'text',
-              text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
-            }
-          ]
-        }
+              text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+            },
+          ],
+        },
       };
-      
+
       this.sendMessage(response);
     } catch (error) {
       this.sendError(
-        message.id, 
-        MCPErrorCodes.ToolExecutionError, 
-        'Tool execution error', 
+        message.id,
+        MCPErrorCodes.ToolExecutionError,
+        'Tool execution error',
         error instanceof Error ? error.message : String(error)
       );
     }
@@ -178,10 +193,13 @@ export class StdioMCPServer {
 
   private sendMessage(message: MCPMessage): void {
     try {
-      const jsonMessage = JSON.stringify(message) + '\n';
+      const jsonMessage = `${JSON.stringify(message)}\n`;
       this.output.write(jsonMessage);
     } catch (error) {
-      this.handleError('Failed to send message', error instanceof Error ? error : new Error(String(error)));
+      this.handleError(
+        'Failed to send message',
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }
 
@@ -189,9 +207,9 @@ export class StdioMCPServer {
     const errorResponse: MCPMessage = {
       jsonrpc: '2.0' as const,
       id,
-      error: { code, message, data }
+      error: { code, message, data },
     };
-    
+
     this.sendMessage(errorResponse);
   }
 
@@ -201,12 +219,14 @@ export class StdioMCPServer {
 
   private gracefulShutdown(): void {
     logger.info('TwinMCP Server shutting down gracefully...');
-    this.stop().then(() => {
-      process.exit(0);
-    }).catch((error) => {
-      logger.error('Error during shutdown:', error);
-      process.exit(1);
-    });
+    this.stop()
+      .then(() => {
+        process.exit(0);
+      })
+      .catch(error => {
+        logger.error('Error during shutdown:', error);
+        process.exit(1);
+      });
   }
 
   async start(): Promise<void> {
@@ -221,7 +241,10 @@ export class StdioMCPServer {
       this.output.destroy();
       logger.info('TwinMCP Server stopped');
     } catch (error) {
-      this.handleError('Error during shutdown', error instanceof Error ? error : new Error(String(error)));
+      this.handleError(
+        'Error during shutdown',
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }
 

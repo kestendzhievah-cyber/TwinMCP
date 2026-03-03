@@ -1,112 +1,115 @@
-import { PrismaClient } from '@prisma/client'
-import { Redis } from 'ioredis'
-import { z } from 'zod'
-import { VectorStoreService, VectorSearchResult } from '../../src/services/vector-store.service'
-import { ContextAssembler } from './context-assembler.service'
-import { LibraryService } from './library.service'
+import { PrismaClient } from '@prisma/client';
+import { Redis } from 'ioredis';
+import { z } from 'zod';
+import { VectorStoreService, VectorSearchResult } from '../../src/services/vector-store.service';
+import { ContextAssembler } from './context-assembler.service';
+import { LibraryService } from './library.service';
 
 // Types pour la recherche de documentation
 export const QueryDocsInputSchema = z.object({
-  library_id: z.string()
+  library_id: z
+    .string()
     .min(1, "L'ID de bibliothèque est requis")
-    .describe("Identifiant unique de la bibliothèque"),
-  
-  query: z.string()
-    .min(1, "La requête est requise")
-    .max(1000, "La requête est trop longue")
-    .describe("Question ou recherche sur la documentation"),
-  
-  version: z.string()
-    .optional()
-    .describe("Version spécifique de la bibliothèque"),
-  
-  max_results: z.number()
+    .describe('Identifiant unique de la bibliothèque'),
+
+  query: z
+    .string()
+    .min(1, 'La requête est requise')
+    .max(1000, 'La requête est trop longue')
+    .describe('Question ou recherche sur la documentation'),
+
+  version: z.string().optional().describe('Version spécifique de la bibliothèque'),
+
+  max_results: z
+    .number()
     .int()
     .min(1)
     .max(20)
     .default(5)
-    .describe("Nombre maximum de résultats à retourner"),
-  
-  include_code: z.boolean()
+    .describe('Nombre maximum de résultats à retourner'),
+
+  include_code: z
+    .boolean()
     .default(true)
-    .describe("Inclure les snippets de code dans les résultats"),
-  
-  context_limit: z.number()
+    .describe('Inclure les snippets de code dans les résultats'),
+
+  context_limit: z
+    .number()
     .int()
     .min(1000)
     .max(8000)
     .default(4000)
-    .describe("Limite de tokens pour le contexte")
-})
+    .describe('Limite de tokens pour le contexte'),
+});
 
-export type QueryDocsInput = z.infer<typeof QueryDocsInputSchema>
+export type QueryDocsInput = z.infer<typeof QueryDocsInputSchema>;
 
 export interface DocumentResult {
-  content: string
+  content: string;
   metadata: {
-    source: string
-    url: string
-    section: string
-    type: 'text' | 'code' | 'example'
-    relevanceScore: number
-  }
+    source: string;
+    url: string;
+    section: string;
+    type: 'text' | 'code' | 'example';
+    relevanceScore: number;
+  };
 }
 
 export interface QueryDocsOutput {
   library: {
-    id: string
-    name: string
-    version: string
-    description: string
-  }
-  query: string
-  results: DocumentResult[]
-  context: string
-  totalTokens: number
-  truncated: boolean
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+  };
+  query: string;
+  results: DocumentResult[];
+  context: string;
+  totalTokens: number;
+  truncated: boolean;
 }
 
 export class VectorSearchService {
-  private db: PrismaClient
-  private redis: Redis
-  private vectorStoreService: VectorStoreService
-  private contextAssembler: ContextAssembler
-  private libraryService: LibraryService
+  private db: PrismaClient;
+  private redis: Redis;
+  private vectorStoreService: VectorStoreService;
+  private contextAssembler: ContextAssembler;
+  private libraryService: LibraryService;
 
   constructor(db: PrismaClient, redis: Redis) {
-    this.db = db
-    this.redis = redis
-    this.vectorStoreService = new VectorStoreService()
-    this.contextAssembler = new ContextAssembler()
-    this.libraryService = new LibraryService(db)
+    this.db = db;
+    this.redis = redis;
+    this.vectorStoreService = new VectorStoreService();
+    this.contextAssembler = new ContextAssembler();
+    this.libraryService = new LibraryService(db);
   }
 
   async searchDocuments(input: QueryDocsInput): Promise<QueryDocsOutput> {
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     try {
       // Valider que la bibliothèque existe
-      const library = await this.libraryService.getLibrary(input.library_id)
+      const library = await this.libraryService.getLibrary(input.library_id);
 
       if (!library) {
-        throw new Error(`Library '${input.library_id}' not found`)
+        throw new Error(`Library '${input.library_id}' not found`);
       }
 
       // Rechercher dans le vector store
       const searchOptions: any = {
         topK: input.max_results,
-        libraryId: input.library_id
-      }
-      
+        libraryId: input.library_id,
+      };
+
       if (input.version) {
-        searchOptions.version = input.version
+        searchOptions.version = input.version;
       }
-      
+
       if (!input.include_code) {
-        searchOptions.contentType = 'guide'
+        searchOptions.contentType = 'guide';
       }
-      
-      const vectorResults = await this.vectorStoreService.search(input.query, searchOptions)
+
+      const vectorResults = await this.vectorStoreService.search(input.query, searchOptions);
 
       // Convertir les résultats en DocumentResult
       const documents: DocumentResult[] = vectorResults.map(result => ({
@@ -116,9 +119,9 @@ export class VectorSearchService {
           url: result.metadata.sourceUrl,
           section: result.metadata.section || 'Documentation',
           type: this.mapContentType(result.metadata.contentType),
-          relevanceScore: result.score
-        }
-      }))
+          relevanceScore: result.score,
+        },
+      }));
 
       if (documents.length === 0) {
         return {
@@ -126,48 +129,55 @@ export class VectorSearchService {
             id: library.id,
             name: library.name,
             version: input.version || library.defaultVersion || 'latest',
-            description: library.description || ''
+            description: library.description || '',
           },
           query: input.query,
           results: [],
           context: '',
           totalTokens: 0,
-          truncated: false
-        }
+          truncated: false,
+        };
       }
 
       // Assembler le contexte
-      const assembled = this.contextAssembler.assembleContext(documents, input.query, input.context_limit)
+      const assembled = this.contextAssembler.assembleContext(
+        documents,
+        input.query,
+        input.context_limit
+      );
 
       return {
         library: {
           id: library.id,
           name: library.name,
           version: input.version || library.defaultVersion || 'latest',
-          description: library.description || ''
+          description: library.description || '',
         },
         query: input.query,
         results: documents,
         context: assembled.context,
         totalTokens: assembled.totalTokens,
-        truncated: assembled.truncated
-      }
-
+        truncated: assembled.truncated,
+      };
     } catch (error) {
-      throw new Error(`Document search failed: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(
+        `Document search failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  private mapContentType(contentType: 'snippet' | 'guide' | 'api_ref'): 'text' | 'code' | 'example' {
+  private mapContentType(
+    contentType: 'snippet' | 'guide' | 'api_ref'
+  ): 'text' | 'code' | 'example' {
     switch (contentType) {
       case 'snippet':
-        return 'code'
+        return 'code';
       case 'guide':
-        return 'text'
+        return 'text';
       case 'api_ref':
-        return 'text'
+        return 'text';
       default:
-        return 'text'
+        return 'text';
     }
   }
 
@@ -186,8 +196,8 @@ export class VectorSearchService {
           url: `https://docs.${library.name}.com`,
           section: 'Getting Started',
           type: 'text',
-          relevanceScore: 0.95
-        }
+          relevanceScore: 0.95,
+        },
       },
       {
         content: `## Installation\n\n\`\`\`bash\nnpm install ${library.name}\`\`\``,
@@ -196,8 +206,8 @@ export class VectorSearchService {
           url: `https://docs.${library.name}.com/installation`,
           section: 'Installation',
           type: 'code',
-          relevanceScore: 0.88
-        }
+          relevanceScore: 0.88,
+        },
       },
       {
         content: `## Basic Usage\n\nHere's how to use ${library.name} in your project:\n\n\`\`\`javascript\nimport ${library.name} from '${library.name}';\n\nconst instance = new ${library.name}();\ninstance.doSomething();\n\`\`\``,
@@ -206,91 +216,89 @@ export class VectorSearchService {
           url: `https://docs.${library.name}.com/usage`,
           section: 'Usage',
           type: 'example',
-          relevanceScore: 0.82
-        }
-      }
-    ]
+          relevanceScore: 0.82,
+        },
+      },
+    ];
 
     // Filtrer par type si nécessaire
-    let filteredResults = mockResults
+    let filteredResults = mockResults;
     if (!input.include_code) {
-      filteredResults = mockResults.filter(doc => 
-        doc.metadata.type === 'text'
-      )
+      filteredResults = mockResults.filter(doc => doc.metadata.type === 'text');
     }
 
-    return filteredResults.slice(0, input.max_results)
+    return filteredResults.slice(0, input.max_results);
   }
 
   private assembleContext(
-    documents: DocumentResult[], 
+    documents: DocumentResult[],
     query: string,
     maxTokens: number = 4000
   ): {
-    context: string
-    results: DocumentResult[]
-    totalTokens: number
-    truncated: boolean
+    context: string;
+    results: DocumentResult[];
+    totalTokens: number;
+    truncated: boolean;
   } {
-    let context = `# Documentation Query Results\n\n`
-    context += `**Query**: ${query}\n\n`
-    
+    let context = `# Documentation Query Results\n\n`;
+    context += `**Query**: ${query}\n\n`;
+
     // Estimation simple de tokens (1 token ≈ 4 caractères)
-    let currentTokens = Math.ceil(context.length / 4)
-    const results: DocumentResult[] = []
-    
+    let currentTokens = Math.ceil(context.length / 4);
+    const results: DocumentResult[] = [];
+
     for (const doc of documents) {
-      const section = this.formatDocumentSection(doc)
-      const sectionTokens = Math.ceil(section.length / 4)
-      
+      const section = this.formatDocumentSection(doc);
+      const sectionTokens = Math.ceil(section.length / 4);
+
       if (currentTokens + sectionTokens > maxTokens) {
-        break
+        break;
       }
-      
-      context += section
-      currentTokens += sectionTokens
-      
-      results.push(doc)
+
+      context += section;
+      currentTokens += sectionTokens;
+
+      results.push(doc);
     }
-    
+
     return {
       context,
       results,
       totalTokens: currentTokens,
-      truncated: results.length < documents.length
-    }
+      truncated: results.length < documents.length,
+    };
   }
 
   private formatDocumentSection(doc: DocumentResult): string {
-    const meta = doc.metadata
-    let section = ''
-    
+    const meta = doc.metadata;
+    let section = '';
+
     if (meta.type === 'code') {
-      section += `## Code Example\n`
+      section += `## Code Example\n`;
     } else if (meta.type === 'example') {
-      section += `## Example\n`
+      section += `## Example\n`;
     } else {
-      section += `## ${meta.section || 'Documentation'}\n`
+      section += `## ${meta.section || 'Documentation'}\n`;
     }
-    
-    section += `**Source**: ${meta.url}\n`
-    section += `**Relevance**: ${(meta.relevanceScore * 100).toFixed(1)}%\n\n`
-    section += `${doc.content}\n\n`
-    section += `---\n\n`
-    
-    return section
+
+    section += `**Source**: ${meta.url}\n`;
+    section += `**Relevance**: ${(meta.relevanceScore * 100).toFixed(1)}%\n\n`;
+    section += `${doc.content}\n\n`;
+    section += `---\n\n`;
+
+    return section;
   }
 
   // Fallback embedding generator (real implementation in qdrant-vector.service.ts)
   private async generateEmbedding(text: string): Promise<number[]> {
     // Returns random embeddings as fallback when QdrantVectorService is unavailable
-    const bytes = new Uint32Array(1536)
-    crypto.getRandomValues(bytes)
-    return Array.from(bytes).map(v => v / 0xFFFFFFFF)
+    const bytes = new Uint32Array(1536);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(v => v / 0xffffffff);
   }
 
   private async searchInVectorStore(embedding: number[], options: any): Promise<DocumentResult[]> {
     // Fallback — real vector search is in qdrant-vector.service.ts
-    return []
+    return [];
   }
 }

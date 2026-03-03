@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getReportingServices } from '../_shared';
 
@@ -26,14 +26,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       reports,
       count: reports.length,
-      filters: { type, category, status }
+      filters: { type, category, status },
     });
   } catch (error) {
     logger.error('Error fetching reports:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -63,29 +60,38 @@ export async function POST(request: NextRequest) {
         dimensions: [],
         visualizations: [],
         insights: { enabled: true, types: [], threshold: 0.7 },
-        output: { 
-          format: { id: 'pdf', name: 'PDF', extension: '.pdf', mimeType: 'application/pdf', template: 'default' }, 
-          branding: true 
-        }
+        output: {
+          format: {
+            id: 'pdf',
+            name: 'PDF',
+            extension: '.pdf',
+            mimeType: 'application/pdf',
+            template: 'default',
+          },
+          branding: true,
+        },
       },
       schedule: body.schedule,
       createdBy: body.createdBy || 'system',
       recipients: body.recipients || [],
-      output: body.output || { 
-        format: { id: 'pdf', name: 'PDF', extension: '.pdf', mimeType: 'application/pdf', template: 'default' }
-      }
+      output: body.output || {
+        format: {
+          id: 'pdf',
+          name: 'PDF',
+          extension: '.pdf',
+          mimeType: 'application/pdf',
+          template: 'default',
+        },
+      },
     });
 
     return NextResponse.json({
       success: true,
-      report
+      report,
     });
   } catch (error) {
     logger.error('Error creating report:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -107,7 +113,7 @@ async function getAllReports(db: any) {
     nextRun: row.next_run,
     createdBy: row.created_by,
     createdAt: row.metadata?.createdAt || row.created_at,
-    updatedAt: row.metadata?.updatedAt || row.updated_at
+    updatedAt: row.metadata?.updatedAt || row.updated_at,
   }));
 }
 
@@ -134,11 +140,14 @@ async function getReportsByFilters(db: any, filters: any) {
     paramIndex++;
   }
 
-  const result = await db.query(`
+  const result = await db.query(
+    `
     SELECT * FROM reports 
     ${whereClause}
     ORDER BY created_at DESC
-  `, params);
+  `,
+    params
+  );
 
   return result.rows.map((row: any) => ({
     id: row.id,
@@ -152,6 +161,6 @@ async function getReportsByFilters(db: any, filters: any) {
     nextRun: row.next_run,
     createdBy: row.created_by,
     createdAt: row.metadata?.createdAt || row.created_at,
-    updatedAt: row.metadata?.updatedAt || row.updated_at
+    updatedAt: row.metadata?.updatedAt || row.updated_at,
   }));
 }

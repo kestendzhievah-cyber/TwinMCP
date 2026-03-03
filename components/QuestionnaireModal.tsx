@@ -21,7 +21,7 @@ export default function QuestionnaireModal({ onClose }: QuestionnaireModalProps)
     discovery: '',
     whyUse: '',
     activitySector: '',
-    suggestions: ''
+    suggestions: '',
   });
 
   useEffect(() => {
@@ -49,35 +49,35 @@ export default function QuestionnaireModal({ onClose }: QuestionnaireModalProps)
   const [otherSector, setOtherSector] = useState('');
 
   const handleClose = () => {
-  // Ne marque plus comme répondu ici
-  onClose();
-};
-const handleSubmit = (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  // Validation des champs...
-  
-  if (currentStep < 3) {
-    handleNext();
-  } else {
-    // Marquer comme complété uniquement à la soumission
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('hasAnsweredQuestionnaire', 'completed');
-      } catch {
-        // Ignore
-      }
-    }
-    setHasSubmitted(true);
+    // Ne marque plus comme répondu ici
     onClose();
-  }
-};
+  };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation des champs...
+
+    if (currentStep < 3) {
+      handleNext();
+    } else {
+      // Marquer comme complété uniquement à la soumission
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('hasAnsweredQuestionnaire', 'completed');
+        } catch {
+          // Ignore
+        }
+      }
+      setHasSubmitted(true);
+      onClose();
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -97,8 +97,8 @@ const handleSubmit = (e: React.FormEvent) => {
                   { id: 'freq-2', value: 'tiktok', label: 'TikTok' },
                   { id: 'freq-3', value: 'instagram', label: 'Instagram' },
                   { id: 'freq-4', value: 'facebook', label: 'Facebook' },
-                  { id: 'freq-5', value: 'spotify', label: 'Spotify' }
-                ].map((option) => (
+                  { id: 'freq-5', value: 'spotify', label: 'Spotify' },
+                ].map(option => (
                   <div key={option.id} className="flex items-center">
                     <input
                       id={option.id}
@@ -122,7 +122,9 @@ const handleSubmit = (e: React.FormEvent) => {
       case 2:
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-white mb-4">Question 2/3 - Pourquoi notre plateforme</h3>
+            <h3 className="text-lg font-medium text-white mb-4">
+              Question 2/3 - Pourquoi notre plateforme
+            </h3>
             <div>
               <label htmlFor="suggestions" className="block text-sm font-medium text-white mb-2">
                 Pourquoi utilisez-vous notre plateforme ?
@@ -131,8 +133,8 @@ const handleSubmit = (e: React.FormEvent) => {
                 {[
                   { id: 'freq-1', value: 'time', label: 'Gain de temps en productivité' },
                   { id: 'freq-2', value: 'organisation', label: 'Meilleure organisation' },
-                  { id: 'freq-3', value: 'LLMupgrade', label: 'Amélioration de vos LLM' }
-                ].map((option) => (
+                  { id: 'freq-3', value: 'LLMupgrade', label: 'Amélioration de vos LLM' },
+                ].map(option => (
                   <div key={option.id} className="flex items-center">
                     <input
                       id={option.id}
@@ -153,62 +155,64 @@ const handleSubmit = (e: React.FormEvent) => {
             </div>
           </div>
         );
-        case 3:
-  return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium text-white mb-4">Question 3/3 - Secteur d'activité</h3>
-      <div>
-        <label className="block text-sm font-medium text-white mb-3">
-          Dans quel secteur d'activité travaillez-vous ?
-        </label>
-        <div className="space-y-2">
-          {[
-            { id: 'sect-1', value: 'technologie', label: 'Technologie' },
-            { id: 'sect-2', value: 'finance', label: 'Finance' },
-            { id: 'sect-3', value: 'sante', label: 'Santé' },
-            { id: 'sect-4', value: 'education', label: 'Éducation' },
-            { id: 'sect-5', value: 'autre', label: 'Autre' }
-          ].map((option) => (
-            <div key={option.id} className="flex flex-col">
-              <div className="flex items-center">
-                <input
-                  id={option.id}
-                  name="activitySector"
-                  type="radio"
-                  checked={formData.activitySector === option.value}
-                  onChange={(e) => {
-                    handleInputChange(e);
-                    // Réinitialiser le champ autre si on change d'option
-                    if (option.value !== 'autre') {
-                      setOtherSector('');
-                    }
-                  }}
-                  value={option.value}
-                  className="h-4 w-4 text-purple-500 focus:ring-purple-500 border-gray-600"
-                  required
-                />
-                <label htmlFor={option.id} className="ml-3 block text-sm text-white">
-                  {option.label}
-                </label>
+      case 3:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium text-white mb-4">
+              Question 3/3 - Secteur d'activité
+            </h3>
+            <div>
+              <label className="block text-sm font-medium text-white mb-3">
+                Dans quel secteur d'activité travaillez-vous ?
+              </label>
+              <div className="space-y-2">
+                {[
+                  { id: 'sect-1', value: 'technologie', label: 'Technologie' },
+                  { id: 'sect-2', value: 'finance', label: 'Finance' },
+                  { id: 'sect-3', value: 'sante', label: 'Santé' },
+                  { id: 'sect-4', value: 'education', label: 'Éducation' },
+                  { id: 'sect-5', value: 'autre', label: 'Autre' },
+                ].map(option => (
+                  <div key={option.id} className="flex flex-col">
+                    <div className="flex items-center">
+                      <input
+                        id={option.id}
+                        name="activitySector"
+                        type="radio"
+                        checked={formData.activitySector === option.value}
+                        onChange={e => {
+                          handleInputChange(e);
+                          // Réinitialiser le champ autre si on change d'option
+                          if (option.value !== 'autre') {
+                            setOtherSector('');
+                          }
+                        }}
+                        value={option.value}
+                        className="h-4 w-4 text-purple-500 focus:ring-purple-500 border-gray-600"
+                        required
+                      />
+                      <label htmlFor={option.id} className="ml-3 block text-sm text-white">
+                        {option.label}
+                      </label>
+                    </div>
+                    {option.value === 'autre' && formData.activitySector === 'autre' && (
+                      <div className="mt-2 ml-7">
+                        <input
+                          type="text"
+                          value={otherSector}
+                          onChange={e => setOtherSector(e.target.value)}
+                          placeholder="Précisez votre secteur d'activité"
+                          className="w-full px-3 py-2 bg-[#0f081d] border border-purple-900/50 rounded-lg text-black text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
+                          required
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              {option.value === 'autre' && formData.activitySector === 'autre' && (
-                <div className="mt-2 ml-7">
-                  <input
-                    type="text"
-                    value={otherSector}
-                    onChange={(e) => setOtherSector(e.target.value)}
-                    placeholder="Précisez votre secteur d'activité"
-                    className="w-full px-3 py-2 bg-[#0f081d] border border-purple-900/50 rounded-lg text-black text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
-                    required
-                  />
-                </div>
-              )}
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+          </div>
+        );
       default:
         return null;
     }
@@ -231,7 +235,7 @@ const handleSubmit = (e: React.FormEvent) => {
       discovery: '',
       whyUse: '',
       activitySector: '',
-      suggestions: ''
+      suggestions: '',
     });
   };
 
@@ -263,16 +267,16 @@ const handleSubmit = (e: React.FormEvent) => {
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Barre de progression */}
             <div className="w-full bg-gray-700 rounded-full h-2.5">
-              <div 
-                className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300" 
+              <div
+                className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300"
                 style={{ width: `${(currentStep / 3) * 100}%` }}
               ></div>
             </div>
-            
+
             {/* Étape actuelle */}
             {renderStep()}
 
@@ -294,7 +298,7 @@ const handleSubmit = (e: React.FormEvent) => {
                   Plus tard
                 </button>
               )}
-              
+
               <div className="flex space-x-3">
                 <button
                   type="submit"
@@ -302,7 +306,8 @@ const handleSubmit = (e: React.FormEvent) => {
                     (currentStep === 1 && !formData.discovery) ||
                     (currentStep === 2 && !formData.whyUse) ||
                     (currentStep === 3 && !formData.activitySector)
-                      ? 'opacity-50 cursor-not-allowed' : ''
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
                   }`}
                   disabled={
                     (currentStep === 1 && !formData.discovery) ||

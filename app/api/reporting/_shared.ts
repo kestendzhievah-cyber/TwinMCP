@@ -19,7 +19,12 @@ export async function getReportingServices() {
     const billingService = new StreamingBillingService(db);
 
     const reportingService = new ReportingService(
-      db, redis, reportGenerator, insightEngine, dashboardRenderer, billingService
+      db,
+      redis,
+      reportGenerator,
+      insightEngine,
+      dashboardRenderer,
+      billingService
     );
 
     _services = { reportingService, db };

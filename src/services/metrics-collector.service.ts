@@ -128,46 +128,41 @@ export class MetricsCollector {
       
       const connectionStats = connectionResult.rows[0] || {};
 
-      // Query stats (lightweight, test-friendly)
-      const queryStatsResult = await this.db.query('SELECT 1');
-      const queryStatsRow = queryStatsResult.rows[0] || {};
+      // Max connections
+      const maxConn = await this.getMaxConnections();
 
-      // Size stats (single query)
-      const sizeResult = await this.db.query('SELECT 1');
-      const sizeRow = sizeResult.rows[0] || {};
+      // Query stats from pg_stat_statements (if available)
+      const queryStats = await this.getQueryStats();
+
+      // Performance stats
+      const perfStats = await this.getDatabasePerformance();
+
+      // Replication stats
+      const replStats = await this.getReplicationStats();
+
+      // Size stats
+      const sizeStats = await this.getDatabaseSize();
 
       return {
         connections: {
-          active: parseInt(connectionStats.active ?? connectionStats.active_connections ?? '0', 10),
+          active: parseInt(connectionStats.active ?? '0', 10),
           idle: parseInt(connectionStats.idle ?? '0', 10),
-          total: parseInt(connectionStats.total ?? connectionStats.total_connections ?? '0', 10),
-          max: parseInt(connectionStats.max_connections ?? connectionStats.total_connections ?? '0', 10)
+          total: parseInt(connectionStats.total ?? '0', 10),
+          max: maxConn
         },
         queries: {
-          total: parseInt(queryStatsRow.total ?? queryStatsRow.total_queries ?? '0', 10),
-          select: parseInt(queryStatsRow.select ?? '0', 10),
-          insert: parseInt(queryStatsRow.insert ?? '0', 10),
-          update: parseInt(queryStatsRow.update ?? '0', 10),
-          delete: parseInt(queryStatsRow.delete ?? '0', 10),
-          averageTime: parseFloat(queryStatsRow.averageTime ?? queryStatsRow.avg_query_time ?? '0'),
-          averageLatency: parseFloat(queryStatsRow.averageLatency ?? queryStatsRow.avg_query_time ?? '0'),
-          slowQueries: parseInt(queryStatsRow.slowQueries ?? '0', 10)
+          total: parseInt(queryStats.total ?? '0', 10),
+          select: parseInt(queryStats.select ?? '0', 10),
+          insert: parseInt(queryStats.insert ?? '0', 10),
+          update: parseInt(queryStats.update ?? '0', 10),
+          delete: parseInt(queryStats.delete ?? '0', 10),
+          averageTime: parseFloat(queryStats.averageTime ?? '0'),
+          averageLatency: parseFloat(queryStats.averageTime ?? '0'),
+          slowQueries: parseInt(queryStats.slowQueries ?? '0', 10)
         },
-        performance: {
-          cacheHitRatio: 0,
-          indexUsage: 0,
-          tableBloat: 0,
-          indexBloat: 0
-        },
-        replication: {
-          lag: 0,
-          status: 'healthy'
-        },
-        size: {
-          database: parseInt(sizeRow.database_size ?? sizeRow.size ?? '0', 10),
-          tables: {},
-          indexes: {}
-        }
+        performance: perfStats,
+        replication: replStats,
+        size: sizeStats
       };
     } catch (error) {
       logger.error('Error collecting database metrics:', error);
@@ -328,8 +323,8 @@ export class MetricsCollector {
         used,
         free,
         usage: (used / total) * 100,
-        iops: { read: 0, write: 0 }, // Placeholder
-        throughput: { read: 0, write: 0 } // Placeholder
+        iops: { read: 0, write: 0 }, // Needs /proc/diskstats (Linux)
+        throughput: { read: 0, write: 0 } // Needs /proc/diskstats (Linux)
       };
     } catch (error) {
       // Fallback
@@ -436,7 +431,7 @@ export class MetricsCollector {
   }
 
   private async getBytesPerSecond(): Promise<number> {
-    // Placeholder implementation
+    // Needs sampling /proc/net/dev counters over time (Linux)
     return 0;
   }
 
@@ -496,9 +491,9 @@ export class MetricsCollector {
       
       return {
         cacheHitRatio: parseFloat(cacheResult.rows[0].cacheHitRatio) || 0,
-        indexUsage: 0, // Placeholder
-        tableBloat: 0, // Placeholder
-        indexBloat: 0 // Placeholder
+        indexUsage: 0, // Needs pg_stat_user_indexes query
+        tableBloat: 0, // Needs pgstattuple extension
+        indexBloat: 0 // Needs pgstattuple extension
       };
     } catch (error) {
       return {
@@ -553,7 +548,7 @@ export class MetricsCollector {
       return {
         database: parseInt(dbResult.rows[0].size),
         tables,
-        indexes: {} // Placeholder
+        indexes: {} // Needs pg_stat_user_indexes aggregation
       };
     } catch (error) {
       return {
@@ -625,11 +620,11 @@ export class MetricsCollector {
           result.push({
             name,
             status: addr.internal ? 'down' : 'up',
-            speed: 1000, // Placeholder
-            duplex: true, // Placeholder
-            mtu: 1500, // Placeholder
-            rx: { bytes: 0, packets: 0, errors: 0, dropped: 0 }, // Placeholder
-            tx: { bytes: 0, packets: 0, errors: 0, dropped: 0 } // Placeholder
+            speed: 1000, // os module doesn't expose link speed
+            duplex: true, // os module doesn't expose duplex
+            mtu: 1500, // os module doesn't expose MTU
+            rx: { bytes: 0, packets: 0, errors: 0, dropped: 0 }, // Needs /proc/net/dev
+            tx: { bytes: 0, packets: 0, errors: 0, dropped: 0 } // Needs /proc/net/dev
           });
         }
       }
@@ -641,19 +636,19 @@ export class MetricsCollector {
   }
 
   private async getBandwidthUsage(): Promise<any> {
-    return { incoming: 0, outgoing: 0 }; // Placeholder
+    return { incoming: 0, outgoing: 0 }; // Needs /proc/net/dev sampling
   }
 
   private async getPacketStats(): Promise<any> {
-    return { incoming: 0, outgoing: 0, dropped: 0, errors: 0 }; // Placeholder
+    return { incoming: 0, outgoing: 0, dropped: 0, errors: 0 }; // Needs /proc/net/dev
   }
 
   private async getConnectionCounts(): Promise<any> {
-    return { established: 0, listening: 0, timeWait: 0 }; // Placeholder
+    return { established: 0, listening: 0, timeWait: 0 }; // Needs ss or /proc/net/tcp
   }
 
   private async getNetworkLatency(): Promise<any> {
-    return { average: 0, p95: 0, p99: 0 }; // Placeholder
+    return { average: 0, p95: 0, p99: 0 }; // Needs application-level latency tracking
   }
 
   // Helper methods for business metrics
@@ -804,13 +799,16 @@ export class MetricsCollector {
   }
 
   // Cleanup old metrics
+  private lastErrorReset: number = Date.now();
+
   cleanup(): void {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     this.requestMetrics = this.requestMetrics.filter(req => req.timestamp > oneHourAgo);
     
-    // Reset error counts periodically
-    if (Math.random() < 0.01) { // 1% chance
+    // Reset error counts every hour (deterministic)
+    if (Date.now() - this.lastErrorReset > 60 * 60 * 1000) {
       this.errorCounts.clear();
+      this.lastErrorReset = Date.now();
     }
   }
 }

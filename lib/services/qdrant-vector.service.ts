@@ -176,12 +176,12 @@ export class QdrantVectorService {
 
     const qdrant = this.getQdrant();
     const batchSize = 100;
-    
+
     for (let i = 0; i < docs.length; i += batchSize) {
       const batch = docs.slice(i, i + batchSize);
-      
+
       const points = await Promise.all(
-        batch.map(async (doc) => {
+        batch.map(async doc => {
           const embedding = await this.generateEmbedding(doc.content);
           return {
             id: doc.id,
@@ -208,7 +208,9 @@ export class QdrantVectorService {
         points,
       });
 
-      logger.debug(`[Qdrant] Indexed batch ${i / batchSize + 1}/${Math.ceil(docs.length / batchSize)}`);
+      logger.debug(
+        `[Qdrant] Indexed batch ${i / batchSize + 1}/${Math.ceil(docs.length / batchSize)}`
+      );
     }
   }
 
@@ -216,34 +218,28 @@ export class QdrantVectorService {
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
     await this.initialize();
 
-    const {
-      libraryId,
-      version,
-      contentType,
-      topK = 10,
-      scoreThreshold = 0.7,
-    } = options;
+    const { libraryId, version, contentType, topK = 10, scoreThreshold = 0.7 } = options;
 
     const queryEmbedding = await this.generateEmbedding(query);
     const qdrant = this.getQdrant();
 
     // Build filter
     const filter: any = { must: [] };
-    
+
     if (libraryId) {
       filter.must.push({
         key: 'libraryId',
         match: { value: libraryId },
       });
     }
-    
+
     if (version) {
       filter.must.push({
         key: 'version',
         match: { value: version },
       });
     }
-    
+
     if (contentType) {
       filter.must.push({
         key: 'contentType',
@@ -259,7 +255,7 @@ export class QdrantVectorService {
       with_payload: true,
     });
 
-    return results.map((result) => ({
+    return results.map(result => ({
       id: result.id as string,
       score: result.score,
       content: (result.payload?.content as string) || '',
@@ -304,7 +300,7 @@ export class QdrantVectorService {
     await this.initialize();
     const qdrant = this.getQdrant();
     const info = await qdrant.getCollection(COLLECTION_NAME);
-    
+
     return {
       totalDocuments: info.points_count || 0,
       libraries: 0,
@@ -338,5 +334,5 @@ export const getQdrantService = (): QdrantVectorService => {
 export const qdrantService = {
   get instance() {
     return getQdrantService();
-  }
+  },
 };

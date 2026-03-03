@@ -518,7 +518,7 @@ export class AnalyticsService {
       if (exportRecord) {
         const exportData = JSON.parse(exportRecord);
         exportData.status = 'failed';
-        exportData.error = error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error';
+        exportData.error = error instanceof Error ? error.message : 'Unknown error';
         await this.redis.setex(`export:${exportId}`, 3600, JSON.stringify(exportData));
       }
     }

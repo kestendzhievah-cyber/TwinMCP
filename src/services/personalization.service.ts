@@ -323,7 +323,7 @@ export class PersonalizationService {
       return updated;
       
     } catch (error) {
-      throw new Error(`Invalid preferences data: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`);
+      throw new Error(`Invalid preferences data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -359,7 +359,7 @@ export class PersonalizationService {
       return await this.createCustomTheme(userId, theme);
       
     } catch (error) {
-      throw new Error(`Invalid theme data: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'}`);
+      throw new Error(`Invalid theme data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

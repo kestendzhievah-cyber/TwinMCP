@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
@@ -8,7 +8,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await validateAuthWithApiKey(request.headers.get('authorization'), request.headers.get('x-api-key'));
+  const authResult = await validateAuthWithApiKey(
+    request.headers.get('authorization'),
+    request.headers.get('x-api-key')
+  );
   const auth = authResult.valid ? { userId: authResult.userId } : null;
   if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,19 +38,16 @@ export async function DELETE(
     return NextResponse.json({ message: 'API key revoked successfully' });
   } catch (error) {
     logger.error('Failed to revoke API key:', error);
-    return NextResponse.json(
-      { error: 'Failed to revoke API key' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to revoke API key' }, { status: 500 });
   }
 }
 
 // PATCH - Update API key (name, tier, etc.)
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const authResult = await validateAuthWithApiKey(request.headers.get('authorization'), request.headers.get('x-api-key'));
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await validateAuthWithApiKey(
+    request.headers.get('authorization'),
+    request.headers.get('x-api-key')
+  );
   const auth = authResult.valid ? { userId: authResult.userId } : null;
   if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -86,9 +86,6 @@ export async function PATCH(
     return NextResponse.json({ apiKey: updated });
   } catch (error) {
     logger.error('Failed to update API key:', error);
-    return NextResponse.json(
-      { error: 'Failed to update API key' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update API key' }, { status: 500 });
   }
 }

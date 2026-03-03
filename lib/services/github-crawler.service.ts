@@ -67,7 +67,7 @@ export class GitHubCrawlerService {
 
       // Process each file
       const chunks: DocumentChunk[] = [];
-      
+
       for (const file of files.slice(0, config.maxFiles || 500)) {
         try {
           const fileChunks = await this.processFile(file, config, repoInfo.full_name);
@@ -91,7 +91,9 @@ export class GitHubCrawlerService {
         version: config.version,
       });
 
-      logger.info(`[Crawler] Completed crawl for ${config.libraryId}: ${filesProcessed} files, ${chunksIndexed} chunks`);
+      logger.info(
+        `[Crawler] Completed crawl for ${config.libraryId}: ${filesProcessed} files, ${chunksIndexed} chunks`
+      );
 
       return {
         success: true,
@@ -123,7 +125,7 @@ export class GitHubCrawlerService {
     docsPath: string
   ): Promise<FileContent[]> {
     const files: FileContent[] = [];
-    
+
     try {
       // Try to get files from docs directory
       const { data: contents } = await this.octokit.repos.getContent({
@@ -189,12 +191,7 @@ export class GitHubCrawlerService {
       }
 
       if (item.type === 'file' && this.isDocFile(item.name)) {
-        const fileContent = await this.getFileContent(
-          config.owner,
-          config.repo,
-          item.path,
-          branch
-        );
+        const fileContent = await this.getFileContent(config.owner, config.repo, item.path, branch);
         if (fileContent) {
           files.push(fileContent);
         }
@@ -251,10 +248,10 @@ export class GitHubCrawlerService {
   private isDocFile(filename: string): boolean {
     const docExtensions = ['.md', '.mdx', '.rst', '.txt', '.html'];
     const docNames = ['README', 'CHANGELOG', 'CONTRIBUTING', 'API', 'GUIDE'];
-    
+
     const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
     const name = filename.toUpperCase().replace(/\.[^.]+$/, '');
-    
+
     return docExtensions.includes(ext) || docNames.includes(name);
   }
 
@@ -298,13 +295,13 @@ export class GitHubCrawlerService {
   private splitIntoSections(content: string): { title: string; content: string }[] {
     const sections: { title: string; content: string }[] = [];
     const lines = content.split('\n');
-    
+
     let currentTitle = '';
     let currentContent: string[] = [];
 
     for (const line of lines) {
       const headerMatch = line.match(/^(#{1,3})\s+(.+)/);
-      
+
       if (headerMatch) {
         // Save previous section if exists
         if (currentContent.length > 0) {
@@ -313,7 +310,7 @@ export class GitHubCrawlerService {
             content: currentContent.join('\n').trim(),
           });
         }
-        
+
         currentTitle = headerMatch[2];
         currentContent = [line];
       } else {
@@ -341,7 +338,7 @@ export class GitHubCrawlerService {
   private detectContentType(content: string): 'snippet' | 'guide' | 'api_ref' {
     const codeBlockCount = (content.match(/```/g) || []).length / 2;
     const hasApiKeywords = /\b(api|endpoint|method|function|class|interface|type)\b/i.test(content);
-    
+
     if (codeBlockCount >= 2) return 'snippet';
     if (hasApiKeywords && codeBlockCount >= 1) return 'api_ref';
     return 'guide';

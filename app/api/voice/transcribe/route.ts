@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 let _voiceService: any = null;
@@ -17,10 +17,7 @@ export async function POST(req: NextRequest) {
     const audioFile = formData.get('audio') as File;
 
     if (!audioFile) {
-      return NextResponse.json(
-        { error: 'Audio file is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Audio file is required' }, { status: 400 });
     }
 
     const audioBuffer = Buffer.from(await audioFile.arrayBuffer());

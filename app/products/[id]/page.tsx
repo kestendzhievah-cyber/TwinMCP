@@ -23,16 +23,16 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     product = {
       id,
       name: `Produit ${id}`,
-      description: 'Ce produit n\'est pas encore disponible.',
+      description: "Ce produit n'est pas encore disponible.",
       price: 0,
       image: null,
       status: 'ACTIVE',
       category: { name: 'Non catégorisé' },
-      seller: { name: 'Inconnu', email: '' }
+      seller: { name: 'Inconnu', email: '' },
     };
   }
 
-  if (!product || product.status !== 'ACTIVE') {
+  if (product?.status !== 'ACTIVE') {
     notFound();
   }
 
@@ -42,7 +42,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             {product.image ? (
-              <img src={product.image} alt={product.name} className="w-full h-96 object-cover rounded-lg" />
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-96 object-cover rounded-lg"
+              />
             ) : (
               <div className="w-full h-96 bg-gray-200 rounded-lg flex items-center justify-center">
                 <span className="text-gray-500">Image non disponible</span>

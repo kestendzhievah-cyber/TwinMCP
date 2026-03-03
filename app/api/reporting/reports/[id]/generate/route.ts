@@ -1,11 +1,8 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getReportingServices } from '../../../_shared';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { reportingService } = await getReportingServices();
     const reportId = (await params).id;
@@ -14,26 +11,20 @@ export async function POST(
     const generation = await reportingService.generateReport(reportId, {
       format: body.format,
       filters: body.filters,
-      email: body.email || false
+      email: body.email || false,
     });
 
     return NextResponse.json({
       success: true,
-      generation
+      generation,
     });
   } catch (error) {
     logger.error('Error generating report:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { reportingService, db } = await getReportingServices();
     const reportId = (await params).id;
@@ -43,10 +34,7 @@ export async function GET(
     if (generationId) {
       const generation = await reportingService.getGenerationStatus(generationId);
       if (!generation) {
-        return NextResponse.json(
-          { error: 'Generation not found' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Generation not found' }, { status: 404 });
       }
 
       return NextResponse.json({ generation });
@@ -64,16 +52,13 @@ export async function GET(
         output: JSON.parse(row.output),
         error: row.error,
         startedAt: row.started_at,
-        completedAt: row.completed_at
+        completedAt: row.completed_at,
       }));
 
       return NextResponse.json({ generations });
     }
   } catch (error) {
     logger.error('Error fetching report generations:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

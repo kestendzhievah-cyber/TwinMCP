@@ -5,7 +5,7 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
-  Timestamp
+  Timestamp,
 } from 'firebase/firestore';
 import { db as _db } from './firebase';
 const db = _db!;
@@ -36,7 +36,7 @@ interface Chatbot {
 }
 
 function generateAgentId(): string {
-  return 'agent_' + crypto.randomUUID();
+  return `agent_${crypto.randomUUID()}`;
 }
 
 // Fonction pour créer un agent
@@ -83,7 +83,7 @@ export async function getAgent(agentId: string): Promise<Chatbot | null> {
 
     return {
       id: agentSnap.id,
-      ...agentSnap.data()
+      ...agentSnap.data(),
     } as Chatbot;
   } catch (error) {
     console.error('Error getting agent:', error);
@@ -91,7 +91,10 @@ export async function getAgent(agentId: string): Promise<Chatbot | null> {
   }
 }
 
-export async function updateAgent(agentId: string, data: Partial<CreateChatbotRequest>): Promise<void> {
+export async function updateAgent(
+  agentId: string,
+  data: Partial<CreateChatbotRequest>
+): Promise<void> {
   try {
     const agentRef = doc(db, 'agents', agentId);
     await updateDoc(agentRef, {

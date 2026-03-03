@@ -15,7 +15,7 @@ export default function AddendumPage() {
               <Sparkles className="w-8 h-8 text-purple-400" />
               <span className="text-2xl font-bold text-white">TwinMCP</span>
             </Link>
-            <Link 
+            <Link
               href="/"
               className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition group"
             >
@@ -33,15 +33,11 @@ export default function AddendumPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl mb-6">
             <FileText className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4">
-            Addendum TwinMCP
-          </h1>
+          <h1 className="text-4xl font-bold text-white mb-4">Addendum TwinMCP</h1>
           <p className="text-gray-400 text-lg">
             Conditions spécifiques d'utilisation du service TwinMCP
           </p>
-          <p className="text-gray-500 text-sm mt-2">
-            Dernière mise à jour : 26 janvier 2026
-          </p>
+          <p className="text-gray-500 text-sm mt-2">Dernière mise à jour : 26 janvier 2026</p>
         </div>
 
         {/* Content Card */}
@@ -53,9 +49,9 @@ export default function AddendumPage() {
               <h2 className="text-2xl font-bold text-white">1. Introduction</h2>
             </div>
             <p className="text-gray-300 leading-relaxed">
-              Le présent Addendum complète nos Conditions d'utilisation générales et notre Politique de confidentialité. 
-              Il définit les conditions spécifiques applicables à l'utilisation de TwinMCP, notre plateforme de documentation 
-              pour LLMs et éditeurs de code IA.
+              Le présent Addendum complète nos Conditions d'utilisation générales et notre Politique
+              de confidentialité. Il définit les conditions spécifiques applicables à l'utilisation
+              de TwinMCP, notre plateforme de documentation pour LLMs et éditeurs de code IA.
             </p>
           </section>
 
@@ -67,7 +63,9 @@ export default function AddendumPage() {
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Indexation et synchronisation de dépôts de documentation</li>
                 <li>Accès à la documentation via API MCP (Model Context Protocol)</li>
-                <li>Intégration avec des éditeurs de code IA (Cursor, Claude Code, VS Code, etc.)</li>
+                <li>
+                  Intégration avec des éditeurs de code IA (Cursor, Claude Code, VS Code, etc.)
+                </li>
                 <li>Recherche intelligente dans la documentation</li>
                 <li>Gestion de versions multiples de bibliothèques</li>
               </ul>
@@ -79,10 +77,13 @@ export default function AddendumPage() {
             <h2 className="text-2xl font-bold text-white mb-4">3. Droits d'Utilisation</h2>
             <div className="space-y-4 text-gray-300">
               <div>
-                <h3 className="text-lg font-semibold text-purple-300 mb-2">3.1 Licence d'Utilisation</h3>
+                <h3 className="text-lg font-semibold text-purple-300 mb-2">
+                  3.1 Licence d'Utilisation
+                </h3>
                 <p>
-                  Nous vous accordons une licence non exclusive, non transférable et révocable pour accéder et utiliser 
-                  TwinMCP conformément aux présentes conditions et au plan d'abonnement choisi.
+                  Nous vous accordons une licence non exclusive, non transférable et révocable pour
+                  accéder et utiliser TwinMCP conformément aux présentes conditions et au plan
+                  d'abonnement choisi.
                 </p>
               </div>
               <div>
@@ -104,24 +105,26 @@ export default function AddendumPage() {
             <h2 className="text-2xl font-bold text-white mb-4">4. Utilisation de l'API</h2>
             <div className="space-y-4 text-gray-300">
               <div>
-                <h3 className="text-lg font-semibold text-purple-300 mb-2">4.1 Limites de Requêtes</h3>
+                <h3 className="text-lg font-semibold text-purple-300 mb-2">
+                  4.1 Limites de Requêtes
+                </h3>
                 <p>
-                  Les limites de requêtes varient selon votre plan d'abonnement. Le dépassement des limites peut 
-                  entraîner une limitation temporaire ou des frais supplémentaires.
+                  Les limites de requêtes varient selon votre plan d'abonnement. Le dépassement des
+                  limites peut entraîner une limitation temporaire ou des frais supplémentaires.
                 </p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-purple-300 mb-2">4.2 Clés API</h3>
                 <p>
-                  Vous êtes responsable de la sécurité de vos clés API. Ne les partagez jamais publiquement. 
-                  En cas de compromission, révoquez immédiatement les clés concernées.
+                  Vous êtes responsable de la sécurité de vos clés API. Ne les partagez jamais
+                  publiquement. En cas de compromission, révoquez immédiatement les clés concernées.
                 </p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-purple-300 mb-2">4.3 Disponibilité</h3>
                 <p>
-                  Nous visons une disponibilité de 99,9% mais ne garantissons pas un service ininterrompu. 
-                  Des maintenances planifiées seront annoncées à l'avance.
+                  Nous visons une disponibilité de 99,9% mais ne garantissons pas un service
+                  ininterrompu. Des maintenances planifiées seront annoncées à l'avance.
                 </p>
               </div>
             </div>
@@ -134,22 +137,27 @@ export default function AddendumPage() {
               <div>
                 <h3 className="text-lg font-semibold text-purple-300 mb-2">5.1 Données Indexées</h3>
                 <p>
-                  Les bibliothèques et documentations que vous indexez restent votre propriété. Nous les stockons 
-                  uniquement pour fournir le service et ne les utilisons pas à d'autres fins.
+                  Les bibliothèques et documentations que vous indexez restent votre propriété. Nous
+                  les stockons uniquement pour fournir le service et ne les utilisons pas à d'autres
+                  fins.
                 </p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-purple-300 mb-2">5.2 Données d'Utilisation</h3>
+                <h3 className="text-lg font-semibold text-purple-300 mb-2">
+                  5.2 Données d'Utilisation
+                </h3>
                 <p>
-                  Nous collectons des données d'utilisation anonymisées (requêtes, performances, erreurs) pour 
-                  améliorer le service. Ces données ne contiennent pas d'informations personnelles identifiables.
+                  Nous collectons des données d'utilisation anonymisées (requêtes, performances,
+                  erreurs) pour améliorer le service. Ces données ne contiennent pas d'informations
+                  personnelles identifiables.
                 </p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-purple-300 mb-2">5.3 Conformité RGPD</h3>
                 <p>
-                  Nous respectons le RGPD. Vous disposez d'un droit d'accès, de rectification et de suppression 
-                  de vos données personnelles. Contactez-nous à privacy@twinmcp.com pour exercer ces droits.
+                  Nous respectons le RGPD. Vous disposez d'un droit d'accès, de rectification et de
+                  suppression de vos données personnelles. Contactez-nous à privacy@twinmcp.com pour
+                  exercer ces droits.
                 </p>
               </div>
             </div>
@@ -160,24 +168,30 @@ export default function AddendumPage() {
             <h2 className="text-2xl font-bold text-white mb-4">6. Facturation et Paiement</h2>
             <div className="space-y-4 text-gray-300">
               <div>
-                <h3 className="text-lg font-semibold text-purple-300 mb-2">6.1 Plans d'Abonnement</h3>
+                <h3 className="text-lg font-semibold text-purple-300 mb-2">
+                  6.1 Plans d'Abonnement
+                </h3>
                 <p>
-                  Les plans sont facturés mensuellement ou annuellement selon votre choix. Les prix sont indiqués 
-                  hors taxes et peuvent être modifiés avec un préavis de 30 jours.
+                  Les plans sont facturés mensuellement ou annuellement selon votre choix. Les prix
+                  sont indiqués hors taxes et peuvent être modifiés avec un préavis de 30 jours.
                 </p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-purple-300 mb-2">6.2 Résiliation</h3>
                 <p>
-                  Vous pouvez résilier votre abonnement à tout moment. Aucun remboursement n'est effectué pour 
-                  la période en cours. L'accès reste actif jusqu'à la fin de la période payée.
+                  Vous pouvez résilier votre abonnement à tout moment. Aucun remboursement n'est
+                  effectué pour la période en cours. L'accès reste actif jusqu'à la fin de la
+                  période payée.
                 </p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-purple-300 mb-2">6.3 Retard de Paiement</h3>
+                <h3 className="text-lg font-semibold text-purple-300 mb-2">
+                  6.3 Retard de Paiement
+                </h3>
                 <p>
-                  En cas de retard de paiement, votre accès peut être suspendu après 7 jours. Les données sont 
-                  conservées pendant 30 jours supplémentaires avant suppression définitive.
+                  En cas de retard de paiement, votre accès peut être suspendu après 7 jours. Les
+                  données sont conservées pendant 30 jours supplémentaires avant suppression
+                  définitive.
                 </p>
               </div>
             </div>
@@ -188,17 +202,20 @@ export default function AddendumPage() {
             <h2 className="text-2xl font-bold text-white mb-4">7. Responsabilité</h2>
             <div className="space-y-4 text-gray-300">
               <div>
-                <h3 className="text-lg font-semibold text-purple-300 mb-2">7.1 Limitation de Responsabilité</h3>
+                <h3 className="text-lg font-semibold text-purple-300 mb-2">
+                  7.1 Limitation de Responsabilité
+                </h3>
                 <p>
-                  TwinMCP est fourni "tel quel". Nous ne garantissons pas l'exactitude ou l'exhaustivité de la 
-                  documentation indexée. Notre responsabilité est limitée au montant payé au cours des 12 derniers mois.
+                  TwinMCP est fourni "tel quel". Nous ne garantissons pas l'exactitude ou
+                  l'exhaustivité de la documentation indexée. Notre responsabilité est limitée au
+                  montant payé au cours des 12 derniers mois.
                 </p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-purple-300 mb-2">7.2 Indemnisation</h3>
                 <p>
-                  Vous acceptez de nous indemniser contre toute réclamation résultant de votre utilisation du service 
-                  en violation des présentes conditions.
+                  Vous acceptez de nous indemniser contre toute réclamation résultant de votre
+                  utilisation du service en violation des présentes conditions.
                 </p>
               </div>
             </div>
@@ -208,9 +225,10 @@ export default function AddendumPage() {
           <section>
             <h2 className="text-2xl font-bold text-white mb-4">8. Modifications</h2>
             <p className="text-gray-300 leading-relaxed">
-              Nous nous réservons le droit de modifier cet Addendum à tout moment. Les modifications importantes 
-              seront notifiées par email 30 jours avant leur entrée en vigueur. L'utilisation continue du service 
-              après modification vaut acceptation des nouvelles conditions.
+              Nous nous réservons le droit de modifier cet Addendum à tout moment. Les modifications
+              importantes seront notifiées par email 30 jours avant leur entrée en vigueur.
+              L'utilisation continue du service après modification vaut acceptation des nouvelles
+              conditions.
             </p>
           </section>
 
@@ -222,9 +240,15 @@ export default function AddendumPage() {
                 Pour toute question concernant cet Addendum, contactez-nous :
               </p>
               <ul className="space-y-2 text-gray-300">
-                <li><strong className="text-purple-300">Email :</strong> legal@twinmcp.com</li>
-                <li><strong className="text-purple-300">Support :</strong> support@twinmcp.com</li>
-                <li><strong className="text-purple-300">Adresse :</strong> TwinMCP Team, Paris, France</li>
+                <li>
+                  <strong className="text-purple-300">Email :</strong> legal@twinmcp.com
+                </li>
+                <li>
+                  <strong className="text-purple-300">Support :</strong> support@twinmcp.com
+                </li>
+                <li>
+                  <strong className="text-purple-300">Adresse :</strong> TwinMCP Team, Paris, France
+                </li>
               </ul>
             </div>
           </section>
@@ -235,14 +259,21 @@ export default function AddendumPage() {
             <div>
               <h3 className="text-lg font-semibold text-amber-300 mb-2">Important</h3>
               <p className="text-gray-300">
-                En utilisant TwinMCP, vous acceptez les termes de cet Addendum ainsi que nos 
-                <Link href="/terms" className="text-purple-400 hover:text-purple-300 underline mx-1">
+                En utilisant TwinMCP, vous acceptez les termes de cet Addendum ainsi que nos
+                <Link
+                  href="/terms"
+                  className="text-purple-400 hover:text-purple-300 underline mx-1"
+                >
                   Conditions d'utilisation
                 </Link>
                 et notre
-                <Link href="/privacy" className="text-purple-400 hover:text-purple-300 underline mx-1">
+                <Link
+                  href="/privacy"
+                  className="text-purple-400 hover:text-purple-300 underline mx-1"
+                >
                   Politique de confidentialité
-                </Link>.
+                </Link>
+                .
               </p>
             </div>
           </div>

@@ -3,12 +3,17 @@
  * Verify Firebase token and return/create user session
  */
 
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { UserAuthService } from '@/lib/services/user-auth.service';
-import { checkRateLimit, RATE_LIMIT_CONFIGS, getClientIdentifier, createRateLimitResponse } from '@/lib/middleware/rate-limiter';
+import {
+  checkRateLimit,
+  RATE_LIMIT_CONFIGS,
+  getClientIdentifier,
+  createRateLimitResponse,
+} from '@/lib/middleware/rate-limiter';
 
 let authService: UserAuthService | null = null;
 
@@ -24,14 +29,14 @@ export async function POST(request: NextRequest) {
     // Rate limiting
     const redisClient = redis;
     const identifier = getClientIdentifier(request);
-    
+
     try {
       const rateLimitResult = await checkRateLimit(
         redisClient,
         identifier,
         RATE_LIMIT_CONFIGS.auth
       );
-      
+
       if (!rateLimitResult.success) {
         return createRateLimitResponse(rateLimitResult, RATE_LIMIT_CONFIGS.auth.message);
       }
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: result.error || 'Authentication failed',
-          code: result.code || 'AUTH_FAILED'
+          code: result.code || 'AUTH_FAILED',
         },
         { status: 401 }
       );
@@ -79,10 +84,9 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         user: result.user,
-        session: result.session
-      }
+        session: result.session,
+      },
     });
-
   } catch (error) {
     logger.error('[Auth Verify] Error:', error);
     return NextResponse.json(

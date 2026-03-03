@@ -10,7 +10,13 @@ import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { UserAuthService, AuthenticatedUser } from '@/lib/services/user-auth.service';
-import { checkRateLimit, RATE_LIMIT_CONFIGS, getClientIdentifier, createRateLimitResponse, RateLimitResult } from './rate-limiter';
+import {
+  checkRateLimit,
+  RATE_LIMIT_CONFIGS,
+  getClientIdentifier,
+  createRateLimitResponse,
+  RateLimitResult,
+} from './rate-limiter';
 import { createHash } from 'crypto';
 
 let authService: UserAuthService;
@@ -33,17 +39,17 @@ export interface AuthContext {
 }
 
 export interface AuthMiddlewareOptions {
-  required?: boolean;           // Is authentication required?
-  allowApiKey?: boolean;        // Allow API key authentication?
-  rateLimitConfig?: 'auth' | 'api' | 'heavy';  // Rate limit config to use
-  skipRateLimit?: boolean;      // Skip rate limiting?
+  required?: boolean; // Is authentication required?
+  allowApiKey?: boolean; // Allow API key authentication?
+  rateLimitConfig?: 'auth' | 'api' | 'heavy'; // Rate limit config to use
+  skipRateLimit?: boolean; // Skip rate limiting?
 }
 
 const DEFAULT_OPTIONS: AuthMiddlewareOptions = {
   required: true,
   allowApiKey: true,
   rateLimitConfig: 'api',
-  skipRateLimit: false
+  skipRateLimit: false,
 };
 
 /**
@@ -55,7 +61,7 @@ export async function authenticateRequest(
 ): Promise<{ context: AuthContext; error?: NextResponse }> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const { prisma, redis, authService } = getServices();
-  
+
   // Default context
   const context: AuthContext = {
     user: null,
@@ -64,22 +70,22 @@ export async function authenticateRequest(
     plan: 'free',
     isAuthenticated: false,
     authMethod: 'none',
-    rateLimit: { success: true, remaining: 60, resetTime: Date.now() + 60000, limit: 60 }
+    rateLimit: { success: true, remaining: 60, resetTime: Date.now() + 60000, limit: 60 },
   };
 
   // Check rate limit first
   if (!opts.skipRateLimit) {
     const rateLimitConfig = RATE_LIMIT_CONFIGS[opts.rateLimitConfig || 'api'];
     const identifier = getClientIdentifier(request);
-    
+
     try {
       const rateLimitResult = await checkRateLimit(redis, identifier, rateLimitConfig);
       context.rateLimit = rateLimitResult;
-      
+
       if (!rateLimitResult.success) {
         return {
           context,
-          error: createRateLimitResponse(rateLimitResult, rateLimitConfig.message)
+          error: createRateLimitResponse(rateLimitResult, rateLimitConfig.message),
         };
       }
     } catch (e) {
@@ -90,10 +96,10 @@ export async function authenticateRequest(
 
   // Try Bearer token authentication
   const authHeader = request.headers.get('authorization');
-  
+
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
-    
+
     // Check if it's a Firebase token or API key
     if (token.startsWith('twinmcp_')) {
       // API Key authentication
@@ -104,7 +110,7 @@ export async function authenticateRequest(
           context.plan = apiKeyAuth.plan || 'free';
           context.isAuthenticated = true;
           context.authMethod = 'api-key';
-          
+
           // Get full user if needed
           const user = await authService.getAuthenticatedUser(apiKeyAuth.userId);
           context.user = user;
@@ -135,7 +141,7 @@ export async function authenticateRequest(
         context.plan = apiKeyAuth.plan || 'free';
         context.isAuthenticated = true;
         context.authMethod = 'api-key';
-        
+
         const user = await authService.getAuthenticatedUser(apiKeyAuth.userId);
         context.user = user;
         context.email = user?.email || null;
@@ -151,10 +157,10 @@ export async function authenticateRequest(
         {
           success: false,
           error: 'Authentication required',
-          code: 'UNAUTHORIZED'
+          code: 'UNAUTHORIZED',
         },
         { status: 401 }
-      )
+      ),
     };
   }
 
@@ -174,14 +180,14 @@ async function authenticateWithApiKey(
     }
 
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
-    
+
     const key = await prisma.apiKey.findUnique({
       where: { keyHash },
       include: {
         user: {
-          select: { id: true }
-        }
-      }
+          select: { id: true },
+        },
+      },
     });
 
     if (!key || !key.isActive || key.revokedAt) {
@@ -196,15 +202,14 @@ async function authenticateWithApiKey(
     // Update last used
     await prisma.apiKey.update({
       where: { id: key.id },
-      data: { lastUsedAt: new Date() }
+      data: { lastUsedAt: new Date() },
     });
 
     return {
       success: true,
       userId: key.userId,
-      plan: key.tier
+      plan: key.tier,
     };
-    
   } catch (error) {
     logger.error('[Auth Middleware] API key auth error:', error);
     return { success: false };
@@ -234,7 +239,7 @@ export function createAuthErrorResponse(
     {
       success: false,
       error: message,
-      code
+      code,
     },
     { status }
   );

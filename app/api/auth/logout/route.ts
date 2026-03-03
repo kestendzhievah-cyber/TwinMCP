@@ -3,7 +3,7 @@
  * Invalidate user session
  */
 
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Authenticate request
     const { context, error } = await authenticateRequest(request, {
       required: true,
-      rateLimitConfig: 'auth'
+      rateLimitConfig: 'auth',
     });
 
     if (error) {
@@ -44,9 +44,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Logged out successfully'
+      message: 'Logged out successfully',
     });
-
   } catch (error) {
     logger.error('[Auth Logout] Error:', error);
     return NextResponse.json(

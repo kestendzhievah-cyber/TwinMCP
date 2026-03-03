@@ -24,7 +24,13 @@ export async function getBillingServices() {
 
     const paymentService = new PaymentService(db);
     const subscriptionService = new SubscriptionService(db);
-    const invoiceService = new InvoiceService(db, encryptionService, auditService, gdprService, maskingService);
+    const invoiceService = new InvoiceService(
+      db,
+      encryptionService,
+      auditService,
+      gdprService,
+      maskingService
+    );
 
     _services = {
       db,

@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillingServices } from '../_shared';
 
@@ -11,10 +11,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
     const payments = await paymentService.getUserPayments(userId, limit, offset);
@@ -25,15 +22,15 @@ export async function GET(request: NextRequest) {
       pagination: {
         limit,
         offset,
-        total: payments.length
-      }
+        total: payments.length,
+      },
     });
   } catch (error) {
     logger.error('Error fetching payments:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -44,20 +41,10 @@ export async function POST(request: NextRequest) {
   try {
     const { paymentService } = await getBillingServices();
     const body = await request.json();
-    const { 
-      invoiceId, 
-      userId, 
-      amount, 
-      currency, 
-      paymentMethod,
-      provider = 'stripe'
-    } = body;
+    const { invoiceId, userId, amount, currency, paymentMethod, provider = 'stripe' } = body;
 
     if (!invoiceId || !userId || !amount || !currency || !paymentMethod) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const payment = await paymentService.createPayment(
@@ -72,14 +59,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: { payment },
-      message: 'Payment created successfully'
+      message: 'Payment created successfully',
     });
   } catch (error) {
     logger.error('Error creating payment:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

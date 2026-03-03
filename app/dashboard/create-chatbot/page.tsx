@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,7 +13,7 @@ import {
   AlertCircle,
   Copy,
   Download,
-  QrCode
+  QrCode,
 } from 'lucide-react';
 
 interface Model {
@@ -34,7 +34,7 @@ const availableModels: Model[] = [
     cost: '0.01€/1K tokens',
     speed: 'Rapide',
     quality: 5,
-    description: 'Le plus puissant, raisonnement avancé'
+    description: 'Le plus puissant, raisonnement avancé',
   },
   {
     id: 'gpt-3.5-turbo',
@@ -43,7 +43,7 @@ const availableModels: Model[] = [
     cost: '0.002€/1K tokens',
     speed: 'Très rapide',
     quality: 4,
-    description: 'Rapide et économique pour tâches simples'
+    description: 'Rapide et économique pour tâches simples',
   },
   {
     id: 'claude-3-opus',
@@ -52,7 +52,7 @@ const availableModels: Model[] = [
     cost: '0.015€/1K tokens',
     speed: 'Rapide',
     quality: 5,
-    description: 'Excellence en analyse et créativité'
+    description: 'Excellence en analyse et créativité',
   },
   {
     id: 'claude-3-sonnet',
@@ -61,7 +61,7 @@ const availableModels: Model[] = [
     cost: '0.003€/1K tokens',
     speed: 'Très rapide',
     quality: 4,
-    description: 'Équilibre parfait entre coût et performance'
+    description: 'Équilibre parfait entre coût et performance',
   },
   {
     id: 'gemini-pro',
@@ -70,8 +70,8 @@ const availableModels: Model[] = [
     cost: '0.0005€/1K tokens',
     speed: 'Ultra rapide',
     quality: 4,
-    description: 'Excellent rapport qualité-prix'
-  }
+    description: 'Excellent rapport qualité-prix',
+  },
 ];
 
 export default function CreateChatbotPage() {
@@ -145,7 +145,9 @@ export default function CreateChatbotPage() {
         try {
           const token = await user.getIdToken();
           headers['Authorization'] = `Bearer ${token}`;
-        } catch { /* continue without token */ }
+        } catch {
+          /* continue without token */
+        }
       }
 
       const response = await fetch('/api/chatbot/create', {
@@ -216,17 +218,23 @@ export default function CreateChatbotPage() {
             {/* Progress indicator */}
             <div className="flex items-center gap-4 mb-8">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">1</div>
+                <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                  1
+                </div>
                 <span className="text-sm font-medium text-purple-400">Configuration</span>
               </div>
               <div className="w-16 h-0.5 bg-gray-700"></div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-700 text-gray-400 rounded-full flex items-center justify-center text-sm font-semibold">2</div>
+                <div className="w-8 h-8 bg-gray-700 text-gray-400 rounded-full flex items-center justify-center text-sm font-semibold">
+                  2
+                </div>
                 <span className="text-sm font-medium text-gray-500">Test</span>
               </div>
               <div className="w-16 h-0.5 bg-gray-700"></div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-700 text-gray-400 rounded-full flex items-center justify-center text-sm font-semibold">3</div>
+                <div className="w-8 h-8 bg-gray-700 text-gray-400 rounded-full flex items-center justify-center text-sm font-semibold">
+                  3
+                </div>
                 <span className="text-sm font-medium text-gray-500">Publication</span>
               </div>
             </div>
@@ -258,7 +266,7 @@ export default function CreateChatbotPage() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  onChange={e => handleInputChange('name', e.target.value)}
                   className={`w-full px-4 py-3 bg-[#0f1020] border rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors ${
                     errors.name ? 'border-red-500/50' : 'border-purple-500/30'
                   }`}
@@ -273,15 +281,13 @@ export default function CreateChatbotPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Modèle IA *
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Modèle IA *</label>
                 <select
                   value={formData.model}
-                  onChange={(e) => handleInputChange('model', e.target.value)}
+                  onChange={e => handleInputChange('model', e.target.value)}
                   className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
                 >
-                  {availableModels.map((model) => (
+                  {availableModels.map(model => (
                     <option key={model.id} value={model.id}>
                       {model.name} ({model.provider})
                     </option>
@@ -308,7 +314,7 @@ export default function CreateChatbotPage() {
               </label>
               <textarea
                 value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
+                onChange={e => handleInputChange('description', e.target.value)}
                 rows={3}
                 className={`w-full px-4 py-3 bg-[#0f1020] border rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors ${
                   errors.description ? 'border-red-500/50' : 'border-purple-500/30'
@@ -338,7 +344,7 @@ export default function CreateChatbotPage() {
                 </label>
                 <textarea
                   value={formData.systemPrompt}
-                  onChange={(e) => handleInputChange('systemPrompt', e.target.value)}
+                  onChange={e => handleInputChange('systemPrompt', e.target.value)}
                   rows={6}
                   className={`w-full px-4 py-3 bg-[#0f1020] border rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors font-mono text-sm ${
                     errors.systemPrompt ? 'border-red-500/50' : 'border-purple-500/30'
@@ -367,7 +373,7 @@ export default function CreateChatbotPage() {
                     max="2"
                     step="0.1"
                     value={formData.temperature}
-                    onChange={(e) => handleInputChange('temperature', parseFloat(e.target.value))}
+                    onChange={e => handleInputChange('temperature', parseFloat(e.target.value))}
                     className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -392,7 +398,7 @@ export default function CreateChatbotPage() {
                     max="4000"
                     step="100"
                     value={formData.maxTokens}
-                    onChange={(e) => handleInputChange('maxTokens', parseInt(e.target.value))}
+                    onChange={e => handleInputChange('maxTokens', parseInt(e.target.value))}
                     className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -442,9 +448,7 @@ export default function CreateChatbotPage() {
                 <CheckCircle className="w-8 h-8 text-green-400" />
               </div>
 
-              <h3 className="text-2xl font-bold text-white mb-2">
-                Chatbot créé avec succès !
-              </h3>
+              <h3 className="text-2xl font-bold text-white mb-2">Chatbot créé avec succès !</h3>
 
               <p className="text-gray-400 mb-6">
                 Votre chatbot est maintenant disponible et prêt à être partagé.
@@ -470,7 +474,7 @@ export default function CreateChatbotPage() {
                   {createdChatbot.qrCode.startsWith('data:image/svg') ? (
                     <div
                       dangerouslySetInnerHTML={{
-                        __html: atob(createdChatbot.qrCode.split(',')[1])
+                        __html: atob(createdChatbot.qrCode.split(',')[1]),
                       }}
                       className="w-32 h-32 border rounded-lg p-2 bg-white"
                     />

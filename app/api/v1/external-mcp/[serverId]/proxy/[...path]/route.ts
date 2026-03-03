@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { externalMcpService } from '@/lib/services/external-mcp.service'
-import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth'
+import { NextRequest, NextResponse } from 'next/server';
+import { externalMcpService } from '@/lib/services/external-mcp.service';
+import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 
 async function getAuthUserId(request: NextRequest): Promise<string> {
-  const authHeader = request.headers.get('authorization')
+  const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    const err: any = new Error('Authentication required')
-    err.statusCode = 401
-    throw err
+    const err: any = new Error('Authentication required');
+    err.statusCode = 401;
+    throw err;
   }
-  const token = authHeader.split('Bearer ')[1]
-  const adminAuth = await getFirebaseAdminAuth()
+  const token = authHeader.split('Bearer ')[1];
+  const adminAuth = await getFirebaseAdminAuth();
   if (!adminAuth) {
-    const err: any = new Error('Firebase Admin not configured')
-    err.statusCode = 500
-    throw err
+    const err: any = new Error('Firebase Admin not configured');
+    err.statusCode = 500;
+    throw err;
   }
-  const decoded: any = await adminAuth.verifyIdToken(token)
-  return decoded.uid
+  const decoded: any = await adminAuth.verifyIdToken(token);
+  return decoded.uid;
 }
 
 async function handleProxy(
@@ -25,32 +25,36 @@ async function handleProxy(
   { params }: { params: Promise<{ serverId: string; path: string[] }> }
 ) {
   try {
-    const userId = await getAuthUserId(request)
-    const { serverId, path } = await params
-    const targetPath = path.join('/')
+    const userId = await getAuthUserId(request);
+    const { serverId, path } = await params;
+    const targetPath = path.join('/');
 
-    let body: any = undefined
+    let body: any = undefined;
     if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') {
       try {
-        body = await request.json()
+        body = await request.json();
       } catch {
         // no body
       }
     }
 
-    const result = await externalMcpService.proxy(serverId, userId, userId, targetPath, request.method, body)
+    const result = await externalMcpService.proxy(
+      serverId,
+      userId,
+      userId,
+      targetPath,
+      request.method,
+      body
+    );
 
-    return NextResponse.json(result.data, { status: result.status })
+    return NextResponse.json(result.data, { status: result.status });
   } catch (error: any) {
-    const status = error.statusCode || 502
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status }
-    )
+    const status = error.statusCode || 502;
+    return NextResponse.json({ success: false, error: error.message }, { status });
   }
 }
 
-export const GET = handleProxy
-export const POST = handleProxy
-export const PUT = handleProxy
-export const DELETE = handleProxy
+export const GET = handleProxy;
+export const POST = handleProxy;
+export const PUT = handleProxy;
+export const DELETE = handleProxy;

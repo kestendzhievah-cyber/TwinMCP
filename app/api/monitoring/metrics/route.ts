@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../_shared';
 
@@ -7,7 +7,14 @@ export async function GET(request: NextRequest) {
     const monitoringService = await getMonitoringService();
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period');
-    const interval = searchParams.get('interval') as '1m' | '5m' | '15m' | '1h' | '6h' | '1d' | undefined;
+    const interval = searchParams.get('interval') as
+      | '1m'
+      | '5m'
+      | '15m'
+      | '1h'
+      | '6h'
+      | '1d'
+      | undefined;
 
     if (period) {
       // Parse period (e.g., "1h", "24h", "7d")
@@ -21,10 +28,10 @@ export async function GET(request: NextRequest) {
 
       const value = parseInt(periodMatch[1]);
       const unit = periodMatch[2];
-      
-      let endDate = new Date();
-      let startDate = new Date();
-      
+
+      const endDate = new Date();
+      const startDate = new Date();
+
       switch (unit) {
         case 'h':
           startDate.setHours(startDate.getHours() - value);
@@ -52,22 +59,19 @@ export async function GET(request: NextRequest) {
         period: { start: startDate, end: endDate },
         interval: interval || '5m',
         metrics,
-        count: metrics.length
+        count: metrics.length,
       });
     } else {
       // Get current metrics
       const currentMetrics = await monitoringService.getCurrentMetrics();
       return NextResponse.json({
         timestamp: currentMetrics.timestamp,
-        metrics: currentMetrics
+        metrics: currentMetrics,
       });
     }
   } catch (error) {
     logger.error('Error fetching metrics:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -75,20 +79,17 @@ export async function POST(request: NextRequest) {
   try {
     const monitoringService = await getMonitoringService();
     const body = await request.json();
-    
+
     // Trigger manual metrics collection
     const metrics = await monitoringService.collectMetrics();
-    
+
     return NextResponse.json({
       success: true,
       timestamp: metrics.timestamp,
-      metrics
+      metrics,
     });
   } catch (error) {
     logger.error('Error collecting metrics:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

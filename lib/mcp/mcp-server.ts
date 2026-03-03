@@ -37,7 +37,8 @@ async function ensureServices(): Promise<void> {
     }
 
     try {
-      const { LibraryResolutionService } = await import('@/lib/services/library-resolution.service');
+      const { LibraryResolutionService } =
+        await import('@/lib/services/library-resolution.service');
       libraryResolutionService = new LibraryResolutionService(prisma, redisClient);
     } catch (e) {
       logger.warn('[MCP] LibraryResolutionService not available:', e);
@@ -163,8 +164,16 @@ export function getMcpServer(): McpServer {
       description:
         'Resolve library names and find matching software libraries. Use this to find the TwinMCP library ID for a given library name before querying documentation.',
       inputSchema: z.object({
-        query: z.string().min(1).max(500).describe('User question or task to help contextualise the search'),
-        libraryName: z.string().min(1).max(200).describe('Human name of the library (e.g. "React", "Next.js", "MongoDB")'),
+        query: z
+          .string()
+          .min(1)
+          .max(500)
+          .describe('User question or task to help contextualise the search'),
+        libraryName: z
+          .string()
+          .min(1)
+          .max(200)
+          .describe('Human name of the library (e.g. "React", "Next.js", "MongoDB")'),
       }),
       annotations: {
         title: 'Resolve Library ID',
@@ -188,7 +197,8 @@ export function getMcpServer(): McpServer {
           results: [],
           totalFound: 0,
           query: libraryName,
-          _note: 'LibraryResolutionService not available. Configure database for full library resolution.',
+          _note:
+            'LibraryResolutionService not available. Configure database for full library resolution.',
         };
       }
 
@@ -209,11 +219,30 @@ export function getMcpServer(): McpServer {
       description:
         'Search documentation for a specific library. Returns code snippets, guides, and API references optimised for LLM context.',
       inputSchema: z.object({
-        libraryId: z.string().min(1).describe('TwinMCP library ID in format /vendor/lib (e.g. /mongodb/docs, /vercel/next.js)'),
-        query: z.string().min(1).max(1000).describe('Question or task (setup, code example, configuration, etc.)'),
+        libraryId: z
+          .string()
+          .min(1)
+          .describe(
+            'TwinMCP library ID in format /vendor/lib (e.g. /mongodb/docs, /vercel/next.js)'
+          ),
+        query: z
+          .string()
+          .min(1)
+          .max(1000)
+          .describe('Question or task (setup, code example, configuration, etc.)'),
         version: z.string().optional().describe('Optional specific version of the library'),
-        maxResults: z.number().min(1).max(50).default(10).describe('Maximum number of results (default: 10)'),
-        maxTokens: z.number().min(100).max(8000).default(4000).describe('Maximum tokens in response (default: 4000)'),
+        maxResults: z
+          .number()
+          .min(1)
+          .max(50)
+          .default(10)
+          .describe('Maximum number of results (default: 10)'),
+        maxTokens: z
+          .number()
+          .min(100)
+          .max(8000)
+          .default(4000)
+          .describe('Maximum tokens in response (default: 4000)'),
       }),
       annotations: {
         title: 'Query Documentation',
@@ -241,7 +270,8 @@ export function getMcpServer(): McpServer {
           results: [],
           totalResults: 0,
           totalTokens: 0,
-          _note: 'VectorSearchService not available. Configure database and vector store for full documentation search.',
+          _note:
+            'VectorSearchService not available. Configure database and vector store for full documentation search.',
         };
       }
 

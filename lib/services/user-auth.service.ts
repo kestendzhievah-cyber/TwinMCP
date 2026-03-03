@@ -61,7 +61,7 @@ export interface AuthResult {
 const PLAN_LIMITS = {
   free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3 },
   pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10 },
-  enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100 }
+  enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100 },
 };
 
 // Session TTL (24 hours)
@@ -87,9 +87,13 @@ export class UserAuthService {
   private initFirebaseAdmin() {
     try {
       if (!admin.apps.length) {
-        const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-        const privateKey = (process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_ADMIN_PRIVATE_KEY)?.replace(/\\n/g, '\n');
+        const projectId =
+          process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+        const clientEmail =
+          process.env.FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+        const privateKey = (
+          process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_ADMIN_PRIVATE_KEY
+        )?.replace(/\\n/g, '\n');
 
         if (projectId && clientEmail && privateKey) {
           admin.initializeApp({
@@ -129,12 +133,10 @@ export class UserAuthService {
           if (!extracted) {
             return {
               success: false,
-              error: firebaseError.code === 'auth/id-token-expired' 
-                ? 'Token expired' 
-                : 'Invalid token',
-              code: firebaseError.code === 'auth/id-token-expired' 
-                ? 'EXPIRED_TOKEN' 
-                : 'INVALID_TOKEN'
+              error:
+                firebaseError.code === 'auth/id-token-expired' ? 'Token expired' : 'Invalid token',
+              code:
+                firebaseError.code === 'auth/id-token-expired' ? 'EXPIRED_TOKEN' : 'INVALID_TOKEN',
             };
           }
           decodedToken = extracted as admin.auth.DecodedIdToken;
@@ -168,9 +170,8 @@ export class UserAuthService {
       return {
         success: true,
         user: authenticatedUser ?? undefined,
-        session
+        session,
       };
-
     } catch (error) {
       logger.error('[Auth] Token verification error:', error);
       return { success: false, error: 'Authentication failed', code: 'UNAUTHORIZED' };
@@ -184,19 +185,19 @@ export class UserAuthService {
     try {
       const parts = token.split('.');
       if (parts.length !== 3) return null;
-      
+
       const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
       const userId = payload.user_id || payload.sub || payload.uid;
-      
+
       if (!userId) return null;
-      
+
       return {
         uid: userId,
         user_id: userId,
         sub: userId,
         email: payload.email,
         name: payload.name,
-        picture: payload.picture
+        picture: payload.picture,
       };
     } catch {
       return null;
@@ -207,8 +208,8 @@ export class UserAuthService {
    * Get or create user in database
    */
   async getOrCreateUser(
-    firebaseUid: string, 
-    email: string, 
+    firebaseUid: string,
+    email: string,
     name: string | null = null,
     avatar: string | null = null
   ) {
@@ -227,23 +228,19 @@ export class UserAuthService {
       // Find existing user
       let user = await this.prisma.user.findFirst({
         where: {
-          OR: [
-            { id: firebaseUid },
-            { oauthId: firebaseUid },
-            { email: email }
-          ]
-        }
+          OR: [{ id: firebaseUid }, { oauthId: firebaseUid }, { email }],
+        },
       });
 
       if (!user) {
         // Get or create default client
         let defaultClient = await this.prisma.client.findFirst({
-          where: { name: 'default' }
+          where: { name: 'default' },
         });
 
         if (!defaultClient) {
           defaultClient = await this.prisma.client.create({
-            data: { name: 'default', apiKeys: {} }
+            data: { name: 'default', apiKeys: {} },
           });
         }
 
@@ -257,8 +254,8 @@ export class UserAuthService {
             oauthId: firebaseUid,
             oauthProvider: 'firebase',
             role: 'BUYER',
-            clientId: defaultClient.id
-          }
+            clientId: defaultClient.id,
+          },
         });
 
         // Create user profile
@@ -267,8 +264,8 @@ export class UserAuthService {
             userId: user.id,
             email,
             firstName: name?.split(' ')[0] || null,
-            lastName: name?.split(' ').slice(1).join(' ') || null
-          }
+            lastName: name?.split(' ').slice(1).join(' ') || null,
+          },
         });
 
         // Create default subscription (free plan)
@@ -285,8 +282,8 @@ export class UserAuthService {
             currency: 'EUR',
             interval: 'MONTH',
             currentPeriodStart: now,
-            currentPeriodEnd: periodEnd
-          }
+            currentPeriodEnd: periodEnd,
+          },
         });
 
         logger.info(`[Auth] New user created: ${email}`);
@@ -295,11 +292,11 @@ export class UserAuthService {
         const updateData: any = {};
         if (name && name !== user.name) updateData.name = name;
         if (avatar && avatar !== user.avatar) updateData.avatar = avatar;
-        
+
         if (Object.keys(updateData).length > 0) {
           user = await this.prisma.user.update({
             where: { id: user.id },
-            data: updateData
+            data: updateData,
           });
         }
       }
@@ -312,7 +309,6 @@ export class UserAuthService {
       }
 
       return user;
-
     } catch (error) {
       logger.error('[Auth] Get or create user error:', error);
       return null;
@@ -322,7 +318,13 @@ export class UserAuthService {
   /**
    * Create session and store in Redis
    */
-  async createSession(user: { id: string; email: string; name: string | null; avatar: string | null; role: string }): Promise<UserSession> {
+  async createSession(user: {
+    id: string;
+    email: string;
+    name: string | null;
+    avatar: string | null;
+    role: string;
+  }): Promise<UserSession> {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_TTL * 1000);
 
@@ -331,7 +333,7 @@ export class UserAuthService {
     try {
       const subscription = await this.prisma.subscription.findFirst({
         where: { userId: user.id, status: 'ACTIVE' },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
       plan = subscription?.plan || 'free';
     } catch {
@@ -346,7 +348,7 @@ export class UserAuthService {
       plan,
       role: user.role,
       createdAt: now,
-      expiresAt
+      expiresAt,
     };
 
     // Store session in Redis
@@ -370,17 +372,17 @@ export class UserAuthService {
     try {
       const sessionKey = `session:${userId}`;
       const sessionData = await this.redis.get(sessionKey);
-      
+
       if (!sessionData) return null;
-      
+
       const session = JSON.parse(sessionData) as UserSession;
-      
+
       // Check if expired
       if (new Date(session.expiresAt) < new Date()) {
         await this.redis.del(sessionKey);
         return null;
       }
-      
+
       return session;
     } catch {
       return null;
@@ -394,11 +396,11 @@ export class UserAuthService {
     try {
       const sessionKey = `session:${userId}`;
       await this.redis.del(sessionKey);
-      
+
       // Also clear user cache
       const userCacheKey = `user:firebase:${userId}`;
       await this.redis.del(userCacheKey);
-      
+
       return true;
     } catch {
       return false;
@@ -425,21 +427,21 @@ export class UserAuthService {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
         include: {
-          client: true
-        }
+          client: true,
+        },
       });
 
       if (!user) return null;
 
       // Get profile
       const profile = await this.prisma.userProfile.findUnique({
-        where: { userId }
+        where: { userId },
       });
 
       // Get active subscription
       const subscription = await this.prisma.subscription.findFirst({
         where: { userId, status: 'ACTIVE' },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
 
       // Get stats
@@ -452,7 +454,7 @@ export class UserAuthService {
       const [apiKeysCount, requestsToday, requestsMonth] = await Promise.all([
         this.prisma.apiKey.count({ where: { userId, isActive: true } }),
         this.prisma.usageLog.count({ where: { userId, createdAt: { gte: today } } }),
-        this.prisma.usageLog.count({ where: { userId, createdAt: { gte: monthStart } } })
+        this.prisma.usageLog.count({ where: { userId, createdAt: { gte: monthStart } } }),
       ]);
 
       const authenticatedUser: AuthenticatedUser = {
@@ -463,24 +465,28 @@ export class UserAuthService {
         role: user.role,
         plan: subscription?.plan || 'free',
         clientId: user.clientId,
-        profile: profile ? {
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          phone: profile.phone,
-          address: profile.address,
-          city: profile.city,
-          country: profile.country
-        } : null,
-        subscription: subscription ? {
-          plan: subscription.plan,
-          status: subscription.status,
-          currentPeriodEnd: subscription.currentPeriodEnd
-        } : null,
+        profile: profile
+          ? {
+              firstName: profile.firstName,
+              lastName: profile.lastName,
+              phone: profile.phone,
+              address: profile.address,
+              city: profile.city,
+              country: profile.country,
+            }
+          : null,
+        subscription: subscription
+          ? {
+              plan: subscription.plan,
+              status: subscription.status,
+              currentPeriodEnd: subscription.currentPeriodEnd,
+            }
+          : null,
         stats: {
           apiKeysCount,
           requestsToday,
-          requestsMonth
-        }
+          requestsMonth,
+        },
       };
 
       // Cache for 5 minutes
@@ -491,7 +497,6 @@ export class UserAuthService {
       }
 
       return authenticatedUser;
-
     } catch (error) {
       logger.error('[Auth] Get authenticated user error:', error);
       return null;
@@ -501,23 +506,26 @@ export class UserAuthService {
   /**
    * Update user profile
    */
-  async updateProfile(userId: string, data: {
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-    address?: string;
-    city?: string;
-    country?: string;
-    postalCode?: string;
-  }): Promise<boolean> {
+  async updateProfile(
+    userId: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      address?: string;
+      city?: string;
+      country?: string;
+      postalCode?: string;
+    }
+  ): Promise<boolean> {
     try {
       await this.prisma.userProfile.upsert({
         where: { userId },
         update: data,
         create: {
           userId,
-          ...data
-        }
+          ...data,
+        },
       });
 
       // Clear cache
@@ -526,7 +534,7 @@ export class UserAuthService {
       } catch (cacheError) {
         logger.warn('[Auth] Redis cache clear failed');
       }
-      
+
       return true;
     } catch (error) {
       logger.error('[Auth] Update profile error:', error);
@@ -545,9 +553,9 @@ export class UserAuthService {
           actionType: 'login',
           metadata: {
             timestamp: new Date().toISOString(),
-            source: 'firebase'
-          }
-        }
+            source: 'firebase',
+          },
+        },
       });
     } catch {
       // Silent fail for analytics
@@ -558,12 +566,8 @@ export class UserAuthService {
    * Clear all caches for a user
    */
   async clearUserCache(userId: string) {
-    const keys = [
-      `session:${userId}`,
-      `auth:user:${userId}`,
-      `user:firebase:${userId}`
-    ];
-    
+    const keys = [`session:${userId}`, `auth:user:${userId}`, `user:firebase:${userId}`];
+
     await Promise.all(keys.map(key => this.redis.del(key)));
   }
 }

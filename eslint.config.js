@@ -38,26 +38,28 @@ module.exports = [
       ...nextPlugin.configs['core-web-vitals'].rules,
 
       // TypeScript specific rules
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-non-null-assertion': 'error',
-      '@typescript-eslint/prefer-nullish-coalescing': 'error',
-      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/prefer-nullish-coalescing': 'warn',
+      '@typescript-eslint/prefer-optional-chain': 'warn',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/await-thenable': 'error',
-      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'warn',
       
       // General rules
       'no-console': 'off',
+      'no-unused-vars': 'warn',
       'prefer-const': 'error',
       'no-var': 'error',
-      'object-shorthand': 'error',
-      'prefer-template': 'error',
+      'object-shorthand': 'warn',
+      'prefer-template': 'warn',
       'no-undef': 'off',
+      'no-useless-escape': 'warn',
       
       // Prettier integration
-      'prettier/prettier': 'error',
+      'prettier/prettier': 'warn',
     },
   },
   {

@@ -6,7 +6,10 @@ import { prisma } from '@/lib/prisma';
  * @param environment L'environnement (dev, staging, prod) - défaut : DEVELOPMENT.
  * @returns Un objet contenant les données du client, y compris les clés API, paramètres, modules actifs et variables d'environnement.
  */
-export async function loadClientConfig(clientName: string, environment: 'DEVELOPMENT' | 'STAGING' | 'PRODUCTION' = 'DEVELOPMENT') {
+export async function loadClientConfig(
+  clientName: string,
+  environment: 'DEVELOPMENT' | 'STAGING' | 'PRODUCTION' = 'DEVELOPMENT'
+) {
   try {
     const tenant = await (prisma as any).tenant.findFirst({
       where: { name: clientName },

@@ -1,11 +1,30 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  MessageSquare, Zap, TrendingUp, Shield, Check, ArrowRight, Sparkles, 
-  Users, Clock, DollarSign, Code2, Library, Boxes, Workflow, X, Star,
-  Server, Cpu, GitBranch, Rocket, ChevronRight, Play
+import {
+  MessageSquare,
+  Zap,
+  TrendingUp,
+  Shield,
+  Check,
+  ArrowRight,
+  Sparkles,
+  Users,
+  Clock,
+  DollarSign,
+  Code2,
+  Library,
+  Boxes,
+  Workflow,
+  X,
+  Star,
+  Server,
+  Cpu,
+  GitBranch,
+  Rocket,
+  ChevronRight,
+  Play,
 } from 'lucide-react';
 
 // Hook for intersection observer animations
@@ -34,7 +53,15 @@ function useInView(threshold = 0.1) {
 }
 
 // Animated Counter Component - displays immediately then animates on view
-function AnimatedCounter({ end, duration = 2000, suffix = '' }: { end: number; duration?: number; suffix?: string }) {
+function AnimatedCounter({
+  end,
+  duration = 2000,
+  suffix = '',
+}: {
+  end: number;
+  duration?: number;
+  suffix?: string;
+}) {
   const [count, setCount] = useState(end); // Start with end value
   const [hasAnimated, setHasAnimated] = useState(false);
   const { ref, isInView } = useInView(0.3);
@@ -43,7 +70,7 @@ function AnimatedCounter({ end, duration = 2000, suffix = '' }: { end: number; d
     if (!isInView || hasAnimated) return;
     setHasAnimated(true);
     setCount(0);
-    
+
     let startTime: number | null = null;
     const animate = (currentTime: number) => {
       if (!startTime) startTime = currentTime;
@@ -56,7 +83,12 @@ function AnimatedCounter({ end, duration = 2000, suffix = '' }: { end: number; d
     requestAnimationFrame(animate);
   }, [isInView, hasAnimated, end, duration]);
 
-  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
+  return (
+    <span ref={ref}>
+      {count.toLocaleString()}
+      {suffix}
+    </span>
+  );
 }
 
 export default function TwinMCPLanding() {
@@ -81,9 +113,9 @@ export default function TwinMCPLanding() {
   const handlePlanClick = (planName: string) => {
     const billing = isAnnual ? 'annual' : 'monthly';
     const planMap: { [key: string]: string } = {
-      'Free': `/signup?plan=free&billing=${billing}`,
-      'Professional': `/signup?plan=professional&billing=${billing}`,
-      'Enterprise': `/signup?plan=enterprise&billing=${billing}`
+      Free: `/signup?plan=free&billing=${billing}`,
+      Professional: `/signup?plan=professional&billing=${billing}`,
+      Enterprise: `/signup?plan=enterprise&billing=${billing}`,
     };
     router.push(planMap[planName] || '/signup');
   };
@@ -96,31 +128,33 @@ export default function TwinMCPLanding() {
     { icon: Users, value: 5000, suffix: '+', label: 'Développeurs actifs' },
     { icon: Library, value: 500, suffix: '+', label: 'Serveurs MCP créés' },
     { icon: Code2, value: 95, suffix: '%', label: 'Temps de dev économisé' },
-    { icon: Workflow, value: 10, suffix: 'x', label: 'Plus rapide' }
+    { icon: Workflow, value: 10, suffix: 'x', label: 'Plus rapide' },
   ];
 
   const features = [
     {
       icon: Server,
       title: 'Création MCP Personnalisée',
-      description: 'Créez vos propres serveurs MCP sur-mesure en quelques minutes avec notre éditeur visuel avancé',
-      highlight: true
+      description:
+        'Créez vos propres serveurs MCP sur-mesure en quelques minutes avec notre éditeur visuel avancé',
+      highlight: true,
     },
     {
       icon: Library,
       title: 'Bibliothèque Complète',
-      description: 'Accédez à des centaines de serveurs MCP prêts à l\'emploi et personnalisables'
+      description: "Accédez à des centaines de serveurs MCP prêts à l'emploi et personnalisables",
     },
     {
       icon: Boxes,
       title: 'Intégration Facile',
-      description: 'Connectez vos serveurs MCP à n\'importe quelle application en quelques lignes de code'
+      description:
+        "Connectez vos serveurs MCP à n'importe quelle application en quelques lignes de code",
     },
     {
       icon: Shield,
       title: 'Sécurité & Fiabilité',
-      description: 'Infrastructure sécurisée, monitoring 24/7, conformité RGPD garantie'
-    }
+      description: 'Infrastructure sécurisée, monitoring 24/7, conformité RGPD garantie',
+    },
   ];
 
   // Comparison data for conversion optimization
@@ -148,10 +182,10 @@ export default function TwinMCPLanding() {
         '200 requêtes/jour',
         'Accès bibliothèque publique',
         'Support communauté',
-        'Documentation complète'
+        'Documentation complète',
       ],
       cta: 'Démarrer gratuitement',
-      popular: false
+      popular: false,
     },
     {
       name: 'Professional',
@@ -166,11 +200,11 @@ export default function TwinMCPLanding() {
         'Support prioritaire 24/7',
         'Analytics avancés',
         'API complète',
-        'Webhooks & intégrations'
+        'Webhooks & intégrations',
       ],
       cta: 'Essai gratuit 14 jours',
       popular: true,
-      badge: 'ESSAI GRATUIT'
+      badge: 'ESSAI GRATUIT',
     },
     {
       name: 'Enterprise',
@@ -185,11 +219,11 @@ export default function TwinMCPLanding() {
         'SLA 99.9%',
         'Déploiement on-premise',
         'Formation & onboarding',
-        'White-label disponible'
+        'White-label disponible',
       ],
       cta: 'Contacter les ventes',
-      popular: false
-    }
+      popular: false,
+    },
   ];
 
   const testimonials = [
@@ -197,26 +231,29 @@ export default function TwinMCPLanding() {
       company: 'DevStudio',
       author: 'Marc Lefebvre',
       role: 'CTO',
-      content: 'TwinMCP a transformé notre workflow. La création de serveurs MCP personnalisés nous a fait économiser des semaines de développement.',
+      content:
+        'TwinMCP a transformé notre workflow. La création de serveurs MCP personnalisés nous a fait économiser des semaines de développement.',
       savings: '200h/mois économisées',
-      rating: 5
+      rating: 5,
     },
     {
       company: 'AI Solutions',
       author: 'Sophie Bernard',
       role: 'Lead Developer',
-      content: 'L\'intégration MCP n\'a jamais été aussi simple. Nos clients adorent la flexibilité et la rapidité de déploiement.',
+      content:
+        "L'intégration MCP n'a jamais été aussi simple. Nos clients adorent la flexibilité et la rapidité de déploiement.",
       savings: '10x plus rapide',
-      rating: 5
+      rating: 5,
     },
     {
       company: 'TechFlow',
       author: 'Lucas Martin',
       role: 'Founder',
-      content: 'Le plan Pro avec l\'essai gratuit m\'a convaincu en une semaine. Les serveurs MCP personnalisés sont un game-changer.',
+      content:
+        "Le plan Pro avec l'essai gratuit m'a convaincu en une semaine. Les serveurs MCP personnalisés sont un game-changer.",
       savings: '300% ROI',
-      rating: 5
-    }
+      rating: 5,
+    },
   ];
 
   // Sections with animations
@@ -235,7 +272,7 @@ export default function TwinMCPLanding() {
         <div className="fixed bottom-6 right-6 z-50 animate-bounce-in">
           <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-1 rounded-2xl shadow-2xl shadow-purple-500/50">
             <div className="bg-slate-900 p-4 rounded-xl relative">
-              <button 
+              <button
                 onClick={() => setShowFreeTrial(false)}
                 className="absolute -top-2 -right-2 bg-slate-800 rounded-full p-1 hover:bg-slate-700 transition"
                 data-testid="close-trial-popup"
@@ -251,7 +288,7 @@ export default function TwinMCPLanding() {
                   <p className="text-gray-400 text-sm">14 jours sans engagement</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={handleFreeTrialOrLogin}
                 className="w-full mt-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-600 transition btn-animated"
                 data-testid="trial-popup-cta"
@@ -272,20 +309,44 @@ export default function TwinMCPLanding() {
               <span className="text-2xl font-bold text-white">TwinMCP</span>
             </div>
             <div className="hidden md:flex space-x-8">
-              <a href="#features" className="text-gray-300 hover:text-white transition hover-scale" data-testid="nav-features">Fonctionnalités</a>
-              <a href="#comparison" className="text-gray-300 hover:text-white transition hover-scale" data-testid="nav-comparison">Comparatif</a>
-              <a href="#pricing" className="text-gray-300 hover:text-white transition hover-scale" data-testid="nav-pricing">Tarifs</a>
-              <a href="#testimonials" className="text-gray-300 hover:text-white transition hover-scale" data-testid="nav-testimonials">Témoignages</a>
+              <a
+                href="#features"
+                className="text-gray-300 hover:text-white transition hover-scale"
+                data-testid="nav-features"
+              >
+                Fonctionnalités
+              </a>
+              <a
+                href="#comparison"
+                className="text-gray-300 hover:text-white transition hover-scale"
+                data-testid="nav-comparison"
+              >
+                Comparatif
+              </a>
+              <a
+                href="#pricing"
+                className="text-gray-300 hover:text-white transition hover-scale"
+                data-testid="nav-pricing"
+              >
+                Tarifs
+              </a>
+              <a
+                href="#testimonials"
+                className="text-gray-300 hover:text-white transition hover-scale"
+                data-testid="nav-testimonials"
+              >
+                Témoignages
+              </a>
             </div>
             <div className="flex space-x-4">
-              <button 
+              <button
                 onClick={() => router.push('/auth')}
                 className="px-4 py-2 text-white hover:text-purple-400 transition"
                 data-testid="nav-login"
               >
                 Connexion
               </button>
-              <button 
+              <button
                 onClick={handleFreeTrialOrLogin}
                 className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/50 btn-animated animate-pulse-glow"
                 data-testid="nav-free-trial"
@@ -301,30 +362,45 @@ export default function TwinMCPLanding() {
       <section ref={heroSection.ref} className="pt-32 pb-20 px-4">
         <div className="max-w-7xl mx-auto text-center">
           {/* Trust Badge */}
-          <div className={`inline-block mb-4 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-full ${heroSection.isInView ? 'animate-bounce-in' : 'opacity-0'}`}>
+          <div
+            className={`inline-block mb-4 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-full ${heroSection.isInView ? 'animate-bounce-in' : 'opacity-0'}`}
+          >
             <span className="text-purple-300 text-sm font-semibold flex items-center gap-2">
               <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
               +5 000 développeurs nous font confiance
             </span>
           </div>
-          
+
           {/* Main Headline */}
-          <h1 className={`text-5xl md:text-7xl font-bold text-white mb-6 leading-tight ${heroSection.isInView ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
+          <h1
+            className={`text-5xl md:text-7xl font-bold text-white mb-6 leading-tight ${heroSection.isInView ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}
+          >
             Créez vos
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-shift"> Serveurs MCP </span>
-            <br/>
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-shift">
+              {' '}
+              Serveurs MCP{' '}
+            </span>
+            <br />
             <span className="text-4xl md:text-5xl">Personnalisés</span> en quelques clics
           </h1>
-          
+
           {/* Subheadline */}
-          <p className={`text-xl text-gray-300 mb-8 max-w-3xl mx-auto ${heroSection.isInView ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}>
-            La plateforme tout-en-un pour créer, gérer et déployer vos serveurs Model Context Protocol. 
-            <span className="text-purple-400 font-semibold"> Création sur-mesure + Bibliothèque complète.</span>
+          <p
+            className={`text-xl text-gray-300 mb-8 max-w-3xl mx-auto ${heroSection.isInView ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}
+          >
+            La plateforme tout-en-un pour créer, gérer et déployer vos serveurs Model Context
+            Protocol.
+            <span className="text-purple-400 font-semibold">
+              {' '}
+              Création sur-mesure + Bibliothèque complète.
+            </span>
           </p>
-          
+
           {/* CTA Buttons */}
-          <div className={`flex flex-col sm:flex-row gap-4 justify-center mb-8 ${heroSection.isInView ? 'animate-bounce-in delay-300' : 'opacity-0'}`}>
-            <button 
+          <div
+            className={`flex flex-col sm:flex-row gap-4 justify-center mb-8 ${heroSection.isInView ? 'animate-bounce-in delay-300' : 'opacity-0'}`}
+          >
+            <button
               onClick={handleFreeTrialOrLogin}
               className="group px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50 flex items-center justify-center btn-animated animate-pulse-glow"
               data-testid="hero-free-trial"
@@ -333,7 +409,7 @@ export default function TwinMCPLanding() {
               Essai Gratuit 14 Jours
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-            <button 
+            <button
               onClick={handleDemo}
               className="px-8 py-4 bg-white/10 backdrop-blur text-white text-lg font-semibold rounded-full hover:bg-white/20 transition border border-white/20 flex items-center justify-center hover-lift"
               data-testid="hero-demo"
@@ -344,7 +420,9 @@ export default function TwinMCPLanding() {
           </div>
 
           {/* Free Trial Benefits */}
-          <div className={`flex flex-wrap justify-center gap-6 text-sm text-gray-400 ${heroSection.isInView ? 'animate-fade-in-up delay-400' : 'opacity-0'}`}>
+          <div
+            className={`flex flex-wrap justify-center gap-6 text-sm text-gray-400 ${heroSection.isInView ? 'animate-fade-in-up delay-400' : 'opacity-0'}`}
+          >
             <span className="flex items-center gap-1">
               <Check className="w-4 h-4 text-green-400" /> Aucune carte requise
             </span>
@@ -357,13 +435,19 @@ export default function TwinMCPLanding() {
           </div>
 
           {/* Stats */}
-          <div ref={statsSection.ref} className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto mt-20">
+          <div
+            ref={statsSection.ref}
+            className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto mt-20"
+          >
             {stats.map((stat, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`text-center hover-lift p-4 rounded-xl bg-slate-800/30 border border-purple-500/10 ${statsSection.isInView ? `animate-count-up delay-${(index + 1) * 100}` : 'opacity-0'}`}
               >
-                <stat.icon className="w-8 h-8 text-purple-400 mx-auto mb-2 animate-float" style={{ animationDelay: `${index * 0.2}s` }} />
+                <stat.icon
+                  className="w-8 h-8 text-purple-400 mx-auto mb-2 animate-float"
+                  style={{ animationDelay: `${index * 0.2}s` }}
+                />
                 <div className="text-3xl font-bold text-white mb-1">
                   <AnimatedCounter end={stat.value} suffix={stat.suffix} />
                 </div>
@@ -377,19 +461,22 @@ export default function TwinMCPLanding() {
       {/* Features Section */}
       <section id="features" ref={featuresSection.ref} className="py-20 px-4 bg-slate-900/50">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-16 ${featuresSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}>
+          <div
+            className={`text-center mb-16 ${featuresSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}
+          >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Tout pour vos serveurs MCP
             </h2>
             <p className="text-xl text-gray-400">
-              Une plateforme complète pour créer, gérer et déployer vos serveurs Model Context Protocol
+              Une plateforme complète pour créer, gérer et déployer vos serveurs Model Context
+              Protocol
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             {features.map((feature, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`p-8 bg-gradient-to-br from-slate-800/50 to-purple-900/20 rounded-2xl border ${feature.highlight ? 'border-purple-500 animate-pulse-glow' : 'border-purple-500/20'} hover-lift hover-glow ${featuresSection.isInView ? `animate-fade-in-scale delay-${(index + 1) * 100}` : 'opacity-0'}`}
               >
                 {feature.highlight && (
@@ -397,7 +484,9 @@ export default function TwinMCPLanding() {
                     FONCTIONNALITÉ PRO
                   </div>
                 )}
-                <feature.icon className={`w-12 h-12 ${feature.highlight ? 'text-pink-400' : 'text-purple-400'} mb-4`} />
+                <feature.icon
+                  className={`w-12 h-12 ${feature.highlight ? 'text-pink-400' : 'text-purple-400'} mb-4`}
+                />
                 <h3 className="text-2xl font-bold text-white mb-3">{feature.title}</h3>
                 <p className="text-gray-400">{feature.description}</p>
               </div>
@@ -409,12 +498,17 @@ export default function TwinMCPLanding() {
       {/* Comparison Section - Key for Conversion */}
       <section id="comparison" ref={comparisonSection.ref} className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
-          <div className={`text-center mb-16 ${comparisonSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}>
+          <div
+            className={`text-center mb-16 ${comparisonSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}
+          >
             <div className="inline-block mb-4 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full">
               <span className="text-green-400 text-sm font-semibold">Comparatif détaillé</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Free vs <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Professional</span>
+              Free vs{' '}
+              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Professional
+              </span>
             </h2>
             <p className="text-xl text-gray-400">
               Découvrez tout ce que vous débloquez avec l'essai gratuit Pro
@@ -422,7 +516,9 @@ export default function TwinMCPLanding() {
           </div>
 
           {/* Comparison Table */}
-          <div className={`bg-slate-800/50 rounded-2xl border border-purple-500/20 overflow-hidden ${comparisonSection.isInView ? 'animate-fade-in-scale delay-200' : 'opacity-0'}`}>
+          <div
+            className={`bg-slate-800/50 rounded-2xl border border-purple-500/20 overflow-hidden ${comparisonSection.isInView ? 'animate-fade-in-scale delay-200' : 'opacity-0'}`}
+          >
             {/* Header */}
             <div className="grid grid-cols-3 bg-slate-900/80 p-4 border-b border-purple-500/20">
               <div className="text-gray-400 font-semibold">Fonctionnalité</div>
@@ -437,12 +533,14 @@ export default function TwinMCPLanding() {
 
             {/* Rows */}
             {comparisonFeatures.map((item, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`grid grid-cols-3 p-4 border-b border-purple-500/10 hover:bg-purple-500/5 transition ${item.proHighlight ? 'bg-purple-500/5' : ''}`}
               >
                 <div className="text-gray-300 flex items-center">
-                  {item.proHighlight && <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 mr-2" />}
+                  {item.proHighlight && (
+                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 mr-2" />
+                  )}
                   {item.feature}
                 </div>
                 <div className="text-center">
@@ -464,7 +562,9 @@ export default function TwinMCPLanding() {
                       <X className="w-5 h-5 text-gray-600 mx-auto" />
                     )
                   ) : (
-                    <span className={`font-semibold ${item.proHighlight ? 'text-purple-400' : 'text-white'}`}>
+                    <span
+                      className={`font-semibold ${item.proHighlight ? 'text-purple-400' : 'text-white'}`}
+                    >
                       {item.pro}
                     </span>
                   )}
@@ -478,7 +578,7 @@ export default function TwinMCPLanding() {
                 <p className="text-white font-bold text-lg">Prêt à essayer gratuitement ?</p>
                 <p className="text-gray-400">Aucune carte de crédit requise pour l'essai</p>
               </div>
-              <button 
+              <button
                 onClick={handleFreeTrialOrLogin}
                 className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-full hover:from-green-600 hover:to-emerald-600 transition shadow-lg shadow-green-500/30 btn-animated flex items-center"
                 data-testid="comparison-cta"
@@ -494,17 +594,19 @@ export default function TwinMCPLanding() {
       {/* Pricing Section */}
       <section id="pricing" ref={pricingSection.ref} className="py-20 px-4 bg-slate-900/50">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-16 ${pricingSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Tarifs Transparents
-            </h2>
+          <div
+            className={`text-center mb-16 ${pricingSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Tarifs Transparents</h2>
             <p className="text-xl text-gray-400 mb-8">
               Choisissez le plan qui correspond à vos besoins. Changez à tout moment.
             </p>
-            
+
             {/* Toggle Mensuel / Annuel */}
             <div className="flex items-center justify-center gap-4">
-              <span className={`text-lg ${!isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}>
+              <span
+                className={`text-lg ${!isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}
+              >
                 Mensuel
               </span>
               <button
@@ -512,9 +614,13 @@ export default function TwinMCPLanding() {
                 className={`relative w-16 h-8 rounded-full transition-colors duration-300 ${isAnnual ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-slate-600'}`}
                 data-testid="billing-toggle"
               >
-                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 ${isAnnual ? 'translate-x-9' : 'translate-x-1'}`} />
+                <div
+                  className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 ${isAnnual ? 'translate-x-9' : 'translate-x-1'}`}
+                />
               </button>
-              <span className={`text-lg ${isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}>
+              <span
+                className={`text-lg ${isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}
+              >
                 Annuel
               </span>
               {isAnnual && (
@@ -527,11 +633,11 @@ export default function TwinMCPLanding() {
 
           <div className="grid md:grid-cols-3 gap-8 items-start">
             {plans.map((plan, index) => (
-              <div 
+              <div
                 key={index}
                 className={`relative p-8 rounded-2xl border transition-all duration-500 ${
-                  plan.popular 
-                    ? 'bg-gradient-to-br from-purple-900/50 to-pink-900/50 border-purple-500 shadow-2xl shadow-purple-500/30 md:scale-105 md:-mt-4 animate-pulse-glow z-10' 
+                  plan.popular
+                    ? 'bg-gradient-to-br from-purple-900/50 to-pink-900/50 border-purple-500 shadow-2xl shadow-purple-500/30 md:scale-105 md:-mt-4 animate-pulse-glow z-10'
                     : 'bg-slate-800/50 border-slate-700 hover-lift hover-glow'
                 }`}
               >
@@ -546,7 +652,7 @@ export default function TwinMCPLanding() {
                     {plan.badge}
                   </div>
                 )}
-                
+
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                   <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
@@ -572,13 +678,15 @@ export default function TwinMCPLanding() {
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feature, fIndex) => (
                     <li key={fIndex} className="flex items-start">
-                      <Check className={`w-5 h-5 ${plan.popular ? 'text-green-400' : 'text-purple-400'} mr-3 flex-shrink-0 mt-0.5`} />
+                      <Check
+                        className={`w-5 h-5 ${plan.popular ? 'text-green-400' : 'text-purple-400'} mr-3 flex-shrink-0 mt-0.5`}
+                      />
                       <span className="text-gray-300">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
-                <button 
+                <button
                   onClick={() => {
                     if (plan.name === 'Enterprise') {
                       handleContactSales();
@@ -587,10 +695,10 @@ export default function TwinMCPLanding() {
                     }
                   }}
                   className={`w-full py-3 rounded-full font-semibold transition btn-animated ${
-                  plan.popular
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/50'
-                    : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
-                }`}
+                    plan.popular
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/50'
+                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                  }`}
                   data-testid={`pricing-${plan.name.toLowerCase()}-cta`}
                 >
                   {plan.cta}
@@ -604,7 +712,9 @@ export default function TwinMCPLanding() {
       {/* Testimonials */}
       <section id="testimonials" ref={testimonialSection.ref} className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className={`text-center mb-16 ${testimonialSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}>
+          <div
+            className={`text-center mb-16 ${testimonialSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}
+          >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Ils Nous Font Confiance
             </h2>
@@ -615,8 +725,8 @@ export default function TwinMCPLanding() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`p-8 bg-gradient-to-br from-slate-800/50 to-purple-900/20 rounded-2xl border border-purple-500/20 hover-lift hover-glow ${testimonialSection.isInView ? `animate-slide-in-${index % 2 === 0 ? 'left' : 'right'} delay-${(index + 1) * 100}` : 'opacity-0'}`}
               >
                 {/* Stars */}
@@ -627,11 +737,13 @@ export default function TwinMCPLanding() {
                 </div>
 
                 <p className="text-gray-300 text-lg mb-6 italic">"{testimonial.content}"</p>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold text-white">{testimonial.author}</div>
-                    <div className="text-purple-400 text-sm">{testimonial.role}, {testimonial.company}</div>
+                    <div className="text-purple-400 text-sm">
+                      {testimonial.role}, {testimonial.company}
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-green-400 font-bold text-sm px-3 py-1 bg-green-500/20 rounded-full">
@@ -646,8 +758,13 @@ export default function TwinMCPLanding() {
       </section>
 
       {/* CTA Final */}
-      <section ref={ctaSection.ref} className="py-20 px-4 bg-gradient-to-r from-purple-900/50 to-pink-900/50">
-        <div className={`max-w-4xl mx-auto text-center ${ctaSection.isInView ? 'animate-bounce-in' : 'opacity-0'}`}>
+      <section
+        ref={ctaSection.ref}
+        className="py-20 px-4 bg-gradient-to-r from-purple-900/50 to-pink-900/50"
+      >
+        <div
+          className={`max-w-4xl mx-auto text-center ${ctaSection.isInView ? 'animate-bounce-in' : 'opacity-0'}`}
+        >
           <div className="inline-block mb-6 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full animate-badge-bounce">
             <span className="text-green-400 font-semibold flex items-center gap-2">
               <Rocket className="w-4 h-4" />
@@ -656,13 +773,18 @@ export default function TwinMCPLanding() {
           </div>
 
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Prêt à Créer vos <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Serveurs MCP Personnalisés</span> ?
+            Prêt à Créer vos{' '}
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Serveurs MCP Personnalisés
+            </span>{' '}
+            ?
           </h2>
           <p className="text-xl text-gray-300 mb-8">
-            Rejoignez les milliers de développeurs qui utilisent TwinMCP pour accélérer leur workflow
+            Rejoignez les milliers de développeurs qui utilisent TwinMCP pour accélérer leur
+            workflow
           </p>
-          
-          <button 
+
+          <button
             onClick={handleFreeTrialOrLogin}
             className="group px-10 py-5 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xl font-semibold rounded-full hover:from-green-600 hover:to-emerald-600 transition shadow-2xl shadow-green-500/50 btn-animated animate-pulse-glow"
             data-testid="final-cta"
@@ -673,7 +795,7 @@ export default function TwinMCPLanding() {
               <ArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
             </span>
           </button>
-          
+
           <div className="flex flex-wrap justify-center gap-6 mt-6 text-gray-400 text-sm">
             <span className="flex items-center gap-1">
               <Check className="w-4 h-4 text-green-400" /> Aucune carte de crédit requise
@@ -704,22 +826,46 @@ export default function TwinMCPLanding() {
             <div>
               <h4 className="text-white font-semibold mb-4">Produit</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><a href="#features" className="hover:text-purple-400 transition">Fonctionnalités</a></li>
-                <li><a href="#pricing" className="hover:text-purple-400 transition">Tarifs</a></li>
-                <li><a href="#" className="hover:text-purple-400 transition">Documentation</a></li>
+                <li>
+                  <a href="#features" className="hover:text-purple-400 transition">
+                    Fonctionnalités
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" className="hover:text-purple-400 transition">
+                    Tarifs
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-purple-400 transition">
+                    Documentation
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Entreprise</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><a href="/contact" className="hover:text-purple-400 transition">Contact</a></li>
-                <li><a href="/privacy" className="hover:text-purple-400 transition">Confidentialité</a></li>
-                <li><a href="/terms" className="hover:text-purple-400 transition">CGU</a></li>
+                <li>
+                  <a href="/contact" className="hover:text-purple-400 transition">
+                    Contact
+                  </a>
+                </li>
+                <li>
+                  <a href="/privacy" className="hover:text-purple-400 transition">
+                    Confidentialité
+                  </a>
+                </li>
+                <li>
+                  <a href="/terms" className="hover:text-purple-400 transition">
+                    CGU
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Commencer</h4>
-              <button 
+              <button
                 onClick={handleFreeTrialOrLogin}
                 className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition text-sm btn-animated"
                 data-testid="footer-cta"

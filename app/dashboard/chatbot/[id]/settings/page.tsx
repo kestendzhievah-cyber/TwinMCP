@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -14,7 +14,7 @@ import {
   Users,
   TrendingUp,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -48,7 +48,7 @@ const availableModels: Model[] = [
     cost: '0.01€/1K tokens',
     speed: 'Rapide',
     quality: 5,
-    description: 'Le plus puissant, raisonnement avancé'
+    description: 'Le plus puissant, raisonnement avancé',
   },
   {
     id: 'gpt-3.5-turbo',
@@ -57,7 +57,7 @@ const availableModels: Model[] = [
     cost: '0.002€/1K tokens',
     speed: 'Très rapide',
     quality: 4,
-    description: 'Rapide et économique pour tâches simples'
+    description: 'Rapide et économique pour tâches simples',
   },
   {
     id: 'claude-3-opus',
@@ -66,7 +66,7 @@ const availableModels: Model[] = [
     cost: '0.015€/1K tokens',
     speed: 'Rapide',
     quality: 5,
-    description: 'Excellence en analyse et créativité'
+    description: 'Excellence en analyse et créativité',
   },
   {
     id: 'claude-3-sonnet',
@@ -75,7 +75,7 @@ const availableModels: Model[] = [
     cost: '0.003€/1K tokens',
     speed: 'Très rapide',
     quality: 4,
-    description: 'Équilibre parfait entre coût et performance'
+    description: 'Équilibre parfait entre coût et performance',
   },
   {
     id: 'gemini-pro',
@@ -84,8 +84,8 @@ const availableModels: Model[] = [
     cost: '0.0005€/1K tokens',
     speed: 'Ultra rapide',
     quality: 4,
-    description: 'Excellent rapport qualité-prix'
-  }
+    description: 'Excellent rapport qualité-prix',
+  },
 ];
 
 // Types pour les états de chargement et d'erreur
@@ -102,7 +102,7 @@ export default function EditChatbotPage() {
   // États de chargement
   const [loadState, setLoadState] = useState<LoadingState>('idle');
   const [saveState, setSaveState] = useState<LoadingState>('idle');
-  
+
   // États pour le chatbot et les données du formulaire
   const [chatbot, setChatbot] = useState<Chatbot | null>(null);
   const [formData, setFormData] = useState<Omit<Chatbot, 'id' | 'conversationsCount'>>({
@@ -121,18 +121,18 @@ export default function EditChatbotPage() {
   useEffect(() => {
     const loadChatbot = async () => {
       if (!chatbotId) return;
-      
+
       setLoadState('loading');
-      
+
       try {
         const response = await fetch(`/api/chatbot/${chatbotId}`);
-        
+
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         setChatbot(data);
         setFormData({
           name: data.name,
@@ -143,10 +143,9 @@ export default function EditChatbotPage() {
           maxTokens: data.maxTokens,
           isActive: data.isActive,
         });
-        
+
         setLoadState('success');
         toast.success('Chatbot chargé avec succès');
-        
       } catch (error) {
         console.error('Erreur lors du chargement du chatbot:', error);
         setLoadState('error');
@@ -194,9 +193,9 @@ export default function EditChatbotPage() {
 
   const handleSave = async () => {
     if (!validateForm()) return;
-    
+
     setSaveState('loading');
-    
+
     try {
       const response = await fetch(`/api/chatbot/${chatbotId}`, {
         method: 'PUT',
@@ -205,22 +204,21 @@ export default function EditChatbotPage() {
         },
         body: JSON.stringify(formData),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
-      
+
       const updatedChatbot = await response.json();
-      
+
       setChatbot(updatedChatbot);
       setSaveState('success');
       toast.success('Chatbot mis à jour avec succès');
-      
+
       // Rediriger vers le tableau de bord après un court délai
       setTimeout(() => {
         router.push('/dashboard');
       }, 1500);
-      
     } catch (error) {
       console.error('Erreur lors de la mise à jour du chatbot:', error);
       setSaveState('error');
@@ -239,7 +237,7 @@ export default function EditChatbotPage() {
       </div>
     );
   }
-  
+
   // État d'erreur
   if (loadState === 'error') {
     return (
@@ -298,7 +296,9 @@ export default function EditChatbotPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">Modifier {chatbot.name}</h1>
-            <p className="text-gray-400">Modifiez les paramètres et instructions de votre chatbot</p>
+            <p className="text-gray-400">
+              Modifiez les paramètres et instructions de votre chatbot
+            </p>
           </div>
         </div>
 
@@ -309,7 +309,9 @@ export default function EditChatbotPage() {
               <MessageSquare className="w-4 h-4" />
               Conversations
             </div>
-            <div className="text-2xl font-bold text-white">{chatbot.conversationsCount.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">
+              {chatbot.conversationsCount.toLocaleString()}
+            </div>
           </div>
           <div className="bg-[#0f1020] rounded-lg p-4 text-center">
             <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mb-1">
@@ -352,7 +354,7 @@ export default function EditChatbotPage() {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                onChange={e => handleInputChange('name', e.target.value)}
                 className={`w-full px-4 py-3 bg-[#0f1020] border rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors ${
                   errors.name ? 'border-red-500/50' : 'border-purple-500/30'
                 }`}
@@ -367,15 +369,13 @@ export default function EditChatbotPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Modèle IA *
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Modèle IA *</label>
               <select
                 value={formData.model}
-                onChange={(e) => handleInputChange('model', e.target.value)}
+                onChange={e => handleInputChange('model', e.target.value)}
                 className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               >
-                {availableModels.map((model) => (
+                {availableModels.map(model => (
                   <option key={model.id} value={model.id}>
                     {model.name} ({model.provider})
                   </option>
@@ -402,7 +402,7 @@ export default function EditChatbotPage() {
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
+              onChange={e => handleInputChange('description', e.target.value)}
               rows={3}
               className={`w-full px-4 py-3 bg-[#0f1020] border rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors ${
                 errors.description ? 'border-red-500/50' : 'border-purple-500/30'
@@ -449,8 +449,7 @@ export default function EditChatbotPage() {
             <p className="text-gray-500 text-sm mt-1">
               {formData.isActive
                 ? 'Le chatbot peut recevoir des messages et répondre aux utilisateurs.'
-                : 'Le chatbot est en pause et ne répondra pas aux nouveaux messages.'
-              }
+                : 'Le chatbot est en pause et ne répondra pas aux nouveaux messages.'}
             </p>
           </div>
         </div>
@@ -469,7 +468,7 @@ export default function EditChatbotPage() {
               </label>
               <textarea
                 value={formData.systemPrompt}
-                onChange={(e) => handleInputChange('systemPrompt', e.target.value)}
+                onChange={e => handleInputChange('systemPrompt', e.target.value)}
                 rows={8}
                 className={`w-full px-4 py-3 bg-[#0f1020] border rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors font-mono text-sm ${
                   errors.systemPrompt ? 'border-red-500/50' : 'border-purple-500/30'
@@ -498,7 +497,7 @@ export default function EditChatbotPage() {
                   max="2"
                   step="0.1"
                   value={formData.temperature}
-                  onChange={(e) => handleInputChange('temperature', parseFloat(e.target.value))}
+                  onChange={e => handleInputChange('temperature', parseFloat(e.target.value))}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -523,7 +522,7 @@ export default function EditChatbotPage() {
                   max="4000"
                   step="100"
                   value={formData.maxTokens}
-                  onChange={(e) => handleInputChange('maxTokens', parseInt(e.target.value))}
+                  onChange={e => handleInputChange('maxTokens', parseInt(e.target.value))}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">

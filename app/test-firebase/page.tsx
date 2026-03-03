@@ -16,7 +16,7 @@ export default function TestFirebase() {
 
     // Test 2: Config présente ?
     const config = (auth as any).config;
-    if (!config || !config.apiKey) {
+    if (!config?.apiKey) {
       setStatus('❌ Config Firebase manquante');
       return;
     }

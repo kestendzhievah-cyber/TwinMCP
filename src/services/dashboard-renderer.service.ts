@@ -1,8 +1,13 @@
 import { Dashboard, DashboardWidget, DashboardFilter } from '../types/reporting.types';
 
+export interface WidgetDataSource {
+  executeQuery(query: string, type: string): Promise<any>;
+}
+
 export interface DashboardRenderRequest {
   dashboard: Dashboard;
   filters?: Record<string, any>;
+  dataSource?: WidgetDataSource;
 }
 
 export interface RenderedDashboard {
@@ -37,7 +42,8 @@ export interface RenderedWidget {
 export class DashboardRenderer {
   async render(request: DashboardRenderRequest): Promise<RenderedDashboard> {
     const startTime = Date.now();
-    const { dashboard, filters } = request;
+    const { dashboard, filters, dataSource } = request;
+    this.dataSource = dataSource || null;
 
     const renderedWidgets: RenderedWidget[] = [];
 
@@ -54,7 +60,7 @@ export class DashboardRenderer {
           data: null,
           visualization: widget.visualization,
           loading: false,
-          error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
@@ -75,6 +81,8 @@ export class DashboardRenderer {
       }
     };
   }
+
+  private dataSource: WidgetDataSource | null = null;
 
   private async renderWidget(
     widget: DashboardWidget,
@@ -121,14 +129,19 @@ export class DashboardRenderer {
     filters?: Record<string, any>
   ): Promise<any> {
     const query = this.applyFiltersToQuery(widget.query, filters);
-    
-    return {
-      value: Math.random() * 1000,
-      unit: 'units',
-      trend: Math.random() > 0.5 ? 'up' : 'down',
-      change: (Math.random() - 0.5) * 20,
-      timestamp: new Date()
-    };
+
+    if (this.dataSource) {
+      const result = await this.dataSource.executeQuery(query, 'metric');
+      return {
+        value: result?.value ?? 0,
+        unit: result?.unit ?? 'units',
+        trend: result?.trend ?? 'stable',
+        change: result?.change ?? 0,
+        timestamp: new Date(),
+      };
+    }
+
+    return { value: 0, unit: 'units', trend: 'stable', change: 0, timestamp: new Date() };
   }
 
   private async fetchChartData(
@@ -136,23 +149,13 @@ export class DashboardRenderer {
     filters?: Record<string, any>
   ): Promise<any> {
     const query = this.applyFiltersToQuery(widget.query, filters);
-    
-    const chartType = widget.visualization.type;
-    
-    switch (chartType) {
-      case 'line':
-        return this.generateLineChartData();
-      case 'bar':
-        return this.generateBarChartData();
-      case 'pie':
-        return this.generatePieChartData();
-      case 'scatter':
-        return this.generateScatterChartData();
-      case 'heatmap':
-        return this.generateHeatmapData();
-      default:
-        return this.generateDefaultChartData();
+
+    if (this.dataSource) {
+      const result = await this.dataSource.executeQuery(query, 'chart');
+      if (result?.labels && result?.datasets) return result;
     }
+
+    return { labels: [], datasets: [] };
   }
 
   private async fetchTableData(
@@ -160,22 +163,13 @@ export class DashboardRenderer {
     filters?: Record<string, any>
   ): Promise<any> {
     const query = this.applyFiltersToQuery(widget.query, filters);
-    
-    return {
-      columns: ['Name', 'Value', 'Status', 'Date'],
-      rows: [
-        ['Item 1', Math.floor(Math.random() * 100), 'Active', new Date().toISOString()],
-        ['Item 2', Math.floor(Math.random() * 100), 'Pending', new Date().toISOString()],
-        ['Item 3', Math.floor(Math.random() * 100), 'Inactive', new Date().toISOString()],
-        ['Item 4', Math.floor(Math.random() * 100), 'Active', new Date().toISOString()],
-        ['Item 5', Math.floor(Math.random() * 100), 'Pending', new Date().toISOString()]
-      ],
-      pagination: {
-        page: 1,
-        pageSize: 10,
-        total: 25
-      }
-    };
+
+    if (this.dataSource) {
+      const result = await this.dataSource.executeQuery(query, 'table');
+      if (result?.columns && result?.rows) return result;
+    }
+
+    return { columns: [], rows: [], pagination: { page: 1, pageSize: 10, total: 0 } };
   }
 
   private async fetchKPIData(
@@ -183,20 +177,23 @@ export class DashboardRenderer {
     filters?: Record<string, any>
   ): Promise<any> {
     const query = this.applyFiltersToQuery(widget.query, filters);
-    
+
+    if (this.dataSource) {
+      const result = await this.dataSource.executeQuery(query, 'kpi');
+      return {
+        value: result?.value ?? 0,
+        target: result?.target ?? 0,
+        percentage: result?.target ? Math.round((result.value / result.target) * 100) : 0,
+        status: result?.target && result?.value >= result.target ? 'good' : 'warning',
+        trend: result?.trend ?? { direction: 'stable', percentage: 0 },
+        metadata: { lastUpdated: new Date(), source: 'database' },
+      };
+    }
+
     return {
-      value: Math.floor(Math.random() * 1000),
-      target: 1200,
-      percentage: Math.floor(Math.random() * 100),
-      status: Math.random() > 0.3 ? 'good' : 'warning',
-      trend: {
-        direction: Math.random() > 0.5 ? 'up' : 'down',
-        percentage: (Math.random() - 0.5) * 20
-      },
-      metadata: {
-        lastUpdated: new Date(),
-        source: 'database'
-      }
+      value: 0, target: 0, percentage: 0, status: 'warning',
+      trend: { direction: 'stable', percentage: 0 },
+      metadata: { lastUpdated: new Date(), source: 'none' },
     };
   }
 
@@ -204,28 +201,24 @@ export class DashboardRenderer {
     widget: DashboardWidget,
     filters?: Record<string, any>
   ): Promise<any> {
-    return {
-      content: 'This is a text widget with important information.',
-      format: 'markdown',
-      metadata: {
-        lastUpdated: new Date()
-      }
-    };
+    if (this.dataSource) {
+      const query = this.applyFiltersToQuery(widget.query, filters);
+      const result = await this.dataSource.executeQuery(query, 'text');
+      if (result?.content) return result;
+    }
+    return { content: widget.query || '', format: 'markdown', metadata: { lastUpdated: new Date() } };
   }
 
   private async fetchImageData(
     widget: DashboardWidget,
     filters?: Record<string, any>
   ): Promise<any> {
-    return {
-      url: '/api/images/dashboard-widget.png',
-      alt: 'Dashboard image',
-      metadata: {
-        width: 400,
-        height: 300,
-        format: 'png'
-      }
-    };
+    if (this.dataSource) {
+      const query = this.applyFiltersToQuery(widget.query, filters);
+      const result = await this.dataSource.executeQuery(query, 'image');
+      if (result?.url) return result;
+    }
+    return { url: '', alt: widget.title, metadata: { width: 0, height: 0, format: '' } };
   }
 
   private async applyVisualization(
@@ -261,64 +254,6 @@ export class DashboardRenderer {
     return filteredQuery;
   }
 
-  private generateLineChartData(): any {
-    const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const datasets = [
-      {
-        label: 'Revenue',
-        data: labels.map(() => Math.random() * 1000),
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)'
-      },
-      {
-        label: 'Costs',
-        data: labels.map(() => Math.random() * 800),
-        borderColor: '#ef4444',
-        backgroundColor: 'rgba(239, 68, 68, 0.1)'
-      }
-    ];
-
-    return { labels, datasets };
-  }
-
-  private generateBarChartData(): any {
-    const labels = ['Product A', 'Product B', 'Product C', 'Product D'];
-    const data = labels.map(() => Math.random() * 500);
-
-    return { labels, datasets: [{ label: 'Sales', data }] };
-  }
-
-  private generatePieChartData(): any {
-    const labels = ['Category A', 'Category B', 'Category C', 'Category D'];
-    const data = labels.map(() => Math.random() * 100);
-
-    return { labels, datasets: [{ data }] };
-  }
-
-  private generateScatterChartData(): any {
-    const data = Array.from({ length: 50 }, () => ({
-      x: Math.random() * 100,
-      y: Math.random() * 100
-    }));
-
-    return { datasets: [{ label: 'Data Points', data }] };
-  }
-
-  private generateHeatmapData(): any {
-    const data = Array.from({ length: 10 }, (_, i) =>
-      Array.from({ length: 10 }, (_, j) => ({
-        x: j,
-        y: i,
-        value: Math.random()
-      }))
-    ).flat();
-
-    return { data };
-  }
-
-  private generateDefaultChartData(): any {
-    return this.generateLineChartData();
-  }
 
   private isThresholdActive(threshold: any, data: any): boolean {
     if (typeof data.value === 'number') {

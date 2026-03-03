@@ -75,10 +75,10 @@ export class StripeService {
       return {
         ...payment,
         status: PaymentStatus.FAILED,
-        failureReason: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error',
+        failureReason: error instanceof Error ? error.message : 'Unknown error',
         metadata: {
           ...payment.metadata,
-          error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error'
         }
       };
     }

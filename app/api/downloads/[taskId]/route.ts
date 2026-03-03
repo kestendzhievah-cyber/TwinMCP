@@ -1,13 +1,18 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 let _services: { downloadManager: any; db: any } | null = null;
 async function getServices() {
   if (!_services) {
     const { pool: db } = await import('@/lib/prisma');
-    const { DownloadManagerService } = await import('../../../../src/services/download-manager.service');
-    const { DOWNLOAD_CONFIG, STORAGE_CONFIG } = await import('../../../../src/config/download.config');
-    _services = { downloadManager: new DownloadManagerService(db, STORAGE_CONFIG, DOWNLOAD_CONFIG), db };
+    const { DownloadManagerService } =
+      await import('../../../../src/services/download-manager.service');
+    const { DOWNLOAD_CONFIG, STORAGE_CONFIG } =
+      await import('../../../../src/config/download.config');
+    _services = {
+      downloadManager: new DownloadManagerService(db, STORAGE_CONFIG, DOWNLOAD_CONFIG),
+      db,
+    };
   }
   return _services;
 }
@@ -22,10 +27,7 @@ export async function GET(
     const task = await downloadManager.getDownloadStatus(taskId);
 
     if (!task) {
-      return NextResponse.json(
-        { success: false, error: 'Task not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, task });
@@ -51,10 +53,7 @@ export async function DELETE(
     const task = await downloadManager.getDownloadStatus(taskId);
 
     if (!task) {
-      return NextResponse.json(
-        { success: false, error: 'Task not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
     }
 
     if (task.status === 'downloading') {

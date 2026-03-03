@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 let _workspaceService: any = null;
@@ -17,10 +17,7 @@ export async function POST(req: NextRequest) {
     const { name, ownerId, options } = await req.json();
 
     if (!name || !ownerId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const workspace = await workspaceService.createWorkspace(name, ownerId, options);
@@ -42,10 +39,7 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId');
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
     const workspaces = await workspaceService.getUserWorkspaces(userId);

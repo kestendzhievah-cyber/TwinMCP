@@ -16,14 +16,14 @@ export function InvoiceDetail({ invoice, onClose, onDownloadPDF }: InvoiceDetail
     return new Date(date).toLocaleDateString('fr-FR', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: currency
+      currency,
     }).format(amount);
   };
 
@@ -48,16 +48,14 @@ export function InvoiceDetail({ invoice, onClose, onDownloadPDF }: InvoiceDetail
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">Invoice {invoice.number}</h1>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(invoice.status)}`}>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(invoice.status)}`}
+            >
               {invoice.status}
             </span>
           </div>
           <div className="flex gap-2">
-            {onDownloadPDF && (
-              <Button onClick={onDownloadPDF}>
-                Download PDF
-              </Button>
-            )}
+            {onDownloadPDF && <Button onClick={onDownloadPDF}>Download PDF</Button>}
             {onClose && (
               <Button onClick={onClose} variant="outline">
                 Close
@@ -75,7 +73,8 @@ export function InvoiceDetail({ invoice, onClose, onDownloadPDF }: InvoiceDetail
               {invoice.billingAddress.phone && <p>{invoice.billingAddress.phone}</p>}
               <p>{invoice.billingAddress.address}</p>
               <p>
-                {invoice.billingAddress.city}, {invoice.billingAddress.state} {invoice.billingAddress.postalCode}
+                {invoice.billingAddress.city}, {invoice.billingAddress.state}{' '}
+                {invoice.billingAddress.postalCode}
               </p>
               <p>{invoice.billingAddress.country}</p>
             </div>
@@ -118,14 +117,12 @@ export function InvoiceDetail({ invoice, onClose, onDownloadPDF }: InvoiceDetail
               </tr>
             </thead>
             <tbody>
-              {invoice.items.map((item) => (
+              {invoice.items.map(item => (
                 <tr key={item.id} className="border-b border-gray-200">
                   <td className="py-3 px-4">
                     <div>
                       <p className="font-medium">{item.description}</p>
-                      {item.type && (
-                        <p className="text-sm text-gray-500 capitalize">{item.type}</p>
-                      )}
+                      {item.type && <p className="text-sm text-gray-500 capitalize">{item.type}</p>}
                     </div>
                   </td>
                   <td className="text-right py-3 px-4">{item.quantity.toLocaleString()}</td>
@@ -145,7 +142,9 @@ export function InvoiceDetail({ invoice, onClose, onDownloadPDF }: InvoiceDetail
           <div className="w-64 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Subtotal:</span>
-              <span className="font-medium">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
+              <span className="font-medium">
+                {formatCurrency(invoice.subtotal, invoice.currency)}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Tax:</span>

@@ -63,11 +63,13 @@ export default function InvoicesPage() {
       let token = '';
       try {
         token = await user.getIdToken();
-      } catch { /* continue without token */ }
+      } catch {
+        /* continue without token */
+      }
 
       const response = await fetch('/api/v1/billing', {
         headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` }),
+          ...(token && { Authorization: `Bearer ${token}` }),
           'Content-Type': 'application/json',
         },
       });
@@ -108,7 +110,7 @@ export default function InvoicesPage() {
     try {
       const token = await user.getIdToken();
       const response = await fetch(`/api/billing/invoices/${invoice.id}/pdf`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) throw new Error('Échec du téléchargement');
@@ -163,9 +165,7 @@ export default function InvoicesPage() {
             <Receipt className="w-7 h-7 text-purple-400" />
             Factures
           </h1>
-          <p className="text-gray-400 mt-1">
-            Consultez et téléchargez vos factures
-          </p>
+          <p className="text-gray-400 mt-1">Consultez et téléchargez vos factures</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -177,7 +177,7 @@ export default function InvoicesPage() {
           </button>
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={e => setFilter(e.target.value)}
             className="px-4 py-2.5 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition cursor-pointer"
           >
             <option value="ALL">Toutes</option>
@@ -220,8 +220,11 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice) => (
-                  <tr key={invoice.id} className="border-b border-purple-500/10 last:border-0 hover:bg-purple-500/5 transition">
+                {invoices.map(invoice => (
+                  <tr
+                    key={invoice.id}
+                    className="border-b border-purple-500/10 last:border-0 hover:bg-purple-500/5 transition"
+                  >
                     <td className="px-6 py-4">
                       <span className="text-white font-medium">{invoice.number}</span>
                     </td>
@@ -235,7 +238,9 @@ export default function InvoicesPage() {
                       {formatCurrency(invoice.amount, invoice.currency)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[invoice.status] || STATUS_COLORS.DRAFT}`}>
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[invoice.status] || STATUS_COLORS.DRAFT}`}
+                      >
                         {STATUS_LABELS[invoice.status] || invoice.status}
                       </span>
                     </td>

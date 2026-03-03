@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
@@ -6,7 +6,7 @@ import { validateAuth } from '@/lib/firebase-admin-auth';
 const PLAN_LIMITS = {
   free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
   pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10, rateLimit: 200 },
-  enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 }
+  enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 },
 };
 
 // Get empty stats
@@ -21,10 +21,10 @@ function getEmptyStats() {
       dailyLimit: 200,
       monthlyLimit: 6000,
       usedToday: 0,
-      usedMonth: 0
+      usedMonth: 0,
     },
     keys: [],
-    recentActivity: []
+    recentActivity: [],
   };
 }
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
-    
+
     if (!auth.valid) {
       return NextResponse.json(
         { success: false, error: auth.error || 'Unauthorized' },
@@ -46,23 +46,20 @@ export async function GET(request: NextRequest) {
     let dbUser;
     try {
       dbUser = await prisma.user.findFirst({
-        where: { 
-          OR: [
-            { id: userId },
-            { oauthId: userId }
-          ]
-        }
+        where: {
+          OR: [{ id: userId }, { oauthId: userId }],
+        },
       });
 
       if (!dbUser) {
         // Create default client if needed
         let defaultClient = await prisma.client.findFirst({
-          where: { name: 'default' }
+          where: { name: 'default' },
         });
 
         if (!defaultClient) {
           defaultClient = await prisma.client.create({
-            data: { name: 'default', apiKeys: {} }
+            data: { name: 'default', apiKeys: {} },
           });
         }
 
@@ -73,15 +70,15 @@ export async function GET(request: NextRequest) {
             email: auth.email || `user-${userId}@twinmcp.local`,
             oauthId: userId,
             oauthProvider: 'firebase',
-            clientId: defaultClient.id
-          }
+            clientId: defaultClient.id,
+          },
         });
       }
     } catch (dbError) {
       logger.error('Database error:', dbError);
       return NextResponse.json({
         success: true,
-        data: getEmptyStats()
+        data: getEmptyStats(),
       });
     }
 
@@ -92,7 +89,7 @@ export async function GET(request: NextRequest) {
       try {
         const userProfile = await prisma.userProfile.findUnique({
           where: { userId: dbUser.id },
-          include: { subscriptions: { where: { status: 'ACTIVE' } } }
+          include: { subscriptions: { where: { status: 'ACTIVE' } } },
         });
         plan = userProfile?.subscriptions?.[0]?.plan || 'free';
       } catch {
@@ -105,7 +102,7 @@ export async function GET(request: NextRequest) {
       // Get API keys
       const apiKeys = await prisma.apiKey.findMany({
         where: { userId: dbUser.id, isActive: true, revokedAt: null },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
 
       // Calculate date boundaries
@@ -117,11 +114,11 @@ export async function GET(request: NextRequest) {
       monthStart.setHours(0, 0, 0, 0);
 
       // Batch all key stats in 3 aggregate queries instead of N*4 queries (N+1 fix)
-      const keyIds = apiKeys.map((k: typeof apiKeys[number]) => k.id);
+      const keyIds = apiKeys.map((k: (typeof apiKeys)[number]) => k.id);
 
-      let dailyByKey = new Map<string, number>();
-      let hourlyByKey = new Map<string, number>();
-      let successByKey = new Map<string, number>();
+      const dailyByKey = new Map<string, number>();
+      const hourlyByKey = new Map<string, number>();
+      const successByKey = new Map<string, number>();
 
       if (keyIds.length > 0) {
         try {
@@ -164,14 +161,17 @@ export async function GET(request: NextRequest) {
             logsByKey.set(log.apiKeyId, entry);
           }
           for (const [kid, stats] of logsByKey) {
-            successByKey.set(kid, stats.total > 0 ? Math.round((stats.success / stats.total) * 1000) / 10 : 100);
+            successByKey.set(
+              kid,
+              stats.total > 0 ? Math.round((stats.success / stats.total) * 1000) / 10 : 100
+            );
           }
         } catch {
           // Keep empty maps (defaults to 0)
         }
       }
 
-      const keysWithStats = apiKeys.map((key: typeof apiKeys[number]) => ({
+      const keysWithStats = apiKeys.map((key: (typeof apiKeys)[number]) => ({
         id: key.id,
         keyPrefix: key.keyPrefix,
         name: key.name || 'Sans nom',
@@ -188,19 +188,27 @@ export async function GET(request: NextRequest) {
       }));
 
       // Calculate totals
-      const totalRequestsToday = keysWithStats.reduce((sum, k) => sum + (k.usage?.requestsToday || 0), 0);
+      const totalRequestsToday = keysWithStats.reduce(
+        (sum, k) => sum + (k.usage?.requestsToday || 0),
+        0
+      );
       // Get actual monthly usage from DB
       let totalRequestsMonth = 0;
       try {
         totalRequestsMonth = await prisma.usageLog.count({
-          where: { userId: dbUser.id, createdAt: { gte: monthStart } }
+          where: { userId: dbUser.id, createdAt: { gte: monthStart } },
         });
       } catch {
-        totalRequestsMonth = keysWithStats.reduce((sum, k) => sum + (k.usage?.requestsToday || 0), 0);
+        totalRequestsMonth = keysWithStats.reduce(
+          (sum, k) => sum + (k.usage?.requestsToday || 0),
+          0
+        );
       }
-      const avgSuccessRate = keysWithStats.length > 0
-        ? keysWithStats.reduce((sum, k) => sum + (k.usage?.successRate || 100), 0) / keysWithStats.length
-        : 100;
+      const avgSuccessRate =
+        keysWithStats.length > 0
+          ? keysWithStats.reduce((sum, k) => sum + (k.usage?.successRate || 100), 0) /
+            keysWithStats.length
+          : 100;
 
       // Get recent activity
       let recentActivity: any[] = [];
@@ -213,15 +221,15 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             toolName: true,
             success: true,
-            responseTimeMs: true
-          }
+            responseTimeMs: true,
+          },
         });
 
         recentActivity = recentLogs.map((log: any) => ({
           timestamp: log.createdAt,
           toolName: log.toolName,
           success: log.success,
-          responseTimeMs: log.responseTimeMs || 0
+          responseTimeMs: log.responseTimeMs || 0,
         }));
       } catch {
         // Empty activity
@@ -239,11 +247,11 @@ export async function GET(request: NextRequest) {
             dailyLimit: limits.dailyLimit,
             monthlyLimit: limits.monthlyLimit,
             usedToday: totalRequestsToday,
-            usedMonth: totalRequestsMonth
+            usedMonth: totalRequestsMonth,
           },
           keys: keysWithStats,
-          recentActivity
-        }
+          recentActivity,
+        },
       };
 
       return NextResponse.json(responseData, {
@@ -252,20 +260,15 @@ export async function GET(request: NextRequest) {
           'X-Response-Time': `${Date.now() - startTime}ms`,
         },
       });
-
     } catch (statsError) {
       logger.error('Stats error:', statsError);
       return NextResponse.json({
         success: true,
-        data: getEmptyStats()
+        data: getEmptyStats(),
       });
     }
-
   } catch (error) {
     logger.error('Dashboard API error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

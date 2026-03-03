@@ -178,7 +178,7 @@ export class HighAvailabilityService {
       fromRegion: fromRegionId, toRegion: toRegionId,
       reason, automatic,
       timestamp: new Date().toISOString(),
-      durationMs: Math.round(500 + Math.random() * 2000),
+      durationMs: 0, // Populated with actual elapsed time after real failover
       status: 'completed',
     }
     this.failoverEvents.push(event)
@@ -198,7 +198,7 @@ export class HighAvailabilityService {
     const rp: RecoveryPoint = {
       id: `rp-${++this.idCounter}`, regionId, type,
       timestamp: new Date().toISOString(),
-      sizeBytes: sizeBytes || Math.round(1e9 + Math.random() * 5e9),
+      sizeBytes: sizeBytes || 0, // Must be provided by caller or retrieved from backup system
       status: 'available', metadata: {},
     }
     this.recoveryPoints.push(rp)
@@ -250,4 +250,8 @@ export class HighAvailabilityService {
   get recoveryPointCount(): number { return this.recoveryPoints.length }
 }
 
-export const highAvailabilityService = new HighAvailabilityService()
+let _highAvailabilityService: HighAvailabilityService | null = null
+export function getHighAvailabilityService(): HighAvailabilityService {
+  if (!_highAvailabilityService) _highAvailabilityService = new HighAvailabilityService()
+  return _highAvailabilityService
+}

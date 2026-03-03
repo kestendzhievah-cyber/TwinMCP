@@ -36,10 +36,26 @@ interface ExternalServer {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  HEALTHY: { label: 'En ligne', color: 'text-green-400 bg-green-500/20', icon: <Wifi className="w-3 h-3" /> },
-  DEGRADED: { label: 'Dégradé', color: 'text-yellow-400 bg-yellow-500/20', icon: <AlertTriangle className="w-3 h-3" /> },
-  DOWN: { label: 'Hors ligne', color: 'text-red-400 bg-red-500/20', icon: <WifiOff className="w-3 h-3" /> },
-  UNKNOWN: { label: 'Inconnu', color: 'text-gray-400 bg-gray-500/20', icon: <Clock className="w-3 h-3" /> },
+  HEALTHY: {
+    label: 'En ligne',
+    color: 'text-green-400 bg-green-500/20',
+    icon: <Wifi className="w-3 h-3" />,
+  },
+  DEGRADED: {
+    label: 'Dégradé',
+    color: 'text-yellow-400 bg-yellow-500/20',
+    icon: <AlertTriangle className="w-3 h-3" />,
+  },
+  DOWN: {
+    label: 'Hors ligne',
+    color: 'text-red-400 bg-red-500/20',
+    icon: <WifiOff className="w-3 h-3" />,
+  },
+  UNKNOWN: {
+    label: 'Inconnu',
+    color: 'text-gray-400 bg-gray-500/20',
+    icon: <Clock className="w-3 h-3" />,
+  },
 };
 
 const AUTH_LABELS: Record<string, string> = {
@@ -245,9 +261,11 @@ export default function ExternalMcpPage() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {servers.map((server) => {
+          {servers.map(server => {
             const statusInfo = STATUS_CONFIG[server.status] || STATUS_CONFIG.UNKNOWN;
-            const toolCount = Array.isArray(server.toolsDiscovered) ? server.toolsDiscovered.length : 0;
+            const toolCount = Array.isArray(server.toolsDiscovered)
+              ? server.toolsDiscovered.length
+              : 0;
 
             return (
               <div
@@ -270,7 +288,9 @@ export default function ExternalMcpPage() {
                       </p>
                     </div>
                   </div>
-                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                  <div
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}
+                  >
                     {statusInfo.icon}
                     {statusInfo.label}
                   </div>
@@ -298,7 +318,10 @@ export default function ExternalMcpPage() {
                     <p className="text-xs text-gray-400 mb-0.5">Dernier check</p>
                     <p className="text-sm font-medium text-white">
                       {server.lastCheckedAt
-                        ? new Date(server.lastCheckedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                        ? new Date(server.lastCheckedAt).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
                         : '—'}
                     </p>
                   </div>
@@ -354,7 +377,7 @@ export default function ExternalMcpPage() {
                 <input
                   type="text"
                   value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  onChange={e => setFormName(e.target.value)}
                   placeholder="Mon serveur MCP"
                   className="w-full px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                   autoFocus
@@ -362,11 +385,13 @@ export default function ExternalMcpPage() {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-1.5">Description (optionnel)</label>
+                <label className="block text-sm text-gray-400 mb-1.5">
+                  Description (optionnel)
+                </label>
                 <input
                   type="text"
                   value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
+                  onChange={e => setFormDescription(e.target.value)}
                   placeholder="Une courte description du serveur..."
                   className="w-full px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 />
@@ -377,7 +402,7 @@ export default function ExternalMcpPage() {
                 <input
                   type="url"
                   value={formUrl}
-                  onChange={(e) => setFormUrl(e.target.value)}
+                  onChange={e => setFormUrl(e.target.value)}
                   placeholder="https://my-mcp-server.example.com"
                   className="w-full px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 />
@@ -387,7 +412,7 @@ export default function ExternalMcpPage() {
                 <label className="block text-sm text-gray-400 mb-1.5">Authentification</label>
                 <select
                   value={formAuthType}
-                  onChange={(e) => setFormAuthType(e.target.value as any)}
+                  onChange={e => setFormAuthType(e.target.value as any)}
                   className="w-full px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white focus:border-purple-500 focus:outline-none"
                 >
                   <option value="NONE">Aucune</option>
@@ -400,12 +425,16 @@ export default function ExternalMcpPage() {
               {formAuthType !== 'NONE' && (
                 <div>
                   <label className="block text-sm text-gray-400 mb-1.5">
-                    {formAuthType === 'API_KEY' ? 'Clé API' : formAuthType === 'BEARER' ? 'Token' : 'user:password'}
+                    {formAuthType === 'API_KEY'
+                      ? 'Clé API'
+                      : formAuthType === 'BEARER'
+                        ? 'Token'
+                        : 'user:password'}
                   </label>
                   <input
                     type="password"
                     value={formSecret}
-                    onChange={(e) => setFormSecret(e.target.value)}
+                    onChange={e => setFormSecret(e.target.value)}
                     placeholder="Votre secret..."
                     className="w-full px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                   />
@@ -440,7 +469,9 @@ export default function ExternalMcpPage() {
                 className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {formSubmitting ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Ajout...</>
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Ajout...
+                  </>
                 ) : (
                   'Ajouter'
                 )}

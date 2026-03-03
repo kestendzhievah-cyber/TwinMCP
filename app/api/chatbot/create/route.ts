@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 import { createAgent } from '@/lib/agents';
@@ -27,10 +27,7 @@ export async function POST(request: NextRequest) {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -43,10 +40,7 @@ export async function POST(request: NextRequest) {
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const userId = decodedToken.uid;
@@ -54,10 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.name || !body.description || !body.model || !body.systemPrompt) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Check agent creation limit
@@ -72,7 +63,7 @@ export async function POST(request: NextRequest) {
           currentCount: limitCheck.currentCount,
           maxAllowed: limitCheck.limit,
           plan: limitCheck.plan,
-          suggestedPlan: limitCheck.suggestedUpgrade
+          suggestedPlan: limitCheck.suggestedUpgrade,
         },
         { status: 429 }
       );
@@ -91,8 +82,8 @@ export async function POST(request: NextRequest) {
       margin: 2,
       color: {
         dark: '#000000',
-        light: '#FFFFFF'
-      }
+        light: '#FFFFFF',
+      },
     });
 
     const response: CreateChatbotResponse = {
@@ -100,15 +91,12 @@ export async function POST(request: NextRequest) {
       chatbotId: agent.id,
       publicUrl,
       qrCode: qrCodeDataUrl,
-      newCount: (limitCheck.currentCount || 0) + 1
+      newCount: (limitCheck.currentCount || 0) + 1,
     };
 
     return NextResponse.json(response);
   } catch (error) {
     logger.error('Error creating chatbot:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

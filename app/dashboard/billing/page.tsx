@@ -109,6 +109,38 @@ export default function BillingPage() {
   const [data, setData] = useState<BillingData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const handleManageSubscription = async () => {
+    if (!user) return;
+    setPortalLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/billing/portal', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          returnUrl: `${window.location.origin}/dashboard/billing`,
+        }),
+      });
+      const result = await res.json();
+      if (res.ok && result.url) {
+        window.location.href = result.url;
+      } else {
+        setError(result.error || 'Impossible d\'ouvrir le portail Stripe');
+        setTimeout(() => setError(null), 5000);
+      }
+    } catch (err) {
+      console.error('Portal error:', err);
+      setError('Erreur lors de l\'ouverture du portail de gestion');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   const fetchBillingData = useCallback(async () => {
     if (!user) return;
@@ -126,7 +158,7 @@ export default function BillingPage() {
 
       const response = await fetch('/api/v1/billing', {
         headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` }),
+          ...(token && { Authorization: `Bearer ${token}` }),
           'Content-Type': 'application/json',
         },
       });
@@ -164,7 +196,7 @@ export default function BillingPage() {
     try {
       const token = await user.getIdToken();
       const response = await fetch(`/api/billing/invoices/${invoice.id}/pdf`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) throw new Error('Échec du téléchargement');
@@ -191,14 +223,14 @@ export default function BillingPage() {
     return new Date(dateStr).toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
   const formatCurrency = (amount: number, currency: string = 'EUR') => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: currency
+      currency,
     }).format(amount);
   };
 
@@ -224,7 +256,7 @@ export default function BillingPage() {
             Gérez votre abonnement, factures et moyens de paiement
           </p>
         </div>
-        
+
         <button
           onClick={fetchBillingData}
           disabled={loading}
@@ -265,24 +297,30 @@ export default function BillingPage() {
                   </h2>
                   {data.subscription ? (
                     <p className="text-gray-400 text-sm mt-1">
-                      {formatCurrency(data.subscription.amount, data.subscription.currency)} / {data.subscription.interval === 'MONTH' ? 'mois' : 'an'}
+                      {formatCurrency(data.subscription.amount, data.subscription.currency)} /{' '}
+                      {data.subscription.interval === 'MONTH' ? 'mois' : 'an'}
                       {data.subscription.cancelAtPeriodEnd && (
-                        <span className="text-yellow-400 ml-2">• Se termine le {formatDate(data.subscription.currentPeriodEnd)}</span>
+                        <span className="text-yellow-400 ml-2">
+                          • Se termine le {formatDate(data.subscription.currentPeriodEnd)}
+                        </span>
                       )}
                     </p>
                   ) : (
                     <p className="text-gray-400 text-sm mt-1">
-                      {data.plan.price > 0 ? `${formatCurrency(data.plan.price)} / ${data.plan.interval}` : 'Gratuit'}
+                      {data.plan.price > 0
+                        ? `${formatCurrency(data.plan.price)} / ${data.plan.interval}`
+                        : 'Gratuit'}
                     </p>
                   )}
-                  {data.subscription?.trialEnd && new Date(data.subscription.trialEnd) > new Date() && (
-                    <p className="text-purple-400 text-sm mt-1">
-                      Essai gratuit jusqu'au {formatDate(data.subscription.trialEnd)}
-                    </p>
-                  )}
+                  {data.subscription?.trialEnd &&
+                    new Date(data.subscription.trialEnd) > new Date() && (
+                      <p className="text-purple-400 text-sm mt-1">
+                        Essai gratuit jusqu'au {formatDate(data.subscription.trialEnd)}
+                      </p>
+                    )}
                 </div>
               </div>
-              
+
               <div className="flex gap-3">
                 {data.plan.id === 'free' ? (
                   <Link
@@ -295,11 +333,17 @@ export default function BillingPage() {
                   </Link>
                 ) : (
                   <button
-                    className="px-5 py-2.5 bg-[#1a1b2e] border border-purple-500/30 text-white font-medium rounded-xl hover:bg-purple-500/10 transition flex items-center gap-2"
+                    onClick={handleManageSubscription}
+                    disabled={portalLoading}
+                    className="px-5 py-2.5 bg-[#1a1b2e] border border-purple-500/30 text-white font-medium rounded-xl hover:bg-purple-500/10 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="manage-subscription-btn"
                   >
-                    <Settings className="w-4 h-4" />
-                    Gérer l'abonnement
+                    {portalLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Settings className="w-4 h-4" />
+                    )}
+                    {portalLoading ? 'Ouverture...' : "Gérer l'abonnement"}
                   </button>
                 )}
               </div>
@@ -322,7 +366,8 @@ export default function BillingPage() {
             {data.subscription && (
               <div className="mt-4 pt-4 border-t border-purple-500/20 flex items-center gap-2 text-sm text-gray-400">
                 <Calendar className="w-4 h-4" />
-                Période actuelle : {formatDate(data.subscription.currentPeriodStart)} - {formatDate(data.subscription.currentPeriodEnd)}
+                Période actuelle : {formatDate(data.subscription.currentPeriodStart)} -{' '}
+                {formatDate(data.subscription.currentPeriodEnd)}
               </div>
             )}
           </div>
@@ -341,16 +386,25 @@ export default function BillingPage() {
               </div>
               {data.credits.items.length > 0 && (
                 <div className="space-y-2">
-                  {data.credits.items.slice(0, 3).map((credit) => (
-                    <div key={credit.id} className="flex items-center justify-between p-3 bg-[#0f1020] rounded-lg">
+                  {data.credits.items.slice(0, 3).map(credit => (
+                    <div
+                      key={credit.id}
+                      className="flex items-center justify-between p-3 bg-[#0f1020] rounded-lg"
+                    >
                       <div>
                         <p className="text-white text-sm">{credit.reason}</p>
-                        <p className="text-gray-500 text-xs capitalize">{credit.type.toLowerCase()}</p>
+                        <p className="text-gray-500 text-xs capitalize">
+                          {credit.type.toLowerCase()}
+                        </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-green-400 font-semibold">{formatCurrency(credit.amount, credit.currency)}</p>
+                        <p className="text-green-400 font-semibold">
+                          {formatCurrency(credit.amount, credit.currency)}
+                        </p>
                         {credit.expiresAt && (
-                          <p className="text-gray-500 text-xs">Expire le {formatDate(credit.expiresAt)}</p>
+                          <p className="text-gray-500 text-xs">
+                            Expire le {formatDate(credit.expiresAt)}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -389,7 +443,7 @@ export default function BillingPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.invoices.map((invoice) => (
+                    {data.invoices.map(invoice => (
                       <tr key={invoice.id} className="border-b border-purple-500/10 last:border-0">
                         <td className="py-4">
                           <span className="text-white font-medium">{invoice.number}</span>
@@ -399,11 +453,18 @@ export default function BillingPage() {
                           {formatCurrency(invoice.amount, invoice.currency)}
                         </td>
                         <td className="py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[invoice.status] || STATUS_COLORS.DRAFT}`}>
-                            {invoice.status === 'PAID' ? 'Payée' : 
-                             invoice.status === 'SENT' ? 'Envoyée' :
-                             invoice.status === 'OVERDUE' ? 'En retard' :
-                             invoice.status === 'CANCELLED' ? 'Annulée' : 'Brouillon'}
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[invoice.status] || STATUS_COLORS.DRAFT}`}
+                          >
+                            {invoice.status === 'PAID'
+                              ? 'Payée'
+                              : invoice.status === 'SENT'
+                                ? 'Envoyée'
+                                : invoice.status === 'OVERDUE'
+                                  ? 'En retard'
+                                  : invoice.status === 'CANCELLED'
+                                    ? 'Annulée'
+                                    : 'Brouillon'}
                           </span>
                         </td>
                         <td className="py-4">
@@ -442,23 +503,40 @@ export default function BillingPage() {
 
             {data.payments.length > 0 ? (
               <div className="space-y-3">
-                {data.payments.slice(0, 5).map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between p-4 bg-[#0f1020] rounded-xl">
+                {data.payments.slice(0, 5).map(payment => (
+                  <div
+                    key={payment.id}
+                    className="flex items-center justify-between p-4 bg-[#0f1020] rounded-xl"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        payment.status === 'COMPLETED' ? 'bg-green-400' :
-                        payment.status === 'PENDING' ? 'bg-yellow-400' :
-                        payment.status === 'PROCESSING' ? 'bg-blue-400' : 'bg-red-400'
-                      }`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          payment.status === 'COMPLETED'
+                            ? 'bg-green-400'
+                            : payment.status === 'PENDING'
+                              ? 'bg-yellow-400'
+                              : payment.status === 'PROCESSING'
+                                ? 'bg-blue-400'
+                                : 'bg-red-400'
+                        }`}
+                      />
                       <div>
-                        <p className="text-white font-medium">{formatCurrency(payment.amount, payment.currency)}</p>
+                        <p className="text-white font-medium">
+                          {formatCurrency(payment.amount, payment.currency)}
+                        </p>
                         <p className="text-gray-500 text-sm">{formatDate(payment.createdAt)}</p>
                       </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[payment.status] || STATUS_COLORS.PENDING}`}>
-                      {payment.status === 'COMPLETED' ? 'Réussi' :
-                       payment.status === 'PENDING' ? 'En attente' :
-                       payment.status === 'PROCESSING' ? 'En cours' : 'Échoué'}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[payment.status] || STATUS_COLORS.PENDING}`}
+                    >
+                      {payment.status === 'COMPLETED'
+                        ? 'Réussi'
+                        : payment.status === 'PENDING'
+                          ? 'En attente'
+                          : payment.status === 'PROCESSING'
+                            ? 'En cours'
+                            : 'Échoué'}
                     </span>
                   </div>
                 ))}

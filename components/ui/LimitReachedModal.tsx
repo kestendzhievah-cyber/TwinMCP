@@ -14,7 +14,13 @@ interface LimitReachedModalProps {
   onUpgrade: () => void;
 }
 
-export function LimitReachedModal({ isOpen, onClose, data, onManageAgents, onUpgrade }: LimitReachedModalProps) {
+export function LimitReachedModal({
+  isOpen,
+  onClose,
+  data,
+  onManageAgents,
+  onUpgrade,
+}: LimitReachedModalProps) {
   if (!isOpen) return null;
 
   return (

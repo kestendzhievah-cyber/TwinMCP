@@ -120,6 +120,22 @@ CREATE TABLE IF NOT EXISTS slos (
 CREATE INDEX IF NOT EXISTS idx_slos_service ON slos (service);
 CREATE INDEX IF NOT EXISTS idx_slos_indicator ON slos (indicator);
 
+-- SLA reports table (must be created before sla_services which references it)
+CREATE TABLE IF NOT EXISTS sla_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    period_start TIMESTAMP WITH TIME ZONE NOT NULL,
+    period_end TIMESTAMP WITH TIME ZONE NOT NULL,
+    overall_availability DECIMAL(5,2) NOT NULL,
+    total_downtime BIGINT NOT NULL, -- seconds
+    incidents INTEGER NOT NULL DEFAULT 0,
+    mttr DECIMAL(10,2), -- Mean Time To Repair in minutes
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for SLA reports
+CREATE INDEX IF NOT EXISTS idx_sla_reports_period_start ON sla_reports (period_start DESC);
+CREATE INDEX IF NOT EXISTS idx_sla_reports_period_end ON sla_reports (period_end DESC);
+
 -- SLA services table
 CREATE TABLE IF NOT EXISTS sla_services (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -149,22 +165,6 @@ CREATE TABLE IF NOT EXISTS sla_incidents (
 -- Indexes for SLA incidents
 CREATE INDEX IF NOT EXISTS idx_sla_incidents_sla_service_id ON sla_incidents (sla_service_id);
 CREATE INDEX IF NOT EXISTS idx_sla_incidents_start_time ON sla_incidents (start_time DESC);
-
--- SLA reports table
-CREATE TABLE IF NOT EXISTS sla_reports (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    period_start TIMESTAMP WITH TIME ZONE NOT NULL,
-    period_end TIMESTAMP WITH TIME ZONE NOT NULL,
-    overall_availability DECIMAL(5,2) NOT NULL,
-    total_downtime BIGINT NOT NULL, -- seconds
-    incidents INTEGER NOT NULL DEFAULT 0,
-    mttr DECIMAL(10,2), -- Mean Time To Repair in minutes
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Indexes for SLA reports
-CREATE INDEX IF NOT EXISTS idx_sla_reports_period_start ON sla_reports (period_start DESC);
-CREATE INDEX IF NOT EXISTS idx_sla_reports_period_end ON sla_reports (period_end DESC);
 
 -- Performance dashboards table
 CREATE TABLE IF NOT EXISTS performance_dashboards (

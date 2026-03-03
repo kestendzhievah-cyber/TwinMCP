@@ -197,10 +197,11 @@ export class DatabaseShardingService {
   /** Simulate a cross-shard query. */
   executeCrossShardQuery(query: string, targetShardIds?: string[]): CrossShardQuery {
     const targets = targetShardIds || this.getActiveShards().map(s => s.id)
+    // Real implementation should execute the query against each target shard
     const results = targets.map(shardId => ({
       shardId,
-      rowCount: Math.floor(Math.random() * 100),
-      durationMs: Math.floor(20 + Math.random() * 80),
+      rowCount: 0,
+      durationMs: 0,
     }))
 
     const q: CrossShardQuery = {
@@ -237,4 +238,8 @@ export class DatabaseShardingService {
   }
 }
 
-export const databaseShardingService = new DatabaseShardingService()
+let _databaseShardingService: DatabaseShardingService | null = null
+export function getDatabaseShardingService(): DatabaseShardingService {
+  if (!_databaseShardingService) _databaseShardingService = new DatabaseShardingService()
+  return _databaseShardingService
+}

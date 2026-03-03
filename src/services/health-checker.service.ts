@@ -256,26 +256,39 @@ export class HealthChecker {
   }
 
   private async checkApiEndpoints(): Promise<any> {
-    return {
-      '/api/health': 'healthy',
-      '/api/auth': 'healthy',
-      '/api/chat': 'healthy'
-    };
+    const endpoints = ['/api/health', '/api/ready'];
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const results: Record<string, string> = {};
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(`${baseUrl}${endpoint}`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        results[endpoint] = response.ok ? 'healthy' : 'degraded';
+      } catch {
+        results[endpoint] = 'unhealthy';
+      }
+    }
+
+    return results;
   }
 
   private async checkJWTService(): Promise<any> {
+    const hasSecret = !!(process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET);
+    const hasFirebase = !!process.env.FIREBASE_PROJECT_ID;
     return {
-      signing: 'healthy',
-      verification: 'healthy',
+      signing: hasSecret ? 'healthy' : 'degraded',
+      verification: hasSecret || hasFirebase ? 'healthy' : 'unhealthy',
       keyRotation: 'healthy'
     };
   }
 
   private async checkOAuthProviders(): Promise<any> {
     return {
-      google: 'healthy',
-      github: 'healthy',
-      microsoft: 'healthy'
+      google: process.env.GOOGLE_CLIENT_ID ? 'healthy' : 'not_configured',
+      github: process.env.GITHUB_CLIENT_ID ? 'healthy' : 'not_configured',
+      firebase: process.env.FIREBASE_PROJECT_ID ? 'healthy' : 'not_configured'
     };
   }
 
@@ -299,59 +312,147 @@ export class HealthChecker {
   }
 
   private async checkStreamingHealth(): Promise<any> {
-    return {
-      websocket: 'healthy',
-      sse: 'healthy',
-      connections: 0
-    };
+    try {
+      // Check Redis pub/sub connectivity for streaming
+      const pong = await this.redis.ping();
+      return {
+        pubsub: pong === 'PONG' ? 'healthy' : 'degraded',
+        sse: 'healthy',
+        connections: 0
+      };
+    } catch {
+      return { pubsub: 'unhealthy', sse: 'healthy', connections: 0 };
+    }
   }
 
   private async checkLLMProviders(): Promise<any[]> {
-    return [
-      { name: 'openai', status: 'healthy', latency: 150 },
-      { name: 'anthropic', status: 'healthy', latency: 200 },
-      { name: 'local', status: 'degraded', latency: 500 }
-    ];
+    const providers: any[] = [];
+
+    // OpenAI
+    if (process.env.OPENAI_API_KEY) {
+      const start = Date.now();
+      try {
+        const res = await fetch('https://api.openai.com/v1/models', {
+          headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` },
+          signal: AbortSignal.timeout(5000),
+        });
+        providers.push({ name: 'openai', status: res.ok ? 'healthy' : 'degraded', latency: Date.now() - start });
+      } catch {
+        providers.push({ name: 'openai', status: 'unhealthy', latency: Date.now() - start });
+      }
+    } else {
+      providers.push({ name: 'openai', status: 'not_configured', latency: 0 });
+    }
+
+    // Anthropic
+    if (process.env.ANTHROPIC_API_KEY) {
+      const start = Date.now();
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] }),
+          signal: AbortSignal.timeout(10000),
+        });
+        providers.push({ name: 'anthropic', status: res.ok ? 'healthy' : 'degraded', latency: Date.now() - start });
+      } catch {
+        providers.push({ name: 'anthropic', status: 'unhealthy', latency: Date.now() - start });
+      }
+    } else {
+      providers.push({ name: 'anthropic', status: 'not_configured', latency: 0 });
+    }
+
+    return providers;
   }
 
   private async checkModelAvailability(): Promise<any> {
-    return {
-      'gpt-4o': 'available',
-      'gpt-4o-mini': 'available',
-      'claude-3': 'available'
-    };
+    const models: Record<string, string> = {};
+    if (process.env.OPENAI_API_KEY) {
+      models['gpt-4o'] = 'available';
+      models['gpt-4o-mini'] = 'available';
+    }
+    if (process.env.ANTHROPIC_API_KEY) {
+      models['claude-3'] = 'available';
+    }
+    if (Object.keys(models).length === 0) {
+      models['none'] = 'no_api_keys_configured';
+    }
+    return models;
   }
 
   private async checkRequestQueue(): Promise<any> {
-    return {
-      pending: 0,
-      processing: 2,
-      failed: 0,
-      status: 'healthy'
-    };
+    try {
+      const queueLen = await this.redis.llen('mcp:request_queue');
+      const processingLen = await this.redis.llen('mcp:processing_queue');
+      const failedLen = await this.redis.llen('mcp:failed_queue');
+      return {
+        pending: queueLen,
+        processing: processingLen,
+        failed: failedLen,
+        status: failedLen > 100 ? 'degraded' : 'healthy'
+      };
+    } catch {
+      return { pending: 0, processing: 0, failed: 0, status: 'healthy' };
+    }
   }
 
   private async checkEmbeddingService(): Promise<any> {
-    return {
-      provider: 'healthy',
-      models: ['text-embedding-ada-002'],
-      latency: 50
-    };
+    if (!process.env.OPENAI_API_KEY) {
+      return { provider: 'not_configured', models: [], latency: 0 };
+    }
+    const start = Date.now();
+    try {
+      const res = await fetch('https://api.openai.com/v1/models', {
+        headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      return {
+        provider: res.ok ? 'healthy' : 'degraded',
+        models: ['text-embedding-3-small', 'text-embedding-3-large'],
+        latency: Date.now() - start
+      };
+    } catch {
+      return { provider: 'unhealthy', models: [], latency: Date.now() - start };
+    }
   }
 
   private async checkVectorIndex(): Promise<any> {
-    return {
-      size: '1.2GB',
-      documents: 50000,
-      status: 'healthy'
-    };
+    try {
+      const result = await this.db.query(`
+        SELECT
+          pg_total_relation_size('public.embeddings') as size,
+          (SELECT count(*) FROM embeddings) as documents
+      `);
+      const row = result.rows[0] || {};
+      const sizeBytes = parseInt(row.size || '0');
+      const sizeMB = (sizeBytes / 1024 / 1024).toFixed(1);
+      return {
+        size: `${sizeMB}MB`,
+        documents: parseInt(row.documents || '0'),
+        status: 'healthy'
+      };
+    } catch {
+      // Table may not exist yet
+      return { size: '0MB', documents: 0, status: 'healthy' };
+    }
   }
 
   private async checkSearchPerformance(): Promise<any> {
-    return {
-      averageLatency: 25,
-      throughput: 100,
-      status: 'healthy'
-    };
+    const start = Date.now();
+    try {
+      await this.db.query('SELECT 1');
+      const latency = Date.now() - start;
+      return {
+        averageLatency: latency,
+        throughput: latency > 0 ? Math.round(1000 / latency) : 0,
+        status: latency > 500 ? 'degraded' : 'healthy'
+      };
+    } catch {
+      return { averageLatency: 0, throughput: 0, status: 'unhealthy' };
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringServices } from '../_shared';
 
@@ -23,13 +23,13 @@ export async function GET(request: NextRequest) {
 
       const slaReport = await monitoringService.generateSLAReport({
         start: startDate,
-        end: endDate
+        end: endDate,
       });
 
       return NextResponse.json({
         period: slaReport.period,
         summary: slaReport.summary,
-        services: slaReport.services
+        services: slaReport.services,
       });
     } else {
       // Get recent SLA reports
@@ -46,16 +46,13 @@ export async function GET(request: NextRequest) {
           totalDowntime: parseInt(row.total_downtime),
           incidents: parseInt(row.incidents),
           mttr: row.mttr ? parseFloat(row.mttr) : null,
-          createdAt: row.created_at
-        }))
+          createdAt: row.created_at,
+        })),
       });
     }
   } catch (error) {
     logger.error('Error fetching SLA reports:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -63,13 +60,10 @@ export async function POST(request: NextRequest) {
   try {
     const { monitoringService, db } = await getMonitoringServices();
     const body = await request.json();
-    
+
     // Validate required fields
     if (!body.start || !body.end) {
-      return NextResponse.json(
-        { error: 'Missing required fields: start, end' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields: start, end' }, { status: 400 });
     }
 
     const startDate = new Date(body.start);
@@ -84,40 +78,46 @@ export async function POST(request: NextRequest) {
 
     const slaReport = await monitoringService.generateSLAReport({
       start: startDate,
-      end: endDate
+      end: endDate,
     });
 
     // Save the report to database
-    const insertResult = await db.query(`
+    const insertResult = await db.query(
+      `
       INSERT INTO sla_reports (
         period_start, period_end, overall_availability, total_downtime, incidents, mttr
       ) VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [
-      slaReport.period.start,
-      slaReport.period.end,
-      slaReport.summary.overallAvailability,
-      slaReport.summary.totalDowntime,
-      slaReport.summary.incidents,
-      slaReport.summary.mttr
-    ]);
+    `,
+      [
+        slaReport.period.start,
+        slaReport.period.end,
+        slaReport.summary.overallAvailability,
+        slaReport.summary.totalDowntime,
+        slaReport.summary.incidents,
+        slaReport.summary.mttr,
+      ]
+    );
 
     const reportId = insertResult.rows[0].id;
 
     // Save services data
     for (const service of slaReport.services) {
-      await db.query(`
+      await db.query(
+        `
         INSERT INTO sla_services (
           report_id, name, availability, uptime, downtime, sli
         ) VALUES ($1, $2, $3, $4, $5, $6)
-      `, [
-        reportId,
-        service.name,
-        service.availability,
-        service.uptime,
-        service.downtime,
-        JSON.stringify(service.sli)
-      ]);
+      `,
+        [
+          reportId,
+          service.name,
+          service.availability,
+          service.uptime,
+          service.downtime,
+          JSON.stringify(service.sli),
+        ]
+      );
     }
 
     return NextResponse.json({
@@ -125,13 +125,10 @@ export async function POST(request: NextRequest) {
       reportId,
       period: slaReport.period,
       summary: slaReport.summary,
-      services: slaReport.services
+      services: slaReport.services,
     });
   } catch (error) {
     logger.error('Error generating SLA report:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -3,15 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { 
-  CheckCircle, 
-  Sparkles, 
-  ArrowRight, 
-  Loader2,
-  Mail,
-  Download,
-  Calendar
-} from 'lucide-react';
+import { CheckCircle, Sparkles, ArrowRight, Loader2, Mail, Download, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface SessionData {
@@ -146,12 +138,12 @@ function PaymentSuccessContent() {
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
                 Détails de la commande
               </h3>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-3 border-b border-purple-500/20">
                   <span className="text-gray-400">Plan</span>
                   <span className="font-semibold text-white">
-                    {getPlanName(sessionData.metadata?.planId)} 
+                    {getPlanName(sessionData.metadata?.planId)}
                     <span className="text-purple-400 ml-2 text-sm">
                       ({sessionData.metadata?.billingPeriod === 'yearly' ? 'Annuel' : 'Mensuel'})
                     </span>
@@ -191,7 +183,8 @@ function PaymentSuccessContent() {
           {/* Info Box */}
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-8 text-left">
             <p className="text-sm text-purple-200">
-              <strong>📧 Confirmation envoyée</strong><br />
+              <strong>📧 Confirmation envoyée</strong>
+              <br />
               Un email de confirmation avec votre facture a été envoyé à votre adresse email.
             </p>
           </div>
@@ -218,7 +211,7 @@ function PaymentSuccessContent() {
 
         {/* Support Link */}
         <p className="text-center text-gray-500 mt-8 text-sm">
-          Une question ? {' '}
+          Une question ?{' '}
           <Link href="/contact" className="text-purple-400 hover:text-purple-300 underline">
             Contactez notre support
           </Link>

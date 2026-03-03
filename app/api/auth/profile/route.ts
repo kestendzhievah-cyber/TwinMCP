@@ -1,12 +1,12 @@
 /**
  * GET /api/auth/profile
  * Get user profile
- * 
+ *
  * PUT /api/auth/profile
  * Update user profile
  */
 
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Authenticate request
     const { context, error } = await authenticateRequest(request, {
       required: true,
-      rateLimitConfig: 'api'
+      rateLimitConfig: 'api',
     });
 
     if (error) {
@@ -52,10 +52,9 @@ export async function GET(request: NextRequest) {
         plan: context.user.plan,
         profile: context.user.profile,
         subscription: context.user.subscription,
-        stats: context.user.stats
-      }
+        stats: context.user.stats,
+      },
     });
-
   } catch (error) {
     logger.error('[Auth Profile GET] Error:', error);
     return NextResponse.json(
@@ -70,7 +69,7 @@ export async function PUT(request: NextRequest) {
     // Authenticate request
     const { context, error } = await authenticateRequest(request, {
       required: true,
-      rateLimitConfig: 'api'
+      rateLimitConfig: 'api',
     });
 
     if (error) {
@@ -96,9 +95,17 @@ export async function PUT(request: NextRequest) {
     }
 
     // Validate and sanitize input
-    const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'city', 'country', 'postalCode'];
+    const allowedFields = [
+      'firstName',
+      'lastName',
+      'phone',
+      'address',
+      'city',
+      'country',
+      'postalCode',
+    ];
     const updateData: Record<string, string> = {};
-    
+
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         const value = String(body[field]).trim();
@@ -138,10 +145,9 @@ export async function PUT(request: NextRequest) {
       success: true,
       data: {
         message: 'Profile updated successfully',
-        profile: updatedUser?.profile
-      }
+        profile: updatedUser?.profile,
+      },
     });
-
   } catch (error) {
     logger.error('[Auth Profile PUT] Error:', error);
     return NextResponse.json(

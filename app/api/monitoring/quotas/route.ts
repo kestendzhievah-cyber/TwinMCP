@@ -4,14 +4,14 @@
  * Returns per-user and global quota usage, rate limit stats,
  * burst bucket status, and top consumers.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
     // Lazy-import to avoid circular deps at module load
-    const { rateLimiter } = await import('@/lib/mcp/middleware/rate-limit')
+    const { rateLimiter } = await import('@/lib/mcp/middleware/rate-limit');
 
-    const stats = rateLimiter.getStats()
+    const stats = rateLimiter.getStats();
 
     // Build quota overview
     const overview = {
@@ -35,13 +35,16 @@ export async function GET(request: NextRequest) {
           heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
         },
       },
-    }
+    };
 
-    return NextResponse.json(overview)
+    return NextResponse.json(overview);
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to fetch quota stats', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Failed to fetch quota stats',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
-    )
+    );
   }
 }

@@ -1,8 +1,14 @@
 // src/app/api/analytics/events/route.ts
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsServices } from '../_shared';
-import { SessionEvent, EventType, EventCategory, PageContext, UserContext } from '@/src/types/analytics.types';
+import {
+  SessionEvent,
+  EventType,
+  EventCategory,
+  PageContext,
+  UserContext,
+} from '@/src/types/analytics.types';
 import { trackEventSchema, parseBody } from '@/lib/validations/api-schemas';
 
 export async function POST(request: NextRequest) {
@@ -23,14 +29,20 @@ export async function POST(request: NextRequest) {
     const { sessionId, type, category, action, page, userContext } = parsed.data;
 
     // Build proper EventType object — the service accesses event.type.name
-    const eventType: EventType = typeof type === 'string'
-      ? { name: type, category: 'interaction' as const, schema: { required: [], optional: [], types: {} } }
-      : type as EventType;
+    const eventType: EventType =
+      typeof type === 'string'
+        ? {
+            name: type,
+            category: 'interaction' as const,
+            schema: { required: [], optional: [], types: {} },
+          }
+        : (type as EventType);
 
     // Build proper EventCategory object — the service accesses event.category.id
-    const eventCategory: EventCategory = typeof category === 'string'
-      ? { id: category, name: category, description: '', metrics: [] }
-      : category as EventCategory;
+    const eventCategory: EventCategory =
+      typeof category === 'string'
+        ? { id: category, name: category, description: '', metrics: [] }
+        : (category as EventCategory);
 
     // Construct event object
     const event: Omit<SessionEvent, 'id'> = {
@@ -50,13 +62,9 @@ export async function POST(request: NextRequest) {
     await analyticsService.trackEvent(event);
 
     return NextResponse.json({ success: true, message: 'Event tracked successfully' });
-    
   } catch (error) {
     logger.error('Error tracking event:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -119,15 +127,11 @@ export async function GET(request: NextRequest) {
       pagination: {
         limit,
         offset,
-        total
-      }
+        total,
+      },
     });
-    
   } catch (error) {
     logger.error('Error fetching events:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

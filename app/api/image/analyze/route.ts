@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 let _imageService: any = null;
@@ -17,10 +17,7 @@ export async function POST(req: NextRequest) {
     const imageFile = formData.get('image') as File;
 
     if (!imageFile) {
-      return NextResponse.json(
-        { error: 'Image file is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Image file is required' }, { status: 400 });
     }
 
     const imageBuffer = Buffer.from(await imageFile.arrayBuffer());

@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringServices } from '../_shared';
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         timestamp: healthCheck.timestamp,
         responseTime: healthCheck.responseTime,
         details: healthCheck.details,
-        dependencies: healthCheck.dependencies
+        dependencies: healthCheck.dependencies,
       });
     } else {
       // Get overall system health
@@ -29,16 +29,13 @@ export async function GET(request: NextRequest) {
           total: systemHealth.services.length,
           healthy: systemHealth.services.filter(s => s.status === 'healthy').length,
           degraded: systemHealth.services.filter(s => s.status === 'degraded').length,
-          unhealthy: systemHealth.services.filter(s => s.status === 'unhealthy').length
-        }
+          unhealthy: systemHealth.services.filter(s => s.status === 'unhealthy').length,
+        },
       });
     }
   } catch (error) {
     logger.error('Error fetching health status:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -46,12 +43,9 @@ export async function POST(request: NextRequest) {
   try {
     const { healthChecker } = await getMonitoringServices();
     const body = await request.json();
-    
+
     if (!body.service) {
-      return NextResponse.json(
-        { error: 'Missing required field: service' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required field: service' }, { status: 400 });
     }
 
     // Trigger health check for specific service
@@ -59,13 +53,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      healthCheck
+      healthCheck,
     });
   } catch (error) {
     logger.error('Error performing health check:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

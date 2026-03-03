@@ -1,12 +1,9 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/mcp-configurations/[id] - Récupérer une configuration spécifique
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 
@@ -26,10 +23,7 @@ export async function GET(
 }
 
 // PUT /api/mcp-configurations/[id] - Mettre à jour une configuration
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await request.json();
@@ -38,7 +32,8 @@ export async function PUT(
     const data: any = {};
     if (name !== undefined) data.name = name;
     if (description !== undefined) data.description = description;
-    if (configData !== undefined) data.configData = typeof configData === 'string' ? JSON.parse(configData) : configData;
+    if (configData !== undefined)
+      data.configData = typeof configData === 'string' ? JSON.parse(configData) : configData;
     if (status !== undefined) data.status = status;
 
     const configuration = await prisma.mCPConfiguration.update({

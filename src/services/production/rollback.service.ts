@@ -131,7 +131,7 @@ export class RollbackService {
     const start = Date.now()
     mig.status = 'applied'
     mig.executedAt = new Date().toISOString()
-    mig.durationMs = Date.now() - start + Math.round(Math.random() * 100)
+    mig.durationMs = Date.now() - start
     this.log('migration_applied', `Migration ${mig.name} (${mig.direction}) applied`)
     return true
   }
@@ -195,7 +195,9 @@ export class RollbackService {
 
     for (const step of plan.steps) {
       step.status = 'running'
-      step.durationMs = Math.round(50 + Math.random() * 200)
+      const stepStart = Date.now()
+      // Real implementation should execute each step action
+      step.durationMs = Date.now() - stepStart
       step.status = 'completed'
     }
 
@@ -293,4 +295,8 @@ export class RollbackService {
   }
 }
 
-export const rollbackService = new RollbackService()
+let _rollbackService: RollbackService | null = null
+export function getRollbackService(): RollbackService {
+  if (!_rollbackService) _rollbackService = new RollbackService()
+  return _rollbackService
+}

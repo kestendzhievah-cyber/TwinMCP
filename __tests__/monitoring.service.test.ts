@@ -415,7 +415,7 @@ describe('MonitoringService', () => {
       const result = monitoringService.getStatus();
 
       expect(result.isRunning).toBe(true);
-      expect(result.uptime).toBeGreaterThan(0);
+      expect(result.uptimeSeconds).toBeGreaterThan(0);
       expect(result.alertsCount).toBe(2);
     });
 

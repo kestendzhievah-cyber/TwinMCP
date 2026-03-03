@@ -1,5 +1,12 @@
 import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { MCPMessage, MCPErrorCodes, MCPMethods, MCPInitializeResponse, MCPServerTool, HttpServerConfig } from '../types';
+import {
+  MCPMessage,
+  MCPErrorCodes,
+  MCPMethods,
+  MCPInitializeResponse,
+  MCPServerTool,
+  HttpServerConfig,
+} from '../types';
 import { SSETransport } from './sse-transport';
 
 export class HttpMCPServer {
@@ -13,14 +20,14 @@ export class HttpMCPServer {
     this.config = config;
     this.server = Fastify({
       logger: config.logging,
-      trustProxy: true
+      trustProxy: true,
     });
-    
+
     // Enregistrer les outils
     config.tools.forEach(tool => {
       this.tools.set(tool.name, tool);
     });
-    
+
     this.sseTransport = new SSETransport();
     this.setupMiddleware();
     this.setupRoutes();
@@ -28,24 +35,28 @@ export class HttpMCPServer {
 
   private setupMiddleware(): void {
     // Custom JSON parser to handle invalid JSON gracefully (return JSON-RPC parse error)
-    this.server.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
-      try {
-        const parsed = JSON.parse(body as string);
-        done(null, parsed);
-      } catch (err) {
-        // Mark the error so the route can detect it
-        done(null, { __parseError: true });
+    this.server.addContentTypeParser(
+      'application/json',
+      { parseAs: 'string' },
+      (req, body, done) => {
+        try {
+          const parsed = JSON.parse(body as string);
+          done(null, parsed);
+        } catch (err) {
+          // Mark the error so the route can detect it
+          done(null, { __parseError: true });
+        }
       }
-    });
+    );
 
     // CORS
     if (this.config.cors) {
       this.server.register(import('@fastify/cors'), {
         origin: true,
-        credentials: true
+        credentials: true,
       });
     }
-    
+
     // Rate limiting (simple in-memory, no @fastify/rate-limit dependency)
     if (this.config.rateLimit) {
       const ipHits = new Map<string, { count: number; reset: number }>();
@@ -67,32 +78,34 @@ export class HttpMCPServer {
         }
       });
     }
-    
+
     // Request logging
     this.server.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
       request.log.info({
         method: request.method,
         url: request.url,
-        headers: request.headers
+        headers: request.headers,
       });
     });
 
     // Error handling
-    this.server.setErrorHandler(async (error: Error, request: FastifyRequest, reply: FastifyReply) => {
-      this.server.log.error(error);
-      
-      const errorResponse: MCPMessage = {
-        jsonrpc: '2.0' as const,
-        id: undefined,
-        error: {
-          code: MCPErrorCodes.InternalError,
-          message: 'Internal server error',
-          data: error.message
-        }
-      };
-      
-      reply.status(500).send(errorResponse);
-    });
+    this.server.setErrorHandler(
+      async (error: Error, request: FastifyRequest, reply: FastifyReply) => {
+        this.server.log.error(error);
+
+        const errorResponse: MCPMessage = {
+          jsonrpc: '2.0' as const,
+          id: undefined,
+          error: {
+            code: MCPErrorCodes.InternalError,
+            message: 'Internal server error',
+            data: error.message,
+          },
+        };
+
+        reply.status(500).send(errorResponse);
+      }
+    );
   }
 
   private setupRoutes(): void {
@@ -106,8 +119,8 @@ export class HttpMCPServer {
             id: null,
             error: {
               code: MCPErrorCodes.ParseError,
-              message: 'Parse error'
-            }
+              message: 'Parse error',
+            },
           });
         }
 
@@ -121,13 +134,13 @@ export class HttpMCPServer {
           id: undefined,
           error: {
             code: MCPErrorCodes.InternalError,
-            message: 'Internal server error'
-          }
+            message: 'Internal server error',
+          },
         };
         return reply.status(500).send(errorResponse);
       }
     });
-    
+
     // Endpoint OAuth (pour Epic 3)
     this.server.post('/mcp/oauth', async (request: FastifyRequest, reply: FastifyReply) => {
       // Sera implémenté dans Epic 3
@@ -136,12 +149,12 @@ export class HttpMCPServer {
         id: undefined,
         error: {
           code: MCPErrorCodes.MethodNotFound,
-          message: 'OAuth endpoint not implemented yet'
-        }
+          message: 'OAuth endpoint not implemented yet',
+        },
       };
       reply.status(501).send(errorResponse);
     });
-    
+
     // Health check
     this.server.get('/health', async (request: FastifyRequest, reply: FastifyReply) => {
       return {
@@ -150,10 +163,10 @@ export class HttpMCPServer {
         version: '1.0.0',
         tools_count: this.tools.size,
         mode: 'http',
-        initialized: this.isInitialized
+        initialized: this.isInitialized,
       };
     });
-    
+
     // Documentation
     this.server.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
       return {
@@ -165,12 +178,12 @@ export class HttpMCPServer {
           mcp: 'POST /mcp',
           health: 'GET /health',
           oauth: 'POST /mcp/oauth',
-          docs: 'GET /'
+          docs: 'GET /',
         },
         tools: Array.from(this.tools.keys()).map(name => ({
           name,
-          description: this.tools.get(name)?.description
-        }))
+          description: this.tools.get(name)?.description,
+        })),
       };
     });
 
@@ -182,18 +195,17 @@ export class HttpMCPServer {
         memory: process.memoryUsage(),
         tools: {
           total: this.tools.size,
-          available: Array.from(this.tools.keys())
+          available: Array.from(this.tools.keys()),
         },
         connections: {
-          active: this.sseTransport.getSessionCount()
-        }
+          active: this.sseTransport.getSessionCount(),
+        },
       };
     });
 
     // SSE transport for streaming
-    this.sseTransport.register(
-      this.server,
-      (message: MCPMessage, _sessionId: string) => this.processMessage(message)
+    this.sseTransport.register(this.server, (message: MCPMessage, _sessionId: string) =>
+      this.processMessage(message)
     );
   }
 
@@ -206,8 +218,8 @@ export class HttpMCPServer {
           id: message.id,
           error: {
             code: MCPErrorCodes.InvalidRequest,
-            message: 'Invalid JSON-RPC version'
-          }
+            message: 'Invalid JSON-RPC version',
+          },
         };
       }
 
@@ -220,8 +232,8 @@ export class HttpMCPServer {
           id: message.id,
           error: {
             code: MCPErrorCodes.InvalidRequest,
-            message: 'Server not initialized'
-          }
+            message: 'Server not initialized',
+          },
         };
       } else if (message.method === MCPMethods.ToolsList) {
         return this.handleListTools(message);
@@ -233,8 +245,8 @@ export class HttpMCPServer {
           id: message.id,
           error: {
             code: MCPErrorCodes.MethodNotFound,
-            message: `Method not found: ${message.method}`
-          }
+            message: `Method not found: ${message.method}`,
+          },
         };
       }
     } catch (error) {
@@ -244,8 +256,8 @@ export class HttpMCPServer {
         error: {
           code: MCPErrorCodes.InternalError,
           message: 'Internal server error',
-          data: error instanceof Error ? error.message : String(error)
-        }
+          data: error instanceof Error ? error.message : String(error),
+        },
       };
     }
   }
@@ -257,8 +269,8 @@ export class HttpMCPServer {
         id: message.id!,
         error: {
           code: MCPErrorCodes.InvalidRequest,
-          message: 'Server already initialized'
-        }
+          message: 'Server already initialized',
+        },
       };
     }
 
@@ -268,18 +280,18 @@ export class HttpMCPServer {
       protocolVersion: '2024-11-05',
       capabilities: {
         tools: {},
-        logging: {}
+        logging: {},
       },
       serverInfo: {
         name: 'twinmcp-server',
-        version: '1.0.0'
-      }
+        version: '1.0.0',
+      },
     };
-    
+
     return {
       jsonrpc: '2.0' as const,
       id: message.id!,
-      result: response
+      result: response,
     };
   }
 
@@ -287,13 +299,13 @@ export class HttpMCPServer {
     const tools = Array.from(this.tools.values()).map(tool => ({
       name: tool.name,
       description: tool.description,
-      inputSchema: tool.inputSchema
+      inputSchema: tool.inputSchema,
     }));
-    
+
     return {
       jsonrpc: '2.0' as const,
       id: message.id!,
-      result: { tools }
+      result: { tools },
     };
   }
 
@@ -304,24 +316,24 @@ export class HttpMCPServer {
         id: message.id!,
         error: {
           code: MCPErrorCodes.InvalidParams,
-          message: 'Invalid tool call parameters'
-        }
+          message: 'Invalid tool call parameters',
+        },
       };
     }
 
     const { name, arguments: args } = message.params;
-    
+
     if (!name || typeof name !== 'string') {
       return {
         jsonrpc: '2.0' as const,
         id: message.id!,
         error: {
           code: MCPErrorCodes.InvalidParams,
-          message: 'Tool name is required'
-        }
+          message: 'Tool name is required',
+        },
       };
     }
-    
+
     if (!this.tools.has(name)) {
       return {
         jsonrpc: '2.0' as const,
@@ -329,15 +341,15 @@ export class HttpMCPServer {
         error: {
           code: MCPErrorCodes.ToolNotFound,
           message: 'Tool not found',
-          data: name
-        }
+          data: name,
+        },
       };
     }
-    
+
     try {
       const tool = this.tools.get(name)!;
       const result = await tool.run(args || {});
-      
+
       return {
         jsonrpc: '2.0' as const,
         id: message.id!,
@@ -345,10 +357,10 @@ export class HttpMCPServer {
           content: [
             {
               type: 'text',
-              text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
-            }
-          ]
-        }
+              text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+            },
+          ],
+        },
       };
     } catch (error) {
       return {
@@ -357,8 +369,8 @@ export class HttpMCPServer {
         error: {
           code: MCPErrorCodes.ToolExecutionError,
           message: 'Tool execution error',
-          data: error instanceof Error ? error.message : String(error)
-        }
+          data: error instanceof Error ? error.message : String(error),
+        },
       };
     }
   }
@@ -367,10 +379,12 @@ export class HttpMCPServer {
     try {
       await this.server.listen({
         port: this.config.port,
-        host: this.config.host
+        host: this.config.host,
       });
-      
-      this.server.log.info(`TwinMCP Server started in HTTP mode on ${this.config.host}:${this.config.port}`);
+
+      this.server.log.info(
+        `TwinMCP Server started in HTTP mode on ${this.config.host}:${this.config.port}`
+      );
       this.server.log.info(`Registered tools: ${Array.from(this.tools.keys()).join(', ')}`);
     } catch (error) {
       this.server.log.error(error);
@@ -384,7 +398,10 @@ export class HttpMCPServer {
       await this.server.close();
       this.server.log.info('TwinMCP Server stopped');
     } catch (error) {
-      this.server.log.error({ msg: 'Error during shutdown', error: error instanceof Error ? error.message : String(error) });
+      this.server.log.error({
+        msg: 'Error during shutdown',
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }

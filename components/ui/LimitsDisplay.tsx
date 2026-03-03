@@ -25,7 +25,9 @@ export function LimitsDisplay({ limits, showUpgradeButton, onUpgrade }: LimitsDi
       {/* Agents Limit */}
       <div className="p-4 border rounded-lg border-purple-500/20">
         <div className="text-sm text-gray-400 mb-2">Agents IA</div>
-        <div className="text-2xl font-bold text-white">{limits.agents.current}/{limits.agents.max}</div>
+        <div className="text-2xl font-bold text-white">
+          {limits.agents.current}/{limits.agents.max}
+        </div>
         <div className="text-xs text-gray-500 mt-1">{limits.agents.remaining} restants</div>
         <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
           <div
@@ -38,8 +40,13 @@ export function LimitsDisplay({ limits, showUpgradeButton, onUpgrade }: LimitsDi
       {/* Conversations Limit */}
       <div className="p-4 border rounded-lg border-purple-500/20">
         <div className="text-sm text-gray-400 mb-2">Conversations</div>
-        <div className="text-2xl font-bold text-white">{limits.conversations.current.toLocaleString()}/{limits.conversations.max.toLocaleString()}</div>
-        <div className="text-xs text-gray-500 mt-1">{limits.conversations.remaining.toLocaleString()} restantes</div>
+        <div className="text-2xl font-bold text-white">
+          {limits.conversations.current.toLocaleString()}/
+          {limits.conversations.max.toLocaleString()}
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {limits.conversations.remaining.toLocaleString()} restantes
+        </div>
         <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
           <div
             className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"

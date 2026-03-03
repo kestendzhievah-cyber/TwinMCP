@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 import { updateChatbot } from '@/lib/chatbot';
@@ -8,10 +8,7 @@ export async function PUT(request: NextRequest) {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -24,10 +21,7 @@ export async function PUT(request: NextRequest) {
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const userId = decodedToken.uid;
@@ -35,10 +29,7 @@ export async function PUT(request: NextRequest) {
     const { chatbotId, ...updates } = body;
 
     if (!chatbotId) {
-      return NextResponse.json(
-        { error: 'Chatbot ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Chatbot ID is required' }, { status: 400 });
     }
 
     // Update the chatbot
@@ -46,13 +37,10 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Chatbot mis Ã  jour avec succÃ¨s'
+      message: 'Chatbot mis Ã  jour avec succès',
     });
   } catch (error) {
     logger.error('Error updating chatbot:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

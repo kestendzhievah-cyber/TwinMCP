@@ -7,7 +7,7 @@ import {
   query,
   where,
   Timestamp,
-  getCountFromServer
+  getCountFromServer,
 } from 'firebase/firestore';
 import { db as _db } from './firebase';
 import { getPlanConfig, getSuggestedUpgrade, isUnlimited } from './plan-config';
@@ -61,7 +61,7 @@ export async function canCreateMcpServer(userId: string): Promise<{
       currentCount,
       limit,
       plan,
-      suggestedUpgrade: !allowed ? 'pro' : null
+      suggestedUpgrade: !allowed ? 'pro' : null,
     };
   } catch (error) {
     console.error('Error checking MCP server creation limits:', error);
@@ -89,8 +89,8 @@ export async function countDailyRequests(userId: string): Promise<number> {
 
     const requestsRef = collection(db, 'api_requests');
     const q = query(
-      requestsRef, 
-      where('userId', '==', userId), 
+      requestsRef,
+      where('userId', '==', userId),
       where('createdAt', '>=', startOfDay)
     );
     const querySnapshot = await getDocs(q);
@@ -130,7 +130,7 @@ export async function canMakeRequest(userId: string): Promise<{
       currentCount,
       limit,
       plan,
-      suggestedUpgrade: !allowed ? 'pro' : null
+      suggestedUpgrade: !allowed ? 'pro' : null,
     };
   } catch (error) {
     console.error('Error checking request limits:', error);
@@ -155,28 +155,30 @@ export async function getUserLimits(userId: string): Promise<UserLimitsResponse>
     const mcpServersCount = await countActiveMcpServers(userId);
     const dailyRequestsCount = await countDailyRequests(userId);
 
-    const mcpServersRemaining = isUnlimited(planConfig.mcpServers) 
-      ? Infinity 
+    const mcpServersRemaining = isUnlimited(planConfig.mcpServers)
+      ? Infinity
       : Math.max(0, planConfig.mcpServers - mcpServersCount);
-    const requestsRemaining = isUnlimited(planConfig.requestsPerDay) 
-      ? Infinity 
+    const requestsRemaining = isUnlimited(planConfig.requestsPerDay)
+      ? Infinity
       : Math.max(0, planConfig.requestsPerDay - dailyRequestsCount);
 
     const limits = {
       mcpServers: {
         current: mcpServersCount,
         max: planConfig.mcpServers,
-        remaining: mcpServersRemaining
+        remaining: mcpServersRemaining,
       },
       requestsPerDay: {
         current: dailyRequestsCount,
         max: planConfig.requestsPerDay,
-        remaining: requestsRemaining
-      }
+        remaining: requestsRemaining,
+      },
     };
 
-    const canCreateServer = isUnlimited(planConfig.mcpServers) || mcpServersCount < planConfig.mcpServers;
-    const canRequest = isUnlimited(planConfig.requestsPerDay) || dailyRequestsCount < planConfig.requestsPerDay;
+    const canCreateServer =
+      isUnlimited(planConfig.mcpServers) || mcpServersCount < planConfig.mcpServers;
+    const canRequest =
+      isUnlimited(planConfig.requestsPerDay) || dailyRequestsCount < planConfig.requestsPerDay;
 
     return {
       plan,
@@ -185,7 +187,7 @@ export async function getUserLimits(userId: string): Promise<UserLimitsResponse>
       canMakeRequest: canRequest,
       hasPrivateServers: planConfig.privateServers,
       suggestedUpgrade: suggestedUpgrade ? String(suggestedUpgrade) : null,
-      subscriptionStatus: userData.subscriptionStatus || 'active'
+      subscriptionStatus: userData.subscriptionStatus || 'active',
     };
   } catch (error) {
     console.error('Error getting user limits:', error);
@@ -200,7 +202,7 @@ export async function recordApiRequest(userId: string, endpoint: string): Promis
     await addDoc(requestsRef, {
       userId,
       endpoint,
-      createdAt: Timestamp.now()
+      createdAt: Timestamp.now(),
     });
   } catch (error) {
     console.error('Error recording API request:', error);
@@ -212,7 +214,7 @@ export async function updateUserMcpServersCount(userId: string, newCount: number
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
       mcpServersCount: newCount,
-      updatedAt: Timestamp.now()
+      updatedAt: Timestamp.now(),
     });
   } catch (error) {
     console.error('Error updating user MCP servers count:', error);

@@ -2,6 +2,8 @@ import { PromptTemplate, PromptOptimizationOptions, PromptOptimizationResult, Op
 import crypto from 'crypto';
 
 export class PromptOptimizer {
+  private mutationCounter = 0;
+
   async optimize(
     template: PromptTemplate, 
     options: PromptOptimizationOptions = {}
@@ -112,7 +114,7 @@ export class PromptOptimizer {
       () => this.addExamples(template)
     ];
 
-    const mutation = mutations[Math.floor(Math.random() * mutations.length)];
+    const mutation = mutations[this.mutationCounter++ % mutations.length];
     return mutation();
   }
 
@@ -121,8 +123,8 @@ export class PromptOptimizer {
     const mutated = this.hillClimbingMutate(template);
     
     // Ajouter de la diversité
-    if (Math.random() < 0.3) {
-      mutated.template = this.randomizeWordOrder(mutated.template);
+    if (this.mutationCounter % 3 === 0) {
+      mutated.template = this.shuffleAdjacentWords(mutated.template);
     }
     
     return mutated;
@@ -131,7 +133,7 @@ export class PromptOptimizer {
   private simulatedAnnealingMutate(template: PromptTemplate): PromptTemplate {
     // Mutation avec probabilité décroissante
     const temperature = 0.5; // Simplifié
-    if (Math.random() < temperature) {
+    if (this.mutationCounter % 2 === 0) {
       return this.hillClimbingMutate(template);
     }
     return template;
@@ -146,7 +148,7 @@ export class PromptOptimizer {
       'Explain your reasoning clearly.'
     ];
 
-    const clarification = clarifications[Math.floor(Math.random() * clarifications.length)];
+    const clarification = clarifications[this.mutationCounter % clarifications.length];
     template.template += '\n\n' + clarification;
     
     return template;
@@ -199,15 +201,13 @@ export class PromptOptimizer {
     return template;
   }
 
-  private randomizeWordOrder(template: string): string {
-    // Randomiser légèrement l'ordre des mots (conservateur)
+  private shuffleAdjacentWords(template: string): string {
     const words = template.split(' ');
     if (words.length < 10) return template;
     
-    // Échanger quelques mots adjacents
     const result = [...words];
     for (let i = 0; i < result.length - 1; i += 3) {
-      if (Math.random() < 0.3) {
+      if (i % 7 < 2) {
         [result[i], result[i + 1]] = [result[i + 1], result[i]];
       }
     }

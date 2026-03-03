@@ -20,12 +20,11 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json* ./
-RUN npm install --legacy-peer-deps
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma client
-ENV DATABASE_URL="postgresql://user:password@localhost:5432/db"
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 RUN npx prisma generate --schema=prisma/schema
 
 # Dummy env vars required at build time (NEVER leak into runner stage)
@@ -68,7 +67,6 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/package.json ./package.json
 
 USER nextjs

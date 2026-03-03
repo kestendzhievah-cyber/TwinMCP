@@ -25,7 +25,7 @@ export async function validateAndTrackApiKey(
 
     // Find the API key
     const key = await prisma.apiKey.findUnique({
-      where: { keyHash }
+      where: { keyHash },
     });
 
     if (!key) {
@@ -34,7 +34,7 @@ export async function validateAndTrackApiKey(
         remaining: 0,
         resetAt: new Date(),
         tier: 'unknown',
-        error: 'Invalid API key'
+        error: 'Invalid API key',
       };
     }
 
@@ -44,7 +44,7 @@ export async function validateAndTrackApiKey(
         remaining: 0,
         resetAt: new Date(),
         tier: key.tier,
-        error: 'API key has been revoked'
+        error: 'API key has been revoked',
       };
     }
 
@@ -55,7 +55,7 @@ export async function validateAndTrackApiKey(
         remaining: 0,
         resetAt: new Date(),
         tier: key.tier,
-        error: 'API key has expired'
+        error: 'API key has expired',
       };
     }
 
@@ -65,7 +65,7 @@ export async function validateAndTrackApiKey(
     // Check rate limit (requests per minute)
     const now = new Date();
     const minuteKey = `${key.id}:${Math.floor(now.getTime() / 60000)}`;
-    
+
     let rateLimit = rateLimitCache.get(minuteKey);
     if (!rateLimit || rateLimit.resetAt < now) {
       rateLimit = { count: 0, resetAt: new Date(now.getTime() + 60000) };
@@ -77,7 +77,7 @@ export async function validateAndTrackApiKey(
         remaining: 0,
         resetAt: rateLimit.resetAt,
         tier,
-        error: `Rate limit exceeded. Maximum ${limits.rateLimit} requests per minute.`
+        error: `Rate limit exceeded. Maximum ${limits.rateLimit} requests per minute.`,
       };
     }
 
@@ -88,20 +88,20 @@ export async function validateAndTrackApiKey(
     const dailyUsage = await prisma.usageLog.count({
       where: {
         apiKeyId: key.id,
-        createdAt: { gte: today }
-      }
+        createdAt: { gte: today },
+      },
     });
 
     if (dailyUsage >= limits.dailyLimit) {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
+
       return {
         allowed: false,
         remaining: 0,
         resetAt: tomorrow,
         tier,
-        error: `Daily quota exceeded. Maximum ${limits.dailyLimit} requests per day for ${tier} plan.`
+        error: `Daily quota exceeded. Maximum ${limits.dailyLimit} requests per day for ${tier} plan.`,
       };
     }
 
@@ -110,7 +110,8 @@ export async function validateAndTrackApiKey(
     rateLimitCache.set(minuteKey, rateLimit);
 
     // Clean old cache entries periodically
-    if (crypto.getRandomValues(new Uint8Array(1))[0] < 3) { // ~1% probability (3/256)
+    if (crypto.getRandomValues(new Uint8Array(1))[0] < 3) {
+      // ~1% probability (3/256)
       const cutoff = now.getTime() - 120000; // 2 minutes ago
       for (const [cacheKey, value] of rateLimitCache.entries()) {
         if (value.resetAt.getTime() < cutoff) {
@@ -125,23 +126,22 @@ export async function validateAndTrackApiKey(
         apiKeyId: key.id,
         userId: key.userId,
         toolName,
-        success: true
-      }
+        success: true,
+      },
     });
 
     // Update last used timestamp
     await prisma.apiKey.update({
       where: { id: key.id },
-      data: { lastUsedAt: now }
+      data: { lastUsedAt: now },
     });
 
     return {
       allowed: true,
       remaining: limits.dailyLimit - dailyUsage - 1,
       resetAt: new Date(today.getTime() + 86400000), // Tomorrow
-      tier
+      tier,
     };
-
   } catch (error) {
     logger.error('Rate limit check error:', error);
     // Fail open in case of errors (or fail closed for stricter security)
@@ -150,7 +150,7 @@ export async function validateAndTrackApiKey(
       remaining: 0,
       resetAt: new Date(),
       tier: 'unknown',
-      error: 'Rate limit check failed'
+      error: 'Rate limit check failed',
     };
   }
 }
@@ -158,8 +158,8 @@ export async function validateAndTrackApiKey(
 // Middleware wrapper for API routes
 export function withRateLimit(handler: (req: NextRequest) => Promise<NextResponse>) {
   return async (req: NextRequest) => {
-    const apiKey = req.headers.get('x-api-key') || 
-                   req.headers.get('authorization')?.replace('Bearer ', '');
+    const apiKey =
+      req.headers.get('x-api-key') || req.headers.get('authorization')?.replace('Bearer ', '');
 
     if (!apiKey) {
       return NextResponse.json(
@@ -177,22 +177,22 @@ export function withRateLimit(handler: (req: NextRequest) => Promise<NextRespons
           error: result.error,
           code: result.error?.includes('Rate limit') ? 'RATE_LIMITED' : 'QUOTA_EXCEEDED',
           tier: result.tier,
-          resetAt: result.resetAt.toISOString()
+          resetAt: result.resetAt.toISOString(),
         },
-        { 
+        {
           status: 429,
           headers: {
             'X-RateLimit-Remaining': '0',
             'X-RateLimit-Reset': result.resetAt.toISOString(),
-            'Retry-After': Math.ceil((result.resetAt.getTime() - Date.now()) / 1000).toString()
-          }
+            'Retry-After': Math.ceil((result.resetAt.getTime() - Date.now()) / 1000).toString(),
+          },
         }
       );
     }
 
     // Add rate limit headers to successful responses
     const response = await handler(req);
-    
+
     response.headers.set('X-RateLimit-Remaining', result.remaining.toString());
     response.headers.set('X-RateLimit-Reset', result.resetAt.toISOString());
     response.headers.set('X-RateLimit-Tier', result.tier);

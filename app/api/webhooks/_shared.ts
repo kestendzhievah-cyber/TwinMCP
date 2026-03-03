@@ -24,7 +24,13 @@ export async function getStripeWebhookServices() {
     _stripeServices = {
       stripeService: new StripeService(),
       paymentService: new PaymentService(db),
-      invoiceService: new InvoiceService(db, encryptionService, auditService, gdprService, maskingService),
+      invoiceService: new InvoiceService(
+        db,
+        encryptionService,
+        auditService,
+        gdprService,
+        maskingService
+      ),
       auditService,
     };
   }
@@ -52,7 +58,13 @@ export async function getPaypalWebhookServices() {
     _paypalServices = {
       paypalService: new PayPalService(),
       paymentService: new PaymentService(db),
-      invoiceService: new InvoiceService(db, encryptionService, auditService, gdprService, maskingService),
+      invoiceService: new InvoiceService(
+        db,
+        encryptionService,
+        auditService,
+        gdprService,
+        maskingService
+      ),
       auditService,
     };
   }

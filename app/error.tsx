@@ -25,9 +25,7 @@ export default function Error({
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold text-white mb-2">
-          Une erreur est survenue
-        </h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Une erreur est survenue</h1>
 
         {/* Description */}
         <p className="text-gray-400 mb-6">
@@ -37,9 +35,7 @@ export default function Error({
         {/* Error details (in development) */}
         {process.env.NODE_ENV === 'development' && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-left">
-            <p className="text-red-400 text-sm font-mono break-all">
-              {error.message}
-            </p>
+            <p className="text-red-400 text-sm font-mono break-all">{error.message}</p>
           </div>
         )}
 

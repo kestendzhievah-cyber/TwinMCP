@@ -26,41 +26,21 @@ interface CardContentProps {
 }
 
 export function Card({ children, className = '' }: CardProps) {
-  return (
-    <div className={`bg-white rounded-lg border shadow-sm ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`bg-white rounded-lg border shadow-sm ${className}`}>{children}</div>;
 }
 
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
-  return (
-    <div className={`p-6 pb-0 ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`p-6 pb-0 ${className}`}>{children}</div>;
 }
 
 export function CardTitle({ children, className = '' }: CardTitleProps) {
-  return (
-    <h3 className={`text-lg font-semibold ${className}`}>
-      {children}
-    </h3>
-  );
+  return <h3 className={`text-lg font-semibold ${className}`}>{children}</h3>;
 }
 
 export function CardDescription({ children, className = '' }: CardDescriptionProps) {
-  return (
-    <p className={`text-sm text-gray-600 ${className}`}>
-      {children}
-    </p>
-  );
+  return <p className={`text-sm text-gray-600 ${className}`}>{children}</p>;
 }
 
 export function CardContent({ children, className = '' }: CardContentProps) {
-  return (
-    <div className={`p-6 pt-0 ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`p-6 pt-0 ${className}`}>{children}</div>;
 }

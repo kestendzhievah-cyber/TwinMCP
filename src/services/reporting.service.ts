@@ -368,7 +368,7 @@ export class ReportingService {
 
     } catch (error) {
       generation.status = 'failed';
-      generation.error = error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error';
+      generation.error = error instanceof Error ? error.message : 'Unknown error';
       generation.progress.currentStep = 'Failed';
       await this.updateGeneration(generation);
 
@@ -559,8 +559,8 @@ export class ReportingService {
   private generateInvoiceNumber(): string {
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `INV-${year}${month}-${random}`;
+    const seq = (Date.now() % 10000).toString().padStart(4, '0');
+    return `INV-${year}${month}-${seq}`;
   }
 
   private async getBillingAddress(userId: string): Promise<any> {

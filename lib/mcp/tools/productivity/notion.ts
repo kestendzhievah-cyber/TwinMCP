@@ -1,9 +1,9 @@
-import { z } from 'zod'
-import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
-import { getCache } from '../../core'
-import { rateLimiter } from '../../middleware'
-import { getMetrics } from '../../utils'
-import { logger } from '@/lib/logger'
+import { z } from 'zod';
+import { MCPTool, ValidationResult, ExecutionResult } from '../../core';
+import { getCache } from '../../core';
+import { rateLimiter } from '../../middleware';
+import { getMetrics } from '../../utils';
+import { logger } from '@/lib/logger';
 
 const notionCreateSchema = z.object({
   title: z.string().min(1, 'Title is required').max(2000, 'Title too long'),
@@ -11,93 +11,105 @@ const notionCreateSchema = z.object({
   parentId: z.string().optional(),
   databaseId: z.string().optional(),
   properties: z.record(z.any()).optional(),
-  children: z.array(z.object({
-    type: z.string(),
-    content: z.string().optional(),
-    children: z.any().optional()
-  })).optional(),
-  icon: z.object({
-    type: z.enum(['emoji', 'external', 'file']),
-    emoji: z.string().optional(),
-    url: z.string().optional()
-  }).optional(),
-  cover: z.object({
-    type: z.enum(['external', 'file']),
-    url: z.string().optional()
-  }).optional()
-})
+  children: z
+    .array(
+      z.object({
+        type: z.string(),
+        content: z.string().optional(),
+        children: z.any().optional(),
+      })
+    )
+    .optional(),
+  icon: z
+    .object({
+      type: z.enum(['emoji', 'external', 'file']),
+      emoji: z.string().optional(),
+      url: z.string().optional(),
+    })
+    .optional(),
+  cover: z
+    .object({
+      type: z.enum(['external', 'file']),
+      url: z.string().optional(),
+    })
+    .optional(),
+});
 
 export class NotionTool implements MCPTool {
-  id = 'notion'
-  name = 'Create Notion Page'
-  version = '1.0.0'
-  category: 'productivity' = 'productivity'
+  id = 'notion';
+  name = 'Create Notion Page';
+  version = '1.0.0';
+  category: 'productivity' = 'productivity';
 
-  description = 'Create pages and databases in Notion with rich content and properties'
-  author = 'MCP Team'
-  tags = ['notion', 'pages', 'databases', 'productivity', 'notes']
+  description = 'Create pages and databases in Notion with rich content and properties';
+  author = 'MCP Team';
+  tags = ['notion', 'pages', 'databases', 'productivity', 'notes'];
 
-  requiredConfig = ['notion_api_token']
-  optionalConfig = ['default_workspace_id', 'default_database_id']
+  requiredConfig = ['notion_api_token'];
+  optionalConfig = ['default_workspace_id', 'default_database_id'];
 
-  inputSchema = notionCreateSchema
+  inputSchema = notionCreateSchema;
 
   capabilities = {
     async: false,
     batch: true,
     streaming: false,
-    webhook: false
-  }
+    webhook: false,
+  };
 
   rateLimit = {
     requests: 50,
     period: '1h',
-    strategy: 'sliding' as const
-  }
+    strategy: 'sliding' as const,
+  };
 
   cache = {
     enabled: true,
     ttl: 1800, // 30 minutes
     key: (args: any) => `notion:${args.parentId || 'root'}:${args.title}`,
-    strategy: 'memory' as const
-  }
+    strategy: 'memory' as const,
+  };
 
   async validate(args: any): Promise<ValidationResult> {
     try {
-      const validated = await this.inputSchema.parseAsync(args)
-      return { success: true, data: validated }
+      const validated = await this.inputSchema.parseAsync(args);
+      return { success: true, data: validated };
     } catch (error: any) {
       return {
         success: false,
         errors: error.errors?.map((e: z.ZodIssue) => ({
           path: e.path.join('.'),
-          message: e.message
-        })) || [{ path: 'unknown', message: 'Validation failed' }]
-      }
+          message: e.message,
+        })) || [{ path: 'unknown', message: 'Validation failed' }],
+      };
     }
   }
 
   async execute(args: any, config: any): Promise<ExecutionResult> {
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     try {
       // Execute before hook
-      await this.beforeExecute(args)
+      await this.beforeExecute(args);
 
       // Validation des arguments
-      const validation = await this.validate(args)
+      const validation = await this.validate(args);
       if (!validation.success) {
-        throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(', ')}`)
+        throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(', ')}`);
       }
 
       // Vérifier les rate limits
-      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id, config.rateLimit || {})
+      const userLimit = await rateLimiter.checkUserLimit(
+        config.userId || 'anonymous',
+        this.id,
+        config.rateLimit || {}
+      );
       if (!userLimit) {
-        throw new Error('Rate limit exceeded for Notion tool')
+        throw new Error('Rate limit exceeded for Notion tool');
       }
 
       // Création de page Notion (write operation — no cache)
-      const result = await this.createNotionPage(args, config)
+      const result = await this.createNotionPage(args, config);
 
       // Tracker les métriques
       getMetrics().track({
@@ -108,8 +120,8 @@ export class NotionTool implements MCPTool {
         cacheHit: false,
         success: true,
         apiCallsCount: 1,
-        estimatedCost: 0.001
-      })
+        estimatedCost: 0.001,
+      });
 
       const execResult: ExecutionResult = {
         success: true,
@@ -118,15 +130,14 @@ export class NotionTool implements MCPTool {
           executionTime: Date.now() - startTime,
           cacheHit: false,
           apiCallsCount: 1,
-          cost: 0.001
-        }
-      }
+          cost: 0.001,
+        },
+      };
 
       // Execute after hook
-      return await this.afterExecute(execResult)
-
+      return await this.afterExecute(execResult);
     } catch (error: any) {
-      const executionTime = Date.now() - startTime
+      const executionTime = Date.now() - startTime;
 
       getMetrics().track({
         toolId: this.id,
@@ -137,8 +148,8 @@ export class NotionTool implements MCPTool {
         success: false,
         errorType: error.name || 'NotionError',
         apiCallsCount: 1,
-        estimatedCost: 0
-      })
+        estimatedCost: 0,
+      });
 
       return {
         success: false,
@@ -147,14 +158,14 @@ export class NotionTool implements MCPTool {
           executionTime,
           cacheHit: false,
           apiCallsCount: 1,
-          cost: 0
-        }
-      }
+          cost: 0,
+        },
+      };
     }
   }
 
   private async createNotionPage(args: any, config: any): Promise<any> {
-    const token = config.notion_api_token || process.env.NOTION_API_TOKEN
+    const token = config.notion_api_token || process.env.NOTION_API_TOKEN;
     if (token) {
       // Real Notion API call
       const body: any = {
@@ -165,55 +176,55 @@ export class NotionTool implements MCPTool {
             : { page_id: args.parentId },
         properties: {
           title: { title: [{ text: { content: args.title } }] },
-          ...args.properties
-        }
-      }
-      if (args.children) body.children = args.children
-      if (args.icon) body.icon = args.icon
-      if (args.cover) body.cover = args.cover
+          ...args.properties,
+        },
+      };
+      if (args.children) body.children = args.children;
+      if (args.icon) body.icon = args.icon;
+      if (args.cover) body.cover = args.cover;
 
       const response = await fetch('https://api.notion.com/v1/pages', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'Notion-Version': '2022-06-28'
+          'Notion-Version': '2022-06-28',
         },
-        body: JSON.stringify(body)
-      })
+        body: JSON.stringify(body),
+      });
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}))
-        throw new Error(`Notion API error: ${err.message || response.statusText}`)
+        const err = await response.json().catch(() => ({}));
+        throw new Error(`Notion API error: ${err.message || response.statusText}`);
       }
-      const data = await response.json()
-      return { ...data, _simulation: false }
+      const data = await response.json();
+      return { ...data, _simulation: false };
     }
 
     // Simulation mode
-    const now = new Date()
+    const now = new Date();
     return {
       id: `page_${now.getTime()}`,
       title: args.title,
       url: `https://notion.so/simulated`,
       created_time: now.toISOString(),
       _simulation: true,
-      _note: 'Set NOTION_API_TOKEN env var for real Notion integration'
-    }
+      _note: 'Set NOTION_API_TOKEN env var for real Notion integration',
+    };
   }
 
   async beforeExecute(args: any): Promise<any> {
-    logger.debug(`Creating Notion page: ${args.title}`)
-    return args
+    logger.debug(`Creating Notion page: ${args.title}`);
+    return args;
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
-      logger.debug(`Notion page created: ${result.data?.url}`)
+      logger.debug(`Notion page created: ${result.data?.url}`);
     }
-    return result
+    return result;
   }
 
   async onError(error: Error): Promise<void> {
-    logger.error(`Notion error: ${error.message}`)
+    logger.error(`Notion error: ${error.message}`);
   }
 }

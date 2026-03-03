@@ -1,5 +1,5 @@
 // Client API pour la gestion des clés API TwinMCP
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 
 interface ApiKeyResponse {
   id: string;
@@ -78,9 +78,12 @@ class ApiKeysClient {
     this.setStoredApiKey(apiKey);
   }
 
-  private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -121,11 +124,11 @@ class ApiKeysClient {
       method: 'POST',
       body: JSON.stringify({ name }),
     });
-    
+
     if (!response.data) {
       throw new Error('Failed to create API key');
     }
-    
+
     return response.data;
   }
 

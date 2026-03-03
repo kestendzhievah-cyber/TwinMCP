@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPaypalWebhookServices } from '../_shared';
 import { PaymentStatus, InvoiceStatus } from '@/src/types/invoice.types';
@@ -28,11 +28,8 @@ export async function POST(request: NextRequest) {
         'high',
         `Invalid PayPal webhook signature, eventType: ${body.event_type}`
       );
-      
-      return NextResponse.json(
-        { error: 'Invalid webhook signature' },
-        { status: 401 }
-      );
+
+      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
     }
 
     await svc.auditService.logSecurityEvent(
@@ -45,16 +42,16 @@ export async function POST(request: NextRequest) {
       case 'PAYMENT.CAPTURE.COMPLETED':
         await handlePaymentCaptureCompleted(svc, body.resource);
         break;
-      
+
       case 'PAYMENT.CAPTURE.DENIED':
       case 'PAYMENT.CAPTURE.DECLINED':
         await handlePaymentCaptureFailed(svc, body.resource);
         break;
-      
+
       case 'PAYMENT.CAPTURE.REFUNDED':
         await handlePaymentCaptureRefunded(svc, body.resource);
         break;
-      
+
       default:
         logger.info(`Unhandled PayPal event type: ${body.event_type}`);
     }
@@ -67,11 +64,8 @@ export async function POST(request: NextRequest) {
       'high',
       `Webhook processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
-    
-    return NextResponse.json(
-      { error: 'Webhook processing failed' },
-      { status: 400 }
-    );
+
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 400 });
   }
 }
 
@@ -90,16 +84,12 @@ async function handlePaymentCaptureCompleted(svc: Services, resource: any) {
     }
 
     if (invoiceId) {
-      await svc.invoiceService.updateInvoiceStatus(
-        invoiceId,
-        InvoiceStatus.PAID,
-        {
-          paidVia: 'paypal',
-          paypalOrderId: orderId,
-          paypalCaptureId: resource.id,
-          paidAt: new Date()
-        }
-      );
+      await svc.invoiceService.updateInvoiceStatus(invoiceId, InvoiceStatus.PAID, {
+        paidVia: 'paypal',
+        paypalOrderId: orderId,
+        paypalCaptureId: resource.id,
+        paidAt: new Date(),
+      });
     }
 
     await svc.auditService.logSecurityEvent(
@@ -142,22 +132,14 @@ async function handlePaymentCaptureRefunded(svc: Services, resource: any) {
   try {
     const payment = await svc.paymentService.getPaymentByProviderTransactionId(resource.id);
     if (payment) {
-      await svc.paymentService.updatePaymentStatus(
-        payment.id,
-        PaymentStatus.REFUNDED,
-        resource.id
-      );
+      await svc.paymentService.updatePaymentStatus(payment.id, PaymentStatus.REFUNDED, resource.id);
 
-      await svc.invoiceService.updateInvoiceStatus(
-        payment.invoiceId,
-        InvoiceStatus.CANCELLED,
-        {
-          refundedVia: 'paypal',
-          paypalCaptureId: resource.id,
-          refundedAt: new Date(),
-          refundAmount: resource.amount
-        }
-      );
+      await svc.invoiceService.updateInvoiceStatus(payment.invoiceId, InvoiceStatus.CANCELLED, {
+        refundedVia: 'paypal',
+        paypalCaptureId: resource.id,
+        refundedAt: new Date(),
+        refundAmount: resource.amount,
+      });
     }
 
     await svc.auditService.logSecurityEvent(

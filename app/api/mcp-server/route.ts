@@ -5,8 +5,8 @@
  * MCP JSON-RPC 2.0 protocol. This route is kept for backward compatibility.
  */
 
-import { logger } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
@@ -16,43 +16,43 @@ export async function GET() {
       version: '1.0.0',
     },
     _redirect: 'Use POST /api/mcp for MCP JSON-RPC protocol. GET /api/mcp for server discovery.',
-  })
+  });
 }
 
 export async function POST(request: NextRequest) {
   // Forward to the main /api/mcp endpoint
   try {
-    const body = await request.json()
+    const body = await request.json();
 
     // Wrap legacy non-JSON-RPC requests into proper JSON-RPC format
-    let jsonRpcBody = body
+    let jsonRpcBody = body;
     if (!body.jsonrpc) {
-      const { method, params } = body
+      const { method, params } = body;
       jsonRpcBody = {
         jsonrpc: '2.0',
         id: `legacy_${Date.now()}`,
         method: method || 'initialize',
-        params: params,
-      }
+        params,
+      };
     }
 
     // Use internal fetch to /api/mcp
-    const baseUrl = request.nextUrl.origin
+    const baseUrl = request.nextUrl.origin;
     const response = await fetch(`${baseUrl}/api/mcp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': request.headers.get('x-api-key') || '',
-        'authorization': request.headers.get('authorization') || '',
-        'twinmcp_api_key': request.headers.get('twinmcp_api_key') || '',
+        authorization: request.headers.get('authorization') || '',
+        twinmcp_api_key: request.headers.get('twinmcp_api_key') || '',
       },
       body: JSON.stringify(jsonRpcBody),
-    })
+    });
 
-    const result = await response.json()
-    return NextResponse.json(result, { status: response.status })
+    const result = await response.json();
+    return NextResponse.json(result, { status: response.status });
   } catch (error) {
-    logger.error('[MCP-Server Legacy] Error:', error)
+    logger.error('[MCP-Server Legacy] Error:', error);
     return NextResponse.json(
       {
         jsonrpc: '2.0',
@@ -60,6 +60,6 @@ export async function POST(request: NextRequest) {
         error: { code: -32603, message: error instanceof Error ? error.message : 'Unknown error' },
       },
       { status: 200 }
-    )
+    );
   }
 }

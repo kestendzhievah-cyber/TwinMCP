@@ -141,11 +141,10 @@ export class ComplianceService {
     const policy = this.retentionPolicies.get(id)
     if (!policy || !policy.enabled) return null
 
-    const recordsAffected = Math.floor(Math.random() * 100)
     policy.lastRunAt = new Date().toISOString()
     policy.nextRunAt = new Date(Date.now() + 86400000).toISOString()
-    policy.affectedRecords += recordsAffected
-
+    // Records affected is 0 until wired to a real database cleanup query
+    const recordsAffected = 0
     this.logAudit('retention_executed', 'system', id, { action: policy.action, recordsAffected }, 'retention')
     return { recordsAffected }
   }
@@ -165,7 +164,7 @@ export class ComplianceService {
       id: `del-${++this.idCounter}`, userId,
       requestedAt: new Date().toISOString(),
       status: 'pending', dataCategories, deletedItems: [],
-      verificationToken: `verify-${Math.random().toString(36).slice(2)}`,
+      verificationToken: `verify-${Date.now().toString(36)}-${(++this.idCounter).toString(36)}`,
     }
     this.deletionRequests.push(request)
     this.logAudit('deletion_requested', userId, request.id, { dataCategories }, 'deletion')
@@ -178,10 +177,9 @@ export class ComplianceService {
     if (!request || request.status !== 'pending') return false
 
     request.status = 'processing'
-    // Simulate deletion of each category
+    // Mark each category as processed (count is 0 until wired to real DB deletion)
     for (const category of request.dataCategories) {
-      const count = Math.floor(5 + Math.random() * 50)
-      request.deletedItems.push({ category, count })
+      request.deletedItems.push({ category, count: 0 })
     }
 
     request.status = 'completed'
@@ -293,4 +291,8 @@ export class ComplianceService {
   }
 }
 
-export const complianceService = new ComplianceService()
+let _complianceService: ComplianceService | null = null
+export function getComplianceService(): ComplianceService {
+  if (!_complianceService) _complianceService = new ComplianceService()
+  return _complianceService
+}

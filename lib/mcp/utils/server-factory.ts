@@ -3,7 +3,10 @@ import { HttpMCPServer } from '../servers/http-mcp-server';
 import { MCPServerTool, MCPServerConfig, HttpServerConfig } from '../types';
 import { MCPServerMetrics } from '../services/mcp-metrics.service';
 
-export type MCPServerInstance = StdioMCPServer | HttpMCPServer | { stdio: StdioMCPServer; http: HttpMCPServer };
+export type MCPServerInstance =
+  | StdioMCPServer
+  | HttpMCPServer
+  | { stdio: StdioMCPServer; http: HttpMCPServer };
 
 export class MCPServerFactory {
   private static metrics: MCPServerMetrics = new MCPServerMetrics();
@@ -16,13 +19,13 @@ export class MCPServerFactory {
     switch (config.mode) {
       case 'stdio':
         return this.createStdioServer(config);
-      
+
       case 'http':
         return this.createHttpServer(config);
-      
+
       case 'both':
         return this.createBothServers(config);
-      
+
       default:
         throw new Error(`Unknown server mode: ${config.mode}`);
     }
@@ -92,10 +95,10 @@ export class MCPServerFactory {
 
   private static createStdioServer(config: MCPServerConfig): StdioMCPServer {
     const server = new StdioMCPServer({ tools: config.tools });
-    
+
     // Configurer le monitoring
     this.setupMetricsMonitoring(server, 'stdio');
-    
+
     return server;
   }
 
@@ -107,18 +110,21 @@ export class MCPServerFactory {
     const httpConfig: HttpServerConfig & { tools: MCPServerTool[] } = {
       ...config.http,
       tools: config.tools,
-      logging: config.logging
+      logging: config.logging,
     };
 
     const server = new HttpMCPServer(httpConfig);
-    
+
     // Configurer le monitoring
     this.setupMetricsMonitoring(server, 'http');
-    
+
     return server;
   }
 
-  private static createBothServers(config: MCPServerConfig): { stdio: StdioMCPServer; http: HttpMCPServer } {
+  private static createBothServers(config: MCPServerConfig): {
+    stdio: StdioMCPServer;
+    http: HttpMCPServer;
+  } {
     if (!config.http) {
       throw new Error('HTTP configuration is required for both mode');
     }
@@ -128,20 +134,23 @@ export class MCPServerFactory {
 
     return {
       stdio: stdioServer,
-      http: httpServer
+      http: httpServer,
     };
   }
 
-  private static setupMetricsMonitoring(_server: StdioMCPServer | HttpMCPServer, _mode: string): void {
+  private static setupMetricsMonitoring(
+    _server: StdioMCPServer | HttpMCPServer,
+    _mode: string
+  ): void {
     // Intercepter les appels pour collecter des métriques
     // Note: Ceci est une implémentation de base. Dans une vraie application,
     // vous voudriez peut-être utiliser des décorateurs ou des middlewares plus sophistiqués
-    
+
     // Pour l'instant, nous allons simplement configurer les alertes
     this.metrics.setupAlerts({
       errorRate: 0.1, // 10%
       responseTime: 1000, // 1 seconde
-      connections: 100
+      connections: 100,
     });
   }
 
@@ -149,10 +158,7 @@ export class MCPServerFactory {
   static async startServer(server: MCPServerInstance): Promise<void> {
     if ('stdio' in server && 'http' in server) {
       // Mode both
-      await Promise.all([
-        server.stdio.start(),
-        server.http.start()
-      ]);
+      await Promise.all([server.stdio.start(), server.http.start()]);
     } else if ('start' in server) {
       // Mode unique
       await server.start();
@@ -164,10 +170,7 @@ export class MCPServerFactory {
   static async stopServer(server: MCPServerInstance): Promise<void> {
     if ('stdio' in server && 'http' in server) {
       // Mode both
-      await Promise.all([
-        server.stdio.stop(),
-        server.http.stop()
-      ]);
+      await Promise.all([server.stdio.stop(), server.http.stop()]);
     } else if ('stop' in server) {
       // Mode unique
       await server.stop();
@@ -184,13 +187,13 @@ export class MCPServerFactory {
         stdio: {
           type: 'stdio',
           initialized: server.stdio.isServerInitialized(),
-          tools: server.stdio.getAvailableTools()
+          tools: server.stdio.getAvailableTools(),
         },
         http: {
           type: 'http',
           initialized: server.http.isServerInitialized(),
-          tools: server.http.getAvailableTools()
-        }
+          tools: server.http.getAvailableTools(),
+        },
       };
     } else if (server instanceof StdioMCPServer) {
       // Mode stdio
@@ -198,7 +201,7 @@ export class MCPServerFactory {
         mode: 'stdio',
         type: 'stdio',
         initialized: server.isServerInitialized(),
-        tools: server.getAvailableTools()
+        tools: server.getAvailableTools(),
       };
     } else if (server instanceof HttpMCPServer) {
       // Mode http
@@ -206,7 +209,7 @@ export class MCPServerFactory {
         mode: 'http',
         type: 'http',
         initialized: server.isServerInitialized(),
-        tools: server.getAvailableTools()
+        tools: server.getAvailableTools(),
       };
     } else {
       throw new Error('Invalid server instance');
@@ -222,13 +225,16 @@ export class MCPServerFactory {
   }
 
   // Méthodes pour la création de configurations par défaut
-  static createDefaultConfig(mode: 'stdio' | 'http' | 'both', tools: MCPServerTool[]): MCPServerConfig {
+  static createDefaultConfig(
+    mode: 'stdio' | 'http' | 'both',
+    tools: MCPServerTool[]
+  ): MCPServerConfig {
     const baseConfig: Omit<MCPServerConfig, 'mode' | 'stdio' | 'http'> = {
       tools,
       logging: {
         level: 'info' as const,
-        structured: true
-      }
+        structured: true,
+      },
     };
 
     switch (mode) {
@@ -237,11 +243,11 @@ export class MCPServerFactory {
           mode: 'stdio',
           stdio: {
             encoding: 'utf8' as const,
-            delimiter: '\n'
+            delimiter: '\n',
           },
-          ...baseConfig
+          ...baseConfig,
         };
-      
+
       case 'http':
         return {
           mode: 'http',
@@ -252,18 +258,18 @@ export class MCPServerFactory {
             rateLimit: true,
             logging: {
               level: 'info' as const,
-              prettyPrint: false
-            }
+              prettyPrint: false,
+            },
           },
-          ...baseConfig
+          ...baseConfig,
         };
-      
+
       case 'both':
         return {
           mode: 'both',
           stdio: {
             encoding: 'utf8' as const,
-            delimiter: '\n'
+            delimiter: '\n',
           },
           http: {
             port: 3000,
@@ -272,12 +278,12 @@ export class MCPServerFactory {
             rateLimit: true,
             logging: {
               level: 'info' as const,
-              prettyPrint: false
-            }
+              prettyPrint: false,
+            },
           },
-          ...baseConfig
+          ...baseConfig,
         };
-      
+
       default:
         throw new Error(`Unknown mode: ${mode}`);
     }
@@ -286,7 +292,7 @@ export class MCPServerFactory {
   // Méthode pour créer un serveur à partir de variables d'environnement
   static createFromEnv(tools: MCPServerTool[]): MCPServerInstance {
     const mode = (process.env['MCP_SERVER_MODE'] || 'stdio') as 'stdio' | 'http' | 'both';
-    
+
     const config = this.createDefaultConfig(mode, tools);
 
     // Override avec les variables d'environnement

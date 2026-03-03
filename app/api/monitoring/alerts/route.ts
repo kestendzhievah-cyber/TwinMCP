@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../_shared';
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     const filters: any = {};
     if (severity) filters.severity = severity;
-    if (service) filters.service = service;
+    if (service) filters.source = service;
     if (tags && tags.length > 0) filters.tags = tags;
 
     const alerts = await monitoringService.getActiveAlerts(filters);
@@ -20,21 +20,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       alerts,
       count: alerts.length,
-      filters
+      filters,
     });
   } catch (error) {
     logger.error('Error fetching alerts:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // Validate required fields
     if (!body.name || !body.metric || !body.threshold) {
       return NextResponse.json(
@@ -61,18 +58,15 @@ export async function POST(request: NextRequest) {
       threshold: body.threshold,
       currentValue: body.currentValue || 0,
       tags: body.tags || [],
-      annotations: []
+      annotations: [],
     });
 
     return NextResponse.json({
       success: true,
-      alert
+      alert,
     });
   } catch (error) {
     logger.error('Error creating alert:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

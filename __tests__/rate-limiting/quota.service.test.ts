@@ -102,7 +102,7 @@ describe('QuotaService', () => {
     it('should track concurrent requests', async () => {
       const requestId = await service.startRequest('user1');
       
-      expect(requestId).toMatch(/^user1-\d+-\d+\.\d+$/);
+      expect(requestId).toMatch(/^user1-[0-9a-f-]+$/);
       expect(mockRedis.sadd).toHaveBeenCalledWith(
         'concurrent:user1',
         requestId

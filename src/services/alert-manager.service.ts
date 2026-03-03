@@ -18,6 +18,7 @@ export class AlertManager extends EventEmitter {
   private notificationChannels: Map<string, NotificationChannel> = new Map();
   private escalationPolicies: Map<string, EscalationPolicy> = new Map();
   private alertHistory: Map<string, Date[]> = new Map();
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(
     private db: Pool,
@@ -41,10 +42,18 @@ export class AlertManager extends EventEmitter {
     // Load active alerts
     await this.loadActiveAlerts();
     
-    // Start cleanup interval
-    setInterval(() => {
+    // Start cleanup interval (store ref for graceful shutdown)
+    this.cleanupInterval = setInterval(() => {
       this.cleanupOldAlerts().catch((err: unknown) => logger.error('Alert cleanup failed', { error: err }));
     }, 60000); // Every minute
+  }
+
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.removeAllListeners();
   }
 
   async createAlertRule(rule: Omit<AlertRule, 'id'>): Promise<AlertRule> {
@@ -361,6 +370,11 @@ export class AlertManager extends EventEmitter {
 
   private async sendSlackNotification(channel: NotificationChannel, alert: Alert): Promise<void> {
     const webhook = channel.config.webhook;
+    if (!webhook) {
+      logger.warn('Slack channel missing webhook URL', { channelId: channel.id });
+      return;
+    }
+
     const payload = {
       text: `🚨 Alert: ${alert.name}`,
       attachments: [{
@@ -377,19 +391,66 @@ export class AlertManager extends EventEmitter {
       }]
     };
 
-    // Send to Slack webhook
-    logger.info(`Slack notification sent to ${webhook}:`, payload);
+    try {
+      const response = await fetch(webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) {
+        logger.error(`Slack notification failed: ${response.status} ${response.statusText}`, { channelId: channel.id });
+      } else {
+        logger.info(`Slack notification sent for alert ${alert.name}`, { channelId: channel.id });
+      }
+    } catch (error) {
+      logger.error(`Slack notification error for channel ${channel.id}:`, error);
+    }
   }
 
   private async sendWebhookNotification(channel: NotificationChannel, alert: Alert): Promise<void> {
     const url = channel.config.url;
+    if (!url) {
+      logger.warn('Webhook channel missing URL', { channelId: channel.id });
+      return;
+    }
+
     const payload = {
-      alert,
+      alert: {
+        id: alert.id,
+        name: alert.name,
+        description: alert.description,
+        severity: alert.severity,
+        status: alert.status,
+        source: alert.source,
+        metric: alert.metric,
+        threshold: alert.threshold,
+        currentValue: alert.currentValue,
+        timestamp: alert.timestamp.toISOString(),
+        tags: alert.tags,
+      },
       timestamp: new Date().toISOString()
     };
 
-    // Send to webhook
-    logger.info(`Webhook notification sent to ${url}:`, payload);
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (channel.config.secret) {
+        headers['X-Webhook-Secret'] = channel.config.secret;
+      }
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) {
+        logger.error(`Webhook notification failed: ${response.status}`, { channelId: channel.id, url });
+      } else {
+        logger.info(`Webhook notification sent for alert ${alert.name}`, { channelId: channel.id });
+      }
+    } catch (error) {
+      logger.error(`Webhook notification error for channel ${channel.id}:`, error);
+    }
   }
 
   private async sendSMSNotification(channel: NotificationChannel, alert: Alert): Promise<void> {

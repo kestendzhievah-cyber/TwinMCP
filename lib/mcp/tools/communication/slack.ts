@@ -1,113 +1,131 @@
-import { z } from 'zod'
-import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
-import { getCache } from '../../core'
-import { rateLimiter } from '../../middleware'
-import { getMetrics } from '../../utils'
-import { logger } from '@/lib/logger'
+import { z } from 'zod';
+import { MCPTool, ValidationResult, ExecutionResult } from '../../core';
+import { getCache } from '../../core';
+import { rateLimiter } from '../../middleware';
+import { getMetrics } from '../../utils';
+import { logger } from '@/lib/logger';
 
 const slackSendSchema = z.object({
   channel: z.string().min(1, 'Channel is required'),
   text: z.string().min(1, 'Message text is required').max(4000, 'Message too long'),
   thread_ts: z.string().optional(),
-  blocks: z.array(z.object({
-    type: z.string(),
-    text: z.object({
-      type: z.literal('plain_text').or(z.literal('mrkdwn')),
-      text: z.string()
-    }).optional(),
-    elements: z.any().optional()
-  })).optional(),
-  attachments: z.array(z.object({
-    color: z.string().optional(),
-    title: z.string().optional(),
-    text: z.string().optional(),
-    fields: z.array(z.object({
-      title: z.string(),
-      value: z.string(),
-      short: z.boolean().optional()
-    })).optional()
-  })).optional(),
+  blocks: z
+    .array(
+      z.object({
+        type: z.string(),
+        text: z
+          .object({
+            type: z.literal('plain_text').or(z.literal('mrkdwn')),
+            text: z.string(),
+          })
+          .optional(),
+        elements: z.any().optional(),
+      })
+    )
+    .optional(),
+  attachments: z
+    .array(
+      z.object({
+        color: z.string().optional(),
+        title: z.string().optional(),
+        text: z.string().optional(),
+        fields: z
+          .array(
+            z.object({
+              title: z.string(),
+              value: z.string(),
+              short: z.boolean().optional(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .optional(),
   username: z.string().optional(),
   icon_emoji: z.string().optional(),
-  icon_url: z.string().url().optional()
-})
+  icon_url: z.string().url().optional(),
+});
 
 export class SlackTool implements MCPTool {
-  id = 'slack'
-  name = 'Send Slack Message'
-  version = '1.0.0'
-  category: 'communication' = 'communication'
+  id = 'slack';
+  name = 'Send Slack Message';
+  version = '1.0.0';
+  category: 'communication' = 'communication';
 
-  description = 'Send messages to Slack channels with rich formatting and attachments'
-  author = 'MCP Team'
-  tags = ['slack', 'messaging', 'communication', 'chat', 'notification']
+  description = 'Send messages to Slack channels with rich formatting and attachments';
+  author = 'MCP Team';
+  tags = ['slack', 'messaging', 'communication', 'chat', 'notification'];
 
-  requiredConfig = ['slack_bot_token', 'slack_channel']
-  optionalConfig = ['default_username', 'default_icon']
+  requiredConfig = ['slack_bot_token', 'slack_channel'];
+  optionalConfig = ['default_username', 'default_icon'];
 
-  inputSchema = slackSendSchema
+  inputSchema = slackSendSchema;
 
   capabilities = {
     async: false,
     batch: true,
     streaming: false,
-    webhook: true
-  }
+    webhook: true,
+  };
 
   rateLimit = {
     requests: 200,
     period: '1h',
-    strategy: 'sliding' as const
-  }
+    strategy: 'sliding' as const,
+  };
 
   cache = {
     enabled: true,
     ttl: 60, // 1 minute
     key: (args: any) => `slack:${args.channel}:${args.text.slice(0, 50)}`,
-    strategy: 'memory' as const
-  }
+    strategy: 'memory' as const,
+  };
 
   async validate(args: any): Promise<ValidationResult> {
     try {
-      const validated = await this.inputSchema.parseAsync(args)
-      return { success: true, data: validated }
+      const validated = await this.inputSchema.parseAsync(args);
+      return { success: true, data: validated };
     } catch (error: any) {
       return {
         success: false,
         errors: error.errors?.map((e: z.ZodIssue) => ({
           path: e.path.join('.'),
-          message: e.message
-        })) || [{ path: 'unknown', message: 'Validation failed' }]
-      }
+          message: e.message,
+        })) || [{ path: 'unknown', message: 'Validation failed' }],
+      };
     }
   }
 
   async execute(args: any, config: any): Promise<ExecutionResult> {
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     try {
       // Execute before hook
-      await this.beforeExecute(args)
+      await this.beforeExecute(args);
 
       // Validation des arguments
-      const validation = await this.validate(args)
+      const validation = await this.validate(args);
       if (!validation.success) {
-        throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(', ')}`)
+        throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(', ')}`);
       }
 
       // Vérifier les rate limits
-      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id, config.rateLimit || {})
+      const userLimit = await rateLimiter.checkUserLimit(
+        config.userId || 'anonymous',
+        this.id,
+        config.rateLimit || {}
+      );
       if (!userLimit) {
-        throw new Error('Rate limit exceeded for Slack tool')
+        throw new Error('Rate limit exceeded for Slack tool');
       }
 
       // Vérifier le cache
-      const cache = getCache()
-      const cacheKey = this.cache!.key(args)
-      const cachedResult = await cache.get(cacheKey)
+      const cache = getCache();
+      const cacheKey = this.cache!.key(args);
+      const cachedResult = await cache.get(cacheKey);
 
       if (cachedResult) {
-        logger.debug(`Slack cache hit for channel ${args.channel}`)
+        logger.debug(`Slack cache hit for channel ${args.channel}`);
         getMetrics().track({
           toolId: this.id,
           userId: config.userId || 'anonymous',
@@ -116,8 +134,8 @@ export class SlackTool implements MCPTool {
           cacheHit: true,
           success: true,
           apiCallsCount: 0,
-          estimatedCost: 0
-        })
+          estimatedCost: 0,
+        });
 
         return {
           success: true,
@@ -126,16 +144,16 @@ export class SlackTool implements MCPTool {
             executionTime: Date.now() - startTime,
             cacheHit: true,
             apiCallsCount: 0,
-            cost: 0
-          }
-        }
+            cost: 0,
+          },
+        };
       }
 
       // Envoi du message Slack
-      const result = await this.sendSlackMessage(args, config)
+      const result = await this.sendSlackMessage(args, config);
 
       // Mettre en cache
-      await cache.set(cacheKey, result, this.cache!.ttl)
+      await cache.set(cacheKey, result, this.cache!.ttl);
 
       // Tracker les métriques
       getMetrics().track({
@@ -146,8 +164,8 @@ export class SlackTool implements MCPTool {
         cacheHit: false,
         success: true,
         apiCallsCount: 1,
-        estimatedCost: 0.0001
-      })
+        estimatedCost: 0.0001,
+      });
 
       const execResult: ExecutionResult = {
         success: true,
@@ -156,15 +174,14 @@ export class SlackTool implements MCPTool {
           executionTime: Date.now() - startTime,
           cacheHit: false,
           apiCallsCount: 1,
-          cost: 0.0001
-        }
-      }
+          cost: 0.0001,
+        },
+      };
 
       // Execute after hook
-      return await this.afterExecute(execResult)
-
+      return await this.afterExecute(execResult);
     } catch (error: any) {
-      const executionTime = Date.now() - startTime
+      const executionTime = Date.now() - startTime;
 
       getMetrics().track({
         toolId: this.id,
@@ -175,8 +192,8 @@ export class SlackTool implements MCPTool {
         success: false,
         errorType: error.name || 'SlackError',
         apiCallsCount: 1,
-        estimatedCost: 0
-      })
+        estimatedCost: 0,
+      });
 
       return {
         success: false,
@@ -185,21 +202,21 @@ export class SlackTool implements MCPTool {
           executionTime,
           cacheHit: false,
           apiCallsCount: 1,
-          cost: 0
-        }
-      }
+          cost: 0,
+        },
+      };
     }
   }
 
   private async sendSlackMessage(args: any, config: any): Promise<any> {
-    const token = config.slack_bot_token || process.env.SLACK_BOT_TOKEN
+    const token = config.slack_bot_token || process.env.SLACK_BOT_TOKEN;
     if (token) {
       // Real Slack Web API call
       const response = await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           channel: args.channel,
@@ -209,19 +226,19 @@ export class SlackTool implements MCPTool {
           attachments: args.attachments,
           username: args.username,
           icon_emoji: args.icon_emoji,
-          icon_url: args.icon_url
-        })
-      })
-      const data = await response.json()
+          icon_url: args.icon_url,
+        }),
+      });
+      const data = await response.json();
       if (!data.ok) {
-        throw new Error(`Slack API error: ${data.error}`)
+        throw new Error(`Slack API error: ${data.error}`);
       }
-      return { ...data, _simulation: false }
+      return { ...data, _simulation: false };
     }
 
     // Simulation mode — no real API call
-    const timestamp = Date.now() / 1000
-    const ts = args.thread_ts || timestamp.toString()
+    const timestamp = Date.now() / 1000;
+    const ts = args.thread_ts || timestamp.toString();
 
     return {
       ok: true,
@@ -234,23 +251,23 @@ export class SlackTool implements MCPTool {
         username: args.username || config.default_username || 'MCP Bot',
       },
       _simulation: true,
-      _note: 'Set SLACK_BOT_TOKEN env var for real Slack API integration'
-    }
+      _note: 'Set SLACK_BOT_TOKEN env var for real Slack API integration',
+    };
   }
 
   async beforeExecute(args: any): Promise<any> {
-    logger.debug(`Sending Slack message to ${args.channel}`)
-    return args
+    logger.debug(`Sending Slack message to ${args.channel}`);
+    return args;
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
-      logger.debug(`Slack message sent to ${result.data?.channel}: ${result.data?.ts}`)
+      logger.debug(`Slack message sent to ${result.data?.channel}: ${result.data?.ts}`);
     }
-    return result
+    return result;
   }
 
   async onError(error: Error): Promise<void> {
-    logger.error(`Slack error: ${error.message}`)
+    logger.error(`Slack error: ${error.message}`);
   }
 }

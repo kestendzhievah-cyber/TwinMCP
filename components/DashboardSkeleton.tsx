@@ -3,9 +3,7 @@
 import React from 'react';
 
 function Pulse({ className = '' }: { className?: string }) {
-  return (
-    <div className={`animate-pulse bg-purple-500/10 rounded-lg ${className}`} />
-  );
+  return <div className={`animate-pulse bg-purple-500/10 rounded-lg ${className}`} />;
 }
 
 export function StatCardSkeleton() {
@@ -52,7 +50,10 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
     <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6 space-y-4">
       <Pulse className="w-40 h-6 mb-4" />
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 py-3 border-b border-purple-500/10 last:border-0">
+        <div
+          key={i}
+          className="flex items-center gap-4 py-3 border-b border-purple-500/10 last:border-0"
+        >
           <Pulse className="w-8 h-8 rounded-lg flex-shrink-0" />
           <div className="flex-1 space-y-2">
             <Pulse className="w-32 h-4" />

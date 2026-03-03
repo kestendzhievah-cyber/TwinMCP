@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 import { deleteAgent } from '@/lib/agents';
@@ -9,10 +9,7 @@ export async function DELETE(request: NextRequest) {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -25,10 +22,7 @@ export async function DELETE(request: NextRequest) {
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const userId = decodedToken.uid;
@@ -36,10 +30,7 @@ export async function DELETE(request: NextRequest) {
     const chatbotId = url.searchParams.get('chatbotId');
 
     if (!chatbotId) {
-      return NextResponse.json(
-        { error: 'Chatbot ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Chatbot ID is required' }, { status: 400 });
     }
 
     // Delete the agent
@@ -51,15 +42,13 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Agent supprimÃ© avec succÃ¨s',
+      message: 'Agent supprimé avec succès',
       newCount,
-      remainingSlots: newCount > 0 ? 'Vous pouvez maintenant crÃ©er un nouvel agent' : 'Aucun agent restant'
+      remainingSlots:
+        newCount > 0 ? 'Vous pouvez maintenant créer un nouvel agent' : 'Aucun agent restant',
     });
   } catch (error) {
     logger.error('Error deleting chatbot:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

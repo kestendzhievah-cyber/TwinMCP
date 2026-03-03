@@ -31,17 +31,26 @@ async function ensureServices() {
   try {
     const { prisma } = await import('@/lib/prisma');
     let redis: any = null;
-    try { redis = (await import('@/lib/redis')).redis; } catch { /* ok */ }
+    try {
+      redis = (await import('@/lib/redis')).redis;
+    } catch {
+      /* ok */
+    }
 
     try {
-      const { LibraryResolutionService } = await import('@/lib/services/library-resolution.service');
+      const { LibraryResolutionService } =
+        await import('@/lib/services/library-resolution.service');
       _libraryService = new LibraryResolutionService(prisma, redis);
-    } catch { /* ok */ }
+    } catch {
+      /* ok */
+    }
 
     try {
       const { VectorSearchService } = await import('@/lib/services/vector-search.service');
       _vectorService = new VectorSearchService(prisma, redis);
-    } catch { /* ok */ }
+    } catch {
+      /* ok */
+    }
   } catch {
     _servicesReady = false;
   }
@@ -73,8 +82,14 @@ const MCP_TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        query: { type: 'string', description: 'User question or task to help contextualise the search' },
-        libraryName: { type: 'string', description: 'Human name of the library (e.g. "React", "Next.js", "MongoDB")' },
+        query: {
+          type: 'string',
+          description: 'User question or task to help contextualise the search',
+        },
+        libraryName: {
+          type: 'string',
+          description: 'Human name of the library (e.g. "React", "Next.js", "MongoDB")',
+        },
       },
       required: ['query', 'libraryName'],
     },
@@ -87,8 +102,15 @@ const MCP_TOOLS = [
     inputSchema: {
       type: 'object' as const,
       properties: {
-        libraryId: { type: 'string', description: 'TwinMCP library ID in format /vendor/lib (e.g. /mongodb/docs, /vercel/next.js)' },
-        query: { type: 'string', description: 'Question or task (setup, code example, configuration, etc.)' },
+        libraryId: {
+          type: 'string',
+          description:
+            'TwinMCP library ID in format /vendor/lib (e.g. /mongodb/docs, /vercel/next.js)',
+        },
+        query: {
+          type: 'string',
+          description: 'Question or task (setup, code example, configuration, etc.)',
+        },
         version: { type: 'string', description: 'Optional specific version of the library' },
         maxResults: { type: 'number', description: 'Maximum number of results (default: 10)' },
         maxTokens: { type: 'number', description: 'Maximum tokens in response (default: 4000)' },
@@ -117,7 +139,8 @@ async function executeResolveLibrary(args: any) {
     results: [],
     totalFound: 0,
     query: args.libraryName,
-    _note: 'LibraryResolutionService not available. Configure database for full library resolution.',
+    _note:
+      'LibraryResolutionService not available. Configure database for full library resolution.',
   };
 }
 
@@ -139,7 +162,8 @@ async function executeQueryDocs(args: any) {
     results: [],
     totalResults: 0,
     totalTokens: 0,
-    _note: 'VectorSearchService not available. Configure database and vector store for full documentation search.',
+    _note:
+      'VectorSearchService not available. Configure database and vector store for full documentation search.',
   };
 }
 
@@ -147,7 +171,11 @@ async function executeQueryDocs(args: any) {
 // JSON-RPC helper
 // ---------------------------------------------------------------------------
 
-function jsonrpc(id: string | number | null, result?: unknown, error?: { code: number; message: string; data?: unknown }) {
+function jsonrpc(
+  id: string | number | null,
+  result?: unknown,
+  error?: { code: number; message: string; data?: unknown }
+) {
   const msg: any = { jsonrpc: '2.0' as const, id };
   if (error) msg.error = error;
   else msg.result = result;
@@ -173,7 +201,9 @@ async function authenticateRequest(request: NextRequest) {
         jsonrpc(null, undefined, {
           code: -32001,
           message: 'Invalid or missing API key',
-          data: { hint: 'Provide API key via X-API-Key header, Authorization: Bearer <key>, or TWINMCP_API_KEY header' },
+          data: {
+            hint: 'Provide API key via X-API-Key header, Authorization: Bearer <key>, or TWINMCP_API_KEY header',
+          },
         }),
         { status: 401 }
       ),
@@ -185,8 +215,18 @@ async function authenticateRequest(request: NextRequest) {
     return {
       ok: false as const,
       response: NextResponse.json(
-        jsonrpc(null, undefined, { code: -32002, message: 'Rate limit exceeded', data: { remaining: rl.remaining, plan: auth.plan } }),
-        { status: 429, headers: { 'X-RateLimit-Remaining': String(rl.remaining), 'X-RateLimit-Plan': auth.plan! } }
+        jsonrpc(null, undefined, {
+          code: -32002,
+          message: 'Rate limit exceeded',
+          data: { remaining: rl.remaining, plan: auth.plan },
+        }),
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': String(rl.remaining),
+            'X-RateLimit-Plan': auth.plan!,
+          },
+        }
       ),
     };
   }
@@ -206,10 +246,9 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      jsonrpc(null, undefined, { code: -32700, message: 'Parse error' }),
-      { status: 200 }
-    );
+    return NextResponse.json(jsonrpc(null, undefined, { code: -32700, message: 'Parse error' }), {
+      status: 200,
+    });
   }
 
   const id = body?.id ?? null;
@@ -252,10 +291,7 @@ export async function POST(request: NextRequest) {
 
       // ── tools/list ───────────────────────────────────────────
       case 'tools/list': {
-        return NextResponse.json(
-          jsonrpc(id, { tools: MCP_TOOLS }),
-          { status: 200, headers: hdrs }
-        );
+        return NextResponse.json(jsonrpc(id, { tools: MCP_TOOLS }), { status: 200, headers: hdrs });
       }
 
       // ── tools/call ───────────────────────────────────────────
@@ -273,7 +309,10 @@ export async function POST(request: NextRequest) {
         if (toolName === 'resolve-library-id') {
           if (!toolArgs.query || !toolArgs.libraryName) {
             return NextResponse.json(
-              jsonrpc(id, undefined, { code: -32602, message: 'Invalid params: query and libraryName required' }),
+              jsonrpc(id, undefined, {
+                code: -32602,
+                message: 'Invalid params: query and libraryName required',
+              }),
               { status: 200, headers: hdrs }
             );
           }
@@ -288,7 +327,10 @@ export async function POST(request: NextRequest) {
         if (toolName === 'query-docs') {
           if (!toolArgs.libraryId || !toolArgs.query) {
             return NextResponse.json(
-              jsonrpc(id, undefined, { code: -32602, message: 'Invalid params: libraryId and query required' }),
+              jsonrpc(id, undefined, {
+                code: -32602,
+                message: 'Invalid params: libraryId and query required',
+              }),
               { status: 200, headers: hdrs }
             );
           }
@@ -304,7 +346,7 @@ export async function POST(request: NextRequest) {
           jsonrpc(id, undefined, {
             code: -32601,
             message: `Unknown tool: ${toolName}`,
-            data: { availableTools: MCP_TOOLS.map((t) => t.name) },
+            data: { availableTools: MCP_TOOLS.map(t => t.name) },
           }),
           { status: 200, headers: hdrs }
         );
@@ -325,7 +367,15 @@ export async function POST(request: NextRequest) {
           jsonrpc(id, undefined, {
             code: -32601,
             message: `Method not found: ${method}`,
-            data: { availableMethods: ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'] },
+            data: {
+              availableMethods: [
+                'initialize',
+                'notifications/initialized',
+                'tools/list',
+                'tools/call',
+                'ping',
+              ],
+            },
           }),
           { status: 200, headers: hdrs }
         );
@@ -334,7 +384,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error('[MCP] POST error:', error);
     return NextResponse.json(
-      jsonrpc(id, undefined, { code: -32603, message: 'Internal error', data: error instanceof Error ? error.message : String(error) }),
+      jsonrpc(id, undefined, {
+        code: -32603,
+        message: 'Internal error',
+        data: error instanceof Error ? error.message : String(error),
+      }),
       { status: 200, headers: hdrs }
     );
   }
@@ -354,7 +408,7 @@ export async function GET() {
       streamableHttp: 'POST /api/mcp',
       sse: 'GET /api/mcp/sse',
     },
-    tools: MCP_TOOLS.map((t) => ({ name: t.name, description: t.description })),
+    tools: MCP_TOOLS.map(t => ({ name: t.name, description: t.description })),
     authentication: {
       type: 'API Key',
       headers: ['X-API-Key', 'Authorization: Bearer <key>', 'TWINMCP_API_KEY'],
@@ -364,7 +418,8 @@ export async function GET() {
         url: 'https://YOUR_DOMAIN/api/mcp',
         headers: { TWINMCP_API_KEY: 'YOUR_API_KEY' },
       },
-      claudeCode: 'claude mcp add --transport http twinmcp https://YOUR_DOMAIN/api/mcp --header "X-API-Key: YOUR_API_KEY"',
+      claudeCode:
+        'claude mcp add --transport http twinmcp https://YOUR_DOMAIN/api/mcp --header "X-API-Key: YOUR_API_KEY"',
       claudeDesktop: {
         mcpServers: {
           twinmcp: {

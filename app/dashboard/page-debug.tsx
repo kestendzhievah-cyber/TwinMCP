@@ -11,7 +11,7 @@ export default function DebugPage() {
         <h1 className="text-4xl font-bold text-white mb-4">Debug Page</h1>
         <p className="text-white">This is a debug page to test if React works.</p>
         <p className="text-white">Test state: {test}</p>
-        <button 
+        <button
           onClick={() => setTest('updated')}
           className="px-4 py-2 bg-purple-600 text-white rounded-lg mt-4"
         >

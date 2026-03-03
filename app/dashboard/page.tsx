@@ -79,9 +79,21 @@ interface MCPServerStatus {
 }
 
 const PLAN_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  free: { label: 'Gratuit', color: 'text-gray-400 bg-gray-500/20 border-gray-500/30', icon: <Zap className="w-4 h-4" /> },
-  pro: { label: 'Pro', color: 'text-purple-400 bg-purple-500/20 border-purple-500/30', icon: <Crown className="w-4 h-4" /> },
-  enterprise: { label: 'Enterprise', color: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30', icon: <Shield className="w-4 h-4" /> },
+  free: {
+    label: 'Gratuit',
+    color: 'text-gray-400 bg-gray-500/20 border-gray-500/30',
+    icon: <Zap className="w-4 h-4" />,
+  },
+  pro: {
+    label: 'Pro',
+    color: 'text-purple-400 bg-purple-500/20 border-purple-500/30',
+    icon: <Crown className="w-4 h-4" />,
+  },
+  enterprise: {
+    label: 'Enterprise',
+    color: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30',
+    icon: <Shield className="w-4 h-4" />,
+  },
 };
 
 export default function DashboardPage() {
@@ -106,7 +118,9 @@ export default function DashboardPage() {
   const [revokingKey, setRevokingKey] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [githubUrl, setGithubUrl] = useState('');
-  const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
+    'idle'
+  );
   const [importTaskId, setImportTaskId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -124,7 +138,7 @@ export default function DashboardPage() {
 
       const response = await fetch('/api/v1/dashboard', {
         headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` }),
+          ...(token && { Authorization: `Bearer ${token}` }),
           'Content-Type': 'application/json',
         },
       });
@@ -143,9 +157,15 @@ export default function DashboardPage() {
           totalRequestsToday: 0,
           totalRequestsMonth: 0,
           averageSuccessRate: 100,
-          subscription: { plan: 'free', dailyLimit: 200, monthlyLimit: 6000, usedToday: 0, usedMonth: 0 },
+          subscription: {
+            plan: 'free',
+            dailyLimit: 200,
+            monthlyLimit: 6000,
+            usedToday: 0,
+            usedMonth: 0,
+          },
           keys: [],
-          recentActivity: []
+          recentActivity: [],
         });
       } else {
         setError(result.error || 'Erreur de chargement');
@@ -155,9 +175,15 @@ export default function DashboardPage() {
           totalRequestsToday: 0,
           totalRequestsMonth: 0,
           averageSuccessRate: 100,
-          subscription: { plan: 'free', dailyLimit: 200, monthlyLimit: 6000, usedToday: 0, usedMonth: 0 },
+          subscription: {
+            plan: 'free',
+            dailyLimit: 200,
+            monthlyLimit: 6000,
+            usedToday: 0,
+            usedMonth: 0,
+          },
           keys: [],
-          recentActivity: []
+          recentActivity: [],
         });
       }
     } catch (err) {
@@ -169,9 +195,15 @@ export default function DashboardPage() {
         totalRequestsToday: 0,
         totalRequestsMonth: 0,
         averageSuccessRate: 100,
-        subscription: { plan: 'free', dailyLimit: 200, monthlyLimit: 6000, usedToday: 0, usedMonth: 0 },
+        subscription: {
+          plan: 'free',
+          dailyLimit: 200,
+          monthlyLimit: 6000,
+          usedToday: 0,
+          usedMonth: 0,
+        },
         keys: [],
-        recentActivity: []
+        recentActivity: [],
       });
     } finally {
       setLoading(false);
@@ -194,7 +226,7 @@ export default function DashboardPage() {
         serverInfo: { name: 'TwinMCP', version: data.version || '1.0.0' },
         tools: toolsList,
         lastChecked: new Date(),
-        responseTime: data.metadata?.executionTime || (Date.now() - startTime),
+        responseTime: data.metadata?.executionTime || Date.now() - startTime,
       });
     } catch (error) {
       setMcpStatus({
@@ -220,7 +252,7 @@ export default function DashboardPage() {
       const response = await fetch('/api/v1/api-keys', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ name: newKeyName.trim() }),
@@ -260,7 +292,7 @@ export default function DashboardPage() {
       const response = await fetch(`/api/v1/api-keys?id=${keyId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -309,7 +341,7 @@ export default function DashboardPage() {
         setImportStatus('success');
         setGithubUrl('');
       } else {
-        setImportError(data.error || 'Erreur lors de l\'import');
+        setImportError(data.error || "Erreur lors de l'import");
         setImportStatus('error');
       }
     } catch (err) {
@@ -358,9 +390,15 @@ export default function DashboardPage() {
   // Hooks must be called before any early returns to respect React rules of hooks
   const plan = dashboardData?.subscription?.plan || 'free';
   const planInfo = PLAN_LABELS[plan] || PLAN_LABELS.free;
-  const usagePercentToday = useMemo(() => dashboardData 
-    ? Math.round((dashboardData.subscription.usedToday / dashboardData.subscription.dailyLimit) * 100)
-    : 0, [dashboardData]);
+  const usagePercentToday = useMemo(
+    () =>
+      dashboardData
+        ? Math.round(
+            (dashboardData.subscription.usedToday / dashboardData.subscription.dailyLimit) * 100
+          )
+        : 0,
+    [dashboardData]
+  );
 
   // Use conditional rendering in JSX instead of early returns to avoid hooks ordering issues
   if (authLoading || loading) {
@@ -391,15 +429,23 @@ export default function DashboardPage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-            Bienvenue sur <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">TwinMCP</span>
+            Bienvenue sur{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+              TwinMCP
+            </span>
           </h1>
           <p className="text-gray-400 flex items-center gap-2">
-            <span className={`px-2 py-0.5 text-xs rounded-full border ${planInfo.color} flex items-center gap-1`}>
+            <span
+              className={`px-2 py-0.5 text-xs rounded-full border ${planInfo.color} flex items-center gap-1`}
+            >
               {planInfo.icon}
               {planInfo.label}
             </span>
             {plan === 'free' && (
-              <Link href="/pricing" className="text-purple-400 hover:text-purple-300 text-sm underline">
+              <Link
+                href="/pricing"
+                className="text-purple-400 hover:text-purple-300 text-sm underline"
+              >
                 Passer au Pro →
               </Link>
             )}
@@ -432,14 +478,20 @@ export default function DashboardPage() {
               Utilisation aujourd'hui
             </h2>
             <p className="text-sm text-gray-400">
-              {dashboardData?.subscription.usedToday.toLocaleString()} / {dashboardData?.subscription.dailyLimit.toLocaleString()} requêtes
+              {dashboardData?.subscription.usedToday.toLocaleString()} /{' '}
+              {dashboardData?.subscription.dailyLimit.toLocaleString()} requêtes
             </p>
           </div>
           <div className="text-right">
-            <span className={`text-2xl font-bold ${
-              usagePercentToday < 50 ? 'text-green-400' : 
-              usagePercentToday < 80 ? 'text-yellow-400' : 'text-red-400'
-            }`}>
+            <span
+              className={`text-2xl font-bold ${
+                usagePercentToday < 50
+                  ? 'text-green-400'
+                  : usagePercentToday < 80
+                    ? 'text-yellow-400'
+                    : 'text-red-400'
+              }`}
+            >
               {usagePercentToday}%
             </span>
             <p className="text-xs text-gray-500">utilisé</p>
@@ -448,9 +500,11 @@ export default function DashboardPage() {
         <div className="w-full bg-gray-700/50 rounded-full h-3">
           <div
             className={`h-3 rounded-full transition-all duration-500 ${
-              usagePercentToday < 50 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-              usagePercentToday < 80 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-              'bg-gradient-to-r from-red-500 to-pink-500'
+              usagePercentToday < 50
+                ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                : usagePercentToday < 80
+                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
+                  : 'bg-gradient-to-r from-red-500 to-pink-500'
             }`}
             style={{ width: `${Math.min(usagePercentToday, 100)}%` }}
           />
@@ -460,7 +514,9 @@ export default function DashboardPage() {
             <AlertTriangle className="w-4 h-4" />
             <span>Vous approchez de votre limite quotidienne.</span>
             {plan === 'free' && (
-              <Link href="/pricing" className="underline">Passez au Pro</Link>
+              <Link href="/pricing" className="underline">
+                Passez au Pro
+              </Link>
             )}
           </div>
         )}
@@ -471,11 +527,13 @@ export default function DashboardPage() {
         <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <Key className="w-6 h-6 text-purple-400" />
-            <span className="text-2xl font-bold text-purple-400">{dashboardData?.totalKeys || 0}</span>
+            <span className="text-2xl font-bold text-purple-400">
+              {dashboardData?.totalKeys || 0}
+            </span>
           </div>
           <p className="text-gray-400 text-sm">Clés API actives</p>
         </div>
-        
+
         <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <TrendingUp className="w-6 h-6 text-green-400" />
@@ -485,7 +543,7 @@ export default function DashboardPage() {
           </div>
           <p className="text-gray-400 text-sm">Requêtes aujourd'hui</p>
         </div>
-        
+
         <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <BarChart3 className="w-6 h-6 text-blue-400" />
@@ -495,7 +553,7 @@ export default function DashboardPage() {
           </div>
           <p className="text-gray-400 text-sm">Requêtes ce mois</p>
         </div>
-        
+
         <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <CheckCircle className="w-6 h-6 text-yellow-400" />
@@ -514,18 +572,20 @@ export default function DashboardPage() {
             <Server className="w-5 h-5 text-purple-400" />
             Serveur MCP
           </h2>
-          <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-            mcpStatus.isOnline 
-              ? 'bg-green-500/20 text-green-400' 
-              : 'bg-red-500/20 text-red-400'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${
-              mcpStatus.isOnline ? 'bg-green-400 animate-pulse' : 'bg-red-400'
-            }`} />
+          <div
+            className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+              mcpStatus.isOnline ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+            }`}
+          >
+            <div
+              className={`w-2 h-2 rounded-full ${
+                mcpStatus.isOnline ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+              }`}
+            />
             {mcpLoading ? 'Vérification...' : mcpStatus.isOnline ? 'En ligne' : 'Hors ligne'}
           </div>
         </div>
-        
+
         {mcpStatus.isOnline && (
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-[#0f1020] rounded-lg p-3">
@@ -555,8 +615,8 @@ export default function DashboardPage() {
             type="text"
             placeholder="https://github.com/owner/repo"
             value={githubUrl}
-            onChange={(e) => setGithubUrl(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleImportFromGitHub()}
+            onChange={e => setGithubUrl(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleImportFromGitHub()}
             className="flex-1 px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-sm"
           />
           <button
@@ -565,16 +625,23 @@ export default function DashboardPage() {
             className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
           >
             {importStatus === 'loading' ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Import...</>
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Import...
+              </>
             ) : (
-              <><ExternalLink className="w-4 h-4" /> Importer</>
+              <>
+                <ExternalLink className="w-4 h-4" /> Importer
+              </>
             )}
           </button>
         </div>
         {importTaskId && (
           <div className="mt-3 flex items-center gap-2 text-green-400 text-sm">
             <CheckCircle className="w-4 h-4" />
-            <span>Tâche créée — ID : <code className="bg-[#0f1020] px-1.5 py-0.5 rounded text-xs">{importTaskId}</code></span>
+            <span>
+              Tâche créée — ID :{' '}
+              <code className="bg-[#0f1020] px-1.5 py-0.5 rounded text-xs">{importTaskId}</code>
+            </span>
           </div>
         )}
         {importError && (
@@ -601,7 +668,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {(!dashboardData?.keys || dashboardData.keys.length === 0) ? (
+        {!dashboardData?.keys || dashboardData.keys.length === 0 ? (
           <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-8 text-center">
             <Key className="w-12 h-12 text-gray-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-white mb-2">Aucune clé API</h3>
@@ -616,7 +683,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {dashboardData.keys.map((key) => (
+            {dashboardData.keys.map(key => (
               <div
                 key={key.id}
                 className="bg-[#1a1b2e] border border-purple-500/20 rounded-xl p-4 hover:border-purple-500/40 transition"
@@ -666,10 +733,15 @@ export default function DashboardPage() {
                     <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
                       <div
                         className={`h-1.5 rounded-full ${
-                          (key.usage.requestsToday / key.quotaDaily) < 0.5 ? 'bg-green-500' :
-                          (key.usage.requestsToday / key.quotaDaily) < 0.8 ? 'bg-yellow-500' : 'bg-red-500'
+                          key.usage.requestsToday / key.quotaDaily < 0.5
+                            ? 'bg-green-500'
+                            : key.usage.requestsToday / key.quotaDaily < 0.8
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500'
                         }`}
-                        style={{ width: `${Math.min((key.usage.requestsToday / key.quotaDaily) * 100, 100)}%` }}
+                        style={{
+                          width: `${Math.min((key.usage.requestsToday / key.quotaDaily) * 100, 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -687,10 +759,15 @@ export default function DashboardPage() {
                       <span className="text-xs text-gray-400">Succès</span>
                       <CheckCircle className="w-3 h-3 text-green-400" />
                     </div>
-                    <span className={`font-semibold ${
-                      key.usage.successRate >= 95 ? 'text-green-400' :
-                      key.usage.successRate >= 80 ? 'text-yellow-400' : 'text-red-400'
-                    }`}>
+                    <span
+                      className={`font-semibold ${
+                        key.usage.successRate >= 95
+                          ? 'text-green-400'
+                          : key.usage.successRate >= 80
+                            ? 'text-yellow-400'
+                            : 'text-red-400'
+                      }`}
+                    >
                       {key.usage.successRate}%
                     </span>
                   </div>
@@ -718,17 +795,19 @@ export default function DashboardPage() {
           <p className="font-medium text-white group-hover:text-purple-400 transition">Analytics</p>
           <p className="text-xs text-gray-500 mt-1">Statistiques en temps réel</p>
         </Link>
-        
+
         <Link
           href="/dashboard/billing"
           className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
           data-testid="quick-action-billing"
         >
           <Crown className="w-8 h-8 text-yellow-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">Facturation</p>
+          <p className="font-medium text-white group-hover:text-purple-400 transition">
+            Facturation
+          </p>
           <p className="text-xs text-gray-500 mt-1">Abonnement & factures</p>
         </Link>
-        
+
         <Link
           href="/dashboard/api-keys"
           className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
@@ -738,14 +817,16 @@ export default function DashboardPage() {
           <p className="font-medium text-white group-hover:text-purple-400 transition">Clés API</p>
           <p className="text-xs text-gray-500 mt-1">Gérer vos clés</p>
         </Link>
-        
+
         <Link
           href="/dashboard/docs"
           className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
           data-testid="quick-action-docs"
         >
           <BookOpen className="w-8 h-8 text-green-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">Documentation</p>
+          <p className="font-medium text-white group-hover:text-purple-400 transition">
+            Documentation
+          </p>
           <p className="text-xs text-gray-500 mt-1">Guides & API</p>
         </Link>
       </div>
@@ -755,13 +836,13 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6 max-w-md w-full">
             <h2 className="text-xl font-bold text-white mb-4">Nouvelle clé API</h2>
-            
+
             <div className="mb-4">
               <label className="block text-sm text-gray-400 mb-2">Nom de la clé</label>
               <input
                 type="text"
                 value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
+                onChange={e => setNewKeyName(e.target.value)}
                 placeholder="Ex: Production, Développement..."
                 className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 autoFocus

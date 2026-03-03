@@ -82,7 +82,7 @@ export default function MCPServerStatus({ onToolSelect, compact = false }: MCPSe
         tools: [],
         lastChecked: new Date(),
         responseTime,
-        error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Connection failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setIsLoading(false);

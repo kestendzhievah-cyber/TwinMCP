@@ -45,7 +45,7 @@ export class PaymentService {
       await this.updatePaymentStatus(payment.id, processedPayment.status, processedPayment.providerTransactionId);
       return processedPayment;
     } catch (error) {
-      await this.updatePaymentStatus(payment.id, PaymentStatus.FAILED, undefined, error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error');
+      await this.updatePaymentStatus(payment.id, PaymentStatus.FAILED, undefined, error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
@@ -222,10 +222,10 @@ export class PaymentService {
       return {
         ...payment,
         status: PaymentStatus.FAILED,
-        failureReason: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error',
+        failureReason: error instanceof Error ? error.message : 'Unknown error',
         metadata: {
           ...payment.metadata,
-          error: error instanceof Error ? (error instanceof Error ? error.message : String(error)) : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error'
         }
       };
     }

@@ -9,25 +9,27 @@ export default function TroubleshootingPage() {
 
   const commonIssues = [
     {
-      problem: "Le serveur ne démarre pas",
-      solution: "Vérifiez que Node.js 18+ est installé et que les dépendances sont correctement installées avec --legacy-peer-deps",
-      code: "node --version\nnpm install --legacy-peer-deps"
+      problem: 'Le serveur ne démarre pas',
+      solution:
+        'Vérifiez que Node.js 18+ est installé et que les dépendances sont correctement installées avec --legacy-peer-deps',
+      code: 'node --version\nnpm install --legacy-peer-deps',
     },
     {
       problem: "Erreur d'authentification 401",
-      solution: "Vérifiez que votre clé API est valide et correctement configurée dans .env.local",
-      code: "curl -X POST ${APP_URL}/api/v1/mcp/auth \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"apiKey\":\"your-api-key\"}'"
+      solution: 'Vérifiez que votre clé API est valide et correctement configurée dans .env.local',
+      code: 'curl -X POST ${APP_URL}/api/v1/mcp/auth \\\n  -H \'Content-Type: application/json\' \\\n  -d \'{"apiKey":"your-api-key"}\'',
     },
     {
-      problem: "Firebase connection error",
-      solution: "Assurez-vous que les variables Firebase dans .env.local sont correctement configurées",
-      code: "NEXT_PUBLIC_FIREBASE_API_KEY=your-key\nNEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project"
+      problem: 'Firebase connection error',
+      solution:
+        'Assurez-vous que les variables Firebase dans .env.local sont correctement configurées',
+      code: 'NEXT_PUBLIC_FIREBASE_API_KEY=your-key\nNEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project',
     },
     {
-      problem: "MCP tool execution timeout",
-      solution: "Augmentez le timeout dans la configuration ou vérifiez la connectivité réseau",
-      code: "// Dans next.config.js\nmodule.exports = {\n  experimental: {\n    serverComponentsExternalPackages: ['@modelcontextprotocol/sdk']\n  }\n}"
-    }
+      problem: 'MCP tool execution timeout',
+      solution: 'Augmentez le timeout dans la configuration ou vérifiez la connectivité réseau',
+      code: "// Dans next.config.js\nmodule.exports = {\n  experimental: {\n    serverComponentsExternalPackages: ['@modelcontextprotocol/sdk']\n  }\n}",
+    },
   ];
 
   return (
@@ -35,7 +37,9 @@ export default function TroubleshootingPage() {
       {/* Header */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm text-purple-400">
-          <Link href="/dashboard/docs" className="hover:text-fuchsia-300">Docs</Link>
+          <Link href="/dashboard/docs" className="hover:text-fuchsia-300">
+            Docs
+          </Link>
           <span>/</span>
           <span>Dépannage</span>
         </div>
@@ -56,15 +60,24 @@ export default function TroubleshootingPage() {
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-green-400" />
-            <span className="text-gray-300">Vérifiez la version de Node.js: <code className="text-fuchsia-400">node --version</code></span>
+            <span className="text-gray-300">
+              Vérifiez la version de Node.js:{' '}
+              <code className="text-fuchsia-400">node --version</code>
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-green-400" />
-            <span className="text-gray-300">Vérifiez les variables d'environnement: <code className="text-fuchsia-400">cat .env.local</code></span>
+            <span className="text-gray-300">
+              Vérifiez les variables d'environnement:{' '}
+              <code className="text-fuchsia-400">cat .env.local</code>
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-green-400" />
-            <span className="text-gray-300">Testez la connectivité: <code className="text-fuchsia-400">curl {APP_URL}/api/v1/mcp/health</code></span>
+            <span className="text-gray-300">
+              Testez la connectivité:{' '}
+              <code className="text-fuchsia-400">curl {APP_URL}/api/v1/mcp/health</code>
+            </span>
           </div>
         </div>
       </div>
@@ -72,9 +85,12 @@ export default function TroubleshootingPage() {
       {/* Common Issues */}
       <div className="space-y-6">
         <h2 className="text-2xl font-semibold text-gray-100">Problèmes courants</h2>
-        
+
         {commonIssues.map((issue, index) => (
-          <div key={index} className="bg-[#1a1a2e] border border-purple-700/30 rounded-xl p-6 space-y-4">
+          <div
+            key={index}
+            className="bg-[#1a1a2e] border border-purple-700/30 rounded-xl p-6 space-y-4"
+          >
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-yellow-400 mt-1" />
               <div className="flex-1">
@@ -92,7 +108,7 @@ export default function TroubleshootingPage() {
       {/* Error Codes */}
       <div className="space-y-6">
         <h2 className="text-2xl font-semibold text-gray-100">Codes d'erreur</h2>
-        
+
         <div className="bg-[#1a1a2e] border border-purple-700/30 rounded-xl p-6">
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -128,19 +144,19 @@ export default function TroubleshootingPage() {
       {/* Debug Mode */}
       <div className="space-y-6">
         <h2 className="text-2xl font-semibold text-gray-100">Mode debug</h2>
-        
+
         <div className="bg-[#1a1a2e] border border-purple-700/30 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
             <Terminal className="w-5 h-5 text-purple-400" />
             Activer le mode debug
           </h3>
-          
+
           <div className="space-y-4">
             <div>
               <h4 className="font-medium text-gray-200 mb-2">Variables d'environnement</h4>
               <div className="bg-[#0a0a0f] border border-purple-700/30 rounded-lg p-4 font-mono text-sm">
                 <pre className="text-green-400">
-{`# Debug mode
+                  {`# Debug mode
 DEBUG=true
 LOG_LEVEL=debug
 
@@ -149,11 +165,12 @@ VERBOSE=true`}
                 </pre>
               </div>
             </div>
-            
+
             <div>
               <h4 className="font-medium text-gray-200 mb-2">Logs détaillés</h4>
               <p className="text-gray-300 text-sm">
-                En mode debug, vous verrez des logs détaillés dans la console pour identifier les problèmes.
+                En mode debug, vous verrez des logs détaillés dans la console pour identifier les
+                problèmes.
               </p>
             </div>
           </div>
@@ -163,7 +180,7 @@ VERBOSE=true`}
       {/* Performance Issues */}
       <div className="space-y-6">
         <h2 className="text-2xl font-semibold text-gray-100">Problèmes de performance</h2>
-        
+
         <div className="bg-[#1a1a2e] border border-purple-700/30 rounded-xl p-6">
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -180,14 +197,12 @@ VERBOSE=true`}
                 </ul>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <RefreshCw className="w-5 h-5 text-yellow-400 mt-1" />
               <div>
                 <h3 className="text-lg font-semibold text-gray-100 mb-2">Timeout d'exécution</h3>
-                <p className="text-gray-300 mb-3">
-                  Pour les outils qui prennent du temps :
-                </p>
+                <p className="text-gray-300 mb-3">Pour les outils qui prennent du temps :</p>
                 <ul className="space-y-1 text-gray-300 text-sm">
                   <li>• Utilisez l'exécution asynchrone avec jobId</li>
                   <li>• Augmentez le timeout dans la configuration</li>
@@ -203,11 +218,17 @@ VERBOSE=true`}
       <div className="bg-gradient-to-r from-fuchsia-600/20 to-purple-600/20 border border-fuchsia-500/30 rounded-xl p-6">
         <h3 className="text-xl font-semibold text-fuchsia-300 mb-4">Obtenir de l'aide</h3>
         <div className="space-y-3">
-          <Link href="/dashboard/docs/api-guide" className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors">
+          <Link
+            href="/dashboard/docs/api-guide"
+            className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors"
+          >
             <ArrowRight className="w-4 h-4" />
             <span>Consulter la documentation API</span>
           </Link>
-          <Link href="/dashboard/docs/installation" className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors">
+          <Link
+            href="/dashboard/docs/installation"
+            className="flex items-center gap-3 text-gray-300 hover:text-fuchsia-300 transition-colors"
+          >
             <ArrowRight className="w-4 h-4" />
             <span>Revoir le guide d'installation</span>
           </Link>
@@ -221,7 +242,7 @@ VERBOSE=true`}
       {/* Health Check */}
       <div className="space-y-6">
         <h2 className="text-2xl font-semibold text-gray-100">Vérification de santé</h2>
-        
+
         <div className="bg-[#1a1a2e] border border-purple-700/30 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-gray-100 mb-4">Endpoint de santé</h3>
           <p className="text-gray-300 mb-4">
@@ -229,7 +250,7 @@ VERBOSE=true`}
           </p>
           <div className="bg-[#0a0a0f] border border-purple-700/30 rounded-lg p-4 font-mono text-sm">
             <pre className="text-green-400">
-{`GET /api/v1/mcp/health
+              {`GET /api/v1/mcp/health
 
 Response:
 {

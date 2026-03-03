@@ -6,8 +6,8 @@ export type {
   User,
   ApiKey,
   AuthError,
-  RateLimitConfig
-} from './auth-types'
+  RateLimitConfig,
+} from './auth-types';
 
 export interface RateLimitInfo {
   remaining: number;

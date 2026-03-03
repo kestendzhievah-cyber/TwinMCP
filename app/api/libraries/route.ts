@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -19,7 +19,7 @@ const DEFAULT_LIBRARY_CATALOG = [
     tokens: 245000,
     snippets: 1250,
     lastCrawled: '2026-01-03T10:00:00Z',
-    tags: ['react', 'ssr', 'framework', 'frontend']
+    tags: ['react', 'ssr', 'framework', 'frontend'],
   },
   {
     id: '/facebook/react',
@@ -36,7 +36,7 @@ const DEFAULT_LIBRARY_CATALOG = [
     tokens: 312000,
     snippets: 1800,
     lastCrawled: '2026-01-03T10:00:00Z',
-    tags: ['ui', 'components', 'frontend', 'hooks']
+    tags: ['ui', 'components', 'frontend', 'hooks'],
   },
   {
     id: '/prisma/prisma',
@@ -53,7 +53,7 @@ const DEFAULT_LIBRARY_CATALOG = [
     tokens: 178000,
     snippets: 850,
     lastCrawled: '2026-01-03T09:00:00Z',
-    tags: ['orm', 'database', 'typescript']
+    tags: ['orm', 'database', 'typescript'],
   },
   {
     id: '/tailwindlabs/tailwindcss',
@@ -70,7 +70,7 @@ const DEFAULT_LIBRARY_CATALOG = [
     tokens: 198000,
     snippets: 1100,
     lastCrawled: '2026-01-03T07:30:00Z',
-    tags: ['css', 'styling', 'frontend', 'utility']
+    tags: ['css', 'styling', 'frontend', 'utility'],
   },
   {
     id: '/fastapi/fastapi',
@@ -78,7 +78,8 @@ const DEFAULT_LIBRARY_CATALOG = [
     vendor: 'SebastiÃ¡n RamÃ­rez',
     ecosystem: 'pip',
     language: 'Python',
-    description: 'FastAPI framework, high performance, easy to learn, fast to code, ready for production',
+    description:
+      'FastAPI framework, high performance, easy to learn, fast to code, ready for production',
     repo: 'https://github.com/fastapi/fastapi',
     docs: 'https://fastapi.tiangolo.com/',
     versions: ['0.115.6', '0.114.0', '0.113.0'],
@@ -87,8 +88,8 @@ const DEFAULT_LIBRARY_CATALOG = [
     tokens: 167000,
     snippets: 890,
     lastCrawled: '2026-01-03T04:00:00Z',
-    tags: ['python', 'api', 'async', 'openapi']
-  }
+    tags: ['python', 'api', 'async', 'openapi'],
+  },
 ];
 
 // POST - Fetch libraries with client-side libraries merged in (avoids URL length limits)
@@ -96,14 +97,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const clientLibraries: any[] = body.clientLibraries || [];
-    
+
     // Delegate to the same logic as GET, but with clientLibraries from body
     return handleListLibraries(request, clientLibraries);
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request' },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
   }
 }
 
@@ -115,7 +113,7 @@ export async function GET(request: NextRequest) {
 // Shared logic for GET and POST
 async function handleListLibraries(request: NextRequest, clientLibraries: any[]) {
   const { searchParams } = new URL(request.url);
-  
+
   const search = searchParams.get('search')?.toLowerCase();
   const ecosystem = searchParams.get('ecosystem');
   const language = searchParams.get('language');
@@ -125,29 +123,29 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
   const limit = parseInt(searchParams.get('limit') || '50');
   const includeDefaults = searchParams.get('includeDefaults') !== 'false';
 
-  let allLibraries: any[] = [];
+  const allLibraries: any[] = [];
   let dbLibraries: any[] = [];
 
   // Try to fetch from database
   try {
     const whereClause: any = {};
-    
+
     if (search) {
       whereClause.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { displayName: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
+        { description: { contains: search, mode: 'insensitive' } },
       ];
     }
-    
+
     if (ecosystem && ecosystem !== 'all') {
       whereClause.ecosystem = ecosystem;
     }
-    
+
     if (language) {
       whereClause.language = { contains: language, mode: 'insensitive' };
     }
-    
+
     if (tag) {
       whereClause.tags = { has: tag };
     }
@@ -157,20 +155,21 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
       include: {
         versions: {
           where: { isLatest: true },
-          take: 1
-        }
+          take: 1,
+        },
       },
-      orderBy: sortBy === 'name' 
-        ? { name: 'asc' }
-        : sortBy === 'tokens'
-          ? { totalTokens: 'desc' }
-          : sortBy === 'updated'
-            ? { lastCrawledAt: 'desc' }
-            : { popularityScore: 'desc' }
+      orderBy:
+        sortBy === 'name'
+          ? { name: 'asc' }
+          : sortBy === 'tokens'
+            ? { totalTokens: 'desc' }
+            : sortBy === 'updated'
+              ? { lastCrawledAt: 'desc' }
+              : { popularityScore: 'desc' },
     });
 
     // Transform database libraries to match expected format
-    dbLibraries = libraries.map((lib: typeof libraries[number]) => {
+    dbLibraries = libraries.map((lib: (typeof libraries)[number]) => {
       // Check metadata to determine if user-imported
       const metadata = (lib.metadata as any) || {};
       const isUserImported = !!metadata.importSource || !!metadata.importedBy;
@@ -184,17 +183,16 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
         description: lib.description || '',
         repo: lib.repoUrl || '',
         docs: lib.docsUrl || '',
-        versions: lib.versions.map((v: typeof lib.versions[number]) => v.version),
+        versions: lib.versions.map((v: (typeof lib.versions)[number]) => v.version),
         defaultVersion: lib.defaultVersion || lib.versions[0]?.version || '1.0.0',
         popularity: Math.round(lib.popularityScore),
         tokens: lib.totalTokens,
         snippets: lib.totalSnippets,
         lastCrawled: lib.lastCrawledAt?.toISOString() || lib.createdAt.toISOString(),
         tags: lib.tags,
-        isUserImported
+        isUserImported,
       };
     });
-
   } catch (dbError) {
     logger.warn('Database unavailable, using client libraries and defaults');
   }
@@ -216,15 +214,15 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
     snippets: lib.snippets || 0,
     lastCrawled: lib.lastCrawled || lib.createdAt || new Date().toISOString(),
     tags: lib.tags || [],
-    isUserImported: true
+    isUserImported: true,
   }));
 
   // Filter client libraries based on search params
   let filteredClientLibs = processedClientLibs;
   if (search) {
-    filteredClientLibs = filteredClientLibs.filter(lib => 
-      lib.name.toLowerCase().includes(search) ||
-      lib.description.toLowerCase().includes(search)
+    filteredClientLibs = filteredClientLibs.filter(
+      lib =>
+        lib.name.toLowerCase().includes(search) || lib.description.toLowerCase().includes(search)
     );
   }
   if (ecosystem && ecosystem !== 'all') {
@@ -233,7 +231,7 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
 
   // Merge: client libraries first (most recent), then DB libraries, then defaults
   const existingIds = new Set<string>();
-  
+
   // Add client libraries first
   for (const lib of filteredClientLibs) {
     if (!existingIds.has(lib.id)) {
@@ -241,7 +239,7 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
       existingIds.add(lib.id);
     }
   }
-  
+
   // Add DB libraries (skip duplicates already from client)
   for (const lib of dbLibraries) {
     if (!existingIds.has(lib.id)) {
@@ -253,25 +251,26 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
   // Combine with default catalog if enabled
   if (includeDefaults) {
     let filteredDefaults = [...DEFAULT_LIBRARY_CATALOG];
-    
+
     if (search) {
-      filteredDefaults = filteredDefaults.filter(lib => 
-        lib.name.toLowerCase().includes(search) ||
-        lib.description.toLowerCase().includes(search) ||
-        lib.tags.some(t => t.includes(search))
+      filteredDefaults = filteredDefaults.filter(
+        lib =>
+          lib.name.toLowerCase().includes(search) ||
+          lib.description.toLowerCase().includes(search) ||
+          lib.tags.some(t => t.includes(search))
       );
     }
-    
+
     if (ecosystem && ecosystem !== 'all') {
       filteredDefaults = filteredDefaults.filter(lib => lib.ecosystem === ecosystem);
     }
-    
+
     if (language) {
-      filteredDefaults = filteredDefaults.filter(lib => 
+      filteredDefaults = filteredDefaults.filter(lib =>
         lib.language.toLowerCase().includes(language.toLowerCase())
       );
     }
-    
+
     if (tag) {
       filteredDefaults = filteredDefaults.filter(lib => lib.tags.includes(tag));
     }
@@ -297,8 +296,8 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
       allLibraries.sort((a, b) => b.snippets - a.snippets);
       break;
     case 'updated':
-      allLibraries.sort((a, b) => 
-        new Date(b.lastCrawled).getTime() - new Date(a.lastCrawled).getTime()
+      allLibraries.sort(
+        (a, b) => new Date(b.lastCrawled).getTime() - new Date(a.lastCrawled).getTime()
       );
       break;
     case 'popularity':
@@ -310,18 +309,18 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
         return b.popularity - a.popularity;
       });
   }
-  
+
   // Paginate
   const total = allLibraries.length;
   const start = (page - 1) * limit;
   const end = start + limit;
   const paginatedLibraries = allLibraries.slice(start, end);
-  
+
   // Collect all unique tags and ecosystems
   const allTags = new Set<string>();
   const allEcosystems = new Set<string>();
   const allLanguages = new Set<string>();
-  
+
   allLibraries.forEach(lib => {
     lib.tags.forEach((t: string) => allTags.add(t));
     allEcosystems.add(lib.ecosystem);
@@ -336,19 +335,19 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     },
     filters: {
       ecosystems: Array.from(allEcosystems),
       languages: Array.from(allLanguages),
-      tags: Array.from(allTags)
+      tags: Array.from(allTags),
     },
     stats: {
       totalLibraries: total,
       userImported: userImportedCount,
       defaultCatalog: total - userImportedCount,
       totalTokens: allLibraries.reduce((sum, lib) => sum + lib.tokens, 0),
-      totalSnippets: allLibraries.reduce((sum, lib) => sum + lib.snippets, 0)
-    }
+      totalSnippets: allLibraries.reduce((sum, lib) => sum + lib.snippets, 0),
+    },
   });
 }

@@ -43,7 +43,7 @@ interface Library {
 // Helper to get libraries from localStorage
 function getLibrariesFromLocalStorage(): any[] {
   if (typeof window === 'undefined') return [];
-  
+
   try {
     const stored = localStorage.getItem('twinmcp_user_libraries');
     return stored ? JSON.parse(stored) : [];
@@ -80,7 +80,7 @@ export default function LibrariesPage() {
     const fetchLibraries = async () => {
       try {
         setLoading(true);
-        
+
         const params = new URLSearchParams();
         if (debouncedSearch) params.append('search', debouncedSearch);
         if (selectedEcosystem !== 'all') params.append('ecosystem', selectedEcosystem);
@@ -92,9 +92,11 @@ export default function LibrariesPage() {
           try {
             const idToken = await user.getIdToken();
             headers['Authorization'] = `Bearer ${idToken}`;
-          } catch { /* continue without auth */ }
+          } catch {
+            /* continue without auth */
+          }
         }
-        
+
         // POST client libraries in body to avoid URL length limits
         const response = await fetch(`/api/libraries?${params}`, {
           method: 'POST',
@@ -105,7 +107,7 @@ export default function LibrariesPage() {
         setLibraries(data.libraries || []);
         setStats({
           userImported: data.stats?.userImported || 0,
-          totalLibraries: data.stats?.totalLibraries || data.libraries?.length || 0
+          totalLibraries: data.stats?.totalLibraries || data.libraries?.length || 0,
         });
       } catch (error) {
         console.error('Failed to fetch libraries:', error);
@@ -114,7 +116,7 @@ export default function LibrariesPage() {
         setLibraries(localLibraries);
         setStats({
           userImported: localLibraries.length,
-          totalLibraries: localLibraries.length
+          totalLibraries: localLibraries.length,
         });
       } finally {
         setLoading(false);
@@ -135,7 +137,7 @@ export default function LibrariesPage() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return "Aujourd'hui";
     if (diffDays === 1) return 'Hier';
     if (diffDays < 7) return `${diffDays} jours`;
@@ -178,7 +180,7 @@ export default function LibrariesPage() {
             type="text"
             placeholder="Rechercher une bibliothèque..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition"
           />
         </div>
@@ -187,7 +189,7 @@ export default function LibrariesPage() {
         <div className="relative">
           <select
             value={selectedEcosystem}
-            onChange={(e) => setSelectedEcosystem(e.target.value)}
+            onChange={e => setSelectedEcosystem(e.target.value)}
             className="appearance-none px-4 py-3 pr-10 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition cursor-pointer"
           >
             <option value="all">Tous les écosystèmes</option>
@@ -202,7 +204,7 @@ export default function LibrariesPage() {
         <div className="relative">
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={e => setSortBy(e.target.value)}
             className="appearance-none px-4 py-3 pr-10 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition cursor-pointer"
           >
             <option value="popularity">Popularité</option>
@@ -238,13 +240,13 @@ export default function LibrariesPage() {
       ) : viewMode === 'grid' ? (
         /* Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {libraries.map((lib) => (
+          {libraries.map(lib => (
             <Link
               key={lib.id}
               href={`/dashboard/library/${encodeURIComponent(lib.id)}`}
               className={`group bg-[#1a1b2e] border rounded-2xl p-5 hover:border-purple-500/40 transition ${
-                lib.isUserImported 
-                  ? 'border-green-500/30 ring-1 ring-green-500/20' 
+                lib.isUserImported
+                  ? 'border-green-500/30 ring-1 ring-green-500/20'
                   : 'border-purple-500/20'
               }`}
               data-testid={`library-card-${lib.id}`}
@@ -256,16 +258,20 @@ export default function LibrariesPage() {
                   <span>Importé par vous</span>
                 </div>
               )}
-              
+
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    lib.isUserImported 
-                      ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/20' 
-                      : 'bg-gradient-to-br from-purple-500/20 to-pink-500/20'
-                  }`}>
-                    <BookOpen className={`w-6 h-6 ${lib.isUserImported ? 'text-green-400' : 'text-purple-400'}`} />
+                  <div
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      lib.isUserImported
+                        ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/20'
+                        : 'bg-gradient-to-br from-purple-500/20 to-pink-500/20'
+                    }`}
+                  >
+                    <BookOpen
+                      className={`w-6 h-6 ${lib.isUserImported ? 'text-green-400' : 'text-purple-400'}`}
+                    />
                   </div>
                   <div>
                     <h3 className="font-semibold text-white group-hover:text-purple-400 transition">
@@ -280,9 +286,7 @@ export default function LibrariesPage() {
               </div>
 
               {/* Description */}
-              <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                {lib.description}
-              </p>
+              <p className="text-sm text-gray-400 mb-4 line-clamp-2">{lib.description}</p>
 
               {/* Stats */}
               <div className="grid grid-cols-3 gap-2 mb-4">
@@ -307,8 +311,7 @@ export default function LibrariesPage() {
                   {formatDate(lib.lastCrawled)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                  v{lib.defaultVersion}
+                  <CheckCircle className="w-3.5 h-3.5 text-green-400" />v{lib.defaultVersion}
                 </span>
               </div>
 
@@ -334,7 +337,7 @@ export default function LibrariesPage() {
             <div className="col-span-2 text-right">Mise à jour</div>
           </div>
           <div className="divide-y divide-purple-500/10">
-            {libraries.map((lib) => (
+            {libraries.map(lib => (
               <Link
                 key={lib.id}
                 href={`/dashboard/library/${encodeURIComponent(lib.id)}`}
@@ -345,7 +348,9 @@ export default function LibrariesPage() {
                     <BookOpen className="w-5 h-5 text-purple-400" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-white hover:text-purple-400 transition">{lib.name}</h3>
+                    <h3 className="font-medium text-white hover:text-purple-400 transition">
+                      {lib.name}
+                    </h3>
                     <p className="text-xs text-gray-500">{lib.vendor}</p>
                   </div>
                 </div>
@@ -375,7 +380,9 @@ export default function LibrariesPage() {
         <div className="text-center py-20">
           <BookOpen className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-white mb-2">Aucune bibliothèque trouvée</h3>
-          <p className="text-gray-400 mb-6">Essayez une autre recherche ou ajoutez une nouvelle bibliothèque</p>
+          <p className="text-gray-400 mb-6">
+            Essayez une autre recherche ou ajoutez une nouvelle bibliothèque
+          </p>
           <Link
             href="/dashboard/agent-builder"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 transition"

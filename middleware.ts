@@ -17,6 +17,7 @@ const PUBLIC_ROUTES = new Set([
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
   '/api/create-checkout-session',
+  '/api/webhook',
   '/api/webhooks',
   '/api/health',
   '/api/ready',
@@ -26,7 +27,7 @@ const PUBLIC_ROUTES = new Set([
 
 // Routes that handle their own authentication (Firebase tokens verified at route level)
 const SELF_AUTH_ROUTES = [
-  '/api/admin/stripe-diagnostic',
+  '/api/admin',
   '/api/auth/me',
   '/api/auth/profile',
   '/api/auth/session',
@@ -39,8 +40,11 @@ const SELF_AUTH_ROUTES = [
   '/api/v1/billing',
   '/api/v1/usage',
   '/api/v1/external-mcp',
+  '/api/v1/mcp',
   '/api/libraries',
+  '/api/mcp',
   '/api/mcp-configurations',
+  '/api/mcp-server',
   '/api/downloads',
   '/api/chatbot',
   '/api/user/limits',
@@ -52,6 +56,17 @@ const SELF_AUTH_ROUTES = [
   '/api/monitoring',
   '/api/analytics',
   '/api/github-monitoring',
+  '/api/code/execute',
+  '/api/graphql',
+  '/api/image/analyze',
+  '/api/payment',
+  '/api/reporting',
+  '/api/share',
+  '/api/subscription',
+  '/api/test',
+  '/api/usage',
+  '/api/voice',
+  '/api/workspace',
 ];
 
 // Pre-build a Set of exact SELF_AUTH routes for O(1) exact match

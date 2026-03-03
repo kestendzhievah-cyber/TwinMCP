@@ -36,7 +36,8 @@ export const librariesData: Record<string, MCPLibraryData> = {
     lastUpdate: '4 jours',
     isVerified: true,
     description: 'Framework React pour la production avec rendu hybride.',
-    longDescription: 'Next.js est un framework React de production qui offre le rendu côté serveur (SSR), la génération de sites statiques (SSG), le routage basé sur les fichiers, et bien plus encore. Il est optimisé pour les performances et le SEO.',
+    longDescription:
+      'Next.js est un framework React de production qui offre le rendu côté serveur (SSR), la génération de sites statiques (SSG), le routage basé sur les fichiers, et bien plus encore. Il est optimisé pour les performances et le SEO.',
     version: '14.1.0',
     language: 'TypeScript',
     license: 'MIT',
@@ -74,8 +75,9 @@ export async function GET() {
     snippets: '2,1K',
     lastUpdate: '2 jours',
     isVerified: true,
-    description: 'Solution d\'authentification moderne et flexible pour applications web.',
-    longDescription: 'Better Auth est une bibliothèque d\'authentification complète qui offre une solution simple et sécurisée pour gérer l\'authentification dans vos applications. Elle supporte OAuth, les sessions, les tokens JWT et plus encore.',
+    description: "Solution d'authentification moderne et flexible pour applications web.",
+    longDescription:
+      "Better Auth est une bibliothèque d'authentification complète qui offre une solution simple et sécurisée pour gérer l'authentification dans vos applications. Elle supporte OAuth, les sessions, les tokens JWT et plus encore.",
     version: '1.2.0',
     language: 'TypeScript',
     license: 'MIT',
@@ -101,7 +103,7 @@ const auth = betterAuth({
     documentation: 'https://better-auth.dev/docs',
     repository: 'https://github.com/better-auth/better-auth',
     examples: [
-      { title: 'Configurer OAuth', code: 'Configure l\'authentification Google avec Better Auth.' },
+      { title: 'Configurer OAuth', code: "Configure l'authentification Google avec Better Auth." },
       { title: 'Protéger une route', code: 'Protège une API route avec Better Auth.' },
     ],
   },
@@ -115,7 +117,8 @@ const auth = betterAuth({
     lastUpdate: '1 semaine',
     isVerified: true,
     description: 'SDK officiel pour intégrer Claude dans vos applications.',
-    longDescription: 'Claude Code est le SDK officiel d\'Anthropic pour intégrer les capacités de Claude dans vos applications. Il offre une API simple et puissante pour la génération de texte, l\'analyse de code et l\'assistance IA.',
+    longDescription:
+      "Claude Code est le SDK officiel d'Anthropic pour intégrer les capacités de Claude dans vos applications. Il offre une API simple et puissante pour la génération de texte, l'analyse de code et l'assistance IA.",
     version: '0.8.0',
     language: 'TypeScript',
     license: 'Apache-2.0',
@@ -129,7 +132,7 @@ const auth = betterAuth({
       'Streaming de réponses',
       'Gestion du contexte',
       'Support des outils (function calling)',
-      'Vision (analyse d\'images)',
+      "Vision (analyse d'images)",
     ],
     installation: 'npm install @anthropic-ai/sdk',
     usage: `import Anthropic from '@anthropic-ai/sdk'
@@ -156,8 +159,9 @@ const message = await anthropic.messages.create({
     snippets: '5,7K',
     lastUpdate: '6 jours',
     isVerified: true,
-    description: 'SDK unifié pour intégrer l\'IA dans vos applications.',
-    longDescription: 'AI SDK de Vercel est un toolkit complet pour construire des applications IA. Il fournit une interface unifiée pour travailler avec différents modèles de langage (OpenAI, Anthropic, Google, etc.) et des primitives React pour le streaming.',
+    description: "SDK unifié pour intégrer l'IA dans vos applications.",
+    longDescription:
+      'AI SDK de Vercel est un toolkit complet pour construire des applications IA. Il fournit une interface unifiée pour travailler avec différents modèles de langage (OpenAI, Anthropic, Google, etc.) et des primitives React pour le streaming.',
     version: '3.0.0',
     language: 'TypeScript',
     license: 'Apache-2.0',
@@ -198,7 +202,8 @@ const { text } = await generateText({
     lastUpdate: '14 heures',
     isVerified: true,
     description: 'Bibliothèque pour construire des applications IA avec React.',
-    longDescription: 'Vercel AI SDK est la bibliothèque de référence pour construire des interfaces utilisateur alimentées par l\'IA. Elle offre des hooks React, des composants de streaming et une intégration transparente avec Next.js.',
+    longDescription:
+      "Vercel AI SDK est la bibliothèque de référence pour construire des interfaces utilisateur alimentées par l'IA. Elle offre des hooks React, des composants de streaming et une intégration transparente avec Next.js.",
     version: '3.1.0',
     language: 'TypeScript',
     license: 'Apache-2.0',
@@ -208,7 +213,7 @@ const { text } = await generateText({
     categories: ['AI', 'React', 'Next.js', 'Streaming'],
     features: [
       'useChat hook pour les chatbots',
-      'useCompletion pour l\'autocomplétion',
+      "useCompletion pour l'autocomplétion",
       'Streaming SSE natif',
       'Support RSC (React Server Components)',
       'Intégration Next.js optimisée',
@@ -230,7 +235,7 @@ export default function Chat() {
     repository: 'https://github.com/vercel/ai',
     examples: [
       { title: 'Chatbot React', code: 'Crée un chatbot avec useChat.' },
-      { title: 'Autocomplétion', code: 'Ajoute l\'autocomplétion IA à un champ texte.' },
+      { title: 'Autocomplétion', code: "Ajoute l'autocomplétion IA à un champ texte." },
     ],
   },
   '6': {
@@ -243,7 +248,8 @@ export default function Chat() {
     lastUpdate: '3 jours',
     isVerified: true,
     description: 'Bibliothèque JavaScript pour construire des interfaces utilisateur.',
-    longDescription: 'React est la bibliothèque JavaScript la plus populaire pour construire des interfaces utilisateur. Développée par Meta, elle utilise un DOM virtuel et un modèle de composants déclaratif pour créer des applications web performantes.',
+    longDescription:
+      'React est la bibliothèque JavaScript la plus populaire pour construire des interfaces utilisateur. Développée par Meta, elle utilise un DOM virtuel et un modèle de composants déclaratif pour créer des applications web performantes.',
     version: '18.2.0',
     language: 'JavaScript',
     license: 'MIT',

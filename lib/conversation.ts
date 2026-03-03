@@ -9,7 +9,7 @@ import {
   where,
   orderBy,
   limit,
-  Timestamp
+  Timestamp,
 } from 'firebase/firestore';
 import { db as _db } from './firebase';
 const db = _db!;
@@ -40,7 +40,7 @@ export async function getConversationHistory(conversationId: string): Promise<Co
 
     return {
       id: conversationSnap.id,
-      ...conversationSnap.data()
+      ...conversationSnap.data(),
     } as Conversation;
   } catch (error) {
     console.error('Error getting conversation history:', error);
@@ -56,7 +56,7 @@ export async function createConversation(chatbotId: string, visitorId: string): 
       visitorId,
       messages: [],
       createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+      updatedAt: Timestamp.now(),
     };
 
     const docRef = await addDoc(conversationsRef, conversationData);
@@ -82,14 +82,14 @@ export async function addMessageToConversation(
     const messages = conversationSnap.data().messages || [];
     const newMessage = {
       ...message,
-      timestamp: Timestamp.now()
+      timestamp: Timestamp.now(),
     };
 
     messages.push(newMessage);
 
     await updateDoc(conversationRef, {
       messages,
-      updatedAt: Timestamp.now()
+      updatedAt: Timestamp.now(),
     });
 
     return `msg_${Date.now()}_${messages.length - 1}`;

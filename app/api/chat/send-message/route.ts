@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger'
+﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getChatbot } from '@/lib/chatbot';
 import { createConversation, addMessageToConversation } from '@/lib/conversation';
@@ -22,25 +22,19 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.chatbotId || !body.message || !body.visitorId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Get chatbot configuration
     const chatbot = await getChatbot(body.chatbotId);
 
-    if (!chatbot || chatbot.status !== 'active') {
-      return NextResponse.json(
-        { error: 'Chatbot not found or inactive' },
-        { status: 404 }
-      );
+    if (chatbot?.status !== 'active') {
+      return NextResponse.json({ error: 'Chatbot not found or inactive' }, { status: 404 });
     }
 
     // Create conversation (simplified for now)
-    const conversationId = body.conversationId ||
-      await createConversation(body.chatbotId, body.visitorId);
+    const conversationId =
+      body.conversationId || (await createConversation(body.chatbotId, body.visitorId));
 
     // Add user message to conversation
     await addMessageToConversation(conversationId, {
@@ -64,10 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     logger.error('Error sending message:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -84,7 +75,7 @@ async function generateAIResponse(message: string, chatbot: any): Promise<string
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -135,5 +126,5 @@ async function generateAIResponse(message: string, chatbot: any): Promise<string
   }
 
   // Fallback: simulation mode
-  return `[Mode simulation] Je suis ${chatbot.name}. RÃ©ponse Ã : "${message.substring(0, 100)}". Configurez OPENAI_API_KEY ou ANTHROPIC_API_KEY pour des rÃ©ponses rÃ©elles.`;
+  return `[Mode simulation] Je suis ${chatbot.name}. Réponse à : "${message.substring(0, 100)}". Configurez OPENAI_API_KEY ou ANTHROPIC_API_KEY pour des réponses réelles.`;
 }

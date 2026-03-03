@@ -6,66 +6,74 @@ export class MCPMessageSerializer {
     MCPMethods.ToolsList,
     MCPMethods.ToolsCall,
     MCPMethods.NotificationsMessage,
-    MCPMethods.NotificationsResourcesUpdated
+    MCPMethods.NotificationsResourcesUpdated,
   ];
 
   static serialize(message: MCPMessage): string {
     try {
       const jsonMessage = JSON.stringify(message);
-      
+
       // Validation basique
       if (!jsonMessage.includes('jsonrpc')) {
         throw new Error('Invalid MCP message format');
       }
-      
+
       return jsonMessage;
     } catch (error) {
-      throw new Error(`Failed to serialize MCP message: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to serialize MCP message: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   static deserialize(rawMessage: string): MCPMessage {
     try {
       const message = JSON.parse(rawMessage);
-      
+
       // Validation JSON-RPC 2.0
       if (message.jsonrpc !== '2.0') {
         throw new Error('Invalid JSON-RPC version');
       }
-      
+
       // Validation de la méthode
       if (message.method && !this.VALID_METHODS.includes(message.method)) {
         throw new Error(`Unknown method: ${message.method}`);
       }
-      
+
       // Validation de l'ID
-      if (message.id !== undefined && typeof message.id !== 'string' && typeof message.id !== 'number') {
+      if (
+        message.id !== undefined &&
+        typeof message.id !== 'string' &&
+        typeof message.id !== 'number'
+      ) {
         throw new Error('Invalid message ID type');
       }
-      
+
       return message;
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error(`JSON parse error: ${error.message}`);
       }
-      throw new Error(`Failed to deserialize MCP message: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to deserialize MCP message: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   static createResponse(id: string | number | undefined, result?: any, error?: any): MCPMessage {
     const message: MCPMessage = {
       jsonrpc: '2.0' as const,
-      id
+      id,
     };
-    
+
     if (result !== undefined) {
       message.result = result;
     }
-    
+
     if (error !== undefined) {
       message.error = error;
     }
-    
+
     return message;
   }
 
@@ -73,7 +81,7 @@ export class MCPMessageSerializer {
     return {
       jsonrpc: '2.0' as const,
       method,
-      params
+      params,
     };
   }
 
@@ -81,14 +89,14 @@ export class MCPMessageSerializer {
     if (!params || typeof params !== 'object') {
       throw new Error('Invalid tool call parameters');
     }
-    
+
     if (!params.name || typeof params.name !== 'string') {
       throw new Error('Tool name is required');
     }
-    
+
     return {
       name: params.name,
-      arguments: params.arguments || {}
+      arguments: params.arguments || {},
     };
   }
 
@@ -110,11 +118,15 @@ export class MCPMessageSerializer {
     return params;
   }
 
-  static createInitializeResponse(id: string | number, serverInfo: any, capabilities: any): MCPMessage {
+  static createInitializeResponse(
+    id: string | number,
+    serverInfo: any,
+    capabilities: any
+  ): MCPMessage {
     return this.createResponse(id, {
       protocolVersion: '2024-11-05',
       capabilities,
-      serverInfo
+      serverInfo,
     });
   }
 
@@ -127,17 +139,22 @@ export class MCPMessageSerializer {
       content: [
         {
           type: 'text',
-          text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
-        }
-      ]
+          text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+        },
+      ],
     });
   }
 
-  static createErrorResponse(id: string | number | undefined, code: number, message: string, data?: any): MCPMessage {
+  static createErrorResponse(
+    id: string | number | undefined,
+    code: number,
+    message: string,
+    data?: any
+  ): MCPMessage {
     return this.createResponse(id, undefined, {
       code,
       message,
-      data
+      data,
     });
   }
 
@@ -146,9 +163,14 @@ export class MCPMessageSerializer {
       typeof message === 'object' &&
       message !== null &&
       message.jsonrpc === '2.0' &&
-      (message.id === undefined || typeof message.id === 'string' || typeof message.id === 'number') &&
+      (message.id === undefined ||
+        typeof message.id === 'string' ||
+        typeof message.id === 'number') &&
       (message.method === undefined || typeof message.method === 'string') &&
-      (message.result === undefined || message.error === undefined || message.result !== undefined || message.error !== undefined)
+      (message.result === undefined ||
+        message.error === undefined ||
+        message.result !== undefined ||
+        message.error !== undefined)
     );
   }
 
@@ -157,7 +179,9 @@ export class MCPMessageSerializer {
   }
 
   static isResponse(message: MCPMessage): boolean {
-    return message.method === undefined && (message.result !== undefined || message.error !== undefined);
+    return (
+      message.method === undefined && (message.result !== undefined || message.error !== undefined)
+    );
   }
 
   static isNotification(message: MCPMessage): boolean {
@@ -191,23 +215,23 @@ export class MCPMessageSerializer {
 
   static summarize(message: MCPMessage): string {
     const parts = ['MCP'];
-    
+
     if (message.id !== undefined) {
       parts.push(`#${message.id}`);
     }
-    
+
     if (message.method) {
       parts.push(message.method);
     }
-    
+
     if (message.result) {
       parts.push('✓');
     }
-    
+
     if (message.error) {
       parts.push(`✗(${message.error.code})`);
     }
-    
+
     return parts.join(' ');
   }
 }

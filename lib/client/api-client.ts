@@ -1,7 +1,7 @@
 // Client API pour communiquer avec le backend TwinMCP
 // Utilise le Firebase ID token pour l'authentification dashboard
 
-import { auth } from '@/lib/firebase'
+import { auth } from '@/lib/firebase';
 
 class ApiClient {
   private apiKey: string | null = null;
@@ -57,10 +57,7 @@ class ApiClient {
   }
 
   // Méthode générique pour les requêtes API
-  private async request<T = any>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = endpoint;
 
     const headers: Record<string, string> = {

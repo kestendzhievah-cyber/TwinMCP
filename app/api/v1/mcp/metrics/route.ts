@@ -1,45 +1,42 @@
-import { logger } from '@/lib/logger'
-import { NextRequest, NextResponse } from 'next/server'
-import { authService } from '@/lib/mcp/middleware/auth'
-import { getMetrics } from '@/lib/mcp/utils/metrics'
-import { getQueue } from '@/lib/mcp/utils/queue'
+﻿import { logger } from '@/lib/logger';
+import { NextRequest, NextResponse } from 'next/server';
+import { authService } from '@/lib/mcp/middleware/auth';
+import { getMetrics } from '@/lib/mcp/utils/metrics';
+import { getQueue } from '@/lib/mcp/utils/queue';
 
-// GET /api/v1/mcp/metrics - MÃ©triques systÃ¨me et outils
+// GET /api/v1/mcp/metrics - Métriques système et outils
 export async function GET(request: NextRequest) {
-  const startTime = Date.now()
+  const startTime = Date.now();
 
   try {
-    // Authentification (seulement pour les utilisateurs authentifiÃ©s)
-    const authContext = await authService.authenticate(request)
+    // Authentification (seulement pour les utilisateurs authentifiés)
+    const authContext = await authService.authenticate(request);
     if (!authContext.isAuthenticated) {
       return NextResponse.json(
         { error: 'Authentication required for metrics access' },
         { status: 401 }
-      )
+      );
     }
 
     // Autorisation (seulement pour les admins)
-    const isAdmin = authContext.permissions.some(p =>
-      p.resource === 'global' && p.actions.includes('admin')
-    )
+    const isAdmin = authContext.permissions.some(
+      p => p.resource === 'global' && p.actions.includes('admin')
+    );
 
     if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Admin permissions required' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Admin permissions required' }, { status: 403 });
     }
 
-    const url = new URL(request.url)
-    const period = url.searchParams.get('period') as 'day' | 'week' | 'month' || 'day'
-    const toolId = url.searchParams.get('toolId')
+    const url = new URL(request.url);
+    const period = (url.searchParams.get('period') as 'day' | 'week' | 'month') || 'day';
+    const toolId = url.searchParams.get('toolId');
 
-    let metrics
+    let metrics;
 
     if (toolId) {
-      // MÃ©triques pour un outil spÃ©cifique
-      const toolStats = await getMetrics().getToolStats(toolId)
-      const systemStats = await getMetrics().getSystemStats()
+      // Métriques pour un outil spécifique
+      const toolStats = await getMetrics().getToolStats(toolId);
+      const systemStats = await getMetrics().getSystemStats();
 
       metrics = {
         toolId,
@@ -49,15 +46,15 @@ export async function GET(request: NextRequest) {
         apiVersion: 'v1',
         metadata: {
           executionTime: Date.now() - startTime,
-          generatedAt: new Date().toISOString()
-        }
-      }
+          generatedAt: new Date().toISOString(),
+        },
+      };
     } else {
-      // MÃ©triques systÃ¨me globales
-      const systemStats = await getMetrics().getSystemStats()
-      const topTools = await getMetrics().getTopTools(10)
-      const errorAnalysis = await getMetrics().getErrorAnalysis()
-      const report = await getMetrics().generateReport(period)
+      // Métriques système globales
+      const systemStats = await getMetrics().getSystemStats();
+      const topTools = await getMetrics().getTopTools(10);
+      const errorAnalysis = await getMetrics().getErrorAnalysis();
+      const report = await getMetrics().generateReport(period);
 
       metrics = {
         systemStats,
@@ -68,21 +65,20 @@ export async function GET(request: NextRequest) {
         metadata: {
           executionTime: Date.now() - startTime,
           generatedAt: new Date().toISOString(),
-          period
-        }
-      }
+          period,
+        },
+      };
     }
 
-    return NextResponse.json(metrics)
-
+    return NextResponse.json(metrics);
   } catch (error: any) {
-    logger.error('Metrics error:', error)
+    logger.error('Metrics error:', error);
     return NextResponse.json(
       {
         error: error.message || 'Failed to retrieve metrics',
-        apiVersion: 'v1'
+        apiVersion: 'v1',
       },
       { status: error.statusCode || 500 }
-    )
+    );
   }
 }

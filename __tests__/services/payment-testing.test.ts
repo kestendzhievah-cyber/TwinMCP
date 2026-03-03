@@ -138,9 +138,9 @@ describe('PaymentTestingService', () => {
       })
       expect(result.totalRequests).toBe(100)
       expect(result.successfulRequests + result.failedRequests).toBe(100)
-      expect(result.avgResponseTimeMs).toBeGreaterThan(0)
+      expect(result.avgResponseTimeMs).toBeGreaterThanOrEqual(0)
       expect(result.p95ResponseTimeMs).toBeGreaterThanOrEqual(result.p50ResponseTimeMs)
-      expect(result.requestsPerSecond).toBeGreaterThan(0)
+      expect(result.requestsPerSecond).toBeGreaterThanOrEqual(0)
     })
 
     it('computes error rate', () => {
@@ -164,7 +164,7 @@ describe('PaymentTestingService', () => {
       expect(result.scenarioName).toBe('Happy Path Payment')
       expect(['passed', 'failed']).toContain(result.status)
       expect(result.steps.length).toBeGreaterThan(0)
-      expect(result.totalDurationMs).toBeGreaterThan(0)
+      expect(result.totalDurationMs).toBeGreaterThanOrEqual(0)
     })
 
     it('returns skipped for unknown scenario', () => {

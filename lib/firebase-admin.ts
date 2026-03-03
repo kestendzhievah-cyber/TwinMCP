@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 // Initialize Firebase Admin
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.applicationDefault()
+    credential: admin.credential.applicationDefault(),
   });
 }
 
@@ -14,6 +14,6 @@ export const db = admin.firestore();
 
 // Default export for compatibility
 export default {
-  auth: auth,
-  db: db
+  auth,
+  db,
 };

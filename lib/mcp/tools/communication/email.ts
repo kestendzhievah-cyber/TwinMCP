@@ -1,11 +1,11 @@
 import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
-import { z } from 'zod'
-import { MCPTool, ValidationResult, ExecutionResult } from '../../core'
-import { getCache } from '../../core'
-import { rateLimiter } from '../../middleware'
-import { getMetrics } from '../../utils'
-import { logger } from '@/lib/logger'
+import { z } from 'zod';
+import { MCPTool, ValidationResult, ExecutionResult } from '../../core';
+import { getCache } from '../../core';
+import { rateLimiter } from '../../middleware';
+import { getMetrics } from '../../utils';
+import { logger } from '@/lib/logger';
 
 const sendEmailSchema = z.object({
   to: z.string().email('Invalid email format'),
@@ -14,112 +14,120 @@ const sendEmailSchema = z.object({
   from: z.string().email().optional(),
   cc: z.array(z.string().email()).optional(),
   bcc: z.array(z.string().email()).optional(),
-  attachments: z.array(z.object({
-    filename: z.string(),
-    content: z.string(),
-    type: z.string()
-  })).optional()
-})
+  attachments: z
+    .array(
+      z.object({
+        filename: z.string(),
+        content: z.string(),
+        type: z.string(),
+      })
+    )
+    .optional(),
+});
 
 export class EmailTool implements MCPTool {
-  id = 'email'
-  name = 'Send Email'
-  version = '1.0.0'
-  category: 'communication' = 'communication'
-  description = 'Send emails via Gmail or SMTP with advanced features'
-  author = 'MCP Team'
-  tags = ['email', 'gmail', 'smtp', 'communication']
+  id = 'email';
+  name = 'Send Email';
+  version = '1.0.0';
+  category: 'communication' = 'communication';
+  description = 'Send emails via Gmail or SMTP with advanced features';
+  author = 'MCP Team';
+  tags = ['email', 'gmail', 'smtp', 'communication'];
   // Configuration OAuth2
   requiredConfig = [
     'email_credentials.client_id',
     'email_credentials.client_secret',
     'email_credentials.refresh_token',
-    'email_credentials.email'
-  ]
+    'email_credentials.email',
+  ];
   optionalConfig = [
     'email_credentials.access_token',
     'email_credentials.name',
-    'smtp_host', 
-    'smtp_port', 
-    'default_from'
-  ]
-  inputSchema = sendEmailSchema
+    'smtp_host',
+    'smtp_port',
+    'default_from',
+  ];
+  inputSchema = sendEmailSchema;
   // Ajoutez ces propriétés manquantes
   capabilities = {
     async: false,
     batch: true,
     streaming: false,
-    webhook: false
-  }
+    webhook: false,
+  };
   rateLimit = {
     requests: 100,
     period: '1h',
-    strategy: 'sliding' as const
-  }
+    strategy: 'sliding' as const,
+  };
   cache = {
     enabled: true,
     ttl: 300, // 5 minutes
     key: (args: any) => `email:${args.to}:${args.subject}`,
-    strategy: 'memory' as const
-  }
+    strategy: 'memory' as const,
+  };
 
   async validate(args: any): Promise<ValidationResult> {
     try {
-      const validated = await this.inputSchema.parseAsync(args)
-      return { success: true, data: validated }
+      const validated = await this.inputSchema.parseAsync(args);
+      return { success: true, data: validated };
     } catch (error: any) {
       return {
         success: false,
         errors: error.errors?.map((e: z.ZodIssue) => ({
           path: e.path.join('.'),
-          message: e.message
-        })) || [{ path: 'unknown', message: 'Validation failed' }]
-      }
+          message: e.message,
+        })) || [{ path: 'unknown', message: 'Validation failed' }],
+      };
     }
   }
 
   async beforeExecute(args: any): Promise<any> {
-    logger.debug(`Preparing to send email to ${args.to}`)
-    return args
+    logger.debug(`Preparing to send email to ${args.to}`);
+    return args;
   }
 
   async afterExecute(result: ExecutionResult): Promise<ExecutionResult> {
     if (result.success) {
-      logger.debug(`Email sent successfully to ${result.data?.to}`)
+      logger.debug(`Email sent successfully to ${result.data?.to}`);
     }
-    return result
+    return result;
   }
 
   async onError(error: Error): Promise<void> {
-    logger.error(`Email error: ${error.message}`)
+    logger.error(`Email error: ${error.message}`);
   }
 
   async execute(args: any, config: any): Promise<ExecutionResult> {
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     try {
       // Execute before hook
-      await this.beforeExecute(args)
+      await this.beforeExecute(args);
 
       // Validation des arguments
-      const validation = await this.validate(args)
+      const validation = await this.validate(args);
       if (!validation.success) {
-        throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(', ')}`)
+        throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(', ')}`);
       }
 
       // Vérifier les rate limits
-      const userLimit = await rateLimiter.checkUserLimit(config.userId || 'anonymous', this.id, config.rateLimit || {})
+      const userLimit = await rateLimiter.checkUserLimit(
+        config.userId || 'anonymous',
+        this.id,
+        config.rateLimit || {}
+      );
       if (!userLimit) {
-        throw new Error('Rate limit exceeded for email tool')
+        throw new Error('Rate limit exceeded for email tool');
       }
 
       // Vérifier le cache
-      const cache = getCache()
-      const cacheKey = this.cache!.key(args)
-      const cachedResult = await cache.get(cacheKey)
+      const cache = getCache();
+      const cacheKey = this.cache!.key(args);
+      const cachedResult = await cache.get(cacheKey);
 
       if (cachedResult) {
-        logger.debug(`Email cache hit for ${args.to}`)
+        logger.debug(`Email cache hit for ${args.to}`);
         getMetrics().track({
           toolId: this.id,
           userId: config.userId || 'anonymous',
@@ -128,8 +136,8 @@ export class EmailTool implements MCPTool {
           cacheHit: true,
           success: true,
           apiCallsCount: 0,
-          estimatedCost: 0
-        })
+          estimatedCost: 0,
+        });
 
         return {
           success: true,
@@ -138,16 +146,16 @@ export class EmailTool implements MCPTool {
             executionTime: Date.now() - startTime,
             cacheHit: true,
             apiCallsCount: 0,
-            cost: 0
-          }
-        }
+            cost: 0,
+          },
+        };
       }
 
       // Envoi de l'email
-      const result = await this.sendEmail(args, config)
+      const result = await this.sendEmail(args, config);
 
       // Mettre en cache
-      await cache.set(cacheKey, result, this.cache!.ttl)
+      await cache.set(cacheKey, result, this.cache!.ttl);
 
       // Tracker les métriques
       getMetrics().track({
@@ -158,8 +166,8 @@ export class EmailTool implements MCPTool {
         cacheHit: false,
         success: true,
         apiCallsCount: 1,
-        estimatedCost: 0.001 // Coût estimé par email
-      })
+        estimatedCost: 0.001, // Coût estimé par email
+      });
 
       const execResult: ExecutionResult = {
         success: true,
@@ -168,15 +176,14 @@ export class EmailTool implements MCPTool {
           executionTime: Date.now() - startTime,
           cacheHit: false,
           apiCallsCount: 1,
-          cost: 0.001
-        }
-      }
+          cost: 0.001,
+        },
+      };
 
       // Execute after hook
-      return await this.afterExecute(execResult)
-
+      return await this.afterExecute(execResult);
     } catch (error: any) {
-      const executionTime = Date.now() - startTime
+      const executionTime = Date.now() - startTime;
 
       getMetrics().track({
         toolId: this.id,
@@ -187,8 +194,8 @@ export class EmailTool implements MCPTool {
         success: false,
         errorType: error.name || 'EmailError',
         apiCallsCount: 1,
-        estimatedCost: 0
-      })
+        estimatedCost: 0,
+      });
 
       return {
         success: false,
@@ -197,14 +204,14 @@ export class EmailTool implements MCPTool {
           executionTime,
           cacheHit: false,
           apiCallsCount: 1,
-          cost: 0
-        }
-      }
+          cost: 0,
+        },
+      };
     }
   }
 
   private async sendEmail(args: any, config: any): Promise<any> {
-    const creds = config.email_credentials
+    const creds = config.email_credentials;
     if (creds?.client_id && creds?.client_secret && creds?.refresh_token) {
       // Real Gmail OAuth2 send
       try {
@@ -215,7 +222,7 @@ export class EmailTool implements MCPTool {
         );
         oauth2Client.setCredentials({
           refresh_token: creds.refresh_token,
-          access_token: creds.access_token
+          access_token: creds.access_token,
         });
         const transporter = nodemailer.createTransport({
           service: 'gmail',
@@ -225,8 +232,8 @@ export class EmailTool implements MCPTool {
             clientId: creds.client_id,
             clientSecret: creds.client_secret,
             refreshToken: creds.refresh_token,
-            accessToken: (await oauth2Client.getAccessToken()).token!
-          }
+            accessToken: (await oauth2Client.getAccessToken()).token!,
+          },
         });
         const mailOptions = {
           from: args.from || `"${creds.name || 'MCP'}" <${creds.email}>`,
@@ -239,8 +246,8 @@ export class EmailTool implements MCPTool {
           attachments: args.attachments?.map((a: any) => ({
             filename: a.filename,
             content: Buffer.from(a.content, 'base64'),
-            contentType: a.type
-          }))
+            contentType: a.type,
+          })),
         };
         const info = await transporter.sendMail(mailOptions);
         return {
@@ -255,11 +262,11 @@ export class EmailTool implements MCPTool {
             size: args.body.length,
             attachments: args.attachments?.length || 0,
             priority: args.priority || 'normal',
-            response: info.response
-          }
+            response: info.response,
+          },
         };
       } catch (error: any) {
-        logger.error('Erreur lors de l\'envoi de l\'email:', error);
+        logger.error("Erreur lors de l'envoi de l'email:", error);
         throw new Error(`Échec de l'envoi de l'email: ${error.message}`);
       }
     }
@@ -277,8 +284,8 @@ export class EmailTool implements MCPTool {
       metadata: {
         size: args.body.length,
         attachments: args.attachments?.length || 0,
-        priority: args.priority || 'normal'
-      }
-    }
+        priority: args.priority || 'normal',
+      },
+    };
   }
 }

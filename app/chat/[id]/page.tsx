@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
@@ -12,7 +12,7 @@ import {
   ExternalLink,
   MessageSquare,
   Clock,
-  Users
+  Users,
 } from 'lucide-react';
 
 interface Message {
@@ -74,12 +74,14 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (chatbot && messages.length === 0) {
-      setMessages([{
-        id: 'welcome',
-        role: 'assistant',
-        content: `Bonjour ! Je suis ${chatbot.name}. Comment puis-je vous aider aujourd'hui ?`,
-        timestamp: new Date(),
-      }]);
+      setMessages([
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content: `Bonjour ! Je suis ${chatbot.name}. Comment puis-je vous aider aujourd'hui ?`,
+          timestamp: new Date(),
+        },
+      ]);
     }
   }, [chatbot, messages.length]);
 
@@ -120,7 +122,7 @@ export default function ChatPage() {
         const data = await res.json();
         content = data.response || data.message || data.content || 'Réponse reçue.';
       } else {
-        content = 'Désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.';
+        content = "Désolé, je n'ai pas pu traiter votre demande. Veuillez réessayer.";
       }
 
       const assistantMessage: Message = {
@@ -136,7 +138,8 @@ export default function ChatPage() {
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Désolé, je rencontre un problème technique. Veuillez réessayer dans quelques instants.',
+        content:
+          'Désolé, je rencontre un problème technique. Veuillez réessayer dans quelques instants.',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -165,12 +168,16 @@ export default function ChatPage() {
 
   if (!chatbot) {
     return (
-      <div className={`min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} flex items-center justify-center`}>
+      <div
+        className={`min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} flex items-center justify-center`}
+      >
         <div className="text-center">
           <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
             <Bot className="w-8 h-8 text-slate-600" />
           </div>
-          <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'} mb-2`}>
+          <h2
+            className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'} mb-2`}
+          >
             Chatbot introuvable
           </h2>
           <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -182,9 +189,13 @@ export default function ChatPage() {
   }
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} transition-colors`}>
+    <div
+      className={`min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} transition-colors`}
+    >
       {/* Header */}
-      <header className={`${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border-b px-4 py-4`}>
+      <header
+        className={`${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border-b px-4 py-4`}
+      >
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -202,7 +213,9 @@ export default function ChatPage() {
 
           <div className="flex items-center gap-3">
             {/* Stats badges */}
-            <div className={`hidden sm:flex items-center gap-4 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            <div
+              className={`hidden sm:flex items-center gap-4 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+            >
               <div className="flex items-center gap-1">
                 <MessageSquare className="w-4 h-4" />
                 <span>1.2k</span>
@@ -237,8 +250,10 @@ export default function ChatPage() {
       {/* Chat Container */}
       <div className="max-w-4xl mx-auto h-[calc(100vh-80px)] flex flex-col">
         {/* Messages */}
-        <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-          {messages.map((message) => (
+        <div
+          className={`flex-1 overflow-y-auto p-4 space-y-4 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}
+        >
+          {messages.map(message => (
             <div
               key={message.id}
               className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -256,14 +271,16 @@ export default function ChatPage() {
                       ? 'bg-blue-600 text-white'
                       : 'bg-blue-500 text-white'
                     : isDarkMode
-                    ? 'bg-slate-800 text-slate-100 border border-slate-700'
-                    : 'bg-white text-slate-900 border border-slate-200'
+                      ? 'bg-slate-800 text-slate-100 border border-slate-700'
+                      : 'bg-white text-slate-900 border border-slate-200'
                 }`}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
 
                 {/* Message actions */}
-                <div className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1`}>
+                <div
+                  className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1`}
+                >
                   <button
                     onClick={() => copyMessage(message.content, message.id)}
                     className={`p-1 rounded transition-colors ${
@@ -273,17 +290,23 @@ export default function ChatPage() {
                     {copiedMessageId === message.id ? (
                       <Check className="w-3 h-3 text-green-500" />
                     ) : (
-                      <Copy className={`w-3 h-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`} />
+                      <Copy
+                        className={`w-3 h-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+                      />
                     )}
                   </button>
                 </div>
 
                 {/* Timestamp */}
-                <div className={`text-xs mt-2 flex items-center gap-1 ${
-                  message.role === 'user'
-                    ? 'text-blue-100'
-                    : isDarkMode ? 'text-slate-500' : 'text-slate-400'
-                }`}>
+                <div
+                  className={`text-xs mt-2 flex items-center gap-1 ${
+                    message.role === 'user'
+                      ? 'text-blue-100'
+                      : isDarkMode
+                        ? 'text-slate-500'
+                        : 'text-slate-400'
+                  }`}
+                >
                   <Clock className="w-3 h-3" />
                   {formatTime(message.timestamp)}
                 </div>
@@ -303,13 +326,23 @@ export default function ChatPage() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-white" />
               </div>
-              <div className={`rounded-2xl px-4 py-3 ${
-                isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-              }`}>
+              <div
+                className={`rounded-2xl px-4 py-3 ${
+                  isDarkMode
+                    ? 'bg-slate-800 border border-slate-700'
+                    : 'bg-white border border-slate-200'
+                }`}
+              >
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div
+                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '0.1s' }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '0.2s' }}
+                  ></div>
                 </div>
               </div>
             </div>
@@ -319,14 +352,16 @@ export default function ChatPage() {
         </div>
 
         {/* Input Form */}
-        <div className={`${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border-t p-4`}>
+        <div
+          className={`${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border-t p-4`}
+        >
           <form onSubmit={sendMessage} className="flex gap-3">
             <div className="flex-1 relative">
               <input
                 ref={inputRef}
                 type="text"
                 value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
+                onChange={e => setInputMessage(e.target.value)}
                 placeholder="Tapez votre message..."
                 disabled={isLoading}
                 className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
@@ -340,7 +375,9 @@ export default function ChatPage() {
                   type="button"
                   onClick={() => setInputMessage('')}
                   className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full transition-colors ${
-                    isDarkMode ? 'text-slate-400 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                    isDarkMode
+                      ? 'text-slate-400 hover:text-slate-300'
+                      : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
                   ×
@@ -358,29 +395,37 @@ export default function ChatPage() {
           </form>
 
           {/* Quick suggestions */}
-          <div className={`mt-3 flex flex-wrap gap-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+          <div
+            className={`mt-3 flex flex-wrap gap-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+          >
             <span className="text-xs">Suggestions :</span>
-            {['Comment ça marche ?', 'Tarifs', 'Support technique', 'Fonctionnalités'].map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => setInputMessage(suggestion)}
-                className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                  isDarkMode
-                    ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                    : 'border-slate-300 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {suggestion}
-              </button>
-            ))}
+            {['Comment ça marche ?', 'Tarifs', 'Support technique', 'Fonctionnalités'].map(
+              suggestion => (
+                <button
+                  key={suggestion}
+                  onClick={() => setInputMessage(suggestion)}
+                  className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                    isDarkMode
+                      ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
+                      : 'border-slate-300 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {suggestion}
+                </button>
+              )
+            )}
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className={`border-t ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} px-4 py-3`}>
+      <footer
+        className={`border-t ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} px-4 py-3`}
+      >
         <div className="max-w-4xl mx-auto flex items-center justify-between text-sm">
-          <div className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+          <div
+            className={`flex items-center gap-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+          >
             <span>Propulsé par TwinMCP</span>
             <span>•</span>
             <span>1,247 conversations</span>
