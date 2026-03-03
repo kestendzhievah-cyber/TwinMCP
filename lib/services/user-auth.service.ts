@@ -7,7 +7,7 @@
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
 import { logger } from '@/lib/logger';
-import * as admin from 'firebase-admin';
+import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 
 // Types
 export interface UserSession {
@@ -57,13 +57,6 @@ export interface AuthResult {
   code?: 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'USER_DISABLED' | 'DB_ERROR' | 'UNAUTHORIZED';
 }
 
-// Plan limits configuration
-const PLAN_LIMITS = {
-  free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3 },
-  pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10 },
-  enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100 },
-};
-
 // Session TTL (24 hours)
 const SESSION_TTL = 24 * 60 * 60;
 
@@ -73,87 +66,71 @@ const USER_CACHE_TTL = 5 * 60;
 export class UserAuthService {
   private prisma: PrismaClient;
   private redis: Redis;
-  private firebaseAdmin: typeof admin | null = null;
 
   constructor(prisma: PrismaClient, redis: Redis) {
     this.prisma = prisma;
     this.redis = redis;
-    this.initFirebaseAdmin();
   }
 
   /**
-   * Initialize Firebase Admin SDK
-   */
-  private initFirebaseAdmin() {
-    try {
-      if (!admin.apps.length) {
-        const projectId =
-          process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-        const clientEmail =
-          process.env.FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-        const privateKey = (
-          process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_ADMIN_PRIVATE_KEY
-        )?.replace(/\\n/g, '\n');
-
-        if (projectId && clientEmail && privateKey) {
-          admin.initializeApp({
-            credential: admin.credential.cert({
-              projectId,
-              clientEmail,
-              privateKey,
-            }),
-          });
-          this.firebaseAdmin = admin;
-          logger.info('[Auth] Firebase Admin initialized successfully');
-        } else {
-          logger.warn('[Auth] Firebase Admin credentials not fully configured');
-        }
-      } else {
-        this.firebaseAdmin = admin;
-      }
-    } catch (error) {
-      logger.error('[Auth] Firebase Admin initialization error:', error);
-    }
-  }
-
-  /**
-   * Verify Firebase ID token and return/create user
+   * Verify Firebase ID token and return/create user.
+   * SECURITY: Only accepts tokens verified by Firebase Admin SDK.
+   * In development without Firebase Admin, falls back to unverified
+   * JWT extraction ONLY if ALLOW_INSECURE_DEV_AUTH=true.
    */
   async verifyToken(idToken: string): Promise<AuthResult> {
     try {
-      let decodedToken: admin.auth.DecodedIdToken;
+      let uid: string;
+      let email: string;
+      let name: string | null = null;
+      let picture: string | null = null;
 
-      // Verify token with Firebase Admin
-      if (this.firebaseAdmin) {
+      // Get Firebase Admin auth instance (shared singleton)
+      const adminAuth = await getFirebaseAdminAuth();
+
+      if (adminAuth) {
+        // PRODUCTION PATH: Verify token cryptographically via Firebase Admin
         try {
-          decodedToken = await this.firebaseAdmin.auth().verifyIdToken(idToken);
+          const decodedToken = await adminAuth.verifyIdToken(idToken);
+          uid = decodedToken.uid;
+          email = decodedToken.email || `user-${uid}@twinmcp.local`;
+          name = decodedToken.name || null;
+          picture = decodedToken.picture || null;
         } catch (firebaseError: any) {
-          // Try fallback JWT extraction for development
-          const extracted = this.extractTokenPayload(idToken);
-          if (!extracted) {
-            return {
-              success: false,
-              error:
-                firebaseError.code === 'auth/id-token-expired' ? 'Token expired' : 'Invalid token',
-              code:
-                firebaseError.code === 'auth/id-token-expired' ? 'EXPIRED_TOKEN' : 'INVALID_TOKEN',
-            };
-          }
-          decodedToken = extracted as admin.auth.DecodedIdToken;
+          const code = firebaseError.code === 'auth/id-token-expired'
+            ? 'EXPIRED_TOKEN' as const
+            : 'INVALID_TOKEN' as const;
+          return {
+            success: false,
+            error: code === 'EXPIRED_TOKEN' ? 'Token expired' : 'Invalid token',
+            code,
+          };
         }
       } else {
-        // Fallback: Extract from JWT payload (development only)
+        // DEV-ONLY FALLBACK: Extract payload without verification
+        const isDevFallbackAllowed =
+          process.env.NODE_ENV !== 'production' &&
+          process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
+
+        if (!isDevFallbackAllowed) {
+          logger.error('[Auth] Firebase Admin not configured and dev fallback not allowed');
+          return {
+            success: false,
+            error: 'Authentication service not configured',
+            code: 'UNAUTHORIZED',
+          };
+        }
+
+        logger.warn('[Auth] Using INSECURE dev fallback — token NOT verified');
         const extracted = this.extractTokenPayload(idToken);
         if (!extracted) {
           return { success: false, error: 'Token verification failed', code: 'INVALID_TOKEN' };
         }
-        decodedToken = extracted as admin.auth.DecodedIdToken;
+        uid = extracted.uid;
+        email = extracted.email || `user-${uid}@twinmcp.local`;
+        name = extracted.name || null;
+        picture = extracted.picture || null;
       }
-
-      const uid = decodedToken.uid || decodedToken.user_id || decodedToken.sub;
-      const email = decodedToken.email || `user-${uid}@twinmcp.local`;
-      const name = decodedToken.name || null;
-      const picture = decodedToken.picture || null;
 
       // Get or create user
       const user = await this.getOrCreateUser(uid, email, name, picture);
@@ -258,8 +235,8 @@ export class UserAuthService {
           },
         });
 
-        // Create user profile
-        await this.prisma.userProfile.create({
+        // Create user profile (Subscription FK references UserProfile.id)
+        const userProfile = await this.prisma.userProfile.create({
           data: {
             userId: user.id,
             email,
@@ -269,13 +246,14 @@ export class UserAuthService {
         });
 
         // Create default subscription (free plan)
+        // NOTE: Subscription.userId is a FK to UserProfile.id
         const now = new Date();
         const periodEnd = new Date(now);
         periodEnd.setMonth(periodEnd.getMonth() + 1);
 
         await this.prisma.subscription.create({
           data: {
-            userId: user.id,
+            userId: userProfile.id,
             plan: 'free',
             status: 'ACTIVE',
             amount: 0,
@@ -328,14 +306,14 @@ export class UserAuthService {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_TTL * 1000);
 
-    // Get user's plan
+    // Get user's plan (from UserProfile, which is the source of truth)
     let plan = 'free';
     try {
-      const subscription = await this.prisma.subscription.findFirst({
-        where: { userId: user.id, status: 'ACTIVE' },
-        orderBy: { createdAt: 'desc' },
+      const profile = await this.prisma.userProfile.findUnique({
+        where: { userId: user.id },
+        select: { plan: true },
       });
-      plan = subscription?.plan || 'free';
+      plan = profile?.plan || 'free';
     } catch {
       // Default to free
     }
@@ -433,16 +411,19 @@ export class UserAuthService {
 
       if (!user) return null;
 
-      // Get profile
+      // Get profile with subscriptions (Subscription FK → UserProfile.id)
       const profile = await this.prisma.userProfile.findUnique({
         where: { userId },
+        include: {
+          subscriptions: {
+            where: { status: 'ACTIVE' },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
       });
 
-      // Get active subscription
-      const subscription = await this.prisma.subscription.findFirst({
-        where: { userId, status: 'ACTIVE' },
-        orderBy: { createdAt: 'desc' },
-      });
+      const activeSubscription = profile?.subscriptions?.[0] ?? null;
 
       // Get stats
       const today = new Date();
@@ -463,7 +444,7 @@ export class UserAuthService {
         name: user.name,
         avatar: user.avatar,
         role: user.role,
-        plan: subscription?.plan || 'free',
+        plan: profile?.plan || activeSubscription?.plan || 'free',
         clientId: user.clientId,
         profile: profile
           ? {
@@ -475,11 +456,11 @@ export class UserAuthService {
               country: profile.country,
             }
           : null,
-        subscription: subscription
+        subscription: activeSubscription
           ? {
-              plan: subscription.plan,
-              status: subscription.status,
-              currentPeriodEnd: subscription.currentPeriodEnd,
+              plan: activeSubscription.plan,
+              status: activeSubscription.status,
+              currentPeriodEnd: activeSubscription.currentPeriodEnd,
             }
           : null,
         stats: {

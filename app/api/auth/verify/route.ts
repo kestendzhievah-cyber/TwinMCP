@@ -24,8 +24,46 @@ function getAuthService(): UserAuthService {
   return authService;
 }
 
+function validateOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL;
+
+  // In development, allow localhost
+  if (process.env.NODE_ENV !== 'production') return true;
+
+  // Check Origin header first, then Referer
+  const source = origin || (referer ? new URL(referer).origin : null);
+  if (!source) return false;
+
+  // Allow same-origin requests
+  if (appUrl && source === appUrl) return true;
+  if (appUrl && source === `https://${appUrl}`) return true;
+
+  // Allow requests from the same host (handles port differences)
+  const host = request.headers.get('host');
+  if (host) {
+    try {
+      const sourceHost = new URL(source).host;
+      if (sourceHost === host) return true;
+    } catch {
+      // Invalid URL
+    }
+  }
+
+  return false;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // CSRF: Validate request origin
+    if (!validateOrigin(request)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid request origin', code: 'CSRF_REJECTED' },
+        { status: 403 }
+      );
+    }
+
     // Rate limiting
     const redisClient = redis;
     const identifier = getClientIdentifier(request);

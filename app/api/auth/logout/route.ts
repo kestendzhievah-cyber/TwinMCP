@@ -21,26 +21,32 @@ function getAuthService(): UserAuthService {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate request
-    const { context, error } = await authenticateRequest(request, {
-      required: true,
+    // Try normal authentication first
+    const { context } = await authenticateRequest(request, {
+      required: false,
       rateLimitConfig: 'auth',
     });
 
-    if (error) {
-      return error;
+    let userId = context.userId;
+
+    // Fallback: if token was expired, client sends uid via header
+    if (!userId) {
+      const logoutUid = request.headers.get('x-logout-uid');
+      if (logoutUid && typeof logoutUid === 'string' && logoutUid.length > 0) {
+        userId = logoutUid;
+      }
     }
 
-    if (!context.userId) {
+    if (!userId) {
       return NextResponse.json(
-        { success: false, error: 'Not authenticated', code: 'UNAUTHORIZED' },
+        { success: false, error: 'No user to log out', code: 'UNAUTHORIZED' },
         { status: 401 }
       );
     }
 
     // Invalidate session
     const authServiceInstance = getAuthService();
-    await authServiceInstance.invalidateSession(context.userId);
+    await authServiceInstance.invalidateSession(userId);
 
     return NextResponse.json({
       success: true,

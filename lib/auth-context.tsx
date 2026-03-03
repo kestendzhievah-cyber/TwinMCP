@@ -11,6 +11,7 @@ import {
   GithubAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  sendEmailVerification,
 } from 'firebase/auth';
 import {
   auth,
@@ -65,6 +66,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile['profile']>) => Promise<boolean>;
+  resendVerificationEmail: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -264,7 +266,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await setAuthPersistence(true);
     saveRememberMePreference(true);
 
-    await createUserWithEmailAndPassword(auth, email, password);
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+
+    // Send verification email
+    try {
+      await sendEmailVerification(result.user);
+    } catch (verifyError) {
+      console.warn('[Auth] Could not send verification email:', verifyError);
+    }
+  };
+
+  const resendVerificationEmail = async (): Promise<boolean> => {
+    if (!user) return false;
+    if (user.emailVerified) return true;
+    try {
+      await sendEmailVerification(user);
+      return true;
+    } catch (error) {
+      console.error('[Auth] Resend verification error:', error);
+      return false;
+    }
   };
 
   /**
@@ -348,13 +369,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Logout from backend first
     if (user) {
       try {
-        const idToken = await user.getIdToken();
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        });
+        const idToken = await user.getIdToken().catch(() => null);
+        if (idToken) {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+          });
+        } else {
+          // Token expired — send userId directly so backend can still clear session
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-logout-uid': user.uid,
+            },
+          });
+        }
       } catch (error) {
         console.warn('[Auth] Backend logout error:', error);
       }
@@ -386,6 +418,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     refreshProfile,
     updateProfile,
+    resendVerificationEmail,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

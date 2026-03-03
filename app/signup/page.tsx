@@ -27,10 +27,33 @@ export default function SignupPage() {
   const [success, setSuccess] = useState('');
   const [step, setStep] = useState<'email' | 'password'>('email');
   const [password, setPassword] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number;
+    checks: { label: string; met: boolean }[];
+  }>({ score: 0, checks: [] });
 
   const router = useRouter();
   const { signUp, signInWithGoogle, signInWithGithub, rememberMe, setRememberMe, user, loading } =
     useAuth();
+
+  const evaluatePassword = (pwd: string) => {
+    const checks = [
+      { label: '8 caractères minimum', met: pwd.length >= 8 },
+      { label: 'Une lettre majuscule', met: /[A-Z]/.test(pwd) },
+      { label: 'Une lettre minuscule', met: /[a-z]/.test(pwd) },
+      { label: 'Un chiffre', met: /[0-9]/.test(pwd) },
+    ];
+    const score = checks.filter(c => c.met).length;
+    setPasswordStrength({ score, checks });
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setPassword(val);
+    evaluatePassword(val);
+  };
+
+  const isPasswordValid = passwordStrength.score >= 4;
 
   // Redirect if already logged in
   useEffect(() => {
@@ -281,15 +304,53 @@ export default function SignupPage() {
                 <input
                   type="password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Créez un mot de passe (min. 6 caractères)"
+                  onChange={handlePasswordChange}
+                  placeholder="Créez un mot de passe sécurisé"
                   required
-                  minLength={6}
-                  className="w-full px-4 py-3 bg-white border border-gray-200 text-gray-900 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition mb-4"
+                  minLength={8}
+                  className="w-full px-4 py-3 bg-white border border-gray-200 text-gray-900 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition mb-2"
                 />
+                {/* Password strength indicator */}
+                {password.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex gap-1 mb-2">
+                      {[1, 2, 3, 4].map(i => (
+                        <div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full transition-colors ${
+                            i <= passwordStrength.score
+                              ? passwordStrength.score <= 2
+                                ? 'bg-red-400'
+                                : passwordStrength.score === 3
+                                  ? 'bg-yellow-400'
+                                  : 'bg-green-400'
+                              : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <div className="space-y-1">
+                      {passwordStrength.checks.map((check, idx) => (
+                        <p
+                          key={idx}
+                          className={`text-xs flex items-center gap-1.5 ${
+                            check.met ? 'text-green-600' : 'text-gray-400'
+                          }`}
+                        >
+                          {check.met ? (
+                            <Check className="w-3 h-3" />
+                          ) : (
+                            <span className="w-3 h-3 inline-block rounded-full border border-gray-300" />
+                          )}
+                          {check.label}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !isPasswordValid}
                   className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isLoading ? (

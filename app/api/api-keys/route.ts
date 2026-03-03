@@ -5,14 +5,24 @@ import { createHash, randomBytes } from 'crypto';
 import { createApiKeySchema, parseBody } from '@/lib/validations/api-schemas';
 import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
 
-// ─── Plan limits ───
-const PLAN_LIMITS = {
-  free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
-  pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10, rateLimit: 200 },
-  enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 },
-} as const;
+import { getPlanLimits, resolvePlanId, type PlanId } from '@/lib/services/stripe-billing.service';
 
-type PlanTier = keyof typeof PLAN_LIMITS;
+// Plan limits derived from centralized config + API-key-specific additions
+function getApiKeyLimits(plan: string) {
+  const resolved = resolvePlanId(plan);
+  const limits = getPlanLimits(resolved);
+  const rateLimit = resolved === 'enterprise' ? 2000 : resolved === 'pro' ? 200 : 20;
+  const maxKeys = resolved === 'enterprise' ? 100 : resolved === 'pro' ? 10 : 3;
+  const monthlyLimit = limits.requestsPerDay === -1 ? 3000000 : limits.requestsPerDay * 30;
+  return {
+    dailyLimit: limits.requestsPerDay === -1 ? 100000 : limits.requestsPerDay,
+    monthlyLimit,
+    maxKeys,
+    rateLimit,
+  };
+}
+
+type PlanTier = PlanId;
 
 // ─── Auth: shared Firebase Admin singleton + API key fallback ───
 async function authenticateRequest(
@@ -57,8 +67,8 @@ async function getUserTier(userId: string): Promise<PlanTier> {
       where: { userId },
       include: { subscriptions: { where: { status: 'ACTIVE' } } },
     });
-    const plan = profile?.subscriptions?.[0]?.plan || 'free';
-    return (plan in PLAN_LIMITS ? plan : 'free') as PlanTier;
+    const plan = profile?.plan || profile?.subscriptions?.[0]?.plan || 'free';
+    return resolvePlanId(plan);
   } catch {
     return 'free';
   }
@@ -78,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     const user = await ensureUser(auth.userId, auth.email);
     const tier = await getUserTier(user.id);
-    const limits = PLAN_LIMITS[tier];
+    const limits = getApiKeyLimits(tier);
 
     const apiKeys = await prisma.apiKey.findMany({
       where: { userId: user.id, isActive: true, revokedAt: null },
@@ -175,7 +185,6 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
       },
       { status: 500 }
     );
@@ -195,7 +204,7 @@ export async function POST(request: NextRequest) {
 
     const user = await ensureUser(auth.userId, auth.email);
     const tier = await getUserTier(user.id);
-    const limits = PLAN_LIMITS[tier];
+    const limits = getApiKeyLimits(tier);
 
     // Check key limit
     const existingCount = await prisma.apiKey.count({
@@ -270,7 +279,6 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
       },
       { status: 500 }
     );
@@ -320,7 +328,6 @@ export async function DELETE(request: NextRequest) {
       {
         success: false,
         error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? String(error) : undefined,
       },
       { status: 500 }
     );
