@@ -2,12 +2,7 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
-
-const PLAN_LIMITS = {
-  free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
-  pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10, rateLimit: 200 },
-  enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 },
-};
+import { ensureUser, getUserTier, getApiKeyLimits } from '@/lib/services/api-key.service';
 
 // Get empty stats
 function getEmptyStats() {
@@ -42,38 +37,10 @@ export async function GET(request: NextRequest) {
 
     const userId = auth.userId;
 
-    // Try to get or create user
+    // Use centralized ensureUser (eliminates duplicated user-creation logic)
     let dbUser;
     try {
-      dbUser = await prisma.user.findFirst({
-        where: {
-          OR: [{ id: userId }, { oauthId: userId }],
-        },
-      });
-
-      if (!dbUser) {
-        // Create default client if needed
-        let defaultClient = await prisma.client.findFirst({
-          where: { name: 'default' },
-        });
-
-        if (!defaultClient) {
-          defaultClient = await prisma.client.create({
-            data: { name: 'default', apiKeys: {} },
-          });
-        }
-
-        // Create user
-        dbUser = await prisma.user.create({
-          data: {
-            id: userId,
-            email: auth.email || `user-${userId}@twinmcp.local`,
-            oauthId: userId,
-            oauthProvider: 'firebase',
-            clientId: defaultClient.id,
-          },
-        });
-      }
+      dbUser = await ensureUser(userId, auth.email);
     } catch (dbError) {
       logger.error('Database error:', dbError);
       return NextResponse.json({
@@ -84,20 +51,9 @@ export async function GET(request: NextRequest) {
 
     // Get stats
     try {
-      // Get user's plan
-      let plan = 'free';
-      try {
-        const userProfile = await prisma.userProfile.findUnique({
-          where: { userId: dbUser.id },
-          include: { subscriptions: { where: { status: 'ACTIVE' } } },
-        });
-        plan = userProfile?.subscriptions?.[0]?.plan || 'free';
-      } catch {
-        // Default to free
-      }
-
-      const tier = plan as 'free' | 'pro' | 'enterprise';
-      const limits = PLAN_LIMITS[tier] || PLAN_LIMITS.free;
+      // Use centralized getUserTier + getApiKeyLimits (eliminates duplicated PLAN_LIMITS)
+      const tier = await getUserTier(dbUser.id);
+      const limits = getApiKeyLimits(tier);
 
       // Get API keys
       const apiKeys = await prisma.apiKey.findMany({
@@ -123,19 +79,16 @@ export async function GET(request: NextRequest) {
       if (keyIds.length > 0) {
         try {
           const [dailyAgg, hourlyAgg, recentLogs] = await Promise.all([
-            // Single query: daily counts grouped by apiKeyId
             prisma.usageLog.groupBy({
               by: ['apiKeyId'],
               where: { apiKeyId: { in: keyIds }, createdAt: { gte: today } },
               _count: true,
             }),
-            // Single query: hourly counts grouped by apiKeyId
             prisma.usageLog.groupBy({
               by: ['apiKeyId'],
               where: { apiKeyId: { in: keyIds }, createdAt: { gte: hourAgo } },
               _count: true,
             }),
-            // Single query: recent logs for success rate (limited)
             prisma.usageLog.findMany({
               where: { apiKeyId: { in: keyIds } },
               orderBy: { createdAt: 'desc' },
@@ -151,7 +104,6 @@ export async function GET(request: NextRequest) {
             if (row.apiKeyId) hourlyByKey.set(row.apiKeyId, row._count);
           }
 
-          // Compute success rate per key from recent logs
           const logsByKey = new Map<string, { total: number; success: number }>();
           for (const log of recentLogs) {
             if (!log.apiKeyId) continue;
@@ -192,7 +144,6 @@ export async function GET(request: NextRequest) {
         (sum, k) => sum + (k.usage?.requestsToday || 0),
         0
       );
-      // Get actual monthly usage from DB
       let totalRequestsMonth = 0;
       try {
         totalRequestsMonth = await prisma.usageLog.count({
@@ -211,7 +162,7 @@ export async function GET(request: NextRequest) {
           : 100;
 
       // Get recent activity
-      let recentActivity: any[] = [];
+      let recentActivity: { timestamp: Date; toolName: string; success: boolean; responseTimeMs: number }[] = [];
       try {
         const recentLogs = await prisma.usageLog.findMany({
           where: { userId: dbUser.id },
@@ -225,7 +176,7 @@ export async function GET(request: NextRequest) {
           },
         });
 
-        recentActivity = recentLogs.map((log: any) => ({
+        recentActivity = recentLogs.map((log: (typeof recentLogs)[number]) => ({
           timestamp: log.createdAt,
           toolName: log.toolName,
           success: log.success,

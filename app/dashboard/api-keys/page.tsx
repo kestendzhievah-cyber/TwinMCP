@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Key,
   Plus,
@@ -42,31 +42,32 @@ export default function ApiKeysPage() {
   const [newApiKey, setNewApiKey] = useState<{ key: string; prefix: string } | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [revokingKey, setRevokingKey] = useState<string | null>(null);
+  const [revokeConfirm, setRevokeConfirm] = useState<{ id: string; name: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Chargement des clés API depuis le backend
-  useEffect(() => {
-    const loadApiKeys = async () => {
-      setLoading(true);
-      try {
-        const result = await apiClient.getApiKeys();
+  const loadApiKeys = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await apiClient.getApiKeys();
 
-        if (result.success && Array.isArray(result.data)) {
-          setApiKeys(result.data);
-        } else {
-          console.error('API Error:', result.error);
-          setApiKeys([]);
-        }
-      } catch (error) {
-        console.error('Error loading API keys:', error);
+      if (result.success && Array.isArray(result.data)) {
+        setApiKeys(result.data);
+      } else {
+        console.error('API Error:', result.error);
         setApiKeys([]);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    loadApiKeys();
+    } catch (error) {
+      console.error('Error loading API keys:', error);
+      setApiKeys([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadApiKeys();
+  }, [loadApiKeys]);
 
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;
@@ -110,10 +111,7 @@ export default function ApiKeysPage() {
   };
 
   const handleRevokeKey = async (keyId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir révoquer cette clé ? Cette action est irréversible.')) {
-      return;
-    }
-
+    setRevokeConfirm(null);
     setRevokingKey(keyId);
     try {
       const result = await apiClient.revokeApiKey(keyId);
@@ -184,13 +182,23 @@ export default function ApiKeysPage() {
           </h1>
           <p className="text-gray-400 mt-1">Gérez vos clés d&apos;accès à l&apos;API</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/30 flex items-center gap-2 w-fit"
-        >
-          <Plus className="w-4 h-4" />
-          Nouvelle clé
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadApiKeys}
+            disabled={loading}
+            className="p-2.5 bg-[#1a1b2e] border border-purple-500/20 text-gray-400 rounded-xl hover:text-white hover:border-purple-500/40 transition disabled:opacity-50"
+            title="Rafraîchir"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold rounded-xl hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/30 flex items-center gap-2 w-fit"
+          >
+            <Plus className="w-4 h-4" />
+            Nouvelle clé
+          </button>
+        </div>
       </div>
 
       {/* Stats Overview */}
@@ -283,17 +291,21 @@ export default function ApiKeysPage() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
-                      apiKey.tier === 'free' || apiKey.keyPrefix.includes('free')
-                        ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                        : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      apiKey.tier === 'enterprise'
+                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                        : apiKey.tier === 'pro'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                     }`}
                   >
-                    {apiKey.tier === 'free' || apiKey.keyPrefix.includes('free')
-                      ? 'Free'
-                      : 'Production'}
+                    {apiKey.tier === 'enterprise'
+                      ? 'Enterprise'
+                      : apiKey.tier === 'pro'
+                        ? 'Pro'
+                        : 'Free'}
                   </span>
                   <button
-                    onClick={() => handleRevokeKey(apiKey.id)}
+                    onClick={() => setRevokeConfirm({ id: apiKey.id, name: apiKey.name })}
                     disabled={revokingKey === apiKey.id}
                     className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
                   >
@@ -432,6 +444,38 @@ export default function ApiKeysPage() {
                 ) : (
                   'Créer'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Revoke Confirmation Modal */}
+      {revokeConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1b2e] border border-red-500/30 rounded-2xl p-6 max-w-md w-full">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-red-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white mb-2">Révoquer cette clé ?</h2>
+              <p className="text-gray-400 text-sm">
+                La clé <strong className="text-white">{revokeConfirm.name}</strong> sera définitivement désactivée. Cette action est irréversible.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRevokeConfirm(null)}
+                className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleRevokeKey(revokeConfirm.id)}
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Révoquer
               </button>
             </div>
           </div>

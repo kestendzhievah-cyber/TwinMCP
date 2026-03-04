@@ -201,12 +201,15 @@ export class AuthService {
 
   async generateApiKey(
     userId: string,
-    name?: string
+    name?: string,
+    tier: string = 'free',
+    quotaDaily: number = 200,
+    quotaMonthly: number = 6000
   ): Promise<{ apiKey: string; prefix: string; id: string }> {
     const { createHash, randomBytes } = await import('crypto');
-    const prefix = 'twinmcp_live_';
+    const keyPrefix_str = tier === 'free' ? 'twinmcp_free_' : 'twinmcp_live_';
     const randomPart = randomBytes(24).toString('hex');
-    const apiKey = prefix + randomPart;
+    const apiKey = keyPrefix_str + randomPart;
 
     // Hash with SHA-256 (consistent with route-level key generation)
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
@@ -219,9 +222,9 @@ export class AuthService {
         keyHash,
         keyPrefix,
         name: name || `API Key ${new Date().toISOString()}`,
-        tier: 'free',
-        quotaDaily: 200,
-        quotaMonthly: 6000,
+        tier,
+        quotaDaily,
+        quotaMonthly,
       },
     });
 
@@ -257,6 +260,7 @@ export class AuthService {
     const keys = await this.db.apiKey.findMany({
       where: {
         userId,
+        isActive: true,
         revokedAt: null,
       },
       select: {
@@ -279,17 +283,6 @@ export class AuthService {
       quotaRequestsPerMinute: Math.max(1, Math.floor(key.quotaDaily / (24 * 60))),
       quotaRequestsPerDay: key.quotaDaily,
     }));
-  }
-
-  private generateRandomString(length: number): string {
-    const { randomBytes } = require('crypto') as typeof import('crypto');
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const bytes = randomBytes(length);
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(bytes[i] % chars.length);
-    }
-    return result;
   }
 
   async logUsage(

@@ -245,15 +245,43 @@ export class LLMService extends EventEmitter {
     // Validation des variables
     this.validateTemplateVariables(template, variables);
 
-    // Rendu du template
+    // Rendu du template (use split/join instead of regex to avoid ReDoS)
     let rendered = template.template;
     
     for (const [key, value] of Object.entries(variables)) {
       const placeholder = `{{${key}}}`;
-      rendered = rendered.replace(new RegExp(placeholder, 'g'), String(value));
+      rendered = rendered.split(placeholder).join(String(value));
     }
 
     return rendered;
+  }
+
+  private async checkCache(request: LLMRequest): Promise<LLMResponse | null> {
+    try {
+      const cacheKey = this.generateCacheKey(request);
+      const cached = await this.redis.get(cacheKey);
+      
+      if (cached) {
+        const response = JSON.parse(cached);
+        response.metadata = { ...response.metadata, cacheHit: true };
+        return response;
+      }
+    } catch (error) {
+      logger.warn('LLM cache read failed:', error);
+    }
+    
+    return null;
+  }
+
+  private async cacheResponse(request: LLMRequest, response: LLMResponse): Promise<void> {
+    try {
+      const cacheKey = this.generateCacheKey(request);
+      const ttl = 3600; // 1 heure
+      
+      await this.redis.setex(cacheKey, ttl, JSON.stringify(response));
+    } catch (error) {
+      logger.warn('LLM cache write failed:', error);
+    }
   }
 
   private async validateRequest(request: LLMRequest): Promise<void> {
@@ -284,24 +312,11 @@ export class LLMService extends EventEmitter {
     }
   }
 
-  private async checkCache(request: LLMRequest): Promise<LLMResponse | null> {
-    const cacheKey = this.generateCacheKey(request);
-    const cached = await this.redis.get(cacheKey);
-    
-    if (cached) {
-      const response = JSON.parse(cached);
-      response.metadata = { ...response.metadata, cacheHit: true };
-      return response;
-    }
-    
-    return null;
-  }
+  private async checkRateLimit(providerId: string): Promise<void> {
+    const rateLimiter = this.rateLimiters.get(providerId);
+    if (!rateLimiter) return;
 
-  private async cacheResponse(request: LLMRequest, response: LLMResponse): Promise<void> {
-    const cacheKey = this.generateCacheKey(request);
-    const ttl = 3600; // 1 heure
-    
-    await this.redis.setex(cacheKey, ttl, JSON.stringify(response));
+    await rateLimiter.checkLimit();
   }
 
   private generateCacheKey(request: LLMRequest): string {
@@ -313,36 +328,6 @@ export class LLMService extends EventEmitter {
     };
     
     return `llm_cache:${crypto.createHash('md5').update(JSON.stringify(key)).digest('hex')}`;
-  }
-
-  private async checkRateLimit(providerId: string): Promise<void> {
-    const rateLimiter = this.rateLimiters.get(providerId);
-    if (!rateLimiter) return;
-
-    await rateLimiter.checkLimit();
-  }
-
-  private async tryFallback(request: LLMRequest, error: Error): Promise<LLMResponse | null> {
-    // Implémentation de la logique de fallback
-    const fallbackProviders = this.getFallbackProviders(request.provider);
-    
-    for (const fallbackProvider of fallbackProviders) {
-      try {
-        logger.info(`Trying fallback provider: ${fallbackProvider}`);
-        
-        const fallbackRequest = { ...request, provider: fallbackProvider };
-        const response = await this.generateResponse(fallbackRequest);
-        
-        response.metadata = { ...response.metadata, fallbackUsed: true };
-        
-        return response;
-        
-      } catch (fallbackError) {
-        logger.error(`Fallback provider ${fallbackProvider} also failed:`, fallbackError);
-      }
-    }
-    
-    return null;
   }
 
   private getFallbackProviders(primaryProvider: string): string[] {
@@ -367,15 +352,37 @@ export class LLMService extends EventEmitter {
     return inputCost + outputCost;
   }
 
-  private estimateTokens(messages: any[]): number {
-    // Estimation simple: ~4 caractères = 1 token
-    const totalChars = messages.reduce((sum, msg) => {
-      const content = typeof msg.content === 'string' ? msg.content : 
-        msg.content.map((c: any) => c.text || '').join('');
-      return sum + content.length;
-    }, 0);
+  private async tryFallback(request: LLMRequest, originalError: Error): Promise<LLMResponse | null> {
+    const fallbackProviders = this.getFallbackProviders(request.provider);
     
-    return Math.ceil(totalChars / 4);
+    for (const fallbackProviderId of fallbackProviders) {
+      try {
+        logger.info(`Trying fallback provider: ${fallbackProviderId}`);
+        
+        const provider = this.providers.get(fallbackProviderId);
+        if (!provider) continue;
+
+        // Call provider directly to avoid infinite recursion via generateResponse→tryFallback
+        const fallbackRequest = { ...request, provider: fallbackProviderId };
+        const startTime = Date.now();
+        const response = await provider.generate(fallbackRequest);
+        
+        response.cost = this.calculateCost(fallbackProviderId, request.model, response.usage);
+        response.latency = Date.now() - startTime;
+        response.metadata = { ...response.metadata, fallbackUsed: true };
+        
+        // Log and cache the fallback response
+        await this.cacheResponse(fallbackRequest, response).catch(() => {});
+        await this.logRequest(fallbackRequest, response).catch(() => {});
+        
+        return response;
+        
+      } catch (fallbackError) {
+        logger.error(`Fallback provider ${fallbackProviderId} also failed:`, fallbackError);
+      }
+    }
+    
+    return null;
   }
 
   private validateTemplateVariables(template: PromptTemplate, variables: Record<string, any>): void {
@@ -413,38 +420,54 @@ export class LLMService extends EventEmitter {
     }
   }
 
+  private estimateTokens(messages: any[]): number {
+    // Estimation simple: ~4 caractères = 1 token
+    const totalChars = messages.reduce((sum: number, msg: any) => {
+      if (!msg.content) return sum;
+      const content = typeof msg.content === 'string' ? msg.content : 
+        Array.isArray(msg.content) ? msg.content.map((c: any) => c.text || '').join('') : '';
+      return sum + content.length;
+    }, 0);
+    
+    return Math.ceil(totalChars / 4);
+  }
+
   private async logRequest(request: LLMRequest, response: LLMResponse): Promise<void> {
-    await this.db.query(`
-      INSERT INTO llm_requests (
-        id, provider, model, messages, context, options,
-        status, response, usage, cost, latency, metadata,
-        user_id, session_id, created_at
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
-      )
-    `, [
-      response.id,
-      response.provider,
-      response.model,
-      JSON.stringify(request.messages),
-      JSON.stringify(request.context),
-      JSON.stringify(request.options),
-      'success',
-      JSON.stringify(response),
-      JSON.stringify(response.usage),
-      response.cost,
-      response.latency,
-      JSON.stringify(response.metadata),
-      request.metadata.userId,
-      request.metadata.sessionId
-    ]);
+    try {
+      await this.db.query(`
+        INSERT INTO llm_requests (
+          id, provider, model, messages, context, options,
+          status, response, usage, cost, latency, metadata,
+          user_id, session_id, created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+        )
+      `, [
+        response.id,
+        response.provider,
+        response.model,
+        JSON.stringify(request.messages),
+        JSON.stringify(request.context),
+        JSON.stringify(request.options),
+        'success',
+        // Store only usage summary, not full response content (avoids storing all LLM output in logs)
+        JSON.stringify({ id: response.id, finishReason: response.finishReason, contentLength: response.content.length }),
+        JSON.stringify(response.usage),
+        response.cost,
+        response.latency,
+        JSON.stringify(response.metadata),
+        request.metadata?.userId || null,
+        request.metadata?.sessionId || null
+      ]);
+    } catch (error) {
+      logger.error('Failed to log LLM request:', error);
+    }
   }
 }
 
-// Rate Limiter utility
+// Rate Limiter utility — per-provider request throttling
 class RateLimiter {
   private requests: number[] = [];
-  private tokens: number[] = [];
 
   constructor(private config: { requestsPerMinute: number; tokensPerMinute: number }) {}
 
@@ -454,26 +477,22 @@ class RateLimiter {
 
     // Nettoyage des anciennes requêtes
     this.requests = this.requests.filter(timestamp => now - timestamp < window);
-    this.tokens = this.tokens.filter(timestamp => now - timestamp < window);
 
-    // Vérification des limites
+    // Vérification de la limite de requêtes
     if (this.requests.length >= this.config.requestsPerMinute) {
       const waitTime = this.requests[0] + window - now;
       if (waitTime > 0) {
-        await this.delay(waitTime);
+        await this.delay(Math.min(waitTime, 10000)); // cap wait at 10s to avoid blocking forever
       }
-    }
-
-    if (this.tokens.length >= this.config.tokensPerMinute) {
-      const waitTime = this.tokens[0] + window - now;
-      if (waitTime > 0) {
-        await this.delay(waitTime);
+      // Re-clean after waiting
+      this.requests = this.requests.filter(timestamp => Date.now() - timestamp < window);
+      if (this.requests.length >= this.config.requestsPerMinute) {
+        throw new Error('Rate limit exceeded for provider');
       }
     }
 
     // Enregistrement de la requête actuelle
     this.requests.push(now);
-    this.tokens.push(now);
   }
 
   private delay(ms: number): Promise<void> {

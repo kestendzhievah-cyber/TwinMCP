@@ -10,7 +10,14 @@ export class GoogleProvider {
     this.baseURL = config.baseURL || 'https://generativelanguage.googleapis.com/v1';
   }
 
+  private ensureApiKey(): void {
+    if (!this.apiKey) {
+      throw new Error('Google API key is not configured. Set GOOGLE_API_KEY environment variable.');
+    }
+  }
+
   async generate(request: LLMRequest): Promise<LLMResponse> {
+    this.ensureApiKey();
     try {
       const googleRequest = this.convertToGoogleRequest(request);
       
@@ -24,11 +31,25 @@ export class GoogleProvider {
   }
 
   async generateStream(request: LLMRequest): Promise<AsyncIterable<LLMStreamChunk>> {
+    this.ensureApiKey();
     const googleRequest = this.convertToGoogleRequest(request);
-    
-    const response = await this.makeRequest(`/models/${request.model}:streamGenerateContent`, googleRequest);
-    
-    return this.convertFromGoogleStream(response, request);
+
+    const url = `${this.baseURL}/models/${request.model}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
+    const httpResponse = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(googleRequest),
+    });
+
+    if (!httpResponse.ok) {
+      throw new Error(`Google API error: ${httpResponse.status} ${httpResponse.statusText}`);
+    }
+
+    if (!httpResponse.body) {
+      throw new Error('Google API returned no body for streaming request');
+    }
+
+    return this.convertFromGoogleSSEStream(httpResponse.body, request);
   }
 
   private convertToGoogleRequest(request: LLMRequest): any {
@@ -75,32 +96,59 @@ export class GoogleProvider {
     };
   }
 
-  private async *convertFromGoogleStream(
-    response: any,
+  private async *convertFromGoogleSSEStream(
+    body: ReadableStream<Uint8Array>,
     request: LLMRequest
   ): AsyncIterable<LLMStreamChunk> {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
     let accumulatedContent = '';
 
-    for await (const chunk of response) {
-      const candidate = chunk.candidates?.[0];
-      const content = candidate?.content?.parts?.[0]?.text || '';
-      
-      if (content) {
-        accumulatedContent += content;
-        
-        yield {
-          id: chunk.id || crypto.randomUUID(),
-          requestId: request.id,
-          content: accumulatedContent,
-          delta: content,
-          finishReason: candidate?.finishReason ? this.mapFinishReason(candidate.finishReason) : undefined,
-          createdAt: new Date()
-        };
-      }
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      if (candidate?.finishReason) {
-        break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+          try {
+            const chunk = JSON.parse(trimmed.slice(6));
+            const candidate = chunk.candidates?.[0];
+            const content = candidate?.content?.parts?.[0]?.text || '';
+
+            if (content) {
+              accumulatedContent += content;
+              yield {
+                id: crypto.randomUUID(),
+                requestId: request.id,
+                content: accumulatedContent,
+                delta: content,
+                finishReason: candidate?.finishReason ? this.mapFinishReason(candidate.finishReason) : undefined,
+                usage: chunk.usageMetadata ? {
+                  promptTokens: chunk.usageMetadata.promptTokenCount || 0,
+                  completionTokens: chunk.usageMetadata.candidatesTokenCount || 0,
+                  totalTokens: chunk.usageMetadata.totalTokenCount || 0,
+                } : undefined,
+                createdAt: new Date(),
+              };
+            }
+
+            if (candidate?.finishReason) {
+              return;
+            }
+          } catch {
+            /* skip malformed chunk */
+          }
+        }
       }
+    } finally {
+      reader.releaseLock();
     }
   }
 

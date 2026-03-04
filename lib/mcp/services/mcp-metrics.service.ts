@@ -43,8 +43,8 @@ export class MCPServerMetrics extends EventEmitter {
       this.metrics.set('requests_error', this.metrics.get('requests_error')! + 1);
     }
 
-    // Mettre à jour les temps de réponse
-    this.updateResponseTimeMetrics('response_time', duration);
+    // Mettre à jour les temps de réponse (use requests_total as denominator)
+    this.updateResponseTimeMetrics('response_time', duration, this.metrics.get('requests_total')!);
 
     // Ajouter à l'historique
     const event: MCPRequestEvent = {
@@ -71,8 +71,8 @@ export class MCPServerMetrics extends EventEmitter {
       this.metrics.set('tools_calls_error', this.metrics.get('tools_calls_error')! + 1);
     }
 
-    // Mettre à jour les temps de réponse des outils
-    this.updateResponseTimeMetrics('tools_response_time', duration);
+    // Mettre à jour les temps de réponse des outils (use tools_calls_total as denominator)
+    this.updateResponseTimeMetrics('tools_response_time', duration, this.metrics.get('tools_calls_total')!);
 
     // Ajouter à l'historique
     const event: MCPToolCallEvent = {
@@ -90,15 +90,14 @@ export class MCPServerMetrics extends EventEmitter {
     this.emit('tool_call', event);
   }
 
-  private updateResponseTimeMetrics(prefix: string, duration: number): void {
+  private updateResponseTimeMetrics(prefix: string, duration: number, totalCount: number): void {
     const avgKey = `${prefix}_avg`;
     const minKey = `${prefix}_min`;
     const maxKey = `${prefix}_max`;
 
     // Mettre à jour le temps de réponse moyen
     const currentAvg = this.metrics.get(avgKey)!;
-    const totalRequests = this.metrics.get('requests_total')!;
-    const newAvg = (currentAvg * (totalRequests - 1) + duration) / totalRequests;
+    const newAvg = totalCount <= 1 ? duration : (currentAvg * (totalCount - 1) + duration) / totalCount;
     this.metrics.set(avgKey, newAvg);
 
     // Mettre à jour le min
@@ -303,22 +302,47 @@ export class MCPServerMetrics extends EventEmitter {
   }
 
   // Méthodes pour le monitoring en temps réel
+  private realtimeInterval: ReturnType<typeof setInterval> | null = null;
+
   startRealtimeMonitoring(intervalMs: number = 1000): void {
-    setInterval(() => {
+    this.stopRealtimeMonitoring();
+    this.realtimeInterval = setInterval(() => {
       this.emit('realtime_metrics', this.getDetailedMetrics());
     }, intervalMs);
+    if (this.realtimeInterval.unref) this.realtimeInterval.unref();
+  }
+
+  stopRealtimeMonitoring(): void {
+    if (this.realtimeInterval) {
+      clearInterval(this.realtimeInterval);
+      this.realtimeInterval = null;
+    }
   }
 
   // Méthodes pour les alertes
-  setupAlerts(_thresholds: {
+  setupAlerts(thresholds: {
     errorRate?: number;
     responseTime?: number;
     connections?: number;
   }): void {
     this.on('request', () => {
-      const health = this.getHealthStatus();
-      if (!health.healthy) {
-        this.emit('alert', health);
+      const issues: string[] = [];
+      const errorRate = this.calculateErrorRate();
+      const avgResponseTime = this.metrics.get('response_time_avg')!;
+      const activeConnections = this.metrics.get('active_connections')!;
+
+      if (thresholds.errorRate !== undefined && errorRate > thresholds.errorRate) {
+        issues.push(`Error rate ${(errorRate * 100).toFixed(2)}% exceeds threshold ${(thresholds.errorRate * 100).toFixed(2)}%`);
+      }
+      if (thresholds.responseTime !== undefined && avgResponseTime > thresholds.responseTime) {
+        issues.push(`Avg response time ${avgResponseTime.toFixed(0)}ms exceeds threshold ${thresholds.responseTime}ms`);
+      }
+      if (thresholds.connections !== undefined && activeConnections > thresholds.connections) {
+        issues.push(`Active connections ${activeConnections} exceeds threshold ${thresholds.connections}`);
+      }
+
+      if (issues.length > 0) {
+        this.emit('alert', { healthy: false, issues });
       }
     });
   }

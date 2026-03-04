@@ -60,11 +60,11 @@ async function ensureServices() {
 // Usage tracking (fire-and-forget)
 // ---------------------------------------------------------------------------
 
-function trackUsage(userId: string, tool: string, tokens: number) {
+function trackUsage(userId: string, tool: string, tokens: number, responseTimeMs: number = 0) {
   import('@/lib/prisma')
     .then(({ prisma }) =>
       prisma.usageLog.create({
-        data: { userId, toolName: tool, tokensReturned: tokens, success: true, responseTimeMs: 0 },
+        data: { userId, toolName: tool, tokensReturned: tokens, success: true, responseTimeMs },
       })
     )
     .catch(() => {});
@@ -316,8 +316,9 @@ export async function POST(request: NextRequest) {
               { status: 200, headers: hdrs }
             );
           }
+          const toolStart = Date.now();
           const result = await executeResolveLibrary(toolArgs);
-          trackUsage(authResult.userId, 'resolve-library-id', 50);
+          trackUsage(authResult.userId, 'resolve-library-id', 50, Date.now() - toolStart);
           return NextResponse.json(
             jsonrpc(id, { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }),
             { status: 200, headers: hdrs }
@@ -334,8 +335,9 @@ export async function POST(request: NextRequest) {
               { status: 200, headers: hdrs }
             );
           }
+          const toolStart = Date.now();
           const result = await executeQueryDocs(toolArgs);
-          trackUsage(authResult.userId, 'query-docs', (result as any).totalTokens || 100);
+          trackUsage(authResult.userId, 'query-docs', (result as any).totalTokens || 100, Date.now() - toolStart);
           return NextResponse.json(
             jsonrpc(id, { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }),
             { status: 200, headers: hdrs }
@@ -387,7 +389,6 @@ export async function POST(request: NextRequest) {
       jsonrpc(id, undefined, {
         code: -32603,
         message: 'Internal error',
-        data: error instanceof Error ? error.message : String(error),
       }),
       { status: 200, headers: hdrs }
     );

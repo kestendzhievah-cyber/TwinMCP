@@ -37,11 +37,15 @@ export class OpenAIProvider {
   }
 
   async generateStream(request: LLMRequest): Promise<AsyncIterable<LLMStreamChunk>> {
-    const openaiRequest = this.convertToOpenAIRequest(request, { stream: true });
-    
-    const stream = this.getClient().chat.completions.create(openaiRequest) as any;
-    
-    return this.convertFromOpenAIStream(stream, request);
+    try {
+      const openaiRequest = this.convertToOpenAIRequest(request, { stream: true });
+      
+      const stream = await this.getClient().chat.completions.create(openaiRequest) as any;
+      
+      return this.convertFromOpenAIStream(stream, request);
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 
   private convertToOpenAIRequest(request: LLMRequest, options: any = {}): any {

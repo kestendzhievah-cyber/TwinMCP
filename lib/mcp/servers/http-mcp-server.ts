@@ -79,12 +79,13 @@ export class HttpMCPServer {
       });
     }
 
-    // Request logging
+    // Request logging (omit auth headers to avoid leaking tokens)
     this.server.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
       request.log.info({
         method: request.method,
         url: request.url,
-        headers: request.headers,
+        contentType: request.headers['content-type'],
+        userAgent: request.headers['user-agent'],
       });
     });
 
@@ -99,7 +100,6 @@ export class HttpMCPServer {
           error: {
             code: MCPErrorCodes.InternalError,
             message: 'Internal server error',
-            data: error.message,
           },
         };
 
@@ -250,13 +250,13 @@ export class HttpMCPServer {
         };
       }
     } catch (error) {
+      this.server.log.error(error);
       return {
         jsonrpc: '2.0' as const,
         id: message.id,
         error: {
           code: MCPErrorCodes.InternalError,
           message: 'Internal server error',
-          data: error instanceof Error ? error.message : String(error),
         },
       };
     }

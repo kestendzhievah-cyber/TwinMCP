@@ -38,6 +38,10 @@ export class MetricsCollector {
     errorRate: 0,
     cacheHitRate: 0,
   };
+  private totalErrors: number = 0;
+  private totalCacheHits: number = 0;
+  private totalResponseTime: number = 0;
+  private activeUserSet: Set<string> = new Set();
 
   constructor(
     config: MetricsConfig = {
@@ -118,26 +122,18 @@ export class MetricsCollector {
   private updateSystemStats(metric: ToolMetrics): void {
     this.systemStats.totalExecutions++;
 
-    // Utilisateurs actifs (approximation basée sur les dernières 24h)
-    const last24h = this.metrics.filter(
-      m => m.timestamp.getTime() > Date.now() - 24 * 60 * 60 * 1000
-    );
-    this.systemStats.activeUsers = new Set(last24h.map(m => m.userId)).size;
+    // Incremental counters (O(1) instead of O(n) scan)
+    if (!metric.success) this.totalErrors++;
+    if (metric.cacheHit) this.totalCacheHits++;
+    this.totalResponseTime += metric.executionTime;
+    if (metric.userId) this.activeUserSet.add(metric.userId);
 
-    // Outils utilisés
+    // Update stats from counters
+    this.systemStats.activeUsers = this.activeUserSet.size;
     this.systemStats.toolsUsed = this.toolStats.size;
-
-    // Temps de réponse moyen
-    const totalTime = this.metrics.reduce((sum, m) => sum + m.executionTime, 0);
-    this.systemStats.avgResponseTime = totalTime / this.systemStats.totalExecutions;
-
-    // Taux d'erreur
-    const errors = this.metrics.filter(m => !m.success).length;
-    this.systemStats.errorRate = (errors / this.systemStats.totalExecutions) * 100;
-
-    // Taux de cache hit
-    const cacheHits = this.metrics.filter(m => m.cacheHit).length;
-    this.systemStats.cacheHitRate = (cacheHits / this.systemStats.totalExecutions) * 100;
+    this.systemStats.avgResponseTime = this.totalResponseTime / this.systemStats.totalExecutions;
+    this.systemStats.errorRate = (this.totalErrors / this.systemStats.totalExecutions) * 100;
+    this.systemStats.cacheHitRate = (this.totalCacheHits / this.systemStats.totalExecutions) * 100;
   }
 
   async getToolStats(toolId: string): Promise<ToolStats | null> {
@@ -211,14 +207,15 @@ export class MetricsCollector {
     const periodMetrics = this.metrics.filter(m => m.timestamp.getTime() > now - periodMs);
 
     // Statistiques du système pour la période
+    const count = periodMetrics.length || 1; // avoid division by zero
     const periodSystemStats = {
       totalExecutions: periodMetrics.length,
       activeUsers: new Set(periodMetrics.map(m => m.userId)).size,
       toolsUsed: new Set(periodMetrics.map(m => m.toolId)).size,
       avgResponseTime:
-        periodMetrics.reduce((sum, m) => sum + m.executionTime, 0) / periodMetrics.length,
-      errorRate: (periodMetrics.filter(m => !m.success).length / periodMetrics.length) * 100,
-      cacheHitRate: (periodMetrics.filter(m => m.cacheHit).length / periodMetrics.length) * 100,
+        periodMetrics.reduce((sum, m) => sum + m.executionTime, 0) / count,
+      errorRate: (periodMetrics.filter(m => !m.success).length / count) * 100,
+      cacheHitRate: (periodMetrics.filter(m => m.cacheHit).length / count) * 100,
     };
 
     // Top outils pour la période

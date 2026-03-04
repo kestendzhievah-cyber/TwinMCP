@@ -166,17 +166,26 @@ async function _validateApiKeyHash(
   apiKey: string
 ): Promise<{ valid: true; userId: string; tier?: string } | { valid: false; error: string }> {
   try {
-    const { createHash } = await import('crypto');
+    const { createHash, timingSafeEqual } = await import('crypto');
     const { prisma } = await import('@/lib/prisma');
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
     const key = await prisma.apiKey.findUnique({ where: { keyHash } });
     if (key && key.isActive && !key.revokedAt) {
-      return { valid: true, userId: key.userId, tier: key.tier };
+      // Timing-safe comparison to prevent timing attacks on hash lookup
+      const inputBuf = Buffer.from(keyHash, 'hex');
+      const storedBuf = Buffer.from(key.keyHash, 'hex');
+      if (inputBuf.length === storedBuf.length && timingSafeEqual(inputBuf, storedBuf)) {
+        // Check expiration
+        if (key.expiresAt && key.expiresAt < new Date()) {
+          return { valid: false, error: 'API key has expired' };
+        }
+        return { valid: true, userId: key.userId, tier: key.tier };
+      }
     }
     return { valid: false, error: 'Invalid API key' };
   } catch (error) {
     logger.error('API key validation error:', error);
-    return { valid: false, error: 'Database error' };
+    return { valid: false, error: 'Authentication failed' };
   }
 }
 

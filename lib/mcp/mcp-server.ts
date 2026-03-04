@@ -117,7 +117,13 @@ export async function checkRateLimit(
 // Usage tracking
 // ---------------------------------------------------------------------------
 
-async function trackUsage(userId: string, tool: string, tokens: number) {
+async function trackUsage(
+  userId: string,
+  tool: string,
+  tokens: number,
+  responseTimeMs: number = 0,
+  success: boolean = true
+) {
   try {
     const { prisma } = await import('@/lib/prisma');
     await prisma.usageLog.create({
@@ -125,8 +131,8 @@ async function trackUsage(userId: string, tool: string, tokens: number) {
         userId,
         toolName: tool,
         tokensReturned: tokens,
-        success: true,
-        responseTimeMs: 0,
+        success,
+        responseTimeMs,
       },
     });
   } catch (e) {
@@ -202,9 +208,6 @@ export function getMcpServer(): McpServer {
         };
       }
 
-      // Fire-and-forget usage tracking (userId injected via transport context if available)
-      trackUsage('anonymous', 'resolve-library-id', 50).catch(() => {});
-
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
       };
@@ -274,8 +277,6 @@ export function getMcpServer(): McpServer {
             'VectorSearchService not available. Configure database and vector store for full documentation search.',
         };
       }
-
-      trackUsage('anonymous', 'query-docs', (result as any).totalTokens || 100).catch(() => {});
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],

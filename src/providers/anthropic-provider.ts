@@ -3,21 +3,32 @@ import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderConfig } from '../type
 import crypto from 'crypto';
 
 export class AnthropicProvider {
-  private client: Anthropic;
+  private client: Anthropic | null = null;
 
   constructor(private config: ProviderConfig) {
-    this.client = new Anthropic({
-      apiKey: config.apiKey,
-      baseURL: config.baseURL,
-      timeout: config.timeout
-    });
+    // Client will be initialized lazily when needed
+  }
+
+  private getClient(): Anthropic {
+    if (!this.client) {
+      if (!this.config.apiKey) {
+        throw new Error('Anthropic API key is not configured. Set ANTHROPIC_API_KEY environment variable.');
+      }
+      this.client = new Anthropic({
+        apiKey: this.config.apiKey,
+        baseURL: this.config.baseURL,
+        timeout: this.config.timeout,
+        maxRetries: this.config.retries,
+      });
+    }
+    return this.client;
   }
 
   async generate(request: LLMRequest): Promise<LLMResponse> {
     try {
       const anthropicRequest = this.convertToAnthropicRequest(request);
       
-      const response = await this.client.messages.create(anthropicRequest);
+      const response = await this.getClient().messages.create(anthropicRequest);
       
       return this.convertFromAnthropicResponse(response, request);
       
@@ -29,7 +40,7 @@ export class AnthropicProvider {
   async generateStream(request: LLMRequest): Promise<AsyncIterable<LLMStreamChunk>> {
     const anthropicRequest = this.convertToAnthropicRequest(request, { stream: true });
     
-    const stream = await this.client.messages.create(anthropicRequest) as unknown as AsyncIterable<any>;
+    const stream = await this.getClient().messages.create(anthropicRequest) as unknown as AsyncIterable<any>;
     
     return this.convertFromAnthropicStream(stream, request);
   }
@@ -65,7 +76,7 @@ export class AnthropicProvider {
       .map((block: any) => block.text)
       .join('\n');
 
-    return {
+    const result: LLMResponse = {
       id: response.id,
       requestId: request.id,
       provider: 'anthropic',
@@ -82,6 +93,26 @@ export class AnthropicProvider {
       metadata: {},
       createdAt: new Date()
     };
+
+    // Extract tool_use blocks (Anthropic's equivalent of function calling)
+    const toolUseBlocks = response.content.filter((block: any) => block.type === 'tool_use');
+    if (toolUseBlocks.length > 0) {
+      result.toolCalls = toolUseBlocks.map((block: any) => ({
+        id: block.id,
+        type: 'function' as const,
+        function: {
+          name: block.name,
+          arguments: JSON.stringify(block.input),
+        },
+      }));
+      // Backward compatibility
+      result.functionCall = {
+        name: toolUseBlocks[0].name,
+        arguments: JSON.stringify(toolUseBlocks[0].input),
+      };
+    }
+
+    return result;
   }
 
   private async *convertFromAnthropicStream(
@@ -103,15 +134,23 @@ export class AnthropicProvider {
         };
       }
 
-      if (chunk.type === 'message_stop') {
+      if (chunk.type === 'message_delta') {
         yield {
           id: crypto.randomUUID(),
           requestId: request.id,
           content: accumulatedContent,
           delta: '',
-          finishReason: 'stop',
+          finishReason: chunk.delta?.stop_reason ? this.mapFinishReason(chunk.delta.stop_reason) : undefined,
+          usage: chunk.usage ? {
+            promptTokens: 0,
+            completionTokens: chunk.usage.output_tokens || 0,
+            totalTokens: chunk.usage.output_tokens || 0,
+          } : undefined,
           createdAt: new Date()
         };
+      }
+
+      if (chunk.type === 'message_stop') {
         break;
       }
     }

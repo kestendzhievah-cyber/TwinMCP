@@ -22,8 +22,10 @@ interface CreateApiKeyRequest {
 
 interface CreateApiKeyResponse {
   id: string;
+  key: string;
   keyPrefix: string;
   name: string;
+  tier: string;
   quotaRequestsPerMinute: number;
   quotaRequestsPerDay: number;
   createdAt: string;
@@ -55,7 +57,8 @@ class ApiKeysClient {
   private getStoredApiKey(): string | null {
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem('twinmcp_admin_api_key') || null;
+        // Use sessionStorage (cleared on tab close) instead of localStorage (persists, XSS-vulnerable)
+        return sessionStorage.getItem('twinmcp_admin_api_key') || null;
       } catch {
         return null;
       }
@@ -66,7 +69,7 @@ class ApiKeysClient {
   private setStoredApiKey(apiKey: string): void {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('twinmcp_admin_api_key', apiKey);
+        sessionStorage.setItem('twinmcp_admin_api_key', apiKey);
       } catch {
         // Ignore
       }
@@ -138,15 +141,6 @@ class ApiKeysClient {
     });
   }
 
-  // Pour le développement, simuler une clé API admin
-  async simulateAdminAuth(): Promise<void> {
-    // En développement, on peut simuler une authentification
-    if (process.env.NODE_ENV === 'development') {
-      // Utiliser une clé de test ou générer une fausse clé pour le développement
-      const testApiKey = 'twinmcp_live_development_test_key_12345';
-      this.setApiKey(testApiKey);
-    }
-  }
 }
 
 export const apiKeysClient = new ApiKeysClient();
