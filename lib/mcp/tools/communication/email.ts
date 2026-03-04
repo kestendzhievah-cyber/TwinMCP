@@ -2,7 +2,6 @@ import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
 import { z } from 'zod';
 import { MCPTool, ValidationResult, ExecutionResult } from '../../core';
-import { getCache } from '../../core';
 import { rateLimiter } from '../../middleware';
 import { getMetrics } from '../../utils';
 import { logger } from '@/lib/logger';
@@ -61,8 +60,8 @@ export class EmailTool implements MCPTool {
     strategy: 'sliding' as const,
   };
   cache = {
-    enabled: true,
-    ttl: 300, // 5 minutes
+    enabled: false, // Email sending is a side-effect — must never be cached
+    ttl: 0,
     key: (args: any) => `email:${args.to}:${args.subject}`,
     strategy: 'memory' as const,
   };
@@ -121,41 +120,8 @@ export class EmailTool implements MCPTool {
         throw new Error('Rate limit exceeded for email tool');
       }
 
-      // Vérifier le cache
-      const cache = getCache();
-      const cacheKey = this.cache!.key(args);
-      const cachedResult = await cache.get(cacheKey);
-
-      if (cachedResult) {
-        logger.debug(`Email cache hit for ${args.to}`);
-        getMetrics().track({
-          toolId: this.id,
-          userId: config.userId || 'anonymous',
-          timestamp: new Date(),
-          executionTime: Date.now() - startTime,
-          cacheHit: true,
-          success: true,
-          apiCallsCount: 0,
-          estimatedCost: 0,
-        });
-
-        return {
-          success: true,
-          data: cachedResult,
-          metadata: {
-            executionTime: Date.now() - startTime,
-            cacheHit: true,
-            apiCallsCount: 0,
-            cost: 0,
-          },
-        };
-      }
-
-      // Envoi de l'email
+      // Envoi de l'email (no cache — email is a side-effect)
       const result = await this.sendEmail(args, config);
-
-      // Mettre en cache
-      await cache.set(cacheKey, result, this.cache!.ttl);
 
       // Tracker les métriques
       getMetrics().track({

@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
-import { ensureUser, getUserTier, getApiKeyLimits } from '@/lib/services/api-key.service';
+import { ensureUser, getUserTier, getApiKeyLimits, listApiKeys } from '@/lib/services/api-key.service';
 
 // Get empty stats
 function getEmptyStats() {
@@ -51,93 +51,16 @@ export async function GET(request: NextRequest) {
 
     // Get stats
     try {
-      // Use centralized getUserTier + getApiKeyLimits (eliminates duplicated PLAN_LIMITS)
+      // Use centralized getUserTier + getApiKeyLimits + listApiKeys (eliminates duplicated logic)
       const tier = await getUserTier(dbUser.id);
       const limits = getApiKeyLimits(tier);
 
-      // Get API keys
-      const apiKeys = await prisma.apiKey.findMany({
-        where: { userId: dbUser.id, isActive: true, revokedAt: null },
-        orderBy: { createdAt: 'desc' },
-      });
+      // Use centralized listApiKeys (batch stats included, no duplication)
+      const { keys: keysWithStats } = await listApiKeys(dbUser.id, tier);
 
-      // Calculate date boundaries
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const hourAgo = new Date(Date.now() - 3600000);
       const monthStart = new Date();
       monthStart.setDate(1);
       monthStart.setHours(0, 0, 0, 0);
-
-      // Batch all key stats in 3 aggregate queries instead of N*4 queries (N+1 fix)
-      const keyIds = apiKeys.map((k: (typeof apiKeys)[number]) => k.id);
-
-      const dailyByKey = new Map<string, number>();
-      const hourlyByKey = new Map<string, number>();
-      const successByKey = new Map<string, number>();
-
-      if (keyIds.length > 0) {
-        try {
-          const [dailyAgg, hourlyAgg, recentLogs] = await Promise.all([
-            prisma.usageLog.groupBy({
-              by: ['apiKeyId'],
-              where: { apiKeyId: { in: keyIds }, createdAt: { gte: today } },
-              _count: true,
-            }),
-            prisma.usageLog.groupBy({
-              by: ['apiKeyId'],
-              where: { apiKeyId: { in: keyIds }, createdAt: { gte: hourAgo } },
-              _count: true,
-            }),
-            prisma.usageLog.findMany({
-              where: { apiKeyId: { in: keyIds } },
-              orderBy: { createdAt: 'desc' },
-              take: keyIds.length * 50,
-              select: { apiKeyId: true, success: true },
-            }),
-          ]);
-
-          for (const row of dailyAgg) {
-            if (row.apiKeyId) dailyByKey.set(row.apiKeyId, row._count);
-          }
-          for (const row of hourlyAgg) {
-            if (row.apiKeyId) hourlyByKey.set(row.apiKeyId, row._count);
-          }
-
-          const logsByKey = new Map<string, { total: number; success: number }>();
-          for (const log of recentLogs) {
-            if (!log.apiKeyId) continue;
-            const entry = logsByKey.get(log.apiKeyId) || { total: 0, success: 0 };
-            entry.total++;
-            if (log.success) entry.success++;
-            logsByKey.set(log.apiKeyId, entry);
-          }
-          for (const [kid, stats] of logsByKey) {
-            successByKey.set(
-              kid,
-              stats.total > 0 ? Math.round((stats.success / stats.total) * 1000) / 10 : 100
-            );
-          }
-        } catch {
-          // Keep empty maps (defaults to 0)
-        }
-      }
-
-      const keysWithStats = apiKeys.map((key: (typeof apiKeys)[number]) => ({
-        id: key.id,
-        keyPrefix: key.keyPrefix,
-        name: key.name || 'Sans nom',
-        tier: key.tier,
-        quotaDaily: limits.dailyLimit,
-        quotaHourly: limits.rateLimit,
-        createdAt: key.createdAt.toISOString(),
-        lastUsedAt: key.lastUsedAt?.toISOString() || null,
-        usage: {
-          requestsToday: dailyByKey.get(key.id) || 0,
-          requestsThisHour: hourlyByKey.get(key.id) || 0,
-          successRate: successByKey.get(key.id) ?? 100,
-        },
-      }));
 
       // Calculate totals
       const totalRequestsToday = keysWithStats.reduce(
@@ -189,7 +112,7 @@ export async function GET(request: NextRequest) {
       const responseData = {
         success: true,
         data: {
-          totalKeys: apiKeys.length,
+          totalKeys: keysWithStats.length,
           totalRequestsToday,
           totalRequestsMonth,
           averageSuccessRate: Math.round(avgSuccessRate * 10) / 10,

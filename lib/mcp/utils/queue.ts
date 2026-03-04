@@ -129,8 +129,14 @@ export class MCPQueue {
         throw new Error(`Tool ${job.toolId} does not support async execution`);
       }
 
-      // Exécuter l'outil
-      const result = await tool.execute(job.args, {});
+      // Exécuter l'outil with timeout enforcement
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error(`Job ${job.id} timed out after ${this.jobTimeout}ms`));
+        }, this.jobTimeout);
+        if (timer.unref) timer.unref();
+      });
+      const result = await Promise.race([tool.execute(job.args, {}), timeoutPromise]);
 
       // Mettre à jour le job
       job.status = 'completed';

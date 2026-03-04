@@ -167,13 +167,14 @@ export class NotionTool implements MCPTool {
   private async createNotionPage(args: any, config: any): Promise<any> {
     const token = config.notion_api_token || process.env.NOTION_API_TOKEN;
     if (token) {
-      // Real Notion API call
+      // Real Notion API call — require either parentId or databaseId
+      if (!args.parentId && !args.databaseId) {
+        throw new Error('Either parentId or databaseId is required to create a Notion page');
+      }
       const body: any = {
         parent: args.parentId
           ? { page_id: args.parentId }
-          : args.databaseId
-            ? { database_id: args.databaseId }
-            : { page_id: args.parentId },
+          : { database_id: args.databaseId },
         properties: {
           title: { title: [{ text: { content: args.title } }] },
           ...args.properties,

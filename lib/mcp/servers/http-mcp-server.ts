@@ -363,13 +363,14 @@ export class HttpMCPServer {
         },
       };
     } catch (error) {
+      // Log full error server-side, return generic message to client
+      this.server.log.error({ msg: 'Tool execution error', tool: name, error });
       return {
         jsonrpc: '2.0' as const,
         id: message.id!,
         error: {
           code: MCPErrorCodes.ToolExecutionError,
-          message: 'Tool execution error',
-          data: error instanceof Error ? error.message : String(error),
+          message: 'Tool execution failed',
         },
       };
     }

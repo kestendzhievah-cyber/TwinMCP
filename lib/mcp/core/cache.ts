@@ -129,8 +129,9 @@ export class MCPCache {
   }
 
   async invalidate(pattern: string): Promise<void> {
-    // Invalider les clés qui correspondent au pattern
-    const regex = new RegExp(pattern.replace('*', '.*'));
+    // Convert glob pattern to safe regex: escape all special chars, then convert * to .*
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+    const regex = new RegExp(`^${escaped}$`);
 
     // Invalider du cache mémoire
     for (const [key] of this.memory) {

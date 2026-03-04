@@ -24,9 +24,10 @@ class ApiClient {
     this.apiKey = apiKey;
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('twinmcp_api_key', apiKey);
+        // Use sessionStorage (cleared on tab close) instead of localStorage (persists, XSS-vulnerable)
+        sessionStorage.setItem('twinmcp_api_key', apiKey);
       } catch {
-        // Ignore localStorage errors
+        // Ignore storage errors
       }
     }
   }
@@ -37,7 +38,7 @@ class ApiClient {
     }
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem('twinmcp_api_key');
+        return sessionStorage.getItem('twinmcp_api_key');
       } catch {
         return null;
       }
@@ -49,9 +50,9 @@ class ApiClient {
     this.apiKey = null;
     if (typeof window !== 'undefined') {
       try {
-        localStorage.removeItem('twinmcp_api_key');
+        sessionStorage.removeItem('twinmcp_api_key');
       } catch {
-        // Ignore localStorage errors
+        // Ignore storage errors
       }
     }
   }

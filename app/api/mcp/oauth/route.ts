@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
+import { trackUsage } from '@/lib/mcp/mcp-server';
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -40,6 +41,88 @@ async function validateOAuthToken(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Lazy services (shared pattern with /api/mcp)
+// ---------------------------------------------------------------------------
+
+let _libraryService: any = null;
+let _vectorService: any = null;
+let _servicesReady = false;
+
+async function ensureServices() {
+  if (_servicesReady) return;
+  _servicesReady = true;
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    let redis: any = null;
+    try {
+      redis = (await import('@/lib/redis')).redis;
+    } catch { /* ok */ }
+
+    try {
+      const { LibraryResolutionService } =
+        await import('@/lib/services/library-resolution.service');
+      _libraryService = new LibraryResolutionService(prisma, redis);
+    } catch { /* ok */ }
+
+    try {
+      const { VectorSearchService } = await import('@/lib/services/vector-search.service');
+      _vectorService = new VectorSearchService(prisma, redis);
+    } catch { /* ok */ }
+  } catch {
+    _servicesReady = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// JSON-RPC helper
+// ---------------------------------------------------------------------------
+
+function jsonrpc(id: any, result?: any, error?: { code: number; message: string; data?: any }) {
+  const msg: any = { jsonrpc: '2.0', id: id ?? null };
+  if (error) msg.error = error;
+  else msg.result = result;
+  return msg;
+}
+
+// ---------------------------------------------------------------------------
+// MCP Tool definitions (single source — matches /api/mcp)
+// ---------------------------------------------------------------------------
+
+const MCP_TOOLS = [
+  {
+    name: 'resolve-library-id',
+    description:
+      'Resolve library names and find matching software libraries. Use this to find the TwinMCP library ID for a given library name before querying documentation.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'User question or task to help contextualise the search' },
+        libraryName: { type: 'string', description: 'Human name of the library (e.g. "React", "Next.js", "MongoDB")' },
+      },
+      required: ['query', 'libraryName'],
+    },
+    annotations: { title: 'Resolve Library ID', readOnlyHint: true, openWorldHint: true },
+  },
+  {
+    name: 'query-docs',
+    description:
+      'Search documentation for a specific library. Returns code snippets, guides, and API references optimised for LLM context.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        libraryId: { type: 'string', description: 'TwinMCP library ID in format /vendor/lib (e.g. /mongodb/docs, /vercel/next.js)' },
+        query: { type: 'string', description: 'Question or task (setup, code example, configuration, etc.)' },
+        version: { type: 'string', description: 'Optional specific version of the library' },
+        maxResults: { type: 'number', description: 'Maximum number of results (default: 10)' },
+        maxTokens: { type: 'number', description: 'Maximum tokens in response (default: 4000)' },
+      },
+      required: ['libraryId', 'query'],
+    },
+    annotations: { title: 'Query Documentation', readOnlyHint: true, openWorldHint: true },
+  },
+];
+
 // OAuth 2.0 MCP endpoint - same functionality as /api/mcp but with OAuth auth
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -50,19 +133,15 @@ export async function POST(request: NextRequest) {
 
   if (!token) {
     return NextResponse.json(
-      {
-        jsonrpc: '2.0',
-        id: null,
-        error: {
-          code: -32001,
-          message: 'OAuth token required',
-          data: {
-            hint: 'Use OAuth 2.0 flow to obtain access token',
-            authorizationEndpoint: '/api/auth/oauth/authorize',
-            tokenEndpoint: '/api/auth/oauth/token',
-          },
+      jsonrpc(null, undefined, {
+        code: -32001,
+        message: 'OAuth token required',
+        data: {
+          hint: 'Use OAuth 2.0 flow to obtain access token',
+          authorizationEndpoint: '/api/auth/oauth/authorize',
+          tokenEndpoint: '/api/auth/oauth/token',
         },
-      },
+      }),
       { status: 401 }
     );
   }
@@ -71,218 +150,167 @@ export async function POST(request: NextRequest) {
 
   if (!auth.valid) {
     return NextResponse.json(
-      {
-        jsonrpc: '2.0',
-        id: null,
-        error: {
-          code: -32001,
-          message: 'Invalid or expired OAuth token',
-          data: { hint: 'Refresh your token or re-authenticate' },
-        },
-      },
+      jsonrpc(null, undefined, {
+        code: -32001,
+        message: 'Invalid or expired OAuth token',
+        data: { hint: 'Refresh your token or re-authenticate' },
+      }),
       { status: 401 }
     );
   }
 
-  // Forward to main MCP handler logic
-  // In production, this would share the same handler code
+  const userId = auth.userId || 'unknown';
+  const hdrs = { 'X-Auth-Method': 'oauth' };
+
+  let body: any;
   try {
-    const body = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      jsonrpc(null, undefined, { code: -32700, message: 'Parse error' }),
+      { status: 200 }
+    );
+  }
 
-    // Validate JSON-RPC format
-    if (body.jsonrpc !== '2.0' || !body.method) {
-      return NextResponse.json(
-        {
-          jsonrpc: '2.0',
-          id: body.id || null,
-          error: {
-            code: -32600,
-            message: 'Invalid Request',
-          },
-        },
-        { status: 400 }
-      );
-    }
+  const id = body?.id ?? null;
 
-    // Handle MCP methods
-    let result: unknown;
+  // Validate JSON-RPC format
+  if (body?.jsonrpc !== '2.0') {
+    return NextResponse.json(
+      jsonrpc(id, undefined, { code: -32600, message: 'Invalid Request — expected JSON-RPC 2.0' }),
+      { status: 200, headers: hdrs }
+    );
+  }
 
-    switch (body.method) {
-      case 'initialize':
-        result = {
-          protocolVersion: '2024-11-05',
-          serverInfo: {
-            name: 'twinmcp-server',
-            version: '1.0.0',
-          },
-          capabilities: {
-            tools: {},
-          },
-        };
-        break;
+  const method: string = body.method;
+  const params: any = body.params;
 
-      case 'tools/list':
-        result = {
-          tools: [
-            {
-              name: 'resolve-library-id',
-              description: 'Resolve library names and find matching software libraries',
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  query: { type: 'string', description: 'User question or task' },
-                  libraryName: { type: 'string', description: 'Library name to search' },
-                },
-                required: ['query', 'libraryName'],
-              },
-            },
-            {
-              name: 'query-docs',
-              description: 'Search documentation for a specific library',
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  libraryId: { type: 'string', description: 'TwinMCP library ID' },
-                  query: { type: 'string', description: 'Documentation query' },
-                },
-                required: ['libraryId', 'query'],
-              },
-            },
-          ],
-        };
-        break;
+  try {
+    switch (method) {
+      case 'initialize': {
+        return NextResponse.json(
+          jsonrpc(id, {
+            protocolVersion: '2025-03-26',
+            serverInfo: { name: 'twinmcp-server', version: '1.0.0' },
+            capabilities: { tools: { listChanged: false }, logging: {} },
+          }),
+          { status: 200, headers: hdrs }
+        );
+      }
+
+      case 'notifications/initialized': {
+        return new NextResponse(null, { status: 204 });
+      }
+
+      case 'tools/list': {
+        return NextResponse.json(
+          jsonrpc(id, { tools: MCP_TOOLS }),
+          { status: 200, headers: hdrs }
+        );
+      }
 
       case 'tools/call': {
-        // Execute tool directly using the same logic as /api/mcp
-        const { name: toolName, arguments: toolArgs } = body.params ?? {};
+        const toolName: string | undefined = params?.name;
+        const toolArgs: any = params?.arguments ?? {};
 
         if (!toolName) {
           return NextResponse.json(
-            {
-              jsonrpc: '2.0',
-              id: body.id,
-              error: { code: -32602, message: 'Invalid params: tool name required' },
-            },
-            {
-              status: 200,
-              headers: {
-                'X-Response-Time': `${Date.now() - startTime}ms`,
-                'X-Auth-Method': 'oauth',
-              },
-            }
+            jsonrpc(id, undefined, { code: -32602, message: 'Invalid params: tool name required' }),
+            { status: 200, headers: hdrs }
           );
         }
 
-        let toolResult: any;
+        await ensureServices();
 
         if (toolName === 'resolve-library-id') {
-          try {
-            const { getServices } = await import('@/lib/mcp-tools');
-            const { libraryResolutionService } = await getServices();
-            if (libraryResolutionService) {
-              toolResult = await libraryResolutionService.resolveLibrary({
-                query: toolArgs?.libraryName,
-                context: {},
-                limit: 5,
-                include_aliases: true,
-              });
-            } else {
-              toolResult = { results: [], totalFound: 0, query: toolArgs?.libraryName };
-            }
-          } catch {
-            toolResult = { results: [], totalFound: 0, query: toolArgs?.libraryName };
+          if (!toolArgs.query || !toolArgs.libraryName) {
+            return NextResponse.json(
+              jsonrpc(id, undefined, { code: -32602, message: 'Invalid params: query and libraryName required' }),
+              { status: 200, headers: hdrs }
+            );
           }
-        } else if (toolName === 'query-docs') {
-          try {
-            const { getServices } = await import('@/lib/mcp-tools');
-            const { vectorSearchService } = await getServices();
-            if (vectorSearchService) {
-              toolResult = await vectorSearchService.searchDocuments({
-                library_id: toolArgs?.libraryId,
-                query: toolArgs?.query,
-                version: toolArgs?.version,
-                max_results: toolArgs?.maxResults || 10,
-                include_code: true,
-                context_limit: toolArgs?.maxTokens || 4000,
-              });
-            } else {
-              toolResult = {
-                libraryId: toolArgs?.libraryId,
-                query: toolArgs?.query,
-                results: [],
-                totalResults: 0,
-                totalTokens: 0,
-              };
-            }
-          } catch {
-            toolResult = {
-              libraryId: toolArgs?.libraryId,
-              query: toolArgs?.query,
-              results: [],
-              totalResults: 0,
-              totalTokens: 0,
-            };
+          const toolStart = Date.now();
+          let result: any;
+          if (_libraryService) {
+            result = await _libraryService.resolveLibrary({
+              query: toolArgs.libraryName,
+              context: {},
+              limit: 5,
+              include_aliases: true,
+            });
+          } else {
+            result = { results: [], totalFound: 0, query: toolArgs.libraryName,
+              _note: 'LibraryResolutionService not available.' };
           }
-        } else {
+          trackUsage(userId, 'resolve-library-id', 50, Date.now() - toolStart);
           return NextResponse.json(
-            {
-              jsonrpc: '2.0',
-              id: body.id,
-              error: { code: -32601, message: `Unknown tool: ${toolName}` },
-            },
-            {
-              status: 200,
-              headers: {
-                'X-Response-Time': `${Date.now() - startTime}ms`,
-                'X-Auth-Method': 'oauth',
-              },
-            }
+            jsonrpc(id, { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }),
+            { status: 200, headers: hdrs }
           );
         }
 
-        result = { content: [{ type: 'text', text: JSON.stringify(toolResult, null, 2) }] };
-        break;
-      }
+        if (toolName === 'query-docs') {
+          if (!toolArgs.libraryId || !toolArgs.query) {
+            return NextResponse.json(
+              jsonrpc(id, undefined, { code: -32602, message: 'Invalid params: libraryId and query required' }),
+              { status: 200, headers: hdrs }
+            );
+          }
+          const toolStart = Date.now();
+          let result: any;
+          if (_vectorService) {
+            result = await _vectorService.searchDocuments({
+              library_id: toolArgs.libraryId,
+              query: toolArgs.query,
+              version: toolArgs.version,
+              max_results: toolArgs.maxResults || 10,
+              include_code: true,
+              context_limit: toolArgs.maxTokens || 4000,
+            });
+          } else {
+            result = { libraryId: toolArgs.libraryId, query: toolArgs.query, results: [],
+              totalResults: 0, totalTokens: 0,
+              _note: 'VectorSearchService not available.' };
+          }
+          trackUsage(userId, 'query-docs', (result as any).totalTokens || 100, Date.now() - toolStart);
+          return NextResponse.json(
+            jsonrpc(id, { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }),
+            { status: 200, headers: hdrs }
+          );
+        }
 
-      default:
         return NextResponse.json(
-          {
-            jsonrpc: '2.0',
-            id: body.id,
-            error: {
-              code: -32601,
-              message: `Method not found: ${body.method}`,
-            },
-          },
-          { status: 400 }
+          jsonrpc(id, undefined, {
+            code: -32601,
+            message: `Unknown tool: ${toolName}`,
+            data: { availableTools: MCP_TOOLS.map(t => t.name) },
+          }),
+          { status: 200, headers: hdrs }
         );
-    }
-
-    return NextResponse.json(
-      {
-        jsonrpc: '2.0',
-        id: body.id,
-        result,
-      },
-      {
-        headers: {
-          'X-Response-Time': `${Date.now() - startTime}ms`,
-          'X-Auth-Method': 'oauth',
-        },
       }
-    );
+
+      case 'ping': {
+        return NextResponse.json(jsonrpc(id, {}), { status: 200, headers: hdrs });
+      }
+
+      default: {
+        if (id === null || id === undefined) {
+          return new NextResponse(null, { status: 204 });
+        }
+        return NextResponse.json(
+          jsonrpc(id, undefined, {
+            code: -32601,
+            message: `Method not found: ${method}`,
+          }),
+          { status: 200, headers: hdrs }
+        );
+      }
+    }
   } catch (error) {
-    logger.error('MCP OAuth Error:', error);
+    logger.error('[MCP/OAuth] POST error:', error);
     return NextResponse.json(
-      {
-        jsonrpc: '2.0',
-        id: null,
-        error: {
-          code: -32603,
-          message: 'Internal error',
-        },
-      },
-      { status: 500 }
+      jsonrpc(id, undefined, { code: -32603, message: 'Internal error' }),
+      { status: 200, headers: hdrs }
     );
   }
 }

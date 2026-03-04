@@ -74,6 +74,9 @@ export async function validateApiKey(
 
     if (!key || !key.isActive || key.revokedAt) return { valid: false };
 
+    // Check expiration
+    if (key.expiresAt && key.expiresAt < new Date()) return { valid: false };
+
     // Update last used (fire-and-forget)
     prisma.apiKey
       .update({ where: { id: key.id }, data: { lastUsedAt: new Date() } })
@@ -117,12 +120,13 @@ export async function checkRateLimit(
 // Usage tracking
 // ---------------------------------------------------------------------------
 
-async function trackUsage(
+export async function trackUsage(
   userId: string,
   tool: string,
   tokens: number,
   responseTimeMs: number = 0,
-  success: boolean = true
+  success: boolean = true,
+  errorMessage?: string
 ) {
   try {
     const { prisma } = await import('@/lib/prisma');
@@ -133,6 +137,7 @@ async function trackUsage(
         tokensReturned: tokens,
         success,
         responseTimeMs,
+        errorMessage: errorMessage || null,
       },
     });
   } catch (e) {

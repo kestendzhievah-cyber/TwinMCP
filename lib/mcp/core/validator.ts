@@ -160,45 +160,47 @@ export class InputValidator {
   }
 
   private containsScript(str: string): boolean {
+    // No 'g' flag — .test() with /g is stateful and causes intermittent false negatives
     const scriptPatterns = [
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      /javascript:/gi,
-      /vbscript:/gi,
-      /on\w+\s*=/gi,
-      /<iframe\b/gi,
-      /<object\b/gi,
-      /<embed\b/gi,
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/i,
+      /javascript:/i,
+      /vbscript:/i,
+      /on\w+\s*=/i,
+      /<iframe\b/i,
+      /<object\b/i,
+      /<embed\b/i,
     ];
 
     return scriptPatterns.some(pattern => pattern.test(str));
   }
 
   private containsSQLInjection(str: string): boolean {
-    // Only match actual SQL injection patterns (keyword combos), not isolated words
+    // No 'g' flag — .test() with /g is stateful
     const sqlPatterns = [
-      /\bunion\b\s+\bselect\b/gi,
-      /\bselect\b\s+.+\bfrom\b/gi,
-      /\binsert\b\s+\binto\b/gi,
-      /\bupdate\b\s+\bset\b/gi,
-      /\bdelete\b\s+\bfrom\b/gi,
-      /\bdrop\b\s+(table|database|index)\b/gi,
-      /\balter\b\s+table\b/gi,
-      /\bexec\b\s*\(/gi,
-      /;\s*(drop|alter|truncate|exec)\b/gi,
-      /'\s*(or|and)\s+['0-9]/gi,
-      /'\s*;\s*--/g,
+      /\bunion\b\s+\bselect\b/i,
+      /\bselect\b\s+.+\bfrom\b/i,
+      /\binsert\b\s+\binto\b/i,
+      /\bupdate\b\s+\bset\b/i,
+      /\bdelete\b\s+\bfrom\b/i,
+      /\bdrop\b\s+(table|database|index)\b/i,
+      /\balter\b\s+table\b/i,
+      /\bexec\b\s*\(/i,
+      /;\s*(drop|alter|truncate|exec)\b/i,
+      /'\s*(or|and)\s+['0-9]/i,
+      /'\s*;\s*--/,
     ];
 
     return sqlPatterns.some(pattern => pattern.test(str));
   }
 
   private containsPathTraversal(str: string): boolean {
+    // No 'g' flag — .test() with /g is stateful
     const traversalPatterns = [
-      /\.\.[\/\\]/g,
-      /\.\.%2f/gi,
-      /\.\.%5c/gi,
-      /%2e%2e%2f/gi,
-      /%2e%2e%5c/gi,
+      /\.\.[\/\\]/,
+      /\.\.%2f/i,
+      /\.\.%5c/i,
+      /%2e%2e%2f/i,
+      /%2e%2e%5c/i,
     ];
 
     return traversalPatterns.some(pattern => pattern.test(str));

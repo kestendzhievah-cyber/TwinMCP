@@ -110,22 +110,30 @@ function buildContextFromApiKey(apiKeyData: ApiKeyData): McpAuthContext {
 function parsePermissions(
   permissions: ApiKeyData['permissions']
 ): Array<{ resource: string; actions: string[] }> {
-  if (Array.isArray(permissions)) {
-    return permissions as Array<{ resource: string; actions: string[] }>;
-  }
+  let parsed: unknown[] | null = null;
 
-  if (typeof permissions === 'string') {
+  if (Array.isArray(permissions)) {
+    parsed = permissions;
+  } else if (typeof permissions === 'string') {
     try {
-      const parsed = JSON.parse(permissions);
-      if (Array.isArray(parsed)) {
-        return parsed as Array<{ resource: string; actions: string[] }>;
+      const result = JSON.parse(permissions);
+      if (Array.isArray(result)) {
+        parsed = result;
       }
     } catch {
       return [];
     }
   }
 
-  return [];
+  if (!parsed || parsed.length === 0) return [];
+
+  // If elements are strings (e.g. ['read', 'write'] from createApiKey), convert to structured format
+  if (typeof parsed[0] === 'string') {
+    return [{ resource: '*', actions: parsed as string[] }];
+  }
+
+  // Already in structured format { resource, actions }
+  return parsed as Array<{ resource: string; actions: string[] }>;
 }
 
 function getApiKeyFromRequest(request: Request): string | null {

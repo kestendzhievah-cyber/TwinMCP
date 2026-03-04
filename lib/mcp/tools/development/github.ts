@@ -213,25 +213,29 @@ export class GitHubTool implements MCPTool {
       'User-Agent': 'TwinMCP-GitHubTool',
     };
 
+    // Sanitize path segments to prevent URL path traversal
+    const owner = encodeURIComponent(args.owner);
+    const repo = encodeURIComponent(args.repo);
+
     let url: string;
     let method = 'GET';
     let body: string | undefined;
 
     switch (args.action) {
       case 'issues':
-        url = `${baseUrl}/repos/${args.owner}/${args.repo}/issues?state=${args.state || 'open'}&per_page=${args.limit || 10}`;
+        url = `${baseUrl}/repos/${owner}/${repo}/issues?state=${args.state || 'open'}&per_page=${args.limit || 10}`;
         break;
       case 'pulls':
-        url = `${baseUrl}/repos/${args.owner}/${args.repo}/pulls?state=${args.state || 'open'}&per_page=${args.limit || 10}`;
+        url = `${baseUrl}/repos/${owner}/${repo}/pulls?state=${args.state || 'open'}&per_page=${args.limit || 10}`;
         break;
       case 'commits':
-        url = `${baseUrl}/repos/${args.owner}/${args.repo}/commits?per_page=${args.limit || 10}`;
+        url = `${baseUrl}/repos/${owner}/${repo}/commits?per_page=${args.limit || 10}`;
         break;
       case 'releases':
-        url = `${baseUrl}/repos/${args.owner}/${args.repo}/releases?per_page=${args.limit || 10}`;
+        url = `${baseUrl}/repos/${owner}/${repo}/releases?per_page=${args.limit || 10}`;
         break;
       case 'create_issue':
-        url = `${baseUrl}/repos/${args.owner}/${args.repo}/issues`;
+        url = `${baseUrl}/repos/${owner}/${repo}/issues`;
         method = 'POST';
         body = JSON.stringify({
           title: args.data?.title || 'New Issue',
@@ -241,7 +245,7 @@ export class GitHubTool implements MCPTool {
         });
         break;
       case 'create_pr':
-        url = `${baseUrl}/repos/${args.owner}/${args.repo}/pulls`;
+        url = `${baseUrl}/repos/${owner}/${repo}/pulls`;
         method = 'POST';
         body = JSON.stringify({
           title: args.data?.title || 'New Pull Request',

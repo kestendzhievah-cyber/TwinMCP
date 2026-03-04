@@ -215,17 +215,29 @@ export class AuthService {
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
     const keyPrefix = apiKey.substring(0, 20);
 
-    // Sauvegarder dans la base de données
-    const record = await this.db.apiKey.create({
-      data: {
-        userId,
-        keyHash,
-        keyPrefix,
-        name: name || `API Key ${new Date().toISOString()}`,
-        tier,
-        quotaDaily,
-        quotaMonthly,
-      },
+    // Atomic transaction to prevent race condition on concurrent creates
+    const maxKeys = tier === 'enterprise' ? 100 : tier === 'pro' ? 10 : 3;
+
+    const record = await this.db.$transaction(async (tx) => {
+      const existingCount = await tx.apiKey.count({
+        where: { userId, isActive: true, revokedAt: null },
+      });
+      if (existingCount >= maxKeys) {
+        throw new Error(`Key limit reached (${maxKeys}) for plan ${tier}`);
+      }
+
+      return tx.apiKey.create({
+        data: {
+          userId,
+          keyHash,
+          keyPrefix,
+          name: name || `API Key ${new Date().toISOString()}`,
+          tier,
+          quotaDaily,
+          quotaMonthly,
+          permissions: ['read', 'write'],
+        },
+      });
     });
 
     return {
@@ -294,23 +306,30 @@ export class AuthService {
     responseTimeMs?: number
   ) {
     try {
-      const apiKeyRecord = await this.db.apiKey.findUnique({
-        where: { id: apiKeyId },
-        select: { usedDaily: true, usedMonthly: true, lastUsedAt: true, userId: true },
-      });
-
       const now = new Date();
-      const usedDaily =
-        apiKeyRecord && this.isSameDay(apiKeyRecord.lastUsedAt, now)
-          ? apiKeyRecord.usedDaily + 1
-          : 1;
-      const usedMonthly =
-        apiKeyRecord && this.isSameMonth(apiKeyRecord.lastUsedAt, now)
-          ? apiKeyRecord.usedMonthly + 1
-          : 1;
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      await this.db.$transaction([
-        this.db.usageLog.create({
+      // Atomic transaction: create log + update counters in one shot
+      await this.db.$transaction(async (tx) => {
+        const apiKeyRecord = await tx.apiKey.findUnique({
+          where: { id: apiKeyId },
+          select: { usedDaily: true, usedMonthly: true, lastUsedAt: true, userId: true },
+        });
+
+        // Reset counters on day/month boundary using actual date comparison
+        const sameDay = apiKeyRecord?.lastUsedAt
+          ? apiKeyRecord.lastUsedAt >= todayStart
+          : false;
+        const sameMonth = apiKeyRecord?.lastUsedAt
+          ? apiKeyRecord.lastUsedAt >= monthStart
+          : false;
+
+        const usedDaily = sameDay ? (apiKeyRecord?.usedDaily || 0) + 1 : 1;
+        const usedMonthly = sameMonth ? (apiKeyRecord?.usedMonthly || 0) + 1 : 1;
+
+        await tx.usageLog.create({
           data: {
             apiKeyId,
             userId: apiKeyRecord?.userId,
@@ -320,16 +339,17 @@ export class AuthService {
             tokensReturned,
             responseTimeMs,
           },
-        }),
-        this.db.apiKey.update({
+        });
+
+        await tx.apiKey.update({
           where: { id: apiKeyId },
           data: {
             usedDaily,
             usedMonthly,
             lastUsedAt: now,
           },
-        }),
-      ]);
+        });
+      });
     } catch (error) {
       logger.error('Error logging usage:', error);
     }

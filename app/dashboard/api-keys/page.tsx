@@ -146,9 +146,9 @@ export default function ApiKeysPage() {
     });
   };
 
-  const getUsageColor = (percentage: number) => {
-    if (percentage < 50) return 'text-green-400';
-    if (percentage < 80) return 'text-yellow-400';
+  const getSuccessRateColor = (rate: number) => {
+    if (rate >= 95) return 'text-green-400';
+    if (rate >= 80) return 'text-yellow-400';
     return 'text-red-400';
   };
 
@@ -354,20 +354,20 @@ export default function ApiKeysPage() {
                         {apiKey.usage.requestsThisHour}
                       </span>
                       <span className="text-xs text-gray-500">
-                        / {apiKey.quotaRequestsPerMinute}
+                        / {apiKey.quotaRequestsPerMinute * 60}
                       </span>
                     </div>
                     <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
-                          apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute < 0.5
+                          apiKey.usage.requestsThisHour / (apiKey.quotaRequestsPerMinute * 60) < 0.5
                             ? 'bg-green-500'
-                            : apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute < 0.8
+                            : apiKey.usage.requestsThisHour / (apiKey.quotaRequestsPerMinute * 60) < 0.8
                               ? 'bg-yellow-500'
                               : 'bg-red-500'
                         }`}
                         style={{
-                          width: `${Math.min((apiKey.usage.requestsThisHour / apiKey.quotaRequestsPerMinute) * 100, 100)}%`,
+                          width: `${Math.min((apiKey.usage.requestsThisHour / (apiKey.quotaRequestsPerMinute * 60)) * 100, 100)}%`,
                         }}
                       />
                     </div>
@@ -377,7 +377,7 @@ export default function ApiKeysPage() {
                       <span className="text-xs text-gray-400">Succès</span>
                       <Check className="w-3 h-3 text-green-400" />
                     </div>
-                    <span className={`font-semibold ${getUsageColor(apiKey.usage.successRate)}`}>
+                    <span className={`font-semibold ${getSuccessRateColor(apiKey.usage.successRate)}`}>
                       {apiKey.usage.successRate}%
                     </span>
                   </div>
