@@ -3,22 +3,26 @@ import Stripe from 'stripe';
 import { Payment, PaymentMethod, PaymentStatus } from '../../types/invoice.types';
 
 export class StripeService {
-  private stripe: Stripe;
+  private stripe: Stripe | null = null;
 
   constructor() {
     const apiKey = process.env.STRIPE_SECRET_KEY;
     if (!apiKey) {
       logger.warn('⚠️ STRIPE_SECRET_KEY is not configured — Stripe features will be unavailable');
     }
-    this.stripe = new Stripe(apiKey || 'sk_not_configured', {
-      apiVersion: '2025-09-30.clover'
-    });
   }
 
-  private ensureConfigured(): void {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY is not configured');
+  private getClient(): Stripe {
+    if (!this.stripe) {
+      const apiKey = process.env.STRIPE_SECRET_KEY;
+      if (!apiKey) {
+        throw new Error('STRIPE_SECRET_KEY is not configured');
+      }
+      this.stripe = new Stripe(apiKey, {
+        apiVersion: '2025-09-30.clover'
+      });
     }
+    return this.stripe;
   }
 
   async createPaymentIntent(
@@ -28,7 +32,7 @@ export class StripeService {
     metadata?: Record<string, string>
   ): Promise<Stripe.PaymentIntent> {
     try {
-      const paymentIntent = await this.stripe.paymentIntents.create({
+      const paymentIntent = await this.getClient().paymentIntents.create({
         amount: Math.round(amount * 100),
         currency: currency.toLowerCase(),
         payment_method: paymentMethodId,
@@ -90,7 +94,7 @@ export class StripeService {
     reason?: string
   ): Promise<Stripe.Refund> {
     try {
-      const refund = await this.stripe.refunds.create({
+      const refund = await this.getClient().refunds.create({
         payment_intent: paymentIntentId,
         amount: amount ? Math.round(amount * 100) : undefined,
         reason: reason as Stripe.RefundCreateParams.Reason || 'requested_by_customer'
@@ -109,7 +113,7 @@ export class StripeService {
     metadata?: Record<string, string>
   ): Promise<Stripe.Customer> {
     try {
-      const customer = await this.stripe.customers.create({
+      const customer = await this.getClient().customers.create({
         email,
         name,
         metadata: metadata || {}
@@ -127,7 +131,7 @@ export class StripeService {
     customerId: string
   ): Promise<Stripe.PaymentMethod> {
     try {
-      const paymentMethod = await this.stripe.paymentMethods.attach(
+      const paymentMethod = await this.getClient().paymentMethods.attach(
         paymentMethodId,
         { customer: customerId }
       );
@@ -141,7 +145,7 @@ export class StripeService {
 
   async createSetupIntent(customerId: string): Promise<Stripe.SetupIntent> {
     try {
-      const setupIntent = await this.stripe.setupIntents.create({
+      const setupIntent = await this.getClient().setupIntents.create({
         customer: customerId,
         payment_method_types: ['card']
       });
@@ -155,7 +159,7 @@ export class StripeService {
 
   async retrievePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
     try {
-      return await this.stripe.paymentIntents.retrieve(paymentIntentId);
+      return await this.getClient().paymentIntents.retrieve(paymentIntentId);
     } catch (error) {
       logger.error('Stripe payment intent retrieval failed:', error);
       throw error;
@@ -172,7 +176,7 @@ export class StripeService {
     }
 
     try {
-      return this.stripe.webhooks.constructEvent(
+      return this.getClient().webhooks.constructEvent(
         payload,
         signature,
         webhookSecret

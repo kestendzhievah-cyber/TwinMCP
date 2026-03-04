@@ -75,8 +75,10 @@ function PaymentSuccessContent() {
 
   const getPlanName = (planId: string | undefined) => {
     const plans: Record<string, string> = {
-      starter: 'Starter',
+      free: 'Gratuit',
+      pro: 'Professional',
       professional: 'Professional',
+      starter: 'Starter',
       enterprise: 'Enterprise',
     };
     return plans[planId || ''] || 'Plan';

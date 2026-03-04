@@ -74,6 +74,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Require authentication — prevent unauthenticated subscription lookups
+    const auth = await validateAuth(req.headers.get('authorization'));
+    if (!auth.valid || !auth.userId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
     const stripe = getStripe();
     const url = new URL(req.url);
     const subscriptionId = url.searchParams.get('subscriptionId');
@@ -88,6 +94,19 @@ export async function GET(req: NextRequest) {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
       expand: ['latest_invoice.payment_intent'],
     });
+
+    // Verify the subscription belongs to the authenticated user's Stripe customer
+    const { prisma } = await import('@/lib/prisma');
+    const dbUser = await prisma.user.findFirst({
+      where: { OR: [{ id: auth.userId }, { oauthId: auth.userId }] },
+      include: { profile: true },
+    });
+    const customerIdFromSub = typeof subscription.customer === 'string'
+      ? subscription.customer
+      : subscription.customer?.id;
+    if (dbUser?.profile?.stripeCustomerId && customerIdFromSub !== dbUser.profile.stripeCustomerId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
 
     return NextResponse.json({
       status: subscription.status,

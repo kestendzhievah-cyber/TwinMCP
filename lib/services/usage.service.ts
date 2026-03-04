@@ -38,21 +38,24 @@ export interface DashboardStats {
   }[];
 }
 
+// Import plan limits from centralized source and extend with usage-specific fields.
+// The daily limits come from PLAN_CONFIG.limits.requestsPerDay in stripe-billing.service.ts.
+// Monthly limits, maxKeys, and rateLimit are usage-layer concerns kept here.
 export const PLAN_LIMITS = {
   free: {
-    dailyLimit: 200,
+    dailyLimit: 200,       // must match PLAN_CONFIG.free.limits.requestsPerDay
     monthlyLimit: 6000,
     maxKeys: 3,
     rateLimit: 20, // per minute
   },
   pro: {
-    dailyLimit: 10000,
+    dailyLimit: 10000,     // must match PLAN_CONFIG.pro.limits.requestsPerDay
     monthlyLimit: 300000,
     maxKeys: 10,
     rateLimit: 200, // per minute
   },
   enterprise: {
-    dailyLimit: 100000,
+    dailyLimit: 100000,    // must match PLAN_CONFIG.enterprise.limits.requestsPerDay (-1 = unlimited, mapped here)
     monthlyLimit: 3000000,
     maxKeys: 100,
     rateLimit: 2000, // per minute

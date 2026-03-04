@@ -140,11 +140,23 @@ export async function getOrCreateStripeCustomer(
     customerId = customer.id;
   }
 
-  // Persist
-  await prisma.userProfile.update({
-    where: { id: userProfileId },
+  // Atomic persist — only set stripeCustomerId if it's still null (prevents race condition
+  // where two concurrent requests both create a Stripe customer)
+  const updated = await prisma.userProfile.updateMany({
+    where: { id: userProfileId, stripeCustomerId: null },
     data: { stripeCustomerId: customerId },
   });
+
+  // If another request already set it, fetch and use that one instead
+  if (updated.count === 0) {
+    const existing = await prisma.userProfile.findUnique({
+      where: { id: userProfileId },
+      select: { stripeCustomerId: true },
+    });
+    if (existing?.stripeCustomerId) {
+      return existing.stripeCustomerId;
+    }
+  }
 
   return customerId;
 }
@@ -239,8 +251,9 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
         userId: params.userId,
         userProfileId: params.userProfileId,
       },
-      trial_period_days:
-        resolved === 'pro' ? (parseInt(process.env.TRIAL_DAYS ?? '14', 10) || undefined) : undefined,
+      ...(resolved === 'pro' && parseInt(process.env.TRIAL_DAYS ?? '14', 10) > 0
+        ? { trial_period_days: parseInt(process.env.TRIAL_DAYS ?? '14', 10) }
+        : {}),
     },
     allow_promotion_codes: true,
     billing_address_collection: 'required',
@@ -380,55 +393,42 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   const interval = sub.items.data[0]?.plan?.interval;
   const amount = (sub.items.data[0]?.plan?.amount ?? 0) / 100;
 
-  // Upsert subscription in our DB
-  await prisma.subscription.upsert({
-    where: { stripeSubscriptionId: sub.id },
-    update: {
-      status: mapStripeSubStatus(sub.status),
-      plan: resolved,
-      stripeCustomerId: customerId ?? undefined,
-      stripePriceId: sub.items.data[0]?.price?.id ?? undefined,
-      currentPeriodStart: new Date((sub as any).current_period_start * 1000),
-      currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
-      cancelAtPeriodEnd: sub.cancel_at_period_end,
-      amount,
-      currency: sub.currency.toUpperCase(),
-      interval: interval === 'year' ? 'YEAR' : 'MONTH',
-      trialStart: (sub as any).trial_start
-        ? new Date((sub as any).trial_start * 1000)
-        : null,
-      trialEnd: (sub as any).trial_end
-        ? new Date((sub as any).trial_end * 1000)
-        : null,
-    },
-    create: {
-      userId: profileId,
-      stripeSubscriptionId: sub.id,
-      stripeCustomerId: customerId ?? undefined,
-      stripePriceId: sub.items.data[0]?.price?.id ?? undefined,
-      plan: resolved,
-      status: mapStripeSubStatus(sub.status),
-      currentPeriodStart: new Date((sub as any).current_period_start * 1000),
-      currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
-      cancelAtPeriodEnd: sub.cancel_at_period_end,
-      amount,
-      currency: sub.currency.toUpperCase(),
-      interval: interval === 'year' ? 'YEAR' : 'MONTH',
-      trialStart: (sub as any).trial_start
-        ? new Date((sub as any).trial_start * 1000)
-        : null,
-      trialEnd: (sub as any).trial_end
-        ? new Date((sub as any).trial_end * 1000)
-        : null,
-    },
-  });
-
-  // Update the user profile plan field
+  // Atomic: upsert subscription + update user plan in a single transaction
   const newPlan = sub.status === 'active' || sub.status === 'trialing' ? resolved : 'free';
-  await prisma.userProfile.update({
-    where: { id: profileId },
-    data: { plan: newPlan },
-  });
+  const subData = {
+    status: mapStripeSubStatus(sub.status),
+    plan: resolved,
+    stripeCustomerId: customerId ?? undefined,
+    stripePriceId: sub.items.data[0]?.price?.id ?? undefined,
+    currentPeriodStart: new Date((sub as any).current_period_start * 1000),
+    currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
+    cancelAtPeriodEnd: sub.cancel_at_period_end,
+    amount,
+    currency: sub.currency.toUpperCase(),
+    interval: (interval === 'year' ? 'YEAR' : 'MONTH') as 'YEAR' | 'MONTH',
+    trialStart: (sub as any).trial_start
+      ? new Date((sub as any).trial_start * 1000)
+      : null,
+    trialEnd: (sub as any).trial_end
+      ? new Date((sub as any).trial_end * 1000)
+      : null,
+  };
+
+  await prisma.$transaction([
+    prisma.subscription.upsert({
+      where: { stripeSubscriptionId: sub.id },
+      update: subData,
+      create: {
+        userId: profileId,
+        stripeSubscriptionId: sub.id,
+        ...subData,
+      },
+    }),
+    prisma.userProfile.update({
+      where: { id: profileId },
+      data: { plan: newPlan },
+    }),
+  ]);
 
   logger.info(
     `[stripe-webhook] Subscription ${sub.id} updated → plan=${newPlan}, status=${sub.status}`
@@ -439,29 +439,37 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
   const customerId =
     typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
 
-  // Mark subscription as cancelled in our DB
-  try {
-    await prisma.subscription.update({
-      where: { stripeSubscriptionId: sub.id },
-      data: {
-        status: 'CANCELLED',
-        cancelAtPeriodEnd: false,
-      },
-    });
-  } catch {
+  // Atomic: mark subscription cancelled + downgrade user to free in one transaction
+  const ops: any[] = [];
+
+  // Check if subscription exists in DB first
+  const existingSub = await prisma.subscription.findUnique({
+    where: { stripeSubscriptionId: sub.id },
+    select: { id: true },
+  });
+
+  if (existingSub) {
+    ops.push(
+      prisma.subscription.update({
+        where: { stripeSubscriptionId: sub.id },
+        data: { status: 'CANCELLED', cancelAtPeriodEnd: false },
+      })
+    );
+  } else {
     logger.warn(`[stripe-webhook] subscription.deleted — sub ${sub.id} not found in DB`);
   }
 
-  // Downgrade user to free plan
   if (customerId) {
-    try {
-      await prisma.userProfile.update({
+    ops.push(
+      prisma.userProfile.updateMany({
         where: { stripeCustomerId: customerId },
         data: { plan: 'free' },
-      });
-    } catch {
-      logger.warn(`[stripe-webhook] Could not downgrade customer ${customerId} to free`);
-    }
+      })
+    );
+  }
+
+  if (ops.length > 0) {
+    await prisma.$transaction(ops);
   }
 
   logger.info(`[stripe-webhook] Subscription ${sub.id} deleted → downgraded to free`);

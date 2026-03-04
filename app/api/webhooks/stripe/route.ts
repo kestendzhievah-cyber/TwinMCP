@@ -53,9 +53,18 @@ export async function POST(request: NextRequest) {
       'stripe_webhook_error',
       'high',
       `Webhook processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+    ).catch(() => {});
 
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 400 });
+    // Signature verification failures (from constructWebhookEvent) → 400 so Stripe knows
+    // the signature was invalid. Processing errors → 200 to acknowledge receipt and
+    // prevent Stripe from retrying for up to 3 days.
+    const isSignatureError = error instanceof Error &&
+      (error.message.includes('signature') || error.message.includes('Webhook'));
+    if (isSignatureError) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 200 });
   }
 }
 
