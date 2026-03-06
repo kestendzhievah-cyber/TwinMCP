@@ -35,6 +35,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Plan ID requis' }, { status: 400 });
     }
 
+    // Validate planId is a known plan to avoid confusing downstream errors
+    const KNOWN_PLANS = ['free', 'pro', 'professional', 'starter', 'enterprise'];
+    if (!KNOWN_PLANS.includes(planId)) {
+      return NextResponse.json({ error: 'Plan ID inconnu' }, { status: 400 });
+    }
+
     if (billingPeriod && (typeof billingPeriod !== 'string' || !['monthly', 'yearly'].includes(billingPeriod))) {
       return NextResponse.json({ error: 'Période de facturation invalide (monthly ou yearly)' }, { status: 400 });
     }

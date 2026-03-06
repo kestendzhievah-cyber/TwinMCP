@@ -92,10 +92,18 @@ export class StripeService {
     reason?: string
   ): Promise<Stripe.Refund> {
     try {
+      const VALID_REFUND_REASONS: Stripe.RefundCreateParams.Reason[] = [
+        'duplicate', 'fraudulent', 'requested_by_customer',
+      ];
+      const safeReason: Stripe.RefundCreateParams.Reason =
+        reason && VALID_REFUND_REASONS.includes(reason as Stripe.RefundCreateParams.Reason)
+          ? (reason as Stripe.RefundCreateParams.Reason)
+          : 'requested_by_customer';
+
       const refund = await this.getClient().refunds.create({
         payment_intent: paymentIntentId,
         amount: amount ? Math.round(amount * 100) : undefined,
-        reason: reason as Stripe.RefundCreateParams.Reason || 'requested_by_customer'
+        reason: safeReason,
       });
 
       return refund;

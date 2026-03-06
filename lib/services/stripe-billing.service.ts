@@ -251,6 +251,10 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
     ];
   }
 
+  // Clamp TRIAL_DAYS env to 0-30 to prevent absurd trial periods
+  const rawTrialDays = parseInt(process.env.TRIAL_DAYS ?? '14', 10);
+  const trialDaysClamped = Math.max(0, Math.min(isNaN(rawTrialDays) ? 14 : rawTrialDays, 30));
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     payment_method_types: ['card'],
@@ -270,8 +274,8 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
         userId: params.userId,
         userProfileId: params.userProfileId,
       },
-      ...(resolved === 'pro' && parseInt(process.env.TRIAL_DAYS ?? '14', 10) > 0
-        ? { trial_period_days: parseInt(process.env.TRIAL_DAYS ?? '14', 10) }
+      ...(resolved === 'pro' && trialDaysClamped > 0
+        ? { trial_period_days: trialDaysClamped }
         : {}),
     },
     allow_promotion_codes: true,

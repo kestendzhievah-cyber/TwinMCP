@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
     checks.push({
       name: 'stripe_authentication',
       status: 'fail',
-      message: `Authentification Stripe échouée: ${errorMessage}`,
+      message: 'Authentification Stripe échouée',
     });
   }
 
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
       checks.push({
         name: item.label,
         status: 'fail',
-        message: `Impossible de récupérer ${item.envKey}: ${errorMessage}`,
+        message: `Impossible de récupérer ${item.envKey}`,
         metadata: { priceId },
       });
     }

@@ -58,7 +58,7 @@ function PaymentSuccessContent() {
           }
         }
 
-        const response = await fetch(`/api/create-checkout-session?session_id=${sessionId}`, { headers });
+        const response = await fetch(`/api/create-checkout-session?session_id=${encodeURIComponent(sessionId)}`, { headers });
         const data = await response.json();
 
         if (response.ok) {

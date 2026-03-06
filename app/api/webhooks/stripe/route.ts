@@ -68,7 +68,11 @@ export async function POST(request: NextRequest) {
           logger.error(`[webhooks/stripe] Error processing ${event.type}:`, procErr);
           // Don't re-throw — acknowledge receipt to prevent Stripe retry storm
         }
-        await handleSubscriptionEvent(svc, event.type, event.data.object);
+        try {
+          await handleSubscriptionEvent(svc, event.type, event.data.object);
+        } catch (auditErr) {
+          logger.error(`[webhooks/stripe] Error in subscription audit log:`, auditErr);
+        }
         break;
 
       default:

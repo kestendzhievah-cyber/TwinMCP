@@ -47,7 +47,7 @@ export function PaymentForm({ invoice, authToken, onSuccess, onCancel }: Payment
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Payment failed');
+        throw new Error(errorData.error || errorData.message || 'Payment failed');
       }
 
       const result = await response.json();

@@ -50,11 +50,12 @@ export async function POST(req: NextRequest) {
     if (typeof currency !== 'string' || !ALLOWED_CURRENCIES.includes(currency.toLowerCase())) {
       return NextResponse.json({ error: 'Devise non supportée' }, { status: 400 });
     }
+    const normalizedCurrency = currency.toLowerCase();
 
     // Create a Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
-      currency,
+      currency: normalizedCurrency,
       description,
       automatic_payment_methods: {
         enabled: true,
