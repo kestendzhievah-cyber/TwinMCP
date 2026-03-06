@@ -34,7 +34,20 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const returnUrl = body.returnUrl || `${req.nextUrl.origin}/dashboard/billing`;
+    const defaultReturn = `${req.nextUrl.origin}/dashboard/billing`;
+
+    // Validate returnUrl is same-origin to prevent open redirect attacks
+    let returnUrl = defaultReturn;
+    if (body.returnUrl && typeof body.returnUrl === 'string') {
+      try {
+        const parsed = new URL(body.returnUrl);
+        if (parsed.origin === req.nextUrl.origin) {
+          returnUrl = body.returnUrl;
+        }
+      } catch {
+        // Invalid URL — use default
+      }
+    }
 
     const url = await createCustomerPortalSession(dbUser.profile.id, returnUrl);
 

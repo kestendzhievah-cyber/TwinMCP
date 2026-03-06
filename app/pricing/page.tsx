@@ -55,7 +55,6 @@ const plans: Plan[] = [
     priceAnnual: '11.24',
     features: [
       'Serveurs MCP illimités',
-      'Création MCP personnalisée',
       '10 000 requêtes/jour',
       'Serveurs privés',
       'Support prioritaire 24/7',

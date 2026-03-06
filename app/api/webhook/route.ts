@@ -6,6 +6,21 @@ import {
   isStripeConfigured,
 } from '@/lib/services/stripe-billing.service';
 
+// Simple in-memory idempotency cache — prevents double-processing when
+// both /api/webhook and /api/webhooks/stripe are registered in Stripe.
+const _processedEvents = new Set<string>();
+const MAX_CACHE = 1000;
+
+function markProcessed(eventId: string): boolean {
+  if (_processedEvents.has(eventId)) return false;
+  _processedEvents.add(eventId);
+  if (_processedEvents.size > MAX_CACHE) {
+    const first = _processedEvents.values().next().value;
+    if (first) _processedEvents.delete(first);
+  }
+  return true;
+}
+
 /**
  * Main Stripe webhook endpoint.
  * Verifies signature, then delegates to the centralized billing service
@@ -42,6 +57,12 @@ export async function POST(req: NextRequest) {
         { error: 'Invalid signature' },
         { status: 400 }
       );
+    }
+
+    // Idempotency: skip if already processed by this or the other webhook route
+    if (!markProcessed(event.id)) {
+      logger.info(`[webhook] Duplicate event ${event.id} — skipping`);
+      return NextResponse.json({ received: true, duplicate: true });
     }
 
     // Process event (updates DB)

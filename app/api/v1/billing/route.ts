@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     if (!auth.valid) {
       return NextResponse.json(
-        { success: false, error: auth.error || 'Unauthorized' },
+        { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }

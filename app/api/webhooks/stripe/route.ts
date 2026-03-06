@@ -6,6 +6,22 @@ import { processWebhookEvent } from '@/lib/services/stripe-billing.service';
 
 type Services = Awaited<ReturnType<typeof getStripeWebhookServices>>;
 
+// Simple in-memory idempotency cache to prevent double-processing when
+// both /api/webhook and /api/webhooks/stripe are registered in Stripe.
+const _processedEvents = new Set<string>();
+const MAX_CACHE = 1000;
+
+function markProcessed(eventId: string): boolean {
+  if (_processedEvents.has(eventId)) return false; // already processed
+  _processedEvents.add(eventId);
+  // Evict oldest entries to prevent unbounded growth
+  if (_processedEvents.size > MAX_CACHE) {
+    const first = _processedEvents.values().next().value;
+    if (first) _processedEvents.delete(first);
+  }
+  return true; // first time
+}
+
 export async function POST(request: NextRequest) {
   const svc = await getStripeWebhookServices();
   try {
@@ -17,6 +33,12 @@ export async function POST(request: NextRequest) {
     }
 
     const event = await svc.stripeService.constructWebhookEvent(body, signature);
+
+    // Idempotency: skip if this event was already processed by this or the other webhook route
+    if (!markProcessed(event.id)) {
+      logger.info(`[webhooks/stripe] Duplicate event ${event.id} — skipping`);
+      return NextResponse.json({ received: true, duplicate: true });
+    }
 
     await svc.auditService.logSecurityEvent(
       'stripe_webhook_received',
@@ -40,8 +62,15 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
-        // Delegate to centralized billing service for real DB updates
-        await processWebhookEvent(event);
+      case 'invoice.payment_succeeded':
+      case 'invoice.payment_failed':
+        // Delegate ALL billing events to centralized service for DB updates
+        try {
+          await processWebhookEvent(event);
+        } catch (procErr) {
+          logger.error(`[webhooks/stripe] Error processing ${event.type}:`, procErr);
+          // Don't re-throw — acknowledge receipt to prevent Stripe retry storm
+        }
         await handleSubscriptionEvent(svc, event.type, event.data.object);
         break;
 
@@ -54,20 +83,18 @@ export async function POST(request: NextRequest) {
     logger.error('Stripe webhook error:', error);
     await svc.auditService.logSecurityEvent(
       'stripe_webhook_error',
-      'high',
+      'medium',
       `Webhook processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     ).catch(() => {});
 
-    // Signature verification failures (from constructWebhookEvent) → 400 so Stripe knows
-    // the signature was invalid. Processing errors → 200 to acknowledge receipt and
-    // prevent Stripe from retrying for up to 3 days.
+    // Signature verification failures → 400. Processing errors → 200.
     const isSignatureError = error instanceof Error &&
       (error.message.includes('signature') || error.message.includes('Webhook'));
     if (isSignatureError) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 200 });
+    return NextResponse.json({ received: true, error: 'Processing failed' }, { status: 200 });
   }
 }
 
