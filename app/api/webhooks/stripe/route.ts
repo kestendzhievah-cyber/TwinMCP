@@ -48,15 +48,27 @@ export async function POST(request: NextRequest) {
 
     switch (event.type) {
       case 'payment_intent.succeeded':
-        await handlePaymentIntentSucceeded(svc, event.data.object);
+        try {
+          await handlePaymentIntentSucceeded(svc, event.data.object);
+        } catch (procErr) {
+          logger.error(`[webhooks/stripe] Error processing payment_intent.succeeded:`, procErr);
+        }
         break;
 
       case 'payment_intent.payment_failed':
-        await handlePaymentIntentFailed(svc, event.data.object);
+        try {
+          await handlePaymentIntentFailed(svc, event.data.object);
+        } catch (procErr) {
+          logger.error(`[webhooks/stripe] Error processing payment_intent.payment_failed:`, procErr);
+        }
         break;
 
       case 'charge.refunded':
-        await handleChargeRefunded(svc, event.data.object);
+        try {
+          await handleChargeRefunded(svc, event.data.object);
+        } catch (procErr) {
+          logger.error(`[webhooks/stripe] Error processing charge.refunded:`, procErr);
+        }
         break;
 
       case 'customer.subscription.created':

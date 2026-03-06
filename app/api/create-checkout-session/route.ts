@@ -86,9 +86,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!resolvedEmail) {
+    if (!resolvedEmail || typeof resolvedEmail !== 'string') {
       return NextResponse.json(
         { error: 'Email requis pour le paiement' },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resolvedEmail)) {
+      return NextResponse.json(
+        { error: 'Format d\'email invalide' },
         { status: 400 }
       );
     }

@@ -17,6 +17,13 @@ const PaymentForm = ({ authToken }: { authToken?: string }) => {
     setLoading(true)
     setMessage('')
 
+    // Client-side validation — backend also validates
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) {
+      setMessage('Montant invalide (entre 1€ et 10 000€)')
+      setLoading(false)
+      return
+    }
+
     try {
       // Create Payment Intent
       const response = await fetch('/api/payment', {

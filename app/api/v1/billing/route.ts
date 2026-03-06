@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       userProfile = await prisma.userProfile.findUnique({
         where: { userId: dbUser.id },
         include: {
-          subscriptions: { orderBy: { createdAt: 'desc' } },
+          subscriptions: { orderBy: { createdAt: 'desc' }, take: 10 },
           invoices: { orderBy: { issueDate: 'desc' }, take: 10 },
           credits: { where: { usedAt: null }, orderBy: { createdAt: 'desc' } },
           payments: { orderBy: { createdAt: 'desc' }, take: 10 },

@@ -37,6 +37,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Price ID et email requis' }, { status: 400 });
     }
 
+    // Validate email format
+    if (typeof customerEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+      return NextResponse.json({ error: 'Format d\'email invalide' }, { status: 400 });
+    }
+
     // Validate priceId format to prevent injection
     if (typeof priceId !== 'string' || !/^price_[a-zA-Z0-9]+$/.test(priceId)) {
       return NextResponse.json({ error: 'Format de Price ID invalide' }, { status: 400 });

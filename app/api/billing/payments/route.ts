@@ -56,8 +56,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (typeof amount !== 'number' || amount <= 0 || amount > 50000) {
+    // Validate invoiceId is a string (CUID format from Prisma)
+    if (typeof invoiceId !== 'string' || invoiceId.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(invoiceId)) {
+      return NextResponse.json({ error: 'Invalid invoice ID' }, { status: 400 });
+    }
+
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0 || amount > 50000) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    // Validate currency is a known 3-letter code
+    const ALLOWED_CURRENCIES = ['eur', 'usd', 'gbp'];
+    if (typeof currency !== 'string' || !ALLOWED_CURRENCIES.includes(currency.toLowerCase())) {
+      return NextResponse.json({ error: 'Invalid currency' }, { status: 400 });
     }
 
     const payment = await paymentService.createPayment(
