@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
             total: totalCredits,
             items: credits.map(c => ({
               id: c.id,
-              amount: Number(c.amount),
+              amount: Number(c.amount) || 0,
               currency: c.currency,
               reason: c.reason,
               type: c.type,

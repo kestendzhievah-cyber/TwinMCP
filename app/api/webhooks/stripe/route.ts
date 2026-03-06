@@ -135,7 +135,7 @@ async function handlePaymentIntentSucceeded(svc: Services, paymentIntent: any) {
     await svc.auditService.logSecurityEvent(
       'payment_succeeded',
       'low',
-      `Payment succeeded: invoice=${String(invoiceId || '').slice(0, 64)}, payment=${String(paymentId || '').slice(0, 64)}, amount=${paymentIntent.amount}`
+      `Payment succeeded: invoice=${String(invoiceId || '').slice(0, 64)}, payment=${String(paymentId || '').slice(0, 64)}, amount=${Number(paymentIntent.amount) || 0}`
     );
   } catch (error) {
     logger.error('Error handling payment intent succeeded:', error);
@@ -182,7 +182,7 @@ async function handleChargeRefunded(svc: Services, charge: any) {
     await svc.auditService.logSecurityEvent(
       'charge_refunded',
       'low',
-      `Charge refunded: charge=${safeChargeId}, paymentIntent=${safePI}, amount=${charge.amount_refunded}`
+      `Charge refunded: charge=${safeChargeId}, paymentIntent=${safePI}, amount=${Number(charge.amount_refunded) || 0}`
     );
   } catch (error) {
     logger.error('Error handling charge refunded:', error);

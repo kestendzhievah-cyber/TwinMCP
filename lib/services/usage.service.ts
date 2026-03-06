@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
 import { logger } from '@/lib/logger';
-import { PLAN_CONFIG } from '@/lib/services/stripe-billing.service';
+import { PLAN_CONFIG, resolvePlanId } from '@/lib/services/stripe-billing.service';
 
 export interface UsageStats {
   apiKeyId: string;
@@ -314,8 +314,8 @@ export class UsageService {
     });
 
     const subscription = userProfile?.subscriptions?.[0];
-    const plan = subscription?.plan || 'free';
-    const tier = plan as 'free' | 'pro' | 'enterprise';
+    const rawPlan = subscription?.plan || 'free';
+    const tier = resolvePlanId(rawPlan) as 'free' | 'pro' | 'enterprise';
     const limits = PLAN_LIMITS[tier] || PLAN_LIMITS.free;
 
     // Get all user's API keys

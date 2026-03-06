@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="invoice-${String(invoice.number).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf"`,
+        'Content-Disposition': `attachment; filename="invoice-${String(invoice.number || invoiceId).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf"`,
         'Content-Length': pdfBuffer.length.toString(),
       },
     });

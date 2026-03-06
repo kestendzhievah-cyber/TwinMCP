@@ -490,7 +490,7 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
       })
     );
   } else {
-    logger.warn(`[stripe-webhook] subscription.deleted — sub ${sub.id} not found in DB`);
+    logger.warn(`[stripe-webhook] subscription.deleted — sub ${String(sub.id || '').slice(0, 64)} not found in DB`);
   }
 
   if (customerId) {
