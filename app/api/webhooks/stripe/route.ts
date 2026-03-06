@@ -89,8 +89,9 @@ export async function POST(request: NextRequest) {
     ).catch(() => {});
 
     // Signature verification failures → 400. Processing errors → 200.
-    const isSignatureError = error instanceof Error &&
-      (error.message.includes('signature') || error.message.includes('Webhook'));
+    // Use Stripe's error type for reliable detection instead of fragile string matching
+    const isSignatureError = (error as any)?.type === 'StripeSignatureVerificationError' ||
+      (error instanceof Error && (error.message.includes('signature') || error.message.includes('Webhook')));
     if (isSignatureError) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
@@ -160,10 +161,12 @@ async function handleChargeRefunded(svc: Services, charge: any) {
   try {
     const paymentIntent = charge.payment_intent;
 
+    const safeChargeId = String(charge.id || '').slice(0, 64);
+    const safePI = String(typeof paymentIntent === 'string' ? paymentIntent : paymentIntent?.id || '').slice(0, 64);
     await svc.auditService.logSecurityEvent(
       'charge_refunded',
       'low',
-      `Charge refunded: ${charge.id}, paymentIntent: ${paymentIntent}, amount: ${charge.amount_refunded}`
+      `Charge refunded: charge=${safeChargeId}, paymentIntent=${safePI}, amount=${charge.amount_refunded}`
     );
   } catch (error) {
     logger.error('Error handling charge refunded:', error);
@@ -176,7 +179,7 @@ async function handleSubscriptionEvent(svc: Services, eventType: string, subscri
     await svc.auditService.logSecurityEvent(
       'subscription_event',
       'low',
-      `Subscription event: ${eventType}, subscriptionId: ${subscription.id}, status: ${subscription.status}`
+      `Subscription event: ${eventType}, sub=${String(subscription.id || '').slice(0, 64)}, status=${String(subscription.status || '').slice(0, 32)}`
     );
   } catch (error) {
     // Audit logging is non-critical — never let it mask a successful processWebhookEvent

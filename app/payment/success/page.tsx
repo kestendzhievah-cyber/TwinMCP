@@ -16,7 +16,6 @@ interface SessionData {
   metadata: {
     planId: string;
     billingPeriod: string;
-    userId: string;
   } | null;
 }
 

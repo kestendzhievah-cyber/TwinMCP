@@ -29,7 +29,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { planId, billingPeriod = 'monthly', userId, userEmail, userName } = body;
+    const { planId, billingPeriod = 'monthly', userId, userEmail, userName: rawUserName } = body;
+    // Sanitize userName: strip HTML, cap length
+    const userName = typeof rawUserName === 'string'
+      ? rawUserName.replace(/<[^>]*>/g, '').slice(0, 100).trim() || null
+      : null;
 
     if (!planId || typeof planId !== 'string') {
       return NextResponse.json({ error: 'Plan ID requis' }, { status: 400 });
@@ -214,7 +218,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Only return safe fields — never expose raw metadata
+    // Only return safe fields — never expose raw metadata or internal IDs
     return NextResponse.json({
       status: session.status,
       paymentStatus: session.payment_status,
@@ -224,7 +228,6 @@ export async function GET(req: NextRequest) {
       metadata: session.metadata ? {
         planId: session.metadata.planId,
         billingPeriod: session.metadata.billingPeriod,
-        userId: session.metadata.userId,
       } : null,
     });
   } catch (error) {

@@ -33,6 +33,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Profil utilisateur non trouvé' }, { status: 404 });
     }
 
+    // Guard against oversized bodies — this route only needs a small returnUrl field
+    const contentLength = parseInt(req.headers.get('content-length') || '0', 10);
+    if (contentLength > 2048) {
+      return NextResponse.json({ error: 'Requête trop volumineuse' }, { status: 413 });
+    }
     const body = await req.json().catch(() => ({}));
     const defaultReturn = `${req.nextUrl.origin}/dashboard/billing`;
 

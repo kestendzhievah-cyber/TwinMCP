@@ -418,8 +418,12 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   }
 
   const resolved = resolvePlanId(planId);
-  const interval = sub.items.data[0]?.plan?.interval;
-  const amount = (sub.items.data[0]?.plan?.amount ?? 0) / 100;
+  const firstItem = sub.items.data[0];
+  if (!firstItem) {
+    logger.warn(`[stripe-webhook] subscription.updated — sub ${sub.id} has no items`);
+  }
+  const interval = firstItem?.plan?.interval;
+  const amount = (firstItem?.plan?.amount ?? 0) / 100;
 
   // Atomic: upsert subscription + update user plan in a single transaction
   const newPlan = sub.status === 'active' || sub.status === 'trialing' ? resolved : 'free';
@@ -427,7 +431,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
     status: mapStripeSubStatus(sub.status),
     plan: resolved,
     stripeCustomerId: customerId ?? undefined,
-    stripePriceId: sub.items.data[0]?.price?.id ?? undefined,
+    stripePriceId: firstItem?.price?.id ?? undefined,
     currentPeriodStart: new Date((sub as any).current_period_start * 1000),
     currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
     cancelAtPeriodEnd: sub.cancel_at_period_end,
