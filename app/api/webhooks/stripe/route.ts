@@ -38,14 +38,14 @@ export async function POST(request: NextRequest) {
 
     // Idempotency: skip if this event was already processed by this or the other webhook route
     if (!markProcessed(event.id)) {
-      logger.info(`[webhooks/stripe] Duplicate event ${event.id} — skipping`);
+      logger.info(`[webhooks/stripe] Duplicate event ${String(event.id || '').slice(0, 64)} — skipping`);
       return NextResponse.json({ received: true, duplicate: true });
     }
 
     await svc.auditService.logSecurityEvent(
       'stripe_webhook_received',
       'low',
-      `Webhook event type: ${event.type}, eventId: ${event.id}`
+      `Webhook event type: ${event.type}, eventId: ${String(event.id || '').slice(0, 64)}`
     );
 
     switch (event.type) {

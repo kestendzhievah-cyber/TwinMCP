@@ -465,7 +465,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   ]);
 
   logger.info(
-    `[stripe-webhook] Subscription ${sub.id} updated → plan=${newPlan}, status=${sub.status}`
+    `[stripe-webhook] Subscription ${String(sub.id || '').slice(0, 64)} updated → plan=${newPlan}, status=${sub.status}`
   );
 }
 

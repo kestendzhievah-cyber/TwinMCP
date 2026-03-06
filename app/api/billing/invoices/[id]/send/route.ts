@@ -23,6 +23,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
+    // Only DRAFT invoices can be sent — prevent re-sending PAID/CANCELLED/OVERDUE invoices
+    if (invoice.status !== 'DRAFT') {
+      return NextResponse.json(
+        { error: `Cannot send invoice with status ${invoice.status}` },
+        { status: 400 }
+      );
+    }
+
     await invoiceService.sendInvoice(invoice);
 
     const updatedInvoice = await invoiceService.getInvoice(invoiceId, auth.userId);

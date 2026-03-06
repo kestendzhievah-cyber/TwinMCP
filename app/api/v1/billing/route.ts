@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
       id: inv.id,
       number: inv.number,
       status: inv.status,
-      amount: Number(inv.total),
+      amount: Number(inv.total) || 0,
       currency: inv.currency,
       issueDate: inv.issueDate.toISOString(),
       dueDate: inv.dueDate.toISOString(),
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     // Format payments for response
     const formattedPayments = payments.map(pay => ({
       id: pay.id,
-      amount: Number(pay.amount),
+      amount: Number(pay.amount) || 0,
       currency: pay.currency,
       status: pay.status,
       createdAt: pay.createdAt.toISOString(),
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
           id: activeSubscription.id,
           plan: activeSubscription.plan,
           status: activeSubscription.status,
-          amount: Number(activeSubscription.amount),
+          amount: Number(activeSubscription.amount) || 0,
           currency: activeSubscription.currency,
           interval: activeSubscription.interval,
           currentPeriodStart: activeSubscription.currentPeriodStart.toISOString(),

@@ -134,11 +134,14 @@ export class UsageService {
         // Atomic INCR first — avoids TOCTOU race where two concurrent requests
         // both read the same count via GET, both pass the limit, and both INCR.
         // If over limit, DECR to undo and reject.
-        currentDaily = await this.redis.incr(dailyKey);
-        // Set TTL only on first increment (when value is 1)
-        if (currentDaily === 1) {
-          await this.redis.expire(dailyKey, 86400); // 24 hours
-        }
+        // Always set TTL after INCR as a safety net — if a previous expire failed
+        // (network glitch when currentDaily was 1), the key would persist forever.
+        // Redis EXPIRE on an existing key is idempotent and cheap.
+        const incrPipeline = this.redis.pipeline();
+        incrPipeline.incr(dailyKey);
+        incrPipeline.expire(dailyKey, 86400); // 24 hours
+        const incrResults = await incrPipeline.exec();
+        currentDaily = (incrResults?.[0]?.[1] as number) || 0;
 
         if (currentDaily > limits.dailyLimit) {
           // Undo the increment — request is rejected

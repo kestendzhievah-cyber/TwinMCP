@@ -77,9 +77,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid payment provider' }, { status: 400 });
     }
 
-    // Validate paymentMethod is an object with expected shape
+    // Validate paymentMethod is an object with expected shape and bounded size
     if (!paymentMethod || typeof paymentMethod !== 'object' || Array.isArray(paymentMethod)) {
       return NextResponse.json({ error: 'Invalid payment method' }, { status: 400 });
+    }
+    const pmStr = JSON.stringify(paymentMethod);
+    if (pmStr.length > 2048) {
+      return NextResponse.json({ error: 'Payment method data too large' }, { status: 400 });
     }
 
     const payment = await paymentService.createPayment(

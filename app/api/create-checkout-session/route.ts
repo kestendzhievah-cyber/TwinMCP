@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
         });
 
         if (dbUser) {
-          resolvedEmail = resolvedEmail ?? dbUser.email;
+          // Use DB email as authoritative for authenticated users — never trust body.userEmail
+          resolvedEmail = dbUser.email;
           if (dbUser.profile) {
             userProfileId = dbUser.profile.id;
           } else {

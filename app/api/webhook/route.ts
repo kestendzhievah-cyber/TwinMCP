@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     // Idempotency: skip if already processed by this or the other webhook route
     if (!markProcessed(event.id)) {
-      logger.info(`[webhook] Duplicate event ${event.id} — skipping`);
+      logger.info(`[webhook] Duplicate event ${String(event.id || '').slice(0, 64)} — skipping`);
       return NextResponse.json({ received: true, duplicate: true });
     }
 
