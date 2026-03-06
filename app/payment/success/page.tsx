@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle, Sparkles, ArrowRight, Loader2, Mail, Download, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useAuth } from '@/lib/auth-context';
 
 interface SessionData {
   status: string;
@@ -21,6 +22,7 @@ interface SessionData {
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const sessionId = searchParams.get('session_id');
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,18 @@ function PaymentSuccessContent() {
       }
 
       try {
-        const response = await fetch(`/api/create-checkout-session?session_id=${sessionId}`);
+        // Send auth header so the backend can enforce ownership check
+        const headers: Record<string, string> = {};
+        if (user) {
+          try {
+            const token = await user.getIdToken();
+            headers.Authorization = `Bearer ${token}`;
+          } catch {
+            // Token fetch may fail — continue without it
+          }
+        }
+
+        const response = await fetch(`/api/create-checkout-session?session_id=${sessionId}`, { headers });
         const data = await response.json();
 
         if (response.ok) {
@@ -63,7 +76,7 @@ function PaymentSuccessContent() {
     };
 
     fetchSessionData();
-  }, [sessionId]);
+  }, [sessionId, user]);
 
   const formatAmount = (amount: number | null, currency: string | null) => {
     if (!amount || !currency) return '—';

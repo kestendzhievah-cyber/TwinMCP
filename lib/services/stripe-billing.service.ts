@@ -130,7 +130,26 @@ export async function getOrCreateStripeCustomer(
   let customerId: string;
 
   if (existing.data.length > 0) {
-    customerId = existing.data[0].id;
+    const candidateId = existing.data[0].id;
+
+    // Safety check: ensure this Stripe customer isn't already claimed by a DIFFERENT user
+    const claimedBy = await prisma.userProfile.findFirst({
+      where: { stripeCustomerId: candidateId, id: { not: userProfileId } },
+      select: { id: true },
+    });
+
+    if (claimedBy) {
+      // This Stripe customer belongs to another user — create a new one instead
+      logger.warn(`[stripe] Customer ${candidateId} already claimed by profile ${claimedBy.id}, creating new for ${userProfileId}`);
+      const customer = await stripe.customers.create({
+        email,
+        name: name ?? undefined,
+        metadata: { userProfileId },
+      });
+      customerId = customer.id;
+    } else {
+      customerId = candidateId;
+    }
   } else {
     const customer = await stripe.customers.create({
       email,

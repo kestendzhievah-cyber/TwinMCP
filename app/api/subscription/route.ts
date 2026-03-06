@@ -37,6 +37,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Price ID et email requis' }, { status: 400 });
     }
 
+    // Validate priceId format to prevent injection
+    if (typeof priceId !== 'string' || !/^price_[a-zA-Z0-9]+$/.test(priceId)) {
+      return NextResponse.json({ error: 'Format de Price ID invalide' }, { status: 400 });
+    }
+
     // Verify the authenticated user owns this email via their DB profile
     const { prisma } = await import('@/lib/prisma');
     const dbUser = await prisma.user.findFirst({
@@ -130,7 +135,9 @@ export async function GET(req: NextRequest) {
     const customerIdFromSub = typeof subscription.customer === 'string'
       ? subscription.customer
       : subscription.customer?.id;
-    if (dbUser?.profile?.stripeCustomerId && customerIdFromSub !== dbUser.profile.stripeCustomerId) {
+
+    // Deny by default: user must have a stripeCustomerId that matches the subscription's customer
+    if (!dbUser?.profile?.stripeCustomerId || customerIdFromSub !== dbUser.profile.stripeCustomerId) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 

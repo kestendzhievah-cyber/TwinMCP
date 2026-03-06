@@ -178,7 +178,7 @@ async function handleSubscriptionEvent(svc: Services, eventType: string, subscri
       `Subscription event: ${eventType}, subscriptionId: ${subscription.id}, status: ${subscription.status}`
     );
   } catch (error) {
-    logger.error('Error handling subscription event:', error);
-    throw error;
+    // Audit logging is non-critical — never let it mask a successful processWebhookEvent
+    logger.error('Error logging subscription audit event:', error);
   }
 }

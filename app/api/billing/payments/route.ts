@@ -14,8 +14,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     // Use authenticated userId — ignore query param to prevent IDOR
     const userId = auth.userId;
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const rawLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
+    const limit = Math.min(Math.max(isNaN(rawLimit) ? 50 : rawLimit, 1), 100);
+    const offset = Math.max(isNaN(rawOffset) ? 0 : rawOffset, 0);
 
     const payments = await paymentService.getUserPayments(userId, limit, offset);
 
@@ -52,6 +54,10 @@ export async function POST(request: NextRequest) {
 
     if (!invoiceId || !amount || !currency || !paymentMethod) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (typeof amount !== 'number' || amount <= 0 || amount > 50000) {
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
     const payment = await paymentService.createPayment(
