@@ -198,16 +198,19 @@ export async function GET(req: NextRequest) {
       expand: ['customer', 'subscription'],
     });
 
-    // Verify ownership: if session has a userId in metadata, check it matches the auth
-    const authHeader = req.headers.get('authorization');
-    if (authHeader && session.metadata?.userId) {
+    // Verify ownership: if session has a userId in metadata, require auth and check match
+    if (session.metadata?.userId) {
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader) {
+        return NextResponse.json({ error: 'Authentification requise' }, { status: 401 });
+      }
       try {
         const auth = await validateAuth(authHeader);
-        if (auth.valid && auth.userId && auth.userId !== session.metadata.userId) {
+        if (!auth.valid || !auth.userId || auth.userId !== session.metadata.userId) {
           return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
         }
       } catch {
-        // Auth is optional for the success page (user might not have token)
+        return NextResponse.json({ error: 'Authentification invalide' }, { status: 401 });
       }
     }
 

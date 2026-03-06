@@ -131,7 +131,17 @@ export class UsageService {
         const hourlyKey = this.getHourlyKey(apiKeyId);
         const monthlyKey = this.getMonthlyKey(apiKeyId);
 
-        // Increment counters
+        // Read current count BEFORE incrementing to avoid inflating counters
+        // for requests that will be rejected by the limit check below
+        const currentDailyStr = await this.redis.get(dailyKey);
+        currentDaily = parseInt(currentDailyStr || '0', 10) + 1;
+
+        // Check limit before incrementing — prevents counter drift on rejected requests
+        if (currentDaily > limits.dailyLimit) {
+          return { allowed: false, remaining: 0 };
+        }
+
+        // Within limits — now increment all counters atomically
         const pipeline = this.redis.pipeline();
         pipeline.incr(dailyKey);
         pipeline.expire(dailyKey, 86400); // 24 hours
@@ -141,7 +151,6 @@ export class UsageService {
         pipeline.expire(monthlyKey, 2678400); // 31 days
 
         const results = await pipeline.exec();
-        currentDaily = (results?.[0]?.[1] as number) || 0;
         currentHourly = (results?.[2]?.[1] as number) || 0;
       } else {
         // Fallback to database counting

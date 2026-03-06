@@ -65,13 +65,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'Valid status is required' }, { status: 400 });
     }
 
+    // Validate metadata: must be a plain object (or undefined) with bounded size
+    if (metadata !== undefined && metadata !== null) {
+      if (typeof metadata !== 'object' || Array.isArray(metadata)) {
+        return NextResponse.json({ error: 'Invalid metadata format' }, { status: 400 });
+      }
+      const metaStr = JSON.stringify(metadata);
+      if (metaStr.length > 4096) {
+        return NextResponse.json({ error: 'Metadata too large' }, { status: 400 });
+      }
+    }
+
     // Verify the invoice belongs to the authenticated user before allowing update
     const existing = await invoiceService.getInvoice(invoiceId, auth.userId);
     if (!existing) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    await invoiceService.updateInvoiceStatus(invoiceId, status, metadata);
+    await invoiceService.updateInvoiceStatus(invoiceId, status, metadata ?? undefined);
 
     const updatedInvoice = await invoiceService.getInvoice(invoiceId, auth.userId);
 

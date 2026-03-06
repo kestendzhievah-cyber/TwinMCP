@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const auth = await validateAuth(req.headers.get('authorization'));
-    if (!auth.valid) {
+    if (!auth.valid || !auth.userId) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         enabled: true,
       },
       metadata: {
-        userId: auth.userId ?? 'unknown',
+        userId: auth.userId,
       },
     });
 

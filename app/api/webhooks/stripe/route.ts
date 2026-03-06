@@ -123,7 +123,7 @@ async function handlePaymentIntentSucceeded(svc: Services, paymentIntent: any) {
     await svc.auditService.logSecurityEvent(
       'payment_succeeded',
       'low',
-      `Payment succeeded for invoice ${invoiceId}, paymentId: ${paymentId}, amount: ${paymentIntent.amount}`
+      `Payment succeeded: invoice=${String(invoiceId || '').slice(0, 64)}, payment=${String(paymentId || '').slice(0, 64)}, amount=${paymentIntent.amount}`
     );
   } catch (error) {
     logger.error('Error handling payment intent succeeded:', error);
@@ -148,7 +148,7 @@ async function handlePaymentIntentFailed(svc: Services, paymentIntent: any) {
     await svc.auditService.logSecurityEvent(
       'payment_failed',
       'medium',
-      `Payment failed for invoice ${invoiceId}, paymentId: ${paymentId}, error: ${paymentIntent.last_payment_error?.message}`
+      `Payment failed: invoice=${String(invoiceId || '').slice(0, 64)}, payment=${String(paymentId || '').slice(0, 64)}`
     );
   } catch (error) {
     logger.error('Error handling payment intent failed:', error);
