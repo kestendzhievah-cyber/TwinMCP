@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     // Use authenticated userId — ignore query param to prevent IDOR
     const userId = auth.userId;
-    const status = searchParams.get('status') as InvoiceStatus | null;
+    const rawStatus = searchParams.get('status');
+    const status = rawStatus && Object.values(InvoiceStatus).includes(rawStatus as InvoiceStatus)
+      ? (rawStatus as InvoiceStatus)
+      : null;
     const rawLimit = parseInt(searchParams.get('limit') || '50', 10);
     const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
     const limit = Math.min(Math.max(isNaN(rawLimit) ? 50 : rawLimit, 1), 100);
@@ -63,16 +66,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Valid billing period is required' }, { status: 400 });
     }
 
-    // Validate period.type against known values
-    const VALID_PERIOD_TYPES: string[] = ['MONTHLY', 'QUARTERLY', 'YEARLY'];
-    if (typeof period.type !== 'string' || !VALID_PERIOD_TYPES.includes(period.type)) {
+    // Validate period.type against known enum values
+    if (typeof period.type !== 'string' || !Object.values(BillingPeriodType).includes(period.type as BillingPeriodType)) {
       return NextResponse.json({ error: 'Invalid billing period type' }, { status: 400 });
+    }
+
+    const startDate = new Date(period.startDate);
+    const endDate = new Date(period.endDate);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+    }
+    if (endDate <= startDate) {
+      return NextResponse.json({ error: 'endDate must be after startDate' }, { status: 400 });
     }
 
     const billingPeriod: BillingPeriod = {
       type: period.type as BillingPeriodType,
-      startDate: new Date(period.startDate),
-      endDate: new Date(period.endDate),
+      startDate,
+      endDate,
     };
 
     const requestContext = {

@@ -15,7 +15,7 @@ export class StripeService {
   private getClient(): Stripe {
     if (!this.stripe) {
       const apiKey = process.env.STRIPE_SECRET_KEY;
-      if (!apiKey) {
+      if (!apiKey || apiKey.includes('your-stripe')) {
         throw new Error('STRIPE_SECRET_KEY is not configured');
       }
       this.stripe = new Stripe(apiKey);

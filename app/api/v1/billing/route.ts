@@ -21,14 +21,14 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
 
-    if (!auth.valid) {
+    if (!auth.valid || !auth.userId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const userId = auth.userId!;
+    const userId = auth.userId;
 
     // Find user
     let dbUser;

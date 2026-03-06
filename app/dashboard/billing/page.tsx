@@ -197,7 +197,7 @@ export default function BillingPage() {
     setDownloadingId(invoice.id);
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/billing/invoices/${invoice.id}/pdf`, {
+      const response = await fetch(`/api/billing/invoices/${encodeURIComponent(invoice.id)}/pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

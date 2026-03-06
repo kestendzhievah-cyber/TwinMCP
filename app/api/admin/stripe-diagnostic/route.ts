@@ -39,13 +39,19 @@ async function ensureAdmin(request: NextRequest): Promise<NextResponse | null> {
   const configuredAdminKey = process.env.ADMIN_SECRET_KEY;
 
   if (configuredAdminKey && adminKey) {
-    // Use timing-safe comparison to prevent timing attacks
-    const { timingSafeEqual } = await import('crypto');
-    const a = Buffer.from(adminKey);
-    const b = Buffer.from(configuredAdminKey);
-    if (a.length === b.length && timingSafeEqual(a, b)) {
+    // Use timing-safe comparison to prevent timing attacks.
+    // Pad both to same length so timingSafeEqual never throws and
+    // we don't leak length info via an early-exit path.
+    const { timingSafeEqual, createHmac } = await import('crypto');
+    const hmac = (v: string) => createHmac('sha256', 'admin-key-cmp').update(v).digest();
+    if (timingSafeEqual(hmac(adminKey), hmac(configuredAdminKey))) {
       return null;
     }
+    // Admin key was provided but incorrect — reject immediately
+    return NextResponse.json(
+      { success: false, error: 'Invalid admin key', code: 'FORBIDDEN' },
+      { status: 403 }
+    );
   }
 
   const { context, error } = await authenticateRequest(request, {

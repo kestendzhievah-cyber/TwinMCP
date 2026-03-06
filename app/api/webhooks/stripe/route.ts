@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     await svc.auditService.logSecurityEvent(
       'stripe_webhook_error',
       'medium',
-      `Webhook processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      'Webhook processing failed'
     ).catch(() => {});
 
     // Signature verification failures → 400. Processing errors → 200.
