@@ -372,14 +372,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // Persist Stripe customer ID and update plan
-  await prisma.userProfile.update({
+  // Persist Stripe customer ID and update plan — use updateMany to avoid P2025
+  // if a concurrent handleSubscriptionUpdated transaction is modifying the same row
+  const updated = await prisma.userProfile.updateMany({
     where: { id: userProfileId },
     data: {
       stripeCustomerId: customerId,
       plan: resolvePlanId(planId),
     },
   });
+
+  if (updated.count === 0) {
+    logger.warn(`[stripe-webhook] checkout.session.completed — profile ${userProfileId} not found for update`);
+  }
 
   logger.info(`[stripe-webhook] Checkout completed for profile=${userProfileId}, plan=${planId}`);
 }
@@ -485,6 +490,19 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
         data: { plan: 'free' },
       })
     );
+  } else {
+    // Fallback: use metadata.userProfileId if customerId is missing
+    const userProfileId = sub.metadata?.userProfileId;
+    if (userProfileId) {
+      ops.push(
+        prisma.userProfile.updateMany({
+          where: { id: userProfileId },
+          data: { plan: 'free' },
+        })
+      );
+    } else {
+      logger.warn(`[stripe-webhook] subscription.deleted — no customerId or userProfileId to downgrade`);
+    }
   }
 
   if (ops.length > 0) {

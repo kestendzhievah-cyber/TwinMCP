@@ -31,7 +31,12 @@ export async function POST(req: NextRequest) {
 
     const stripe = getStripe();
     const body = await req.json();
-    const { amount, currency = 'eur', description } = body;
+    const { amount, currency = 'eur', description: rawDescription } = body;
+
+    // Sanitize description: cap length, strip HTML, fallback to empty
+    const description = typeof rawDescription === 'string'
+      ? rawDescription.replace(/<[^>]*>/g, '').slice(0, 200).trim() || undefined
+      : undefined;
 
     const MAX_AMOUNT = 10000; // 10 000€ safety cap
     const ALLOWED_CURRENCIES = ['eur', 'usd', 'gbp'];

@@ -31,8 +31,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { planId, billingPeriod = 'monthly', userId, userEmail, userName } = body;
 
-    if (!planId) {
+    if (!planId || typeof planId !== 'string') {
       return NextResponse.json({ error: 'Plan ID requis' }, { status: 400 });
+    }
+
+    if (billingPeriod && typeof billingPeriod !== 'string') {
+      return NextResponse.json({ error: 'Période de facturation invalide' }, { status: 400 });
     }
 
     // Find or create user profile

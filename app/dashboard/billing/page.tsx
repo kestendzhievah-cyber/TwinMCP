@@ -149,16 +149,18 @@ export default function BillingPage() {
     setError(null);
 
     try {
-      let token = '';
+      let token: string;
       try {
         token = await user.getIdToken();
       } catch (tokenError) {
-        console.warn('Could not get ID token');
+        setError('Impossible de vérifier votre identité. Veuillez vous reconnecter.');
+        setLoading(false);
+        return;
       }
 
       const response = await fetch('/api/v1/billing', {
         headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });

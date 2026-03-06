@@ -46,11 +46,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Validate planId is a known plan
+    if (typeof planId !== 'string' || !['free', 'pro', 'professional', 'enterprise', 'starter'].includes(planId)) {
+      return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 });
+    }
+
+    // Validate paymentMethodId format (Stripe pm_ prefix)
+    if (typeof paymentMethodId !== 'string' || !/^pm_[a-zA-Z0-9]+$/.test(paymentMethodId)) {
+      return NextResponse.json({ error: 'Invalid payment method ID' }, { status: 400 });
+    }
+
+    // Validate trialDays is a reasonable non-negative integer
+    const safeTrialDays = Math.max(0, Math.min(Math.floor(Number(trialDays) || 0), 30));
+
     const subscription = await subscriptionService.createSubscription(
       userId,
       planId,
       paymentMethodId,
-      trialDays
+      safeTrialDays
     );
 
     return NextResponse.json({
