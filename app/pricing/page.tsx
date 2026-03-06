@@ -48,7 +48,7 @@ const plans: Plan[] = [
     popular: false,
   },
   {
-    id: 'professional',
+    id: 'pro',
     name: 'Professional',
     description: 'Le plus populaire',
     priceMonthly: '14.99',
@@ -120,10 +120,20 @@ function PricingContent() {
       }
 
       // Professional - create checkout session
+      let authToken: string | null = null;
+      if (user) {
+        try {
+          authToken = await user.getIdToken();
+        } catch {
+          // Token fetch may fail — continue without it
+        }
+      }
+
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
           planId,
@@ -131,7 +141,6 @@ function PricingContent() {
           userId: user?.uid || null,
           userEmail: user?.email || null,
           userName: user?.displayName || null,
-          mode: 'subscription',
         }),
       });
 

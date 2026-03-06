@@ -3,6 +3,17 @@ import { authenticateRequest } from '@/lib/middleware/auth-middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
+// Cached Stripe client singleton for diagnostic route
+let _stripe: Stripe | null = null;
+let _stripeKey: string | null = null;
+function getCachedStripe(key: string): Stripe {
+  if (!_stripe || _stripeKey !== key) {
+    _stripe = new Stripe(key);
+    _stripeKey = key;
+  }
+  return _stripe;
+}
+
 type CheckStatus = 'ok' | 'warn' | 'fail';
 
 type DiagnosticCheck = {
@@ -109,7 +120,7 @@ export async function GET(request: NextRequest) {
     metadata: { mode: keyMode, keyPreview: maskSecret(secretKey) },
   });
 
-  const stripe = new Stripe(secretKey);
+  const stripe = getCachedStripe(secretKey);
 
   try {
     const account = await stripe.accounts.retrieve();

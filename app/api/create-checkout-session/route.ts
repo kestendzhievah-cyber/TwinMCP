@@ -8,6 +8,17 @@ import {
   isStripeConfigured,
 } from '@/lib/services/stripe-billing.service';
 
+// Cached Stripe client singleton for GET handler
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new Error('STRIPE_SECRET_KEY is not configured');
+    _stripe = new Stripe(key);
+  }
+  return _stripe;
+}
+
 export async function POST(req: NextRequest) {
   try {
     if (!isStripeConfigured()) {
@@ -163,8 +174,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Format de session invalide' }, { status: 400 });
     }
 
-    const key = process.env.STRIPE_SECRET_KEY!;
-    const stripe = new Stripe(key);
+    const stripe = getStripe();
 
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['customer', 'subscription'],

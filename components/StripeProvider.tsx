@@ -24,8 +24,13 @@ let stripePromise: Promise<Stripe | null> | null = null;
 export function StripeProvider({ children }: { children: React.ReactNode }) {
   const getStripe = useCallback(async () => {
     if (!stripePromise) {
+      const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+      if (!publishableKey) {
+        console.warn('[StripeProvider] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not configured');
+        return null;
+      }
       const { loadStripe } = await import('@stripe/stripe-js');
-      stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
+      stripePromise = loadStripe(publishableKey);
     }
     return stripePromise;
   }, []);

@@ -7,11 +7,12 @@ import { Button } from './ui/button';
 
 interface PaymentFormProps {
   invoice: Invoice;
+  authToken?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) {
+export function PaymentForm({ invoice, authToken, onSuccess, onCancel }: PaymentFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<'stripe' | 'paypal' | 'wise'>('stripe');
@@ -25,27 +26,21 @@ export function PaymentForm({ invoice, onSuccess, onCancel }: PaymentFormProps) 
     setError(null);
 
     try {
-      const paymentMethod = {
-        id: `pm_${Date.now()}`,
-        userId: invoice.userId,
-        type: paymentMethodType,
-        provider,
-        isDefault: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any as PaymentMethod;
+      if (!authToken) {
+        throw new Error('Authentication required');
+      }
 
       const response = await fetch('/api/billing/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           invoiceId: invoice.id,
-          userId: invoice.userId,
           amount: invoice.total,
           currency: invoice.currency,
-          paymentMethod,
+          paymentMethod: { type: paymentMethodType, provider },
           provider,
         }),
       });

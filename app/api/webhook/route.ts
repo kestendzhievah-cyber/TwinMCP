@@ -63,10 +63,12 @@ export async function POST(req: NextRequest) {
       processedIn: `${Date.now() - start}ms`,
     });
   } catch (error) {
+    // Return 200 to acknowledge receipt — returning 5xx causes Stripe to retry for 3 days.
+    // The event will be logged for manual investigation.
     logger.error('[webhook] Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { received: true, error: 'Unexpected error' },
+      { status: 200 }
     );
   }
 }

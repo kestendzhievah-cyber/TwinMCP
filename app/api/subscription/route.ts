@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const auth = await validateAuth(req.headers.get('authorization'));
-    if (!auth.valid) {
+    if (!auth.valid || !auth.userId) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
@@ -37,23 +37,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Price ID et email requis' }, { status: 400 });
     }
 
-    // Create or retrieve customer
-    let customer = await stripe.customers
-      .list({ email: customerEmail, limit: 1 })
-      .then((res) => res.data[0]);
+    // Verify the authenticated user owns this email via their DB profile
+    const { prisma } = await import('@/lib/prisma');
+    const dbUser = await prisma.user.findFirst({
+      where: { OR: [{ id: auth.userId }, { oauthId: auth.userId }] },
+      include: { profile: true },
+    });
 
-    if (!customer) {
-      customer = await stripe.customers.create({
-        email: customerEmail,
-      });
+    if (!dbUser) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
 
-    // Create subscription
+    // Use centralized customer management to prevent orphaned Stripe customers
+    const { getOrCreateStripeCustomer } = await import('@/lib/services/stripe-billing.service');
+
+    let userProfileId = dbUser.profile?.id;
+    if (!userProfileId) {
+      const profile = await prisma.userProfile.create({
+        data: { userId: dbUser.id, email: dbUser.email },
+      });
+      userProfileId = profile.id;
+    }
+
+    const customerId = await getOrCreateStripeCustomer(
+      userProfileId,
+      customerEmail,
+      dbUser.name
+    );
+
+    // Create subscription with metadata for webhook handler
     const subscription = await stripe.subscriptions.create({
-      customer: customer.id,
+      customer: customerId,
       items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
       expand: ['latest_invoice.payment_intent'],
+      metadata: {
+        userId: auth.userId,
+        userProfileId,
+      },
     });
 
     return NextResponse.json({

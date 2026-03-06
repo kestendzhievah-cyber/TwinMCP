@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 
-const PaymentForm = () => {
+const PaymentForm = ({ authToken }: { authToken?: string }) => {
   const stripe = useStripe()
   const elements = useElements()
   const [amount, setAmount] = useState(10)
@@ -21,14 +21,25 @@ const PaymentForm = () => {
       // Create Payment Intent
       const response = await fetch('/api/payment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({
           amount,
           description: 'Test payment for TwinMCP',
         }),
       })
 
-      const { clientSecret } = await response.json()
+      const data = await response.json()
+
+      if (!response.ok) {
+        setMessage(data.error || 'Erreur serveur')
+        setLoading(false)
+        return
+      }
+
+      const { clientSecret } = data
 
       // Confirm Payment
       const { error } = await stripe.confirmCardPayment(clientSecret, {
