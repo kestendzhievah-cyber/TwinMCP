@@ -131,27 +131,30 @@ export class UsageService {
         const hourlyKey = this.getHourlyKey(apiKeyId);
         const monthlyKey = this.getMonthlyKey(apiKeyId);
 
-        // Read current count BEFORE incrementing to avoid inflating counters
-        // for requests that will be rejected by the limit check below
-        const currentDailyStr = await this.redis.get(dailyKey);
-        currentDaily = parseInt(currentDailyStr || '0', 10) + 1;
+        // Atomic INCR first — avoids TOCTOU race where two concurrent requests
+        // both read the same count via GET, both pass the limit, and both INCR.
+        // If over limit, DECR to undo and reject.
+        currentDaily = await this.redis.incr(dailyKey);
+        // Set TTL only on first increment (when value is 1)
+        if (currentDaily === 1) {
+          await this.redis.expire(dailyKey, 86400); // 24 hours
+        }
 
-        // Check limit before incrementing — prevents counter drift on rejected requests
         if (currentDaily > limits.dailyLimit) {
+          // Undo the increment — request is rejected
+          await this.redis.decr(dailyKey);
           return { allowed: false, remaining: 0 };
         }
 
-        // Within limits — now increment all counters atomically
+        // Within limits — increment hourly and monthly counters
         const pipeline = this.redis.pipeline();
-        pipeline.incr(dailyKey);
-        pipeline.expire(dailyKey, 86400); // 24 hours
         pipeline.incr(hourlyKey);
         pipeline.expire(hourlyKey, 3600); // 1 hour
         pipeline.incr(monthlyKey);
         pipeline.expire(monthlyKey, 2678400); // 31 days
 
         const results = await pipeline.exec();
-        currentHourly = (results?.[2]?.[1] as number) || 0;
+        currentHourly = (results?.[0]?.[1] as number) || 0;
       } else {
         // Fallback to database counting
         const today = new Date();

@@ -103,6 +103,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Cap email length to prevent oversized strings hitting Stripe/DB
+    if (resolvedEmail.length > 254) {
+      return NextResponse.json({ error: 'Email trop long' }, { status: 400 });
+    }
+
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resolvedEmail)) {
       return NextResponse.json(

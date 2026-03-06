@@ -527,7 +527,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
 
   logger.info(
-    `[stripe-webhook] Invoice ${invoice.id} paid — amount: ${invoice.amount_paid}, customer: ${customerId}`
+    `[stripe-webhook] Invoice ${String(invoice.id || '').slice(0, 64)} paid — amount: ${invoice.amount_paid}, customer: ${String(customerId || '').slice(0, 64)}`
   );
 
   // If this invoice is tied to a subscription, ensure the subscription status is current
@@ -551,7 +551,7 @@ async function handleInvoiceFailed(invoice: Stripe.Invoice) {
     typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
 
   logger.warn(
-    `[stripe-webhook] Invoice ${invoice.id} payment failed — attempt: ${invoice.attempt_count}, customer: ${customerId}`
+    `[stripe-webhook] Invoice ${String(invoice.id || '').slice(0, 64)} payment failed — attempt: ${invoice.attempt_count}, customer: ${String(customerId || '').slice(0, 64)}`
   );
 
   // If payment failed on a subscription invoice, mark the subscription as PAUSED

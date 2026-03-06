@@ -69,9 +69,11 @@ export async function POST(req: NextRequest) {
       userProfileId = profile.id;
     }
 
+    // Use DB email as authoritative source — never trust body.customerEmail for Stripe customer creation
+    // to prevent an attacker from linking someone else's email to their Stripe customer
     const customerId = await getOrCreateStripeCustomer(
       userProfileId,
-      customerEmail,
+      dbUser.email,
       dbUser.name
     );
 

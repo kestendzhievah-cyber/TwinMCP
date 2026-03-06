@@ -86,6 +86,17 @@ export async function POST(request: NextRequest) {
       endDate,
     };
 
+    // Validate options: must be a plain object (or undefined) with bounded size
+    if (options !== undefined && options !== null) {
+      if (typeof options !== 'object' || Array.isArray(options)) {
+        return NextResponse.json({ error: 'Invalid options format' }, { status: 400 });
+      }
+      const optStr = JSON.stringify(options);
+      if (optStr.length > 4096) {
+        return NextResponse.json({ error: 'Options too large' }, { status: 400 });
+      }
+    }
+
     const requestContext = {
       ipAddress:
         request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',

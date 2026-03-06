@@ -141,7 +141,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
     logger.error('[Stripe Diagnostic] Account check failed:', error);
 
     checks.push({
@@ -198,7 +197,6 @@ export async function GET(request: NextRequest) {
         });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       checks.push({
         name: item.label,
         status: 'fail',

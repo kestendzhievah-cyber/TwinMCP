@@ -138,11 +138,16 @@ async function handlePaymentIntentFailed(svc: Services, paymentIntent: any) {
     const invoiceId = paymentIntent.metadata?.invoiceId;
 
     if (paymentId) {
+      // Sanitize failure reason — raw Stripe errors can contain sensitive info (card fragments, internal codes)
+      const rawReason = paymentIntent.last_payment_error?.message;
+      const safeReason = typeof rawReason === 'string'
+        ? rawReason.replace(/[^\w\s.,;:!?()\-]/g, '').slice(0, 200)
+        : 'Payment failed';
       await svc.paymentService.updatePaymentStatus(
         paymentId,
         PaymentStatus.FAILED,
         paymentIntent.id,
-        paymentIntent.last_payment_error?.message || 'Payment failed'
+        safeReason
       );
     }
 
