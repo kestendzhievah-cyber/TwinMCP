@@ -65,6 +65,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'Valid status is required' }, { status: 400 });
     }
 
+    // Enforce valid status transitions — prevent e.g. PAID→DRAFT or CANCELLED→SENT
+    const VALID_TRANSITIONS: Record<string, string[]> = {
+      DRAFT: ['SENT', 'CANCELLED'],
+      SENT: ['PAID', 'OVERDUE', 'CANCELLED'],
+      OVERDUE: ['PAID', 'CANCELLED'],
+      PAID: [],        // terminal — cannot revert
+      CANCELLED: [],   // terminal — cannot revert
+    };
+
     // Validate metadata: must be a plain object (or undefined) with bounded size
     if (metadata !== undefined && metadata !== null) {
       if (typeof metadata !== 'object' || Array.isArray(metadata)) {
@@ -80,6 +89,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const existing = await invoiceService.getInvoice(invoiceId, auth.userId);
     if (!existing) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    // Check transition is valid from current status
+    const allowed = VALID_TRANSITIONS[existing.status] ?? [];
+    if (!allowed.includes(status)) {
+      return NextResponse.json(
+        { error: `Cannot transition from ${existing.status} to ${status}` },
+        { status: 400 }
+      );
     }
 
     await invoiceService.updateInvoiceStatus(invoiceId, status, metadata ?? undefined);

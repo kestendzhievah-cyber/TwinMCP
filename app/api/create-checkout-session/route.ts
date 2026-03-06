@@ -127,9 +127,9 @@ export async function POST(req: NextRequest) {
         });
         userProfileId = profile.id;
       } catch {
-        // Profile may already exist
+        // Profile may already exist — scope to anon users to avoid hijacking real profiles
         const existing = await prisma.userProfile.findFirst({
-          where: { email: resolvedEmail },
+          where: { email: resolvedEmail, userId: { startsWith: 'anon_' } },
         });
         userProfileId = existing?.id ?? null;
       }

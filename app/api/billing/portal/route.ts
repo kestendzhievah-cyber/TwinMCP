@@ -54,13 +54,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const url = await createCustomerPortalSession(dbUser.profile.id, returnUrl);
-
-    return NextResponse.json({ url });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Erreur inconnue';
-
-    if (msg.includes('No Stripe customer')) {
+    // Pre-check: avoid calling Stripe if no customer ID exists — gives a clear error
+    if (!dbUser.profile.stripeCustomerId) {
       return NextResponse.json(
         {
           error: "Aucun abonnement Stripe trouvé. Souscrivez d'abord un plan Pro.",
@@ -70,6 +65,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const url = await createCustomerPortalSession(dbUser.profile.id, returnUrl);
+
+    return NextResponse.json({ url });
+  } catch (error) {
     logger.error('Customer portal error:', error);
     return NextResponse.json(
       { error: 'Erreur lors de la création du portail client' },

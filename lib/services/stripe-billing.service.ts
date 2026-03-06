@@ -519,7 +519,7 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
     await prisma.$transaction(ops);
   }
 
-  logger.info(`[stripe-webhook] Subscription ${sub.id} deleted → downgraded to free`);
+  logger.info(`[stripe-webhook] Subscription ${String(sub.id || '').slice(0, 64)} deleted → downgraded to free`);
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {

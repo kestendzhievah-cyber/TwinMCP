@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     const planInfo = getPlanDetails(plan);
 
     // Calculate total credits
-    const totalCredits = credits.reduce((sum, c) => sum + Number(c.amount), 0);
+    const totalCredits = credits.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
 
     // Format invoices for response
     const formattedInvoices = invoices.map(inv => ({

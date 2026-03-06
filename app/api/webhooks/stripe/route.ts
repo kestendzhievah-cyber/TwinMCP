@@ -8,7 +8,9 @@ import { markProcessed } from '@/lib/services/webhook-idempotency';
 type Services = Awaited<ReturnType<typeof getStripeWebhookServices>>;
 
 export async function POST(request: NextRequest) {
-  const svc = await getStripeWebhookServices();
+  // Verify signature BEFORE initializing heavy services (DB pool, etc.)
+  // to avoid wasting resources on invalid/attack requests.
+  let event: Awaited<ReturnType<Awaited<ReturnType<typeof getStripeWebhookServices>>['stripeService']['constructWebhookEvent']>>;
   try {
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
@@ -17,7 +19,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
     }
 
-    const event = await svc.stripeService.constructWebhookEvent(body, signature);
+    const { StripeService } = await import('@/src/services/payment-providers/stripe.service');
+    const stripeService = new StripeService();
+    event = await stripeService.constructWebhookEvent(body, signature);
+  } catch (error) {
+    logger.error('Stripe webhook signature verification error:', error);
+    const isSignatureError = (error as any)?.type === 'StripeSignatureVerificationError' ||
+      (error instanceof Error && (error.message.includes('signature') || error.message.includes('Webhook')));
+    if (isSignatureError) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    }
+    return NextResponse.json({ received: true, error: 'Verification failed' }, { status: 200 });
+  }
+
+  // Signature verified — now initialize full services
+  const svc = await getStripeWebhookServices();
+  try {
 
     // Idempotency: skip if this event was already processed by this or the other webhook route
     if (!markProcessed(event.id)) {
@@ -81,21 +98,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    logger.error('Stripe webhook error:', error);
+    logger.error('Stripe webhook processing error:', error);
     await svc.auditService.logSecurityEvent(
       'stripe_webhook_error',
       'medium',
       'Webhook processing failed'
     ).catch(() => {});
 
-    // Signature verification failures → 400. Processing errors → 200.
-    // Use Stripe's error type for reliable detection instead of fragile string matching
-    const isSignatureError = (error as any)?.type === 'StripeSignatureVerificationError' ||
-      (error instanceof Error && (error.message.includes('signature') || error.message.includes('Webhook')));
-    if (isSignatureError) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-    }
-
+    // Signature already verified above — this catch only handles processing errors.
+    // Return 200 to acknowledge receipt and prevent Stripe retry storm.
     return NextResponse.json({ received: true, error: 'Processing failed' }, { status: 200 });
   }
 }
