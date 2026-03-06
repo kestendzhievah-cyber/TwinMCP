@@ -127,6 +127,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Validate subscriptionId format to prevent arbitrary Stripe API probing
+    if (!/^sub_[a-zA-Z0-9]+$/.test(subscriptionId)) {
+      return NextResponse.json(
+        { error: 'Format de Subscription ID invalide' },
+        { status: 400 }
+      );
+    }
+
     const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
       expand: ['latest_invoice.payment_intent'],
     });

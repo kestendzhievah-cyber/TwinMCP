@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
         include: {
           subscriptions: { orderBy: { createdAt: 'desc' }, take: 10 },
           invoices: { orderBy: { issueDate: 'desc' }, take: 10 },
-          credits: { where: { usedAt: null }, orderBy: { createdAt: 'desc' } },
+          credits: { where: { usedAt: null }, orderBy: { createdAt: 'desc' }, take: 20 },
           payments: { orderBy: { createdAt: 'desc' }, take: 10 },
         },
       });

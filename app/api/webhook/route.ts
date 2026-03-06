@@ -5,21 +5,7 @@ import {
   processWebhookEvent,
   isStripeConfigured,
 } from '@/lib/services/stripe-billing.service';
-
-// Simple in-memory idempotency cache — prevents double-processing when
-// both /api/webhook and /api/webhooks/stripe are registered in Stripe.
-const _processedEvents = new Set<string>();
-const MAX_CACHE = 1000;
-
-function markProcessed(eventId: string): boolean {
-  if (_processedEvents.has(eventId)) return false;
-  _processedEvents.add(eventId);
-  if (_processedEvents.size > MAX_CACHE) {
-    const first = _processedEvents.values().next().value;
-    if (first) _processedEvents.delete(first);
-  }
-  return true;
-}
+import { markProcessed } from '@/lib/services/webhook-idempotency';
 
 /**
  * Main Stripe webhook endpoint.

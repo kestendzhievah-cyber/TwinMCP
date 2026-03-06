@@ -3,24 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripeWebhookServices } from '../_shared';
 import { PaymentStatus, InvoiceStatus } from '@/src/types/invoice.types';
 import { processWebhookEvent } from '@/lib/services/stripe-billing.service';
+import { markProcessed } from '@/lib/services/webhook-idempotency';
 
 type Services = Awaited<ReturnType<typeof getStripeWebhookServices>>;
-
-// Simple in-memory idempotency cache to prevent double-processing when
-// both /api/webhook and /api/webhooks/stripe are registered in Stripe.
-const _processedEvents = new Set<string>();
-const MAX_CACHE = 1000;
-
-function markProcessed(eventId: string): boolean {
-  if (_processedEvents.has(eventId)) return false; // already processed
-  _processedEvents.add(eventId);
-  // Evict oldest entries to prevent unbounded growth
-  if (_processedEvents.size > MAX_CACHE) {
-    const first = _processedEvents.values().next().value;
-    if (first) _processedEvents.delete(first);
-  }
-  return true; // first time
-}
 
 export async function POST(request: NextRequest) {
   const svc = await getStripeWebhookServices();

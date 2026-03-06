@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Plan ID requis' }, { status: 400 });
     }
 
-    if (billingPeriod && typeof billingPeriod !== 'string') {
-      return NextResponse.json({ error: 'Période de facturation invalide' }, { status: 400 });
+    if (billingPeriod && (typeof billingPeriod !== 'string' || !['monthly', 'yearly'].includes(billingPeriod))) {
+      return NextResponse.json({ error: 'Période de facturation invalide (monthly ou yearly)' }, { status: 400 });
     }
 
     // Find or create user profile

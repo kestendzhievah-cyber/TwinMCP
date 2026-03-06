@@ -71,6 +71,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid currency' }, { status: 400 });
     }
 
+    // Validate provider is a known payment provider
+    const ALLOWED_PROVIDERS = ['stripe', 'paypal', 'wise'];
+    if (typeof provider !== 'string' || !ALLOWED_PROVIDERS.includes(provider)) {
+      return NextResponse.json({ error: 'Invalid payment provider' }, { status: 400 });
+    }
+
+    // Validate paymentMethod is an object with expected shape
+    if (!paymentMethod || typeof paymentMethod !== 'object' || Array.isArray(paymentMethod)) {
+      return NextResponse.json({ error: 'Invalid payment method' }, { status: 400 });
+    }
+
     const payment = await paymentService.createPayment(
       invoiceId,
       userId,

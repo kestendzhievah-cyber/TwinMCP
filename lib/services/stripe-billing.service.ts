@@ -448,7 +448,9 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
         ...subData,
       },
     }),
-    prisma.userProfile.update({
+    // Use updateMany to avoid P2025 if profile doesn't exist — prevents
+    // rolling back the subscription upsert on a missing profile row
+    prisma.userProfile.updateMany({
       where: { id: profileId },
       data: { plan: newPlan },
     }),
