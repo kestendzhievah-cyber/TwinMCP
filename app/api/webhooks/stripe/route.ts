@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripeWebhookServices } from '../_shared';
 import { PaymentStatus, InvoiceStatus } from '@/src/types/invoice.types';
+import { processWebhookEvent } from '@/lib/services/stripe-billing.service';
 
 type Services = Awaited<ReturnType<typeof getStripeWebhookServices>>;
 
@@ -39,6 +40,8 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
+        // Delegate to centralized billing service for real DB updates
+        await processWebhookEvent(event);
         await handleSubscriptionEvent(svc, event.type, event.data.object);
         break;
 

@@ -476,15 +476,52 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
+  const customerId =
+    typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+
   logger.info(
-    `[stripe-webhook] Invoice ${invoice.id} paid — amount: ${invoice.amount_paid}, customer: ${typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id}`
+    `[stripe-webhook] Invoice ${invoice.id} paid — amount: ${invoice.amount_paid}, customer: ${customerId}`
   );
+
+  // If this invoice is tied to a subscription, ensure the subscription status is current
+  const rawSub = (invoice as any).subscription;
+  const stripeSubId = typeof rawSub === 'string' ? rawSub : rawSub?.id;
+
+  if (stripeSubId) {
+    try {
+      await prisma.subscription.updateMany({
+        where: { stripeSubscriptionId: stripeSubId },
+        data: { status: 'ACTIVE' },
+      });
+    } catch (e) {
+      logger.warn(`[stripe-webhook] Could not update subscription ${stripeSubId} on invoice paid:`, e);
+    }
+  }
 }
 
 async function handleInvoiceFailed(invoice: Stripe.Invoice) {
+  const customerId =
+    typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+
   logger.warn(
-    `[stripe-webhook] Invoice ${invoice.id} payment failed — attempt: ${invoice.attempt_count}, customer: ${typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id}`
+    `[stripe-webhook] Invoice ${invoice.id} payment failed — attempt: ${invoice.attempt_count}, customer: ${customerId}`
   );
+
+  // If payment failed on a subscription invoice, mark the subscription as PAUSED
+  // so the user sees a warning in the dashboard
+  const rawSub = (invoice as any).subscription;
+  const stripeSubId = typeof rawSub === 'string' ? rawSub : rawSub?.id;
+
+  if (stripeSubId) {
+    try {
+      await prisma.subscription.updateMany({
+        where: { stripeSubscriptionId: stripeSubId },
+        data: { status: 'PAUSED' },
+      });
+    } catch (e) {
+      logger.warn(`[stripe-webhook] Could not pause subscription ${stripeSubId} on invoice failure:`, e);
+    }
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────

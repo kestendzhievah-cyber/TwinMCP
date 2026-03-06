@@ -33,6 +33,13 @@ export function StripeProvider({ children }: { children: React.ReactNode }) {
   return <StripeContext.Provider value={{ getStripe }}>{children}</StripeContext.Provider>;
 }
 
+// Lazy-load @stripe/react-stripe-js at module scope (not inside render)
+const LazyStripeElements = React.lazy(() =>
+  import('@stripe/react-stripe-js').then(mod => ({
+    default: mod.Elements,
+  }))
+);
+
 /**
  * Wrap payment components with this to get the full Stripe Elements context.
  * Only import and use this in billing/payment pages.
@@ -53,18 +60,9 @@ export function StripeElements({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Lazy import Elements only when Stripe is loaded
-  const LazyElements = React.lazy(() =>
-    import('@stripe/react-stripe-js').then(mod => ({
-      default: ({ children: c }: { children: React.ReactNode }) => (
-        <mod.Elements stripe={stripe}>{c}</mod.Elements>
-      ),
-    }))
-  );
-
   return (
     <React.Suspense fallback={children}>
-      <LazyElements>{children}</LazyElements>
+      <LazyStripeElements stripe={stripe}>{children}</LazyStripeElements>
     </React.Suspense>
   );
 }

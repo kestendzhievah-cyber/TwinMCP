@@ -1,18 +1,21 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillingServices } from '../_shared';
+import { validateAuth } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await validateAuth(request.headers.get('authorization'));
+    if (!auth.valid || !auth.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { paymentService } = await getBillingServices();
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    // Use authenticated userId — ignore query param to prevent IDOR
+    const userId = auth.userId;
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-    }
 
     const payments = await paymentService.getUserPayments(userId, limit, offset);
 
@@ -28,10 +31,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logger.error('Error fetching payments:', error);
     return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -39,11 +39,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await validateAuth(request.headers.get('authorization'));
+    if (!auth.valid || !auth.userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { paymentService } = await getBillingServices();
     const body = await request.json();
-    const { invoiceId, userId, amount, currency, paymentMethod, provider = 'stripe' } = body;
+    const { invoiceId, amount, currency, paymentMethod, provider = 'stripe' } = body;
+    // Use authenticated userId — ignore body.userId to prevent IDOR
+    const userId = auth.userId;
 
-    if (!invoiceId || !userId || !amount || !currency || !paymentMethod) {
+    if (!invoiceId || !amount || !currency || !paymentMethod) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -64,10 +71,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error('Error creating payment:', error);
     return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

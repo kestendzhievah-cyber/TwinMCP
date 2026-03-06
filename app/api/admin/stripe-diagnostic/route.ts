@@ -27,8 +27,14 @@ async function ensureAdmin(request: NextRequest): Promise<NextResponse | null> {
   const adminKey = request.headers.get('x-admin-key');
   const configuredAdminKey = process.env.ADMIN_SECRET_KEY;
 
-  if (configuredAdminKey && adminKey && adminKey === configuredAdminKey) {
-    return null;
+  if (configuredAdminKey && adminKey) {
+    // Use timing-safe comparison to prevent timing attacks
+    const { timingSafeEqual } = await import('crypto');
+    const a = Buffer.from(adminKey);
+    const b = Buffer.from(configuredAdminKey);
+    if (a.length === b.length && timingSafeEqual(a, b)) {
+      return null;
+    }
   }
 
   const { context, error } = await authenticateRequest(request, {

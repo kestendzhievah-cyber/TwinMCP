@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       try {
         const profile = await prisma.userProfile.create({
           data: {
-            userId: resolvedUserId ?? `anon_${Date.now()}`,
+            userId: resolvedUserId ?? `anon_${crypto.randomUUID()}`,
             email: resolvedEmail,
           },
         });
@@ -158,6 +158,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Session ID requis' }, { status: 400 });
     }
 
+    // Validate session_id format to prevent injection
+    if (!/^cs_(test|live)_[a-zA-Z0-9]+$/.test(sessionId)) {
+      return NextResponse.json({ error: 'Format de session invalide' }, { status: 400 });
+    }
+
     const key = process.env.STRIPE_SECRET_KEY!;
     const stripe = new Stripe(key);
 
@@ -165,13 +170,31 @@ export async function GET(req: NextRequest) {
       expand: ['customer', 'subscription'],
     });
 
+    // Verify ownership: if session has a userId in metadata, check it matches the auth
+    const authHeader = req.headers.get('authorization');
+    if (authHeader && session.metadata?.userId) {
+      try {
+        const auth = await validateAuth(authHeader);
+        if (auth.valid && auth.userId && auth.userId !== session.metadata.userId) {
+          return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+        }
+      } catch {
+        // Auth is optional for the success page (user might not have token)
+      }
+    }
+
+    // Only return safe fields — never expose raw metadata
     return NextResponse.json({
       status: session.status,
       paymentStatus: session.payment_status,
       customerEmail: session.customer_details?.email,
       amountTotal: session.amount_total,
       currency: session.currency,
-      metadata: session.metadata,
+      metadata: session.metadata ? {
+        planId: session.metadata.planId,
+        billingPeriod: session.metadata.billingPeriod,
+        userId: session.metadata.userId,
+      } : null,
     });
   } catch (error) {
     logger.error('Session retrieval error:', error);

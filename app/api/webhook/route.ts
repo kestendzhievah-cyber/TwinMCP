@@ -48,10 +48,12 @@ export async function POST(req: NextRequest) {
     try {
       await processWebhookEvent(event);
     } catch (err) {
+      // Log the error but return 200 to acknowledge receipt.
+      // Returning 4xx/5xx causes Stripe to retry for up to 3 days.
       logger.error(`[webhook] Error processing ${event.type}:`, err);
       return NextResponse.json(
-        { error: 'Webhook processing failed' },
-        { status: 500 }
+        { received: true, error: 'Processing failed' },
+        { status: 200 }
       );
     }
 
