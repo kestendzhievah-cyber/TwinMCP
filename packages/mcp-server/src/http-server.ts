@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -94,7 +95,7 @@ export class TwinMCPHttpServer {
   private setupMiddleware(): void {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(cors({
-      origin: this.config.corsOrigins ?? '*',
+      origin: this.config.corsOrigins ?? false,
       methods: ['GET', 'POST', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID'],
     }));
@@ -430,19 +431,18 @@ export class TwinMCPHttpServer {
   }
 
   private handleError(res: Response, error: unknown, requestId?: string | undefined): void {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     this.logger.error('Request error', error, { requestId });
 
     res.status(500).json({
       success: false,
-      error: message,
+      error: 'Internal server error',
       code: 'INTERNAL_ERROR',
       requestId,
     });
   }
 
   private generateRequestId(): string {
-    return `mcp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `mcp_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
   }
 
   private estimateTokens(data: unknown): number {

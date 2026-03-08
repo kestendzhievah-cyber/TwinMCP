@@ -22,6 +22,8 @@ model ApiKey {
 
   usageLogs UsageLog[]
 
+  @@index([userId, isActive, revokedAt])
+  @@index([keyPrefix])
   @@map("api_keys")
 }
 

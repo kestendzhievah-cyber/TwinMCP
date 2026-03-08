@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { TwinMCPConfig, ResolveLibraryParams, ResolveLibraryResult, QueryDocsParams, QueryDocsResult } from '../types/mcp';
 import { MCPLogger } from '../utils/logger';
 
@@ -104,7 +105,7 @@ export class TwinMCPClient {
   }
 
   private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `req_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
   }
 
   async healthCheck(): Promise<boolean> {

@@ -3,10 +3,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { crawlerService, LIBRARY_CRAWL_CONFIGS } from '@/lib/services/github-crawler.service';
 import { getQdrantService } from '@/lib/services/qdrant-vector.service';
 
-// Simple admin auth check
+// Admin auth check with timing-safe comparison
 function isAdmin(request: NextRequest): boolean {
   const adminKey = request.headers.get('X-Admin-Key');
-  return adminKey === process.env.ADMIN_SECRET_KEY;
+  const configuredKey = process.env.ADMIN_SECRET_KEY;
+  if (!adminKey || !configuredKey) return false;
+  try {
+    const { timingSafeEqual, createHmac } = require('crypto');
+    const hmac = (v: string) => createHmac('sha256', 'admin-key-cmp').update(v).digest();
+    return timingSafeEqual(hmac(adminKey), hmac(configuredKey));
+  } catch {
+    return false;
+  }
 }
 
 // GET - Get crawl status and available libraries

@@ -44,7 +44,7 @@ module.exports = {
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/src/(.*)$': '<rootDir>/src/$1',
-    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/(.*)$': '<rootDir>/$1',
     '^uuid$': '<rootDir>/__tests__/mocks/uuid.ts'
   },
   testTimeout: 10000,

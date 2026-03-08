@@ -31,9 +31,11 @@ export async function GET(request: NextRequest) {
     const usage = await externalMcpService.getUsage(userId, serverId, days);
     return NextResponse.json({ success: true, data: usage });
   } catch (error: any) {
+    const status = error.statusCode || 500;
+    const safeMessages: Record<number, string> = { 401: 'Authentication required' };
     return NextResponse.json(
-      { success: false, error: error.message },
-      { status: error.statusCode || 500 }
+      { success: false, error: safeMessages[status] || 'Failed to fetch usage data' },
+      { status }
     );
   }
 }

@@ -12,6 +12,18 @@ import {
   MonitoringConfig
 } from '../types/monitoring.types';
 
+// SECURITY: SSRF protection for webhook/Slack notification URLs
+function validateWebhookUrl(raw: string): void {
+  let url: URL;
+  try { url = new URL(raw); } catch { throw new Error('Invalid webhook URL'); }
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP/HTTPS allowed');
+  const h = url.hostname.toLowerCase();
+  if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '0.0.0.0') throw new Error('Localhost not allowed');
+  const BLOCKED = ['10.','172.16.','172.17.','172.18.','172.19.','172.20.','172.21.','172.22.','172.23.','172.24.','172.25.','172.26.','172.27.','172.28.','172.29.','172.30.','172.31.','192.168.','169.254.','fd','fe80:'];
+  if (BLOCKED.some(p => h.startsWith(p))) throw new Error('Private/internal URLs not allowed');
+  if (['metadata.google.internal','metadata.gcp.internal'].includes(h)) throw new Error('Cloud metadata URLs not allowed');
+}
+
 export class AlertManager extends EventEmitter {
   private activeAlerts: Map<string, Alert> = new Map();
   private alertRules: Map<string, AlertRule> = new Map();
@@ -392,6 +404,7 @@ export class AlertManager extends EventEmitter {
     };
 
     try {
+      validateWebhookUrl(webhook);
       const response = await fetch(webhook, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -433,6 +446,7 @@ export class AlertManager extends EventEmitter {
     };
 
     try {
+      validateWebhookUrl(url);
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (channel.config.secret) {
         headers['X-Webhook-Secret'] = channel.config.secret;

@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 let _shareService: any = null;
 async function getShareService() {
@@ -13,11 +14,16 @@ async function getShareService() {
 
 export async function POST(req: NextRequest) {
   try {
-    const shareService = await getShareService();
-    const { conversationId, userId, options } = await req.json();
+    const userId = await getAuthUserId(req.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
 
-    if (!conversationId || !userId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const shareService = await getShareService();
+    const { conversationId, options } = await req.json();
+
+    if (!conversationId) {
+      return NextResponse.json({ error: 'conversationId is required' }, { status: 400 });
     }
 
     const share = await shareService.createShare(conversationId, userId, options);
@@ -25,25 +31,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(share, { status: 201 });
   } catch (error: any) {
     logger.error('Error creating share:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create share' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create share' }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const shareService = await getShareService();
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
-
+    const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
+    const shareService = await getShareService();
     const shares = await shareService.getUserShares(userId);
 
     return NextResponse.json(shares);
   } catch (error: any) {
     logger.error('Error fetching shares:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch shares' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch shares' }, { status: 500 });
   }
 }

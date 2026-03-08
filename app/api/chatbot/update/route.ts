@@ -28,8 +28,15 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { chatbotId, ...updates } = body;
 
-    if (!chatbotId) {
+    if (!chatbotId || typeof chatbotId !== 'string') {
       return NextResponse.json({ error: 'Chatbot ID is required' }, { status: 400 });
+    }
+
+    // SECURITY: Verify ownership before updating
+    const { getAgent } = await import('@/lib/agents');
+    const agent = await getAgent(chatbotId);
+    if (!agent || agent.userId !== userId) {
+      return NextResponse.json({ error: 'Chatbot not found or not owned by you' }, { status: 404 });
     }
 
     // Update the chatbot

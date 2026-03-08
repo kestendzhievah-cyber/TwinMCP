@@ -151,13 +151,14 @@ export class VectorStorageService {
     // Construction de la requête SQL optimisée
     let sqlQuery = this.buildOptimizedVectorQuery(query);
     
-    const params = [
+    const params: any[] = [
       `[${queryEmbedding.join(',')}]`, // $1: query embedding
       query.threshold || 0.7,          // $2: threshold
-      query.limit                      // $3: limit
+      query.limit,                     // $3: limit
+      query.query || ''                // $4: text query for hybrid ranking
     ];
 
-    let paramIndex = 4;
+    let paramIndex = 5;
     
     // Ajout des filtres dynamiques
     if (query.libraryId) {
@@ -222,12 +223,13 @@ export class VectorStorageService {
         AND de.status = 'indexed'
     `;
 
-    // Ajout du texte de la requête pour le ranking hybride
-    if (query.query) {
-      sql = sql.replace('$4', `'${query.query}'`);
-    } else {
-      sql = sql.replace(', ts_rank_cd(...) as text_rank', '');
-      sql = sql.replace('plainto_tsquery($4)', 'plainto_tsquery(\'\')');
+    // SECURITY: Keep $4 as a parameterized placeholder — never interpolate user input into SQL.
+    // The caller must supply query.query as param $4 when executing.
+    if (!query.query) {
+      sql = sql.replace(
+        "ts_rank_cd(\n          to_tsvector('english', de.content),\n          plainto_tsquery('english', $4)\n        ) as text_rank",
+        '0 as text_rank'
+      );
     }
 
     return sql;
@@ -257,22 +259,20 @@ export class VectorStorageService {
     const sessionId = sessionResult.rows[0].id;
 
     // Enregistrement des résultats pour analytics
+    // SECURITY: Use parameterized queries — previous version interpolated values directly
     if (results.length > 0) {
-      const analyticsData = results.map((row, index) => `(
-        '${sessionId}',
-        '${row.library_id}',
-        '${row.id}',
-        ${index + 1},
-        ${row.similarity},
-        false,
-        NULL
-      )`).join(',');
+      const values: unknown[] = [];
+      const placeholders = results.map((row, index) => {
+        const base = index * 5;
+        values.push(sessionId, row.library_id, row.id, index + 1, row.similarity);
+        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, false, NULL)`;
+      }).join(', ');
 
       await this.db.query(`
         INSERT INTO search_analytics (
           session_id, library_id, chunk_id, rank, score, clicked, dwell_time_ms
-        ) VALUES ${analyticsData}
-      `);
+        ) VALUES ${placeholders}
+      `, values);
     }
   }
 

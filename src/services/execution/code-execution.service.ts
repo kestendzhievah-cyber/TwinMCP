@@ -1,4 +1,3 @@
-import vm from 'node:vm';
 import Docker from 'dockerode';
 
 export interface ExecutionResult {
@@ -9,13 +8,17 @@ export interface ExecutionResult {
   executionTime: number;
 }
 
+// Maximum code size to prevent resource exhaustion (100KB)
+const MAX_CODE_SIZE = 100 * 1024;
+
+// Allowed languages — only these have Docker images configured
+const ALLOWED_LANGUAGES = new Set(['javascript', 'typescript', 'python', 'ruby', 'go', 'node']);
+
 export class CodeExecutionService {
   private docker: Docker;
-  private output: string[];
 
   constructor() {
     this.docker = new Docker();
-    this.output = [];
   }
 
   async executeSandboxed(
@@ -23,49 +26,27 @@ export class CodeExecutionService {
     language: string,
     timeout: number = 5000
   ): Promise<ExecutionResult> {
-    if (language === 'javascript' || language === 'typescript') {
-      return await this.executeInVM(code, timeout);
-    } else {
-      return await this.executeInDocker(code, language, timeout);
-    }
-  }
-
-  private async executeInVM(
-    code: string,
-    timeout: number
-  ): Promise<ExecutionResult> {
-    const output: string[] = [];
-    const startTime = Date.now();
-
-    const sandbox = {
-      console: {
-        log: (...args: any[]) => {
-          output.push(args.join(' '));
-        }
-      }
-    };
-    const context = vm.createContext(sandbox);
-
-    try {
-      const result = vm.runInContext(code, context, { timeout });
-      const executionTime = Date.now() - startTime;
-
-      return {
-        success: true,
-        output: output.join('\n'),
-        result,
-        executionTime
-      };
-    } catch (error: any) {
-      const executionTime = Date.now() - startTime;
-      
+    // Validate language against whitelist
+    if (!ALLOWED_LANGUAGES.has(language)) {
       return {
         success: false,
-        error: error.message,
-        output: output.join('\n'),
-        executionTime
+        error: `Unsupported language: ${language}. Allowed: ${[...ALLOWED_LANGUAGES].join(', ')}`,
+        executionTime: 0,
       };
     }
+
+    // Validate code size
+    if (code.length > MAX_CODE_SIZE) {
+      return {
+        success: false,
+        error: `Code exceeds maximum size of ${MAX_CODE_SIZE} bytes`,
+        executionTime: 0,
+      };
+    }
+
+    // SECURITY: Always use Docker isolation. Node.js vm module is NOT a
+    // security boundary — sandbox escapes are trivial via prototype chain.
+    return await this.executeInDocker(code, language, timeout);
   }
 
   private async executeInDocker(
@@ -123,7 +104,7 @@ export class CodeExecutionService {
       
       return {
         success: false,
-        error: error.message,
+        error: error.message === 'Timeout' ? 'Execution timed out' : 'Code execution failed',
         executionTime
       };
     }

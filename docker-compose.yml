@@ -16,7 +16,7 @@ services:
     env_file: .env
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-twinmcp_user}:${POSTGRES_PASSWORD:-twinmcp_password}@postgres:5432/${POSTGRES_DB:-twinmcp_dev}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-twinmcp_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-twinmcp_dev}
       - REDIS_URL=redis://redis:6379
       - QDRANT_URL=http://qdrant:6333
       - MINIO_ENDPOINT=minio
@@ -51,8 +51,8 @@ services:
       - TWINMCP_PORT=3001
       - TWINMCP_HOST=0.0.0.0
       - TWINMCP_API_BASE_URL=http://app:3000
-      - TWINMCP_INTERNAL_KEY=${TWINMCP_INTERNAL_KEY:-twinmcp_internal_key}
-      - TWINMCP_CORS_ORIGINS=*
+      - TWINMCP_INTERNAL_KEY=${TWINMCP_INTERNAL_KEY:?TWINMCP_INTERNAL_KEY must be set}
+      - TWINMCP_CORS_ORIGINS=${TWINMCP_CORS_ORIGINS:-http://localhost:3000}
     depends_on:
       app:
         condition: service_healthy
@@ -73,7 +73,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-twinmcp_dev}
       POSTGRES_USER: ${POSTGRES_USER:-twinmcp_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-twinmcp_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     ports:
       - "5432:5432"
     volumes:
@@ -135,8 +135,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"

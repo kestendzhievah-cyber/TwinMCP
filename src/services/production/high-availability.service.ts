@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 /**
  * High Availability Service.
  *
@@ -148,7 +150,7 @@ export class HighAvailabilityService {
       case 'weighted': {
         const totalWeight = active.reduce((s, r) => s + r.trafficWeight, 0)
         if (totalWeight === 0) return active[0]
-        let random = Math.random() * totalWeight
+        let random = (crypto.randomInt(0, 1000000) / 1000000) * totalWeight
         for (const r of active) {
           random -= r.trafficWeight
           if (random <= 0) return r

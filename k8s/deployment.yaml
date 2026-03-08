@@ -19,9 +19,19 @@ spec:
         app: twinmcp-api
         version: v1
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
       containers:
       - name: api
         image: ghcr.io/twinmcp/twinmcp:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
         ports:
         - containerPort: 3000
           name: http
@@ -58,7 +68,7 @@ spec:
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /api/ready
+            path: /api/health?ready=true
             port: 3000
           initialDelaySeconds: 10
           periodSeconds: 5

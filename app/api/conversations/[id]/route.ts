@@ -1,17 +1,20 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationService } from '../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const conversationService = await getConversationService();
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     const conversationId = (await params).id;
 
     const conversation = await conversationService.getConversation(
       conversationId,
-      userId || undefined
+      userId
     );
 
     if (!conversation) {
@@ -27,14 +30,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const conversationService = await getConversationService();
     const body = await request.json();
-    const { userId, updates } = body;
+    const { updates } = body;
     const conversationId = (await params).id;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
-    }
 
     const conversation = await conversationService.updateConversation(
       conversationId,
@@ -54,15 +58,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     const conversationId = (await params).id;
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    const conversationService = await getConversationService();
+    // Verify ownership before deleting
+    const conversation = await conversationService.getConversation(conversationId, userId);
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
-    // Supprimer la conversation (implémenter dans le service)
+    // TODO: Implement deleteConversation in the service
     // await conversationService.deleteConversation(conversationId, userId);
 
     return NextResponse.json({ success: true });

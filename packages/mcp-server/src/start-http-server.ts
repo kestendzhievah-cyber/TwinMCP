@@ -22,7 +22,7 @@ const logger = MCPLogger.create('TwinMCPStartup');
 // Configuration from environment variables
 const PORT = parseInt(process.env['TWINMCP_PORT'] || '3001', 10);
 const HOST = process.env['TWINMCP_HOST'] || '0.0.0.0';
-const CORS_ORIGINS = process.env['TWINMCP_CORS_ORIGINS']?.split(',') || ['*'];
+const CORS_ORIGINS = process.env['TWINMCP_CORS_ORIGINS']?.split(',') || ['http://localhost:3000'];
 const API_BASE_URL = process.env['TWINMCP_API_BASE_URL'] || 'http://localhost:3000';
 
 // API Key validation function - calls your SaaS API

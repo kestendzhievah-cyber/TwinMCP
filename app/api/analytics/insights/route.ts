@@ -2,16 +2,23 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsServices } from '../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const authUserId = await getAuthUserId(request.headers.get('authorization'));
+    if (!authUserId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { analyticsService } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
 
     // Parse period parameters
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const userId = searchParams.get('userId');
+    // Scope to authenticated user — prevent IDOR
+    const userId = authUserId;
 
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -31,12 +38,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate insights
-    const insights = await analyticsService.generateInsights(period, userId || undefined);
+    const insights = await analyticsService.generateInsights(period, userId);
 
     return NextResponse.json({
       insights,
       period,
-      userId: userId || null,
+      userId,
       count: insights.length,
     });
   } catch (error) {

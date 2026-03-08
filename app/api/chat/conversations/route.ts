@@ -1,14 +1,13 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const url = new URL(req.url);
-    const userId = url.searchParams.get('userId');
-
+    const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const conversations = await prisma.conversation.findMany({
@@ -41,10 +40,15 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { title, provider, model, userId } = body;
+    const userId = await getAuthUserId(req.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
 
-    if (!title || !provider || !model || !userId) {
+    const body = await req.json();
+    const { title, provider, model } = body;
+
+    if (!title || !provider || !model) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 

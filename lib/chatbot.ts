@@ -14,7 +14,11 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db as _db } from './firebase';
-const db = _db!;
+
+function getDb() {
+  if (!_db) throw new Error('Firebase Firestore is not initialized. Check Firebase configuration.');
+  return _db;
+}
 
 interface User {
   id: string;
@@ -77,7 +81,7 @@ interface SendMessageResponse {
 // User operations
 export async function getUserProfile(userId: string): Promise<User | null> {
   try {
-    const userRef = doc(db, 'users', userId);
+    const userRef = doc(getDb(), 'users', userId);
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
@@ -96,7 +100,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
 
 export async function getChatbot(chatbotId: string): Promise<Chatbot | null> {
   try {
-    const chatbotRef = doc(db, 'chatbots', chatbotId);
+    const chatbotRef = doc(getDb(), 'chatbots', chatbotId);
     const chatbotSnap = await getDoc(chatbotRef);
 
     if (!chatbotSnap.exists()) {
@@ -115,7 +119,7 @@ export async function getChatbot(chatbotId: string): Promise<Chatbot | null> {
 
 export async function createChatbot(userId: string, data: CreateChatbotRequest): Promise<string> {
   try {
-    const chatbotsRef = collection(db, 'chatbots');
+    const chatbotsRef = collection(getDb(), 'chatbots');
     const chatbotData = {
       ...data,
       userId,
@@ -134,7 +138,7 @@ export async function createChatbot(userId: string, data: CreateChatbotRequest):
 
 export async function getUserChatbots(userId: string): Promise<Chatbot[]> {
   try {
-    const chatbotsRef = collection(db, 'chatbots');
+    const chatbotsRef = collection(getDb(), 'chatbots');
     const q = query(chatbotsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
 
     const querySnapshot = await getDocs(q);
@@ -156,9 +160,18 @@ export async function getUserChatbots(userId: string): Promise<Chatbot[]> {
 
 export async function updateChatbot(chatbotId: string, updates: Partial<Chatbot>): Promise<void> {
   try {
-    const chatbotRef = doc(db, 'chatbots', chatbotId);
+    // SECURITY: Whitelist mutable fields — prevent overwriting userId, status, createdAt
+    const safeFields: Record<string, unknown> = {};
+    if (updates.name !== undefined) safeFields.name = updates.name;
+    if (updates.description !== undefined) safeFields.description = updates.description;
+    if (updates.model !== undefined) safeFields.model = updates.model;
+    if (updates.systemPrompt !== undefined) safeFields.systemPrompt = updates.systemPrompt;
+    if (updates.temperature !== undefined) safeFields.temperature = updates.temperature;
+    if (updates.maxTokens !== undefined) safeFields.maxTokens = updates.maxTokens;
+
+    const chatbotRef = doc(getDb(), 'chatbots', chatbotId);
     await updateDoc(chatbotRef, {
-      ...updates,
+      ...safeFields,
       updatedAt: Timestamp.now(),
     });
   } catch (error) {
@@ -169,7 +182,7 @@ export async function updateChatbot(chatbotId: string, updates: Partial<Chatbot>
 
 export async function deleteChatbot(chatbotId: string): Promise<void> {
   try {
-    const chatbotRef = doc(db, 'chatbots', chatbotId);
+    const chatbotRef = doc(getDb(), 'chatbots', chatbotId);
     await deleteDoc(chatbotRef);
   } catch (error) {
     console.error('Error deleting chatbot:', error);

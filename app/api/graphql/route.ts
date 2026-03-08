@@ -95,10 +95,10 @@ export async function POST(request: NextRequest) {
 
     if (authHeader || apiKey) {
       try {
-        const { getAuthUserId } = await import('@/lib/firebase-admin-auth');
-        const verifiedUserId = await getAuthUserId(authHeader);
-        if (verifiedUserId) {
-          userId = verifiedUserId;
+        const { validateAuthWithApiKey } = await import('@/lib/firebase-admin-auth');
+        const result = await validateAuthWithApiKey(authHeader, apiKey);
+        if (result.valid) {
+          userId = result.userId;
           isAuthenticated = true;
         }
       } catch {
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
-      { errors: [{ message: error instanceof Error ? error.message : 'Internal error' }] },
+      { errors: [{ message: 'Internal server error' }] },
       { status: 500 }
     );
   }

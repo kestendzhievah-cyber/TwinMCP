@@ -49,9 +49,10 @@ export async function GET(
     });
   } catch (error: any) {
     logger.error('Queue job status error:', error);
+    const statusCode = error.statusCode || 500;
     return NextResponse.json(
-      { error: error.message || 'Failed to get job status' },
-      { status: error.statusCode || 500 }
+      { error: statusCode === 401 ? 'Authentication required' : statusCode < 500 ? 'Request failed' : 'Failed to get job status' },
+      { status: statusCode }
     );
   }
 }
@@ -88,9 +89,10 @@ export async function DELETE(
     });
   } catch (error: any) {
     logger.error('Queue job cancel error:', error);
+    const statusCode = error.statusCode || 500;
     return NextResponse.json(
-      { error: error.message || 'Failed to cancel job' },
-      { status: error.statusCode || 500 }
+      { error: statusCode === 401 ? 'Authentication required' : statusCode < 500 ? 'Request failed' : 'Failed to cancel job' },
+      { status: statusCode }
     );
   }
 }

@@ -1,17 +1,23 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationService } from '../../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const conversationService = await getConversationService();
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { userId, format, options } = body;
+    const { format, options } = body;
     const conversationId = (await params).id;
 
-    if (!userId || !format) {
+    if (!format) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, format' },
+        { error: 'Missing required field: format' },
         { status: 400 }
       );
     }

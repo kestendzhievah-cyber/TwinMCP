@@ -524,17 +524,39 @@ export class AnalyticsService {
     }
   }
 
+  // SECURITY: Whitelist of allowed column names for analytics queries — prevents SQL injection
+  private static readonly ALLOWED_ANALYTICS_COLUMNS = new Set([
+    'event_type', 'user_id', 'session_id', 'page', 'referrer', 'device',
+    'browser', 'os', 'country', 'city', 'timestamp', 'created_at',
+    'count(*)', 'sum(duration)', 'avg(duration)', 'count(distinct user_id)',
+    'count(distinct session_id)',
+  ]);
+
+  private validateAnalyticsColumn(col: string): string {
+    const lower = col.toLowerCase().trim();
+    if (!AnalyticsService.ALLOWED_ANALYTICS_COLUMNS.has(lower)) {
+      throw new Error(`Invalid analytics column: ${col}`);
+    }
+    return lower;
+  }
+
   private async executeQuery(query: AnalyticsQuery): Promise<any[]> {
     try {
-      // Build a basic SQL query from the AnalyticsQuery definition
-      const metrics = query.metrics.length > 0 ? query.metrics.join(', ') : '*';
-      const groupBy = query.dimensions.length > 0 ? `GROUP BY ${query.dimensions.join(', ')}` : '';
-      const orderBy = query.dimensions.length > 0 ? `ORDER BY ${query.dimensions[0]}` : 'ORDER BY created_at DESC';
-      const limitClause = query.limit ? `LIMIT ${query.limit}` : 'LIMIT 1000';
-      const offsetClause = query.offset ? `OFFSET ${query.offset}` : '';
+      // SECURITY: Validate all column names against whitelist before interpolating into SQL
+      const validatedMetrics = query.metrics.length > 0
+        ? query.metrics.map(m => this.validateAnalyticsColumn(m)).join(', ')
+        : '*';
+      const validatedDimensions = query.dimensions.map(d => this.validateAnalyticsColumn(d));
+      const groupBy = validatedDimensions.length > 0 ? `GROUP BY ${validatedDimensions.join(', ')}` : '';
+      const orderBy = validatedDimensions.length > 0 ? `ORDER BY ${validatedDimensions[0]}` : 'ORDER BY created_at DESC';
+      // SECURITY: Parse limit/offset as safe integers to prevent injection
+      const safeLimit = Math.min(Math.max(1, Math.floor(Number(query.limit) || 1000)), 10000);
+      const safeOffset = Math.max(0, Math.floor(Number(query.offset) || 0));
+      const limitClause = `LIMIT ${safeLimit}`;
+      const offsetClause = safeOffset > 0 ? `OFFSET ${safeOffset}` : '';
 
       const result = await this.db.query(
-        `SELECT ${metrics} FROM session_events
+        `SELECT ${validatedMetrics} FROM session_events
          WHERE timestamp BETWEEN $1 AND $2
          ${groupBy} ${orderBy} ${limitClause} ${offsetClause}`,
         [query.timeRange.start, query.timeRange.end]

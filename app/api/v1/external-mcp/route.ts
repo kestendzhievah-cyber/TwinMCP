@@ -27,9 +27,11 @@ export async function GET(request: NextRequest) {
     const servers = await externalMcpService.list(userId);
     return NextResponse.json({ success: true, data: servers });
   } catch (error: any) {
+    const status = error.statusCode || 500;
+    const safeMessages: Record<number, string> = { 401: 'Authentication required' };
     return NextResponse.json(
-      { success: false, error: error.message },
-      { status: error.statusCode || 500 }
+      { success: false, error: safeMessages[status] || 'Failed to list external MCP servers' },
+      { status }
     );
   }
 }
@@ -41,9 +43,44 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const { name, description, baseUrl, authType, secret } = body;
-    if (!name || !baseUrl) {
+    if (!name || typeof name !== 'string' || !baseUrl || typeof baseUrl !== 'string') {
       return NextResponse.json(
         { success: false, error: 'name and baseUrl are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate name length
+    if (name.length > 200) {
+      return NextResponse.json(
+        { success: false, error: 'name must be at most 200 characters' },
+        { status: 400 }
+      );
+    }
+
+    // Validate baseUrl is a valid http(s) URL to prevent SSRF via internal URLs
+    try {
+      const parsed = new URL(baseUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return NextResponse.json(
+          { success: false, error: 'baseUrl must use http or https protocol' },
+          { status: 400 }
+        );
+      }
+      // Block common internal/private network targets
+      const hostname = parsed.hostname.toLowerCase();
+      if (['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(hostname) ||
+          hostname.startsWith('10.') || hostname.startsWith('192.168.') ||
+          hostname.startsWith('172.') || hostname.endsWith('.internal') ||
+          hostname.endsWith('.local')) {
+        return NextResponse.json(
+          { success: false, error: 'baseUrl must not point to internal/private networks' },
+          { status: 400 }
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'baseUrl must be a valid URL' },
         { status: 400 }
       );
     }
@@ -58,7 +95,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: server }, { status: 201 });
   } catch (error: any) {
-    const status = error.message.includes('Unique constraint') ? 409 : error.statusCode || 500;
-    return NextResponse.json({ success: false, error: error.message }, { status });
+    const isConflict = error.message?.includes('Unique constraint');
+    const status = isConflict ? 409 : (error.statusCode || 500);
+    const safeMessages: Record<number, string> = {
+      401: 'Authentication required',
+      409: 'An external MCP server with this configuration already exists',
+    };
+    return NextResponse.json(
+      { success: false, error: safeMessages[status] || 'Failed to create external MCP server' },
+      { status }
+    );
   }
 }

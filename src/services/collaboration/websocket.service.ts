@@ -49,8 +49,12 @@ export class WebSocketService {
         });
       });
 
+      // SECURITY: Helper to verify socket is in the target room before allowing actions
+      const isInRoom = (conversationId: string) => socket.rooms.has(`conversation:${conversationId}`);
+
       // Handle typing indicator
       socket.on('typing-start', (conversationId: string) => {
+        if (!isInRoom(conversationId)) return;
         socket.to(`conversation:${conversationId}`).emit('user-typing', {
           userId,
           typing: true
@@ -58,6 +62,7 @@ export class WebSocketService {
       });
 
       socket.on('typing-stop', (conversationId: string) => {
+        if (!isInRoom(conversationId)) return;
         socket.to(`conversation:${conversationId}`).emit('user-typing', {
           userId,
           typing: false
@@ -69,6 +74,7 @@ export class WebSocketService {
         conversationId: string;
         update: Uint8Array;
       }) => {
+        if (!isInRoom(data.conversationId)) return;
         const doc = this.getOrCreateDocument(data.conversationId);
         Y.applyUpdate(doc, new Uint8Array(data.update));
 
@@ -87,6 +93,7 @@ export class WebSocketService {
         conversationId: string;
         position: number;
       }) => {
+        if (!isInRoom(data.conversationId)) return;
         socket.to(`conversation:${data.conversationId}`).emit('cursor-update', {
           userId,
           position: data.position
@@ -124,13 +131,19 @@ export class WebSocketService {
     // Extract token from handshake
     const token = socket.handshake.auth.token;
     
-    if (!token) {
+    if (!token || typeof token !== 'string') {
       return null;
     }
 
-    // TODO: Verify JWT token and extract userId
-    // For now, return a mock userId
-    return 'mock-user-id';
+    // Verify Firebase ID token
+    try {
+      const firebaseAdmin = await import('firebase-admin');
+      if (!firebaseAdmin.apps.length) return null;
+      const decoded = await firebaseAdmin.auth().verifyIdToken(token);
+      return decoded.uid;
+    } catch {
+      return null;
+    }
   }
 
   private async checkAccess(userId: string, conversationId: string): Promise<boolean> {

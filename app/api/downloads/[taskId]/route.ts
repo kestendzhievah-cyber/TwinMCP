@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 let _services: { downloadManager: any; db: any } | null = null;
 async function getServices() {
@@ -22,6 +23,11 @@ export async function GET(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
+    const userId = await getAuthUserId(_request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+
     const { downloadManager } = await getServices();
     const { taskId } = await params;
     const task = await downloadManager.getDownloadStatus(taskId);
@@ -36,7 +42,7 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Failed to fetch download task',
       },
       { status: 500 }
     );
@@ -48,6 +54,11 @@ export async function DELETE(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
+    const userId = await getAuthUserId(_request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+
     const { downloadManager, db } = await getServices();
     const { taskId } = await params;
     const task = await downloadManager.getDownloadStatus(taskId);
@@ -75,7 +86,7 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Failed to delete download task',
       },
       { status: 500 }
     );

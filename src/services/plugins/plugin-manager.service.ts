@@ -13,11 +13,26 @@ export class PluginManager {
   }
 
   async loadPlugin(pluginPath: string): Promise<void> {
-    const manifestPath = path.join(pluginPath, 'manifest.json');
+    // SECURITY: Ensure pluginPath is within the configured plugin directory
+    const resolvedPluginPath = path.resolve(pluginPath);
+    const resolvedPluginDir = path.resolve(this.pluginDir);
+    if (!resolvedPluginPath.startsWith(resolvedPluginDir + path.sep) && resolvedPluginPath !== resolvedPluginDir) {
+      throw new Error('Plugin path is outside the allowed plugin directory');
+    }
+
+    const manifestPath = path.join(resolvedPluginPath, 'manifest.json');
     const manifestContent = await fs.readFile(manifestPath, 'utf-8');
     const manifest: PluginManifest = JSON.parse(manifestContent);
 
-    const entryPath = path.join(pluginPath, manifest.entryPoint);
+    // SECURITY: Validate entryPoint does not escape the plugin directory (path traversal)
+    if (!manifest.entryPoint || typeof manifest.entryPoint !== 'string') {
+      throw new Error('Invalid plugin manifest: entryPoint is required');
+    }
+    const entryPath = path.resolve(resolvedPluginPath, manifest.entryPoint);
+    if (!entryPath.startsWith(resolvedPluginPath + path.sep)) {
+      throw new Error('Plugin entryPoint escapes the plugin directory — possible path traversal');
+    }
+
     const plugin = await import(entryPath);
     const instance: IPlugin = new plugin.default();
 

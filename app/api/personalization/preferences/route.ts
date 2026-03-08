@@ -1,16 +1,17 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const personalizationService = await getPersonalizationService();
-    // Récupération de l'userId depuis les headers ou le query param
-    const userId = request.headers.get('x-user-id') || request.nextUrl.searchParams.get('userId');
-
+    // SECURITY: Use verified auth — never trust x-user-id header (IDOR vector)
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+
+    const personalizationService = await getPersonalizationService();
 
     const preferences = await personalizationService.getUserPreferences(userId);
 
@@ -23,7 +24,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to get preferences',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -32,12 +32,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id');
-
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+
+    const personalizationService = await getPersonalizationService();
 
     const updates = await request.json();
 
@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to update preferences',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -67,12 +66,12 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id');
-
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+
+    const personalizationService = await getPersonalizationService();
 
     const preferences = await request.json();
 
@@ -96,7 +95,6 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to replace preferences',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

@@ -17,6 +17,7 @@ import {
   Code,
   Zap,
   Terminal,
+  X,
 } from 'lucide-react';
 
 interface NavItem {
@@ -101,7 +102,7 @@ export function DashboardNavigation() {
   };
 
   return (
-    <nav className="bg-gradient-to-r from-[#1a1b2e] via-[#1a0b2e] to-[#0f0520] border-b border-purple-500/20 backdrop-blur-xl sticky top-0 z-50">
+    <nav className="bg-gradient-to-r from-[#1a1b2e] via-[#1a0b2e] to-[#0f0520] border-b border-purple-500/20 backdrop-blur-xl sticky top-0 z-50 safe-top">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo et branding */}
@@ -157,13 +158,18 @@ export function DashboardNavigation() {
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-gray-400 hover:text-white transition-colors"
+            className="md:hidden p-2 text-gray-400 hover:text-white transition-colors touch-target flex items-center justify-center"
+            aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
           >
-            <div className="space-y-1">
-              <div className="w-6 h-0.5 bg-gray-400"></div>
-              <div className="w-6 h-0.5 bg-gray-400"></div>
-              <div className="w-6 h-0.5 bg-gray-400"></div>
-            </div>
+            {mobileMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <div className="space-y-1.5">
+                <div className="w-6 h-0.5 bg-current"></div>
+                <div className="w-6 h-0.5 bg-current"></div>
+                <div className="w-6 h-0.5 bg-current"></div>
+              </div>
+            )}
           </button>
 
           {/* User menu */}
@@ -182,19 +188,14 @@ export function DashboardNavigation() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 bg-[#1a1b2e] border-b border-purple-500/20 shadow-xl">
-            <div className="max-w-7xl mx-auto px-4 py-4">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-lg font-semibold text-white">Menu</span>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 text-gray-400 hover:text-white transition-colors"
-                >
-                  <div className="w-6 h-0.5 bg-gray-400"></div>
-                  <div className="w-6 h-0.5 bg-gray-400"></div>
-                  <div className="w-6 h-0.5 bg-gray-400"></div>
-                </button>
-              </div>
+          <>
+          {/* Backdrop overlay */}
+          <div
+            className="md:hidden fixed inset-0 bg-black/40 z-[-1]"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="md:hidden absolute top-full left-0 right-0 bg-[#1a1b2e]/95 backdrop-blur-lg border-b border-purple-500/20 shadow-xl max-h-[70vh] overflow-y-auto">
+            <div className="max-w-7xl mx-auto px-4 py-3">
 
               <div className="space-y-2">
                 {navigation.map(item => {
@@ -236,6 +237,7 @@ export function DashboardNavigation() {
               </div>
             </div>
           </div>
+          </>
         )}
       </div>
     </nav>

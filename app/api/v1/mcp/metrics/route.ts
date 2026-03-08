@@ -73,12 +73,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(metrics);
   } catch (error: any) {
     logger.error('Metrics error:', error);
+    const statusCode = error.statusCode || 500;
     return NextResponse.json(
       {
-        error: error.message || 'Failed to retrieve metrics',
+        error: statusCode === 401 ? 'Authentication required' : statusCode < 500 ? 'Request failed' : 'Failed to retrieve metrics',
         apiVersion: 'v1',
       },
-      { status: error.statusCode || 500 }
+      { status: statusCode }
     );
   }
 }

@@ -150,7 +150,7 @@ export class EmailProviderService {
   renderTemplate(template: string, data: Record<string, any>): string {
     let result = template
     for (const [key, value] of Object.entries(data)) {
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value))
+      result = result.replaceAll(`{{${key}}}`, String(value))
     }
     return result
   }

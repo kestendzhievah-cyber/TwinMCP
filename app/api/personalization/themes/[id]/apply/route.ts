@@ -1,16 +1,17 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../../../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id');
-    const themeId = (await params).id;
-
+    // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const themeId = (await params).id;
 
     if (!themeId) {
       return NextResponse.json({ error: 'Theme ID is required' }, { status: 400 });
@@ -33,7 +34,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(
       {
         error: 'Failed to apply theme',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

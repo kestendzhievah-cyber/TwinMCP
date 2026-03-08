@@ -1,11 +1,13 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
     const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id') || request.nextUrl.searchParams.get('userId');
+    // Use verified auth if available; themes list can include public themes for anonymous users
+    const userId = await getAuthUserId(request.headers.get('authorization'));
 
     const themes = await personalizationService.getAllThemes(userId || undefined);
 
@@ -19,7 +21,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to get themes',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -28,15 +29,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id');
-
+    // SECURITY: Require proper authentication for theme creation
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
       return NextResponse.json(
-        { error: 'User ID is required for creating custom themes' },
-        { status: 400 }
+        { error: 'Authentication required for creating custom themes' },
+        { status: 401 }
       );
     }
+
+    const personalizationService = await getPersonalizationService();
 
     const themeData = await request.json();
 
@@ -60,7 +62,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to create theme',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

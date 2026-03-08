@@ -119,6 +119,8 @@ export class SearchMatchingService {
   }
 
   private async exactSearch(terms: string[], query: SearchQuery): Promise<SearchResult[]> {
+    // SECURITY: Use parameterized filters to prevent SQL injection
+    const filterResult = this.buildFilterClause(query.filters, 1);
     const sqlQuery = `
       SELECT 
         l.*,
@@ -134,10 +136,10 @@ export class SearchMatchingService {
         l.search_vector @@ plainto_tsquery($1)
         OR l.name ILIKE '%' || $1 || '%'
         OR l.display_name ILIKE '%' || $1 || '%'
-        ${this.buildFilterClause(query.filters)}
+        ${filterResult.clause}
     `;
 
-    const results = await this.db.query(sqlQuery, [terms[0]]);
+    const results = await this.db.query(sqlQuery, [terms[0], ...filterResult.params]);
     
     return results.rows.map(row => this.mapToSearchResult(row, 'exact'));
   }
@@ -145,6 +147,8 @@ export class SearchMatchingService {
   private async fuzzySearch(terms: string[], query: SearchQuery): Promise<SearchResult[]> {
     if (terms.length === 0) return [];
 
+    // SECURITY: Use parameterized filters to prevent SQL injection
+    const filterResult = this.buildFilterClause(query.filters, 1);
     const sqlQuery = `
       SELECT 
         l.*,
@@ -158,13 +162,13 @@ export class SearchMatchingService {
       WHERE 
         l.name % $1 
         OR l.description % $1
-        ${this.buildFilterClause(query.filters)}
+        ${filterResult.clause}
         HAVING similarity(l.name, $1) > 0.3 OR similarity(l.description, $1) > 0.3
         ORDER BY fuzzy_rank DESC, name_similarity DESC, desc_similarity DESC
         LIMIT 50
     `;
 
-    const results = await this.db.query(sqlQuery, [terms[0]]);
+    const results = await this.db.query(sqlQuery, [terms[0], ...filterResult.params]);
     
     return results.rows.map(row => this.mapToSearchResult(row, 'fuzzy'));
   }
@@ -173,6 +177,8 @@ export class SearchMatchingService {
     if (terms.length === 0) return [];
 
     // Recherche basée sur les tags et descriptions sémantiques
+    // SECURITY: Use parameterized filters to prevent SQL injection
+    const filterResult = this.buildFilterClause(query.filters, 2);
     const sqlQuery = `
       SELECT DISTINCT
         l.*,
@@ -184,14 +190,14 @@ export class SearchMatchingService {
       WHERE 
         t.name ILIKE ANY($2)
         OR l.description ILIKE ANY($2)
-      ${this.buildFilterClause(query.filters)}
+      ${filterResult.clause}
       GROUP BY l.id
       ORDER BY tag_match_count DESC, semantic_rank DESC
       LIMIT 30
     `;
 
     const termPatterns = terms.map(term => `%${term}%`);
-    const results = await this.db.query(sqlQuery, [terms.join(' '), termPatterns]);
+    const results = await this.db.query(sqlQuery, [terms.join(' '), termPatterns, ...filterResult.params]);
     
     return results.rows.map(row => this.mapToSearchResult(row, 'semantic'));
   }
@@ -371,39 +377,73 @@ export class SearchMatchingService {
       .slice(0, 10);
   }
 
-  private buildFilterClause(filters?: any): string {
-    if (!filters) return '';
+  // SECURITY: Whitelist of allowed filter values to prevent SQL injection
+  private static readonly ALLOWED_LANGUAGES = new Set([
+    'javascript', 'typescript', 'python', 'java', 'go', 'rust', 'ruby', 'php', 'c', 'cpp', 'csharp', 'swift', 'kotlin',
+  ]);
+  private static readonly ALLOWED_LICENSES = new Set([
+    'mit', 'apache-2.0', 'gpl-3.0', 'bsd-2-clause', 'bsd-3-clause', 'isc', 'mpl-2.0', 'lgpl-3.0', 'unlicense',
+  ]);
+  private static readonly ALLOWED_STATUSES = new Set(['active', 'deprecated', 'archived', 'beta']);
+
+  private buildFilterClause(filters?: any, paramOffset = 1): { clause: string; params: any[]; nextParam: number } {
+    if (!filters) return { clause: '', params: [], nextParam: paramOffset + 1 };
 
     const conditions: string[] = [];
-    
-    if (filters.tags?.length > 0) {
+    const params: any[] = [];
+    let idx = paramOffset + 1;
+
+    if (Array.isArray(filters.tags) && filters.tags.length > 0) {
+      // SECURITY: Parameterize tag array instead of interpolating
       conditions.push(`l.id IN (
         SELECT library_id FROM library_tag_associations 
-        WHERE tag_id IN (SELECT id FROM library_tags WHERE name = ANY('${filters.tags}'))
+        WHERE tag_id IN (SELECT id FROM library_tags WHERE name = ANY($${idx}::text[]))
       )`);
+      params.push(filters.tags);
+      idx++;
     }
 
-    if (filters.language) {
-      conditions.push(`l.language = '${filters.language}'`);
+    if (filters.language && SearchMatchingService.ALLOWED_LANGUAGES.has(String(filters.language).toLowerCase())) {
+      conditions.push(`l.language = $${idx}`);
+      params.push(filters.language);
+      idx++;
     }
 
-    if (filters.license) {
-      conditions.push(`l.license = '${filters.license}'`);
+    if (filters.license && SearchMatchingService.ALLOWED_LICENSES.has(String(filters.license).toLowerCase())) {
+      conditions.push(`l.license = $${idx}`);
+      params.push(filters.license);
+      idx++;
     }
 
-    if (filters.status) {
-      conditions.push(`l.status = '${filters.status}'`);
+    if (filters.status && SearchMatchingService.ALLOWED_STATUSES.has(String(filters.status).toLowerCase())) {
+      conditions.push(`l.status = $${idx}`);
+      params.push(filters.status);
+      idx++;
     }
 
-    if (filters.minQuality) {
-      conditions.push(`l.quality_score >= ${filters.minQuality}`);
+    if (filters.minQuality != null) {
+      const q = Number(filters.minQuality);
+      if (Number.isFinite(q) && q >= 0 && q <= 100) {
+        conditions.push(`l.quality_score >= $${idx}`);
+        params.push(q);
+        idx++;
+      }
     }
 
-    if (filters.minPopularity) {
-      conditions.push(`l.popularity_score >= ${filters.minPopularity}`);
+    if (filters.minPopularity != null) {
+      const p = Number(filters.minPopularity);
+      if (Number.isFinite(p) && p >= 0) {
+        conditions.push(`l.popularity_score >= $${idx}`);
+        params.push(p);
+        idx++;
+      }
     }
 
-    return conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '';
+    return {
+      clause: conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '',
+      params,
+      nextParam: idx,
+    };
   }
 
   private mapToSearchResult(row: any, matchType: SearchResult['matchType']): SearchResult {

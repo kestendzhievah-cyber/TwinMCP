@@ -120,7 +120,7 @@ export class CDNIntegrationService {
   matchCacheRule(path: string): CacheRule | null {
     for (const rule of this.cacheRules.values()) {
       if (!rule.enabled) continue
-      if (path.match(new RegExp(rule.pattern))) return rule
+      if (rule.pattern.length <= 256) { try { if (path.slice(0, 2048).match(new RegExp(rule.pattern))) return rule } catch { /* invalid pattern */ } }
     }
     return null
   }

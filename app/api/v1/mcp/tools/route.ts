@@ -97,9 +97,14 @@ export async function GET(request: NextRequest) {
     });
 
     logger.error('Tools list error:', error);
+    const statusCode = error.statusCode || 500;
+    const safeMessage = statusCode === 401 ? 'Authentication required'
+      : statusCode === 403 ? 'Access denied'
+      : statusCode < 500 ? 'Request failed'
+      : 'Failed to list tools';
     return NextResponse.json(
-      { error: error.message || 'Failed to list tools', code: error.code },
-      { status: error.statusCode || 500 }
+      { error: safeMessage, code: statusCode < 500 ? error.code : undefined },
+      { status: statusCode }
     );
   }
 }

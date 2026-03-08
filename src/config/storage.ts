@@ -57,25 +57,32 @@ export class StorageService {
 
   private getStorageConfig(): StorageConfig {
     const provider = (process.env.STORAGE_PROVIDER as 's3' | 'minio') || 'minio';
+    const isProd = process.env.NODE_ENV === 'production';
 
     if (provider === 's3') {
-      // Use dummy values for build time if not configured
+      // SECURITY: In production, require real credentials — never fall back to dummy values
+      if (isProd && (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY)) {
+        logger.error('[storage] AWS credentials not configured in production');
+      }
       return {
         provider: 's3',
         bucket: process.env.S3_BUCKET_NAME || 'default-bucket',
         region: process.env.AWS_REGION || 'us-east-1',
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'dummy-key',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'dummy-secret',
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || (isProd ? '' : 'dummy-key'),
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || (isProd ? '' : 'dummy-secret'),
         forcePathStyle: false,
       };
     } else {
-      // Use dummy values for build time if not configured
+      // SECURITY: In production, require real credentials — never fall back to defaults
+      if (isProd && (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY)) {
+        logger.error('[storage] MinIO credentials not configured in production');
+      }
       return {
         provider: 'minio',
         bucket: process.env.MINIO_BUCKET_NAME || 'default-bucket',
         endpoint: this.buildMinioEndpoint(),
-        accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-        secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+        accessKeyId: process.env.MINIO_ACCESS_KEY || (isProd ? '' : 'minioadmin'),
+        secretAccessKey: process.env.MINIO_SECRET_KEY || (isProd ? '' : 'minioadmin'),
         forcePathStyle: true,
       };
     }

@@ -1,10 +1,13 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { RDSClient, RestoreDBClusterToPointInTimeCommand } from '@aws-sdk/client-rds';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+// SECURITY: Validate filenames to prevent path traversal and command injection
+const SAFE_FILENAME_RE = /^backup-[\dT:.Z-]+\.sql\.gz$/;
 
 export class BackupService {
   private s3: S3Client;
@@ -19,9 +22,12 @@ export class BackupService {
     const timestamp = new Date().toISOString();
     const filename = `backup-${timestamp}.sql.gz`;
 
-    await execAsync(
-      `pg_dump ${process.env.DATABASE_URL} | gzip > /tmp/${filename}`
-    );
+    // SECURITY: Use execFile with explicit args to prevent shell injection via DATABASE_URL
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) throw new Error('DATABASE_URL is not configured');
+    await execFileAsync('/bin/sh', ['-c', 'pg_dump "$DB_URL" | gzip > "$OUT_FILE"'], {
+      env: { ...process.env, DB_URL: dbUrl, OUT_FILE: `/tmp/${filename}` },
+    });
 
     const fileContent = await fs.readFile(`/tmp/${filename}`);
 
@@ -40,6 +46,11 @@ export class BackupService {
   }
 
   async restoreFromBackup(filename: string): Promise<void> {
+    // SECURITY: Validate filename to prevent path traversal and command injection
+    if (!SAFE_FILENAME_RE.test(filename)) {
+      throw new Error('Invalid backup filename format');
+    }
+
     const response = await this.s3.send(new GetObjectCommand({
       Bucket: process.env.BACKUP_BUCKET || 'twinmcp-backups',
       Key: `database/${filename}`
@@ -52,9 +63,12 @@ export class BackupService {
     const fileContent = await response.Body.transformToByteArray();
     await fs.writeFile(`/tmp/${filename}`, fileContent);
 
-    await execAsync(
-      `gunzip < /tmp/${filename} | psql ${process.env.DATABASE_URL}`
-    );
+    // SECURITY: Use execFile with explicit args to prevent shell injection
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) throw new Error('DATABASE_URL is not configured');
+    await execFileAsync('/bin/sh', ['-c', 'gunzip < "$IN_FILE" | psql "$DB_URL"'], {
+      env: { ...process.env, DB_URL: dbUrl, IN_FILE: `/tmp/${filename}` },
+    });
 
     await fs.unlink(`/tmp/${filename}`);
   }

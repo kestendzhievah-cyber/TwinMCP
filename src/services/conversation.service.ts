@@ -272,8 +272,17 @@ export class ConversationService {
       paramIndex++;
     }
 
-    // Tri
-    const orderClause = `ORDER BY c.metadata->>'${search.sorting.field}' ${search.sorting.order}`;
+    // Tri — whitelist sorting fields to prevent SQL injection
+    const ALLOWED_SORT_FIELDS: Record<string, string> = {
+      createdAt: "c.metadata->>'createdAt'",
+      updatedAt: "c.metadata->>'updatedAt'",
+      lastMessageAt: "c.metadata->>'lastMessageAt'",
+      messageCount: "(c.metadata->>'messageCount')::int",
+      title: 'c.title',
+    };
+    const sortColumn = ALLOWED_SORT_FIELDS[search.sorting.field] || "c.metadata->>'updatedAt'";
+    const sortDir = search.sorting.order === 'asc' ? 'ASC' : 'DESC';
+    const orderClause = `ORDER BY ${sortColumn} ${sortDir}`;
 
     // Pagination
     const limitClause = `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
@@ -550,13 +559,13 @@ export class ConversationService {
         </style>
       </head>
       <body>
-        <h1>${conversation.title}</h1>
+        <h1>${this.escapeHtml(conversation.title)}</h1>
         ${conversation.messages.map(msg => `
-          <div class="message ${msg.role}">
+          <div class="message ${msg.role === 'user' ? 'user' : 'assistant'}">
             <div class="metadata">
-              ${msg.role === 'user' ? '👤 Utilisateur' : '🤖 Assistant'} - ${msg.timestamp.toLocaleString()}
+              ${msg.role === 'user' ? '👤 Utilisateur' : '🤖 Assistant'} - ${this.escapeHtml(String(msg.timestamp))}
             </div>
-            <div>${msg.content}</div>
+            <div>${this.escapeHtml(msg.content)}</div>
           </div>
         `).join('')}
       </body>
@@ -703,6 +712,15 @@ export class ConversationService {
     );
 
     return result.rows[0] || null;
+  }
+
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   private mapRowToConversation(row: any): Conversation {

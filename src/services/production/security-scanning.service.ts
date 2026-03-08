@@ -168,7 +168,12 @@ export class SecurityScanningService {
       let matches = false
       if (rule.condition.operator === 'equals') matches = fieldValue === rule.condition.value
       else if (rule.condition.operator === 'contains') matches = fieldValue.includes(rule.condition.value)
-      else if (rule.condition.operator === 'regex') matches = new RegExp(rule.condition.value).test(fieldValue)
+      else if (rule.condition.operator === 'regex') {
+        // SECURITY: Cap regex length and catch invalid patterns to prevent ReDoS
+        if (rule.condition.value.length <= 256) {
+          try { matches = new RegExp(rule.condition.value).test(fieldValue.slice(0, 8192)) } catch { matches = false }
+        }
+      }
 
       if (matches) {
         rule.hitCount++

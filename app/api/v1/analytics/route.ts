@@ -2,12 +2,8 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
-
-const PLAN_LIMITS = {
-  free: { dailyLimit: 200, monthlyLimit: 6000, maxKeys: 3, rateLimit: 20 },
-  pro: { dailyLimit: 10000, monthlyLimit: 300000, maxKeys: 10, rateLimit: 200 },
-  enterprise: { dailyLimit: 100000, monthlyLimit: 3000000, maxKeys: 100, rateLimit: 2000 },
-};
+import { getApiKeyLimits } from '@/lib/services/api-key.service';
+import { resolvePlanId } from '@/lib/services/stripe-billing.service';
 
 export async function GET(request: NextRequest) {
   const start = Date.now();
@@ -76,8 +72,8 @@ export async function GET(request: NextRequest) {
       // Default to free
     }
 
-    const tier = plan as 'free' | 'pro' | 'enterprise';
-    const limits = PLAN_LIMITS[tier] || PLAN_LIMITS.free;
+    const resolvedTier = resolvePlanId(plan);
+    const limits = getApiKeyLimits(resolvedTier);
 
     // Get user's API keys
     const apiKeys = await prisma.apiKey.findMany({

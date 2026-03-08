@@ -225,7 +225,7 @@ export default function AuthPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 flex">
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8">
           <div className="w-full max-w-md animate-pulse">
             <div className="h-4 w-32 bg-purple-500/10 rounded mb-6" />
             <div className="flex justify-center mb-8">
@@ -263,12 +263,12 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 flex">
       {/* Left Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-md">
           {/* Back Button */}
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition mb-6 group"
+            className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition mb-4 sm:mb-6 group touch-target"
             data-testid="back-to-home"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
@@ -283,7 +283,7 @@ export default function AuthPage() {
           </div>
 
           {/* Card */}
-          <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8">
             <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
               Connexion à TwinMCP
             </h1>
@@ -353,7 +353,7 @@ export default function AuthPage() {
             <button
               onClick={handleGoogleLogin}
               disabled={isLoading || !firebaseReady}
-              className="w-full mb-3 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50"
+              className="w-full mb-3 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50 touch-target"
               data-testid="google-login-btn"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -381,7 +381,7 @@ export default function AuthPage() {
             <button
               onClick={handleGithubLogin}
               disabled={isLoading || !firebaseReady}
-              className="w-full mb-6 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50"
+              className="w-full mb-6 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50 touch-target"
               data-testid="github-login-btn"
             >
               <Github className="w-5 h-5" />

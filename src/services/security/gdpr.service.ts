@@ -131,18 +131,21 @@ export class GDPRService {
     ]);
   }
 
-  private async deleteSensitiveData(userId: string): Promise<void> {
-    const sensitiveTables = [
-      'user_sessions',
-      'user_analytics',
-      'stream_connections',
-      'stream_chunks'
-    ];
+  // SECURITY: Whitelist of tables allowed for GDPR deletion — prevents SQL injection if this list is ever made dynamic
+  private static readonly GDPR_SENSITIVE_TABLES = new Set([
+    'user_sessions',
+    'user_analytics',
+    'stream_connections',
+    'stream_chunks',
+  ]);
 
-    for (const table of sensitiveTables) {
-      await this.db.query(`
-        DELETE FROM ${table} WHERE user_id = $1
-      `, [userId]);
+  private async deleteSensitiveData(userId: string): Promise<void> {
+    for (const table of GDPRService.GDPR_SENSITIVE_TABLES) {
+      // Table name is from a static whitelist — safe to interpolate
+      await this.db.query(
+        `DELETE FROM "${table}" WHERE user_id = $1`,
+        [userId]
+      );
     }
   }
 

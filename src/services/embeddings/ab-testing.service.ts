@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 /**
  * A/B Testing Service for Embedding Models.
  *
@@ -134,7 +136,7 @@ export class ABTestingService {
     const exp = this.experiments.get(experimentId)
     if (!exp || exp.status !== 'running') return null
 
-    const rand = Math.random()
+    const rand = crypto.randomInt(0, 1000000) / 1000000
     let cumulative = 0
 
     for (const variant of exp.variants) {

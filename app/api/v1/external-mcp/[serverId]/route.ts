@@ -34,9 +34,11 @@ export async function GET(
     }
     return NextResponse.json({ success: true, data: server });
   } catch (error: any) {
+    const status = error.statusCode || 500;
+    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
     return NextResponse.json(
-      { success: false, error: error.message },
-      { status: error.statusCode || 500 }
+      { success: false, error: safeMessages[status] || 'Internal server error' },
+      { status }
     );
   }
 }
@@ -54,7 +56,11 @@ export async function PUT(
     return NextResponse.json({ success: true, data: server });
   } catch (error: any) {
     const status = error.message === 'Server not found' ? 404 : error.statusCode || 500;
-    return NextResponse.json({ success: false, error: error.message }, { status });
+    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
+    return NextResponse.json(
+      { success: false, error: safeMessages[status] || 'Internal server error' },
+      { status }
+    );
   }
 }
 
@@ -70,6 +76,10 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: 'Server deleted' });
   } catch (error: any) {
     const status = error.message === 'Server not found' ? 404 : error.statusCode || 500;
-    return NextResponse.json({ success: false, error: error.message }, { status });
+    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
+    return NextResponse.json(
+      { success: false, error: safeMessages[status] || 'Internal server error' },
+      { status }
+    );
   }
 }

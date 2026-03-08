@@ -1,9 +1,15 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getReportingServices } from '../../../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { reportingService } = await getReportingServices();
     const reportId = (await params).id;
     const body = await request.json();
@@ -26,6 +32,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { reportingService, db } = await getReportingServices();
     const reportId = (await params).id;
     const { searchParams } = new URL(request.url);

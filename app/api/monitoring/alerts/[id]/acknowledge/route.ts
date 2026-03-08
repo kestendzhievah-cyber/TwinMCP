@@ -1,18 +1,20 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../../../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const monitoringService = await getMonitoringService();
-    const alertId = (await params).id;
-    const body = await request.json();
-
-    if (!body.userId) {
-      return NextResponse.json({ error: 'Missing required field: userId' }, { status: 400 });
+    // SECURITY: Use authenticated userId instead of trusting body.userId (IDOR)
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const alert = await monitoringService.acknowledgeAlert(alertId, body.userId);
+    const monitoringService = await getMonitoringService();
+    const alertId = (await params).id;
+
+    const alert = await monitoringService.acknowledgeAlert(alertId, userId);
 
     return NextResponse.json({
       success: true,

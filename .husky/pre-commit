@@ -1,4 +1,8 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Run lint-staged (eslint --fix + prettier --write on staged files)
 npx lint-staged
+
+# Type-check the entire project
+npx tsc --noEmit

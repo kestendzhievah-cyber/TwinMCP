@@ -18,6 +18,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Verify the conversation belongs to this user
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { userId: true },
+    });
+    if (!conversation || conversation.userId !== userId) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
+
     // Persist user message
     try {
       await prisma.message.create({

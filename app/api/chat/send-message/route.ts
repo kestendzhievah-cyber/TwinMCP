@@ -2,6 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getChatbot } from '@/lib/chatbot';
 import { createConversation, addMessageToConversation } from '@/lib/conversation';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { sendChatMessageSchema, parseBody } from '@/lib/validations/api-schemas';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 interface SendMessageRequest {
   chatbotId: string;
@@ -16,14 +20,28 @@ interface SendMessageResponse {
   messageId?: string;
 }
 
+const MAX_MESSAGE_LENGTH = 10000;
+
 export async function POST(request: NextRequest) {
   try {
-    const body: SendMessageRequest = await request.json();
-
-    // Validate required fields
-    if (!body.chatbotId || !body.message || !body.visitorId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // SECURITY: Require authentication — this endpoint calls paid LLM APIs
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
     }
+
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = parseBody(sendChatMessageSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error, details: parsed.details }, { status: 400 });
+    }
+    const body = parsed.data;
 
     // Get chatbot configuration
     const chatbot = await getChatbot(body.chatbotId);
@@ -57,8 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Error sending message:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'SendChatMessage');
   }
 }
 

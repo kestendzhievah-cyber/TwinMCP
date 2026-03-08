@@ -1,14 +1,15 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
     const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id');
-
+    // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const analytics = await personalizationService.getAnalytics(userId);
@@ -20,10 +21,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logger.error('Error getting analytics:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to get analytics',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to get analytics' },
       { status: 500 }
     );
   }

@@ -166,7 +166,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const {
       apiKeyId,
       userId,
@@ -178,6 +183,30 @@ export async function POST(request: NextRequest) {
       success,
       errorMessage,
     } = body;
+
+    // Validate required fields
+    if (!toolName || typeof toolName !== 'string' || toolName.length > 200) {
+      return NextResponse.json({ error: 'Valid toolName is required (max 200 chars)' }, { status: 400 });
+    }
+
+    // Validate optional string fields — cap lengths to prevent oversized DB writes
+    if (apiKeyId && (typeof apiKeyId !== 'string' || apiKeyId.length > 100)) {
+      return NextResponse.json({ error: 'Invalid apiKeyId' }, { status: 400 });
+    }
+    if (query && (typeof query !== 'string' || query.length > 10000)) {
+      return NextResponse.json({ error: 'query too long (max 10000 chars)' }, { status: 400 });
+    }
+    if (errorMessage && (typeof errorMessage !== 'string' || errorMessage.length > 2000)) {
+      return NextResponse.json({ error: 'errorMessage too long (max 2000 chars)' }, { status: 400 });
+    }
+
+    // Validate numeric fields
+    if (tokensReturned !== undefined && (typeof tokensReturned !== 'number' || !Number.isFinite(tokensReturned) || tokensReturned < 0)) {
+      return NextResponse.json({ error: 'Invalid tokensReturned' }, { status: 400 });
+    }
+    if (responseTimeMs !== undefined && (typeof responseTimeMs !== 'number' || !Number.isFinite(responseTimeMs) || responseTimeMs < 0)) {
+      return NextResponse.json({ error: 'Invalid responseTimeMs' }, { status: 400 });
+    }
 
     // Prevent forging usage logs for other users
     const effectiveUserId = authUserId;

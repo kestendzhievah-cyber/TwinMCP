@@ -39,7 +39,7 @@ module.exports = [
 
       // TypeScript specific rules
       '@typescript-eslint/no-unused-vars': 'warn',
-      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-non-null-assertion': 'warn',
       '@typescript-eslint/prefer-nullish-coalescing': 'warn',
@@ -49,7 +49,7 @@ module.exports = [
       '@typescript-eslint/no-misused-promises': 'warn',
       
       // General rules
-      'no-console': 'off',
+      'no-console': 'warn',
       'no-unused-vars': 'warn',
       'prefer-const': 'error',
       'no-var': 'error',

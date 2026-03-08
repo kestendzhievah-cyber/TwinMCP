@@ -264,11 +264,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Search Modal */}
       {searchOpen && (
         <div
-          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[15vh]"
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[8vh] sm:pt-[15vh] px-4"
           onClick={() => setSearchOpen(false)}
         >
           <div
-            className={`w-full max-w-2xl ${themeClasses.panel} border rounded-2xl shadow-2xl overflow-hidden`}
+            className={`w-full max-w-2xl ${themeClasses.panel} border rounded-2xl shadow-2xl overflow-hidden max-h-[80vh]`}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 px-4 py-4 border-b border-purple-500/20">
@@ -381,7 +381,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClick={() => setMobileMenuOpen(false)}
           />
           <div
-            className={`fixed inset-y-0 left-0 w-72 ${themeClasses.surface} border-r p-4 overflow-y-auto`}
+            className={`fixed inset-y-0 left-0 w-72 ${themeClasses.surface} border-r p-4 overflow-y-auto safe-top safe-bottom`}
           >
             <div className="flex items-center justify-between mb-6">
               <Link href="/" className="flex items-center gap-2">
@@ -493,13 +493,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         {/* Top Header */}
         <header
-          className={`sticky top-0 z-20 h-16 ${themeClasses.surface} backdrop-blur-xl border-b`}
+          className={`sticky top-0 z-20 h-14 sm:h-16 ${themeClasses.surface} backdrop-blur-xl border-b safe-top`}
         >
           <div className="flex items-center justify-between h-full px-4 lg:px-6">
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 text-gray-400 hover:text-white"
+              className="lg:hidden p-2 text-gray-400 hover:text-white touch-target"
+              aria-label="Ouvrir le menu"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -582,7 +583,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Page Content */}
-        <main className="p-4 lg:p-6">
+        <main className="p-3 sm:p-4 lg:p-6 safe-bottom">
           <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
         </main>
       </div>

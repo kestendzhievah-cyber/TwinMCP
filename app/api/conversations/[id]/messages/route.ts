@@ -1,17 +1,23 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationService } from '../../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const conversationService = await getConversationService();
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { userId, role, content, metadata, attachments } = body;
+    const { role, content, metadata, attachments } = body;
     const conversationId = (await params).id;
 
-    if (!userId || !role || !content) {
+    if (!role || !content) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, role, content' },
+        { error: 'Missing required fields: role, content' },
         { status: 400 }
       );
     }
@@ -34,14 +40,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const conversationService = await getConversationService();
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const conversationId = (await params).id;
 
     const conversation = await conversationService.getConversation(
       conversationId,
-      userId || undefined
+      userId
     );
 
     if (!conversation) {

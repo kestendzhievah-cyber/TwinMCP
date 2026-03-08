@@ -50,7 +50,11 @@ async function handleProxy(
     return NextResponse.json(result.data, { status: result.status });
   } catch (error: any) {
     const status = error.statusCode || 502;
-    return NextResponse.json({ success: false, error: error.message }, { status });
+    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
+    return NextResponse.json(
+      { success: false, error: safeMessages[status] || 'Proxy request failed' },
+      { status }
+    );
   }
 }
 

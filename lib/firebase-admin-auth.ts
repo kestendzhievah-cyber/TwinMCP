@@ -74,8 +74,12 @@ export function extractUserIdFromToken(token: string): { userId: string; email?:
   }
 }
 
+// SECURITY: Triple-guard dev auth fallback — must be non-production AND explicitly opted-in
+// AND the DATABASE_URL must point to localhost (prevents accidental activation on staging)
 const ALLOW_INSECURE_DEV_AUTH =
-  process.env.NODE_ENV !== 'production' && process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
+  process.env.NODE_ENV !== 'production' &&
+  process.env.ALLOW_INSECURE_DEV_AUTH === 'true' &&
+  (process.env.DATABASE_URL?.includes('localhost') || process.env.DATABASE_URL?.includes('127.0.0.1') || false);
 
 /**
  * Validate auth from a request — tries Firebase Admin first, then dev fallback.

@@ -29,10 +29,19 @@ export async function POST(request: NextRequest) {
 
     let userId = context.userId;
 
-    // Fallback: if token was expired, client sends uid via header
+    // Fallback: if token was expired, client sends uid via header.
+    // SECURITY: Only accept x-logout-uid if it matches a structurally valid
+    // Firebase UID (alphanumeric, 1-128 chars) and cap its length to prevent
+    // abuse as an arbitrary session-invalidation vector.
     if (!userId) {
       const logoutUid = request.headers.get('x-logout-uid');
-      if (logoutUid && typeof logoutUid === 'string' && logoutUid.length > 0) {
+      if (
+        logoutUid &&
+        typeof logoutUid === 'string' &&
+        logoutUid.length > 0 &&
+        logoutUid.length <= 128 &&
+        /^[a-zA-Z0-9_-]+$/.test(logoutUid)
+      ) {
         userId = logoutUid;
       }
     }

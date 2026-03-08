@@ -248,27 +248,59 @@ export class RollbackService {
 
   // ── Data Migration Scripts ─────────────────────────────────
 
+  /** Validate that a value is a safe PostgreSQL identifier (letters, digits, underscore). */
+  private validateIdentifier(value: string, label: string): string {
+    if (!value || !/^[a-zA-Z_][a-zA-Z0-9_]{0,62}$/.test(value)) {
+      throw new Error(`Invalid ${label}: must be a valid SQL identifier (alphanumeric/underscore, max 63 chars)`)
+    }
+    return value
+  }
+
+  /** Whitelist of allowed PostgreSQL data types for migration scripts. */
+  private static ALLOWED_DATA_TYPES = new Set([
+    'TEXT', 'VARCHAR', 'INTEGER', 'INT', 'BIGINT', 'SMALLINT', 'SERIAL', 'BIGSERIAL',
+    'BOOLEAN', 'BOOL', 'TIMESTAMP', 'TIMESTAMPTZ', 'DATE', 'TIME', 'TIMETZ',
+    'NUMERIC', 'DECIMAL', 'REAL', 'DOUBLE PRECISION', 'FLOAT', 'JSON', 'JSONB',
+    'UUID', 'BYTEA', 'CHAR', 'CITEXT',
+  ])
+
+  private validateDataType(dt: string): string {
+    const upper = dt.toUpperCase().trim()
+    // Allow VARCHAR(N) / NUMERIC(P,S) patterns
+    const base = upper.replace(/\(\d+([,\s]\d+)?\)$/, '').trim()
+    if (!RollbackService.ALLOWED_DATA_TYPES.has(base)) {
+      throw new Error(`Disallowed data type: ${dt}`)
+    }
+    return upper
+  }
+
   generateMigrationScript(tableName: string, changes: Array<{ type: 'add_column' | 'drop_column' | 'rename_column' | 'change_type'; column: string; newColumn?: string; dataType?: string }>): { up: string; down: string } {
+    const safeTable = this.validateIdentifier(tableName, 'table name')
     const upStatements: string[] = []
     const downStatements: string[] = []
 
     for (const change of changes) {
+      const safeCol = this.validateIdentifier(change.column, 'column')
+      const safeType = change.dataType ? this.validateDataType(change.dataType) : 'TEXT'
+
       switch (change.type) {
         case 'add_column':
-          upStatements.push(`ALTER TABLE ${tableName} ADD COLUMN ${change.column} ${change.dataType || 'TEXT'};`)
-          downStatements.push(`ALTER TABLE ${tableName} DROP COLUMN IF EXISTS ${change.column};`)
+          upStatements.push(`ALTER TABLE "${safeTable}" ADD COLUMN "${safeCol}" ${safeType};`)
+          downStatements.push(`ALTER TABLE "${safeTable}" DROP COLUMN IF EXISTS "${safeCol}";`)
           break
         case 'drop_column':
-          upStatements.push(`ALTER TABLE ${tableName} DROP COLUMN IF EXISTS ${change.column};`)
-          downStatements.push(`ALTER TABLE ${tableName} ADD COLUMN ${change.column} ${change.dataType || 'TEXT'};`)
+          upStatements.push(`ALTER TABLE "${safeTable}" DROP COLUMN IF EXISTS "${safeCol}";`)
+          downStatements.push(`ALTER TABLE "${safeTable}" ADD COLUMN "${safeCol}" ${safeType};`)
           break
-        case 'rename_column':
-          upStatements.push(`ALTER TABLE ${tableName} RENAME COLUMN ${change.column} TO ${change.newColumn};`)
-          downStatements.push(`ALTER TABLE ${tableName} RENAME COLUMN ${change.newColumn} TO ${change.column};`)
+        case 'rename_column': {
+          const safeNew = this.validateIdentifier(change.newColumn || '', 'new column')
+          upStatements.push(`ALTER TABLE "${safeTable}" RENAME COLUMN "${safeCol}" TO "${safeNew}";`)
+          downStatements.push(`ALTER TABLE "${safeTable}" RENAME COLUMN "${safeNew}" TO "${safeCol}";`)
           break
+        }
         case 'change_type':
-          upStatements.push(`ALTER TABLE ${tableName} ALTER COLUMN ${change.column} TYPE ${change.dataType || 'TEXT'};`)
-          downStatements.push(`-- Manual review needed: revert ${change.column} type change`)
+          upStatements.push(`ALTER TABLE "${safeTable}" ALTER COLUMN "${safeCol}" TYPE ${safeType};`)
+          downStatements.push(`-- Manual review needed: revert "${safeCol}" type change`)
           break
       }
     }

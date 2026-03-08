@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -135,7 +136,7 @@ export class TwinMCPServer {
   }
 
   private generateRequestId(): string {
-    return `mcp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `mcp_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
   }
 
   addHandler(handler: ToolHandler): void {

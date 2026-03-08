@@ -1,14 +1,15 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function POST(request: NextRequest) {
   try {
     const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id');
-
+    // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const { data, options } = await request.json();
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       }
       if (error.message.includes('Invalid preferences data')) {
         return NextResponse.json(
-          { error: 'Invalid preferences format', details: error.message },
+          { error: 'Invalid preferences format' },
           { status: 400 }
         );
       }
@@ -48,7 +49,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to import preferences',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

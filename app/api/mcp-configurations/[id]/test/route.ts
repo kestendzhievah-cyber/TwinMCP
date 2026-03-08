@@ -44,7 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       {
         success: false,
         message: 'Erreur lors du test de la configuration',
-        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        error: 'Erreur interne',
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

@@ -1,7 +1,8 @@
 import { logger } from '@/lib/logger';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getFirebaseAdminApp } from '@/lib/firebase/admin';
+import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 
 // Lazy initialization of Firestore
 let db: Firestore | null = null;
@@ -18,12 +19,17 @@ function getDb(): Firestore {
 }
 
 // GET /api/chatbot/[id]
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: 'ID du chatbot manquant' }, { status: 400 });
+    }
+
+    // Validate id format to prevent Firestore injection
+    if (typeof id !== 'string' || id.length > 128 || !/^[a-zA-Z0-9_-]+$/.test(id)) {
+      return NextResponse.json({ error: 'Format ID invalide' }, { status: 400 });
     }
 
     const docRef = getDb().collection('chatbots').doc(id);
@@ -58,13 +64,35 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 // PUT /api/chatbot/[id]
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // SECURITY: Require authentication for updates
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const token = authHeader.substring(7);
+    const adminAuth = await getFirebaseAdminAuth();
+    if (!adminAuth) {
+      return NextResponse.json({ error: 'Auth service unavailable' }, { status: 503 });
+    }
+    let decodedToken: any;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'ID du chatbot manquant' }, { status: 400 });
+    }
+
+    // Validate id format
+    if (typeof id !== 'string' || id.length > 128 || !/^[a-zA-Z0-9_-]+$/.test(id)) {
+      return NextResponse.json({ error: 'Format ID invalide' }, { status: 400 });
     }
 
     // Validation des données
@@ -86,6 +114,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     // Vérifier si le document existe
     const doc = await docRef.get();
     if (!doc.exists) {
+      return NextResponse.json({ error: 'Chatbot non trouvé' }, { status: 404 });
+    }
+
+    // SECURITY: Verify ownership — prevent unauthorized updates
+    const docData = doc.data();
+    if (docData?.userId && docData.userId !== decodedToken.uid) {
       return NextResponse.json({ error: 'Chatbot non trouvé' }, { status: 404 });
     }
 

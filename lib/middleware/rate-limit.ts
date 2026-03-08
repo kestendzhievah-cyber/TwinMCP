@@ -144,13 +144,13 @@ export async function validateAndTrackApiKey(
     };
   } catch (error) {
     logger.error('Rate limit check error:', error);
-    // Fail open in case of errors (or fail closed for stricter security)
+    // SECURITY: Fail closed — deny requests when rate-limit infrastructure is unavailable
     return {
-      allowed: true,
+      allowed: false,
       remaining: 0,
-      resetAt: new Date(),
+      resetAt: new Date(Date.now() + 60000),
       tier: 'unknown',
-      error: 'Rate limit check failed',
+      error: 'Service temporarily unavailable. Please retry shortly.',
     };
   }
 }

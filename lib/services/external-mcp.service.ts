@@ -2,7 +2,17 @@ import { prisma } from '@/lib/prisma';
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 import { logger } from '@/lib/logger';
 
-const ENCRYPTION_KEY = process.env.EXTERNAL_MCP_ENCRYPTION_KEY || randomBytes(32).toString('hex');
+const ENCRYPTION_KEY = (() => {
+  const key = process.env.EXTERNAL_MCP_ENCRYPTION_KEY;
+  if (!key) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('EXTERNAL_MCP_ENCRYPTION_KEY is required in production');
+    }
+    logger.warn('[external-mcp] EXTERNAL_MCP_ENCRYPTION_KEY not set — using random key (secrets will NOT survive restarts)');
+    return randomBytes(32).toString('hex');
+  }
+  return key;
+})();
 const ALGORITHM = 'aes-256-gcm';
 
 // ─── Encryption helpers ──────────────────────────────────────────
@@ -80,16 +90,8 @@ export class ExternalMcpService {
     ownerId: string,
     input: CreateExternalMcpServerInput
   ): Promise<ExternalMcpServerDTO> {
-    // Validate URL
-    try {
-      const url = new URL(input.baseUrl);
-      if (!['http:', 'https:'].includes(url.protocol)) {
-        throw new Error('Only HTTP/HTTPS protocols are allowed');
-      }
-    } catch (e: any) {
-      if (e.message.includes('protocol')) throw e;
-      throw new Error('Invalid URL format');
-    }
+    // Validate URL — block SSRF to internal/private networks
+    this.validateExternalUrl(input.baseUrl);
 
     const encryptedSecret = input.secret ? encrypt(input.secret) : null;
 
@@ -114,6 +116,11 @@ export class ExternalMcpService {
   ): Promise<ExternalMcpServerDTO> {
     const existing = await prisma.externalMcpServer.findFirst({ where: { id, ownerId } });
     if (!existing) throw new Error('Server not found');
+
+    // Validate URL on update too — block SSRF
+    if (input.baseUrl !== undefined) {
+      this.validateExternalUrl(input.baseUrl);
+    }
 
     const data: any = {};
     if (input.name !== undefined) data.name = input.name;
@@ -195,19 +202,19 @@ export class ExternalMcpService {
       return { status: 'HEALTHY', latencyMs, tools };
     } catch (error: any) {
       const latencyMs = Date.now() - start;
-      const errorMsg = error.name === 'AbortError' ? 'Timeout' : error.message;
+      const safeMsg = error.name === 'AbortError' ? 'Connection timed out' : 'Connection failed';
 
       await prisma.externalMcpServer.update({
         where: { id },
         data: {
           status: 'DOWN',
-          errorMessage: errorMsg,
+          errorMessage: safeMsg,
           lastCheckedAt: new Date(),
           lastLatencyMs: latencyMs,
         },
       });
 
-      return { status: 'DOWN', latencyMs, error: errorMsg };
+      return { status: 'DOWN', latencyMs, error: safeMsg };
     }
   }
 
@@ -332,6 +339,61 @@ export class ExternalMcpService {
     }
 
     return headers;
+  }
+
+  /**
+   * Validate that a URL points to an external, publicly-routable host.
+   * Blocks SSRF to localhost, private IPs, link-local, and cloud metadata endpoints.
+   */
+  private validateExternalUrl(raw: string): void {
+    let url: URL;
+    try {
+      url = new URL(raw);
+    } catch {
+      throw new Error('Invalid URL format');
+    }
+
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('Only HTTP/HTTPS protocols are allowed');
+    }
+
+    const hostname = url.hostname.toLowerCase();
+
+    // Block localhost variants
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]' ||
+      hostname === '0.0.0.0'
+    ) {
+      throw new Error('Localhost URLs are not allowed');
+    }
+
+    // Block private & reserved IP ranges (RFC 1918, link-local, cloud metadata)
+    const BLOCKED_PREFIXES = [
+      '10.',        // 10.0.0.0/8
+      '172.16.', '172.17.', '172.18.', '172.19.',
+      '172.20.', '172.21.', '172.22.', '172.23.',
+      '172.24.', '172.25.', '172.26.', '172.27.',
+      '172.28.', '172.29.', '172.30.', '172.31.',  // 172.16.0.0/12
+      '192.168.',   // 192.168.0.0/16
+      '169.254.',   // link-local / AWS metadata
+      'fd',         // IPv6 ULA
+      'fe80:',      // IPv6 link-local
+    ];
+
+    if (BLOCKED_PREFIXES.some(prefix => hostname.startsWith(prefix))) {
+      throw new Error('Private/internal network URLs are not allowed');
+    }
+
+    // Block common cloud metadata hostnames
+    const BLOCKED_HOSTS = [
+      'metadata.google.internal',
+      'metadata.gcp.internal',
+    ];
+    if (BLOCKED_HOSTS.includes(hostname)) {
+      throw new Error('Cloud metadata URLs are not allowed');
+    }
   }
 
   private async checkUsageLimit(userId: string): Promise<void> {

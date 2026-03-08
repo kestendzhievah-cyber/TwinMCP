@@ -119,6 +119,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Handle CORS preflight (OPTIONS) requests — no auth required
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, { status: 204 });
+  }
+
   // Allow public API routes
   if (isPublicRoute(pathname)) {
     return NextResponse.next();

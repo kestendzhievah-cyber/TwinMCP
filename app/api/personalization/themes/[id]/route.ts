@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -26,7 +27,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(
       {
         error: 'Failed to get theme',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -36,12 +36,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id');
-    const themeId = (await params).id;
-
+    // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const themeId = (await params).id;
 
     if (!themeId) {
       return NextResponse.json({ error: 'Theme ID is required' }, { status: 400 });
@@ -66,7 +66,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
       if (error.message.includes('validation failed')) {
         return NextResponse.json(
-          { error: 'Theme validation failed', details: error.message },
+          { error: 'Theme validation failed' },
           { status: 400 }
         );
       }
@@ -75,7 +75,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(
       {
         error: 'Failed to update theme',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -88,12 +87,12 @@ export async function DELETE(
 ) {
   try {
     const personalizationService = await getPersonalizationService();
-    const userId = request.headers.get('x-user-id');
-    const themeId = (await params).id;
-
+    // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
+    const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    const themeId = (await params).id;
 
     if (!themeId) {
       return NextResponse.json({ error: 'Theme ID is required' }, { status: 400 });
@@ -116,7 +115,6 @@ export async function DELETE(
     return NextResponse.json(
       {
         error: 'Failed to delete theme',
-        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

@@ -28,10 +28,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
     }
 
+    // Validate toolId format (alphanumeric + hyphens/underscores/dots, max 128)
+    if (typeof toolId !== 'string' || toolId.length > 128 || !/^[a-zA-Z0-9._-]+$/.test(toolId)) {
+      return NextResponse.json({ error: 'Invalid tool ID format' }, { status: 400 });
+    }
+
     // Obtenir l'outil
     const tool = registry.get(toolId);
     if (!tool) {
-      return NextResponse.json({ error: `Tool '${toolId}' not found` }, { status: 404 });
+      return NextResponse.json({ error: 'Tool not found' }, { status: 404 });
     }
 
     // Autorisation
@@ -225,13 +230,20 @@ export async function POST(request: NextRequest) {
     });
 
     logger.error('Tool execution error:', error);
+    // Only expose error details for known auth/validation errors (4xx);
+    // generic message for unexpected 5xx to prevent info leakage.
+    const statusCode = error.statusCode || 500;
+    const safeMessage = statusCode === 401 ? 'Authentication required'
+      : statusCode === 403 ? 'Access denied'
+      : statusCode < 500 ? 'Request failed'
+      : 'Tool execution failed';
     return NextResponse.json(
       {
-        error: error.message || 'Tool execution failed',
-        code: error.code,
+        error: safeMessage,
+        code: statusCode < 500 ? error.code : undefined,
         apiVersion: 'v1',
       },
-      { status: error.statusCode || 500 }
+      { status: statusCode }
     );
   }
 }

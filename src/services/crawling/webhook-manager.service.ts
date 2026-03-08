@@ -9,6 +9,8 @@
  *   - Webhook lifecycle management
  */
 
+import crypto from 'crypto';
+
 export interface WebhookConfig {
   id: string
   repositoryUrl: string
@@ -169,21 +171,21 @@ export class WebhookManagerService {
 
   // ── Signature Verification ─────────────────────────────────
 
-  /** Verify HMAC-SHA256 signature. */
+  /** Verify HMAC-SHA256 signature using timing-safe comparison. */
   verifySignature(secret: string, payload: string, signature: string): boolean {
     const expected = this.computeSignature(secret, payload)
-    return expected === signature
+    // SECURITY: Use timing-safe comparison to prevent timing attacks
+    const expectedBuf = Buffer.from(expected, 'utf-8')
+    const signatureBuf = Buffer.from(signature, 'utf-8')
+    if (expectedBuf.length !== signatureBuf.length) return false
+    return crypto.timingSafeEqual(expectedBuf, signatureBuf)
   }
 
-  /** Compute HMAC-SHA256 signature (simple hash for standalone testing). */
+  /** Compute HMAC-SHA256 signature. */
   computeSignature(secret: string, payload: string): string {
-    // Simple HMAC-like hash for standalone operation
-    let hash = 0
-    const combined = secret + payload
-    for (let i = 0; i < combined.length; i++) {
-      hash = ((hash << 5) - hash + combined.charCodeAt(i)) | 0
-    }
-    return `sha256=${Math.abs(hash).toString(16)}`
+    const hmac = crypto.createHmac('sha256', secret)
+    hmac.update(payload, 'utf-8')
+    return `sha256=${hmac.digest('hex')}`
   }
 
   // ── Health Monitoring ──────────────────────────────────────

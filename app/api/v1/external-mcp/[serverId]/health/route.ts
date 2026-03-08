@@ -32,6 +32,10 @@ export async function POST(
     return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
     const status = error.message === 'Server not found' ? 404 : error.statusCode || 500;
-    return NextResponse.json({ success: false, error: error.message }, { status });
+    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
+    return NextResponse.json(
+      { success: false, error: safeMessages[status] || 'Health check failed' },
+      { status }
+    );
   }
 }

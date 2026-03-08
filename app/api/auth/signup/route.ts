@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         errorMessage = 'Le mot de passe est trop faible';
         break;
       default:
-        errorMessage = error.message || "Erreur lors de l'inscription";
+        errorMessage = "Erreur lors de l'inscription";
     }
 
     return NextResponse.json({ error: errorMessage }, { status: 400 });

@@ -149,7 +149,6 @@ export class SSETransport {
           error: {
             code: MCPErrorCodes.InternalError,
             message: 'Internal server error',
-            data: error instanceof Error ? error.message : String(error),
           },
         };
         this.sendSSE(session.reply, 'message', JSON.stringify(errorResponse));

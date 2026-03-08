@@ -409,8 +409,15 @@ export class PromptManagementService extends EventEmitter {
         if (maxLength && str.length > maxLength) {
           throw new Error(`Variable ${variable.name} too long (max: ${maxLength})`);
         }
-        if (pattern && !new RegExp(pattern).test(str)) {
-          throw new Error(`Variable ${variable.name} does not match pattern`);
+        if (pattern && typeof pattern === 'string' && pattern.length <= 256) {
+          try {
+            if (!new RegExp(pattern).test(str.slice(0, 8192))) {
+              throw new Error(`Variable ${variable.name} does not match pattern`);
+            }
+          } catch (e: any) {
+            if (e.message.includes('does not match')) throw e;
+            // Invalid regex pattern — skip validation rather than crash
+          }
         }
       }
 

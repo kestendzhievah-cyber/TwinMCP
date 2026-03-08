@@ -10,9 +10,17 @@ import {
   UserContext,
 } from '@/src/types/analytics.types';
 import { trackEventSchema, parseBody } from '@/lib/validations/api-schemas';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
+    }
+
     const { analyticsService } = await getAnalyticsServices();
 
     let rawBody: unknown;
@@ -63,20 +71,27 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Event tracked successfully' });
   } catch (error) {
-    logger.error('Error tracking event:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'TrackEvent');
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
+    const authUserId = await getAuthUserId(request.headers.get('authorization'));
+    if (!authUserId) {
+      throw new AuthenticationError();
+    }
+
     const { db } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
-    const userId = searchParams.get('userId');
+    // Scope to authenticated user — prevent IDOR
+    const userId = authUserId;
     const eventType = searchParams.get('eventType');
-    const limit = parseInt(searchParams.get('limit') || '100');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const rawLimit = parseInt(searchParams.get('limit') || '100');
+    const rawOffset = parseInt(searchParams.get('offset') || '0');
+    const limit = Math.min(Math.max(isNaN(rawLimit) ? 100 : rawLimit, 1), 500);
+    const offset = Math.max(isNaN(rawOffset) ? 0 : rawOffset, 0);
 
     // Build WHERE clause with parameterized filters
     let whereClause = 'WHERE 1=1';
@@ -131,7 +146,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Error fetching events:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'GetEvents');
   }
 }

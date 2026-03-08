@@ -3,9 +3,15 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsServices } from '../_shared';
 import { AnalyticsFilter } from '@/src/types/analytics.types';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const authUserId = await getAuthUserId(request.headers.get('authorization'));
+    if (!authUserId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { analyticsService } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
 
@@ -32,7 +38,8 @@ export async function GET(request: NextRequest) {
 
     // Parse optional filters (period is passed separately to getUsageMetrics)
     const filters: AnalyticsFilter = {};
-    const userId = searchParams.get('userId');
+    // Scope to authenticated user — prevent IDOR
+    const userId = authUserId;
     const provider = searchParams.get('provider');
     const model = searchParams.get('model');
     const country = searchParams.get('country');

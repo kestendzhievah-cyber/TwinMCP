@@ -108,9 +108,11 @@ export class UserAuthService {
         }
       } else {
         // DEV-ONLY FALLBACK: Extract payload without verification
+        // SECURITY: Triple-guard — non-production + explicit opt-in + localhost DB only
         const isDevFallbackAllowed =
           process.env.NODE_ENV !== 'production' &&
-          process.env.ALLOW_INSECURE_DEV_AUTH === 'true';
+          process.env.ALLOW_INSECURE_DEV_AUTH === 'true' &&
+          (process.env.DATABASE_URL?.includes('localhost') || process.env.DATABASE_URL?.includes('127.0.0.1') || false);
 
         if (!isDevFallbackAllowed) {
           logger.error('[Auth] Firebase Admin not configured and dev fallback not allowed');

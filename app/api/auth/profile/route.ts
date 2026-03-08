@@ -12,6 +12,7 @@ import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { UserAuthService } from '@/lib/services/user-auth.service';
 import { authenticateRequest } from '@/lib/middleware/auth-middleware';
+import { updateProfileSchema, parseBody } from '@/lib/validations/api-schemas';
 
 let authService: UserAuthService | null = null;
 
@@ -83,10 +84,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Parse body
-    let body;
+    // Parse and validate body with Zod
+    let rawBody: unknown;
     try {
-      body = await request.json();
+      rawBody = await request.json();
     } catch {
       return NextResponse.json(
         { success: false, error: 'Invalid JSON body', code: 'INVALID_REQUEST' },
@@ -94,37 +95,20 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Validate and sanitize input
-    const allowedFields = [
-      'firstName',
-      'lastName',
-      'phone',
-      'address',
-      'city',
-      'country',
-      'postalCode',
-    ];
-    const updateData: Record<string, string> = {};
-
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        const value = String(body[field]).trim();
-        // Basic sanitization
-        if (value.length > 200) {
-          return NextResponse.json(
-            { success: false, error: `${field} is too long`, code: 'VALIDATION_ERROR' },
-            { status: 400 }
-          );
-        }
-        updateData[field] = value;
-      }
-    }
-
-    if (Object.keys(updateData).length === 0) {
+    const parsed = parseBody(updateProfileSchema, rawBody);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: 'No valid fields to update', code: 'VALIDATION_ERROR' },
+        { success: false, error: parsed.error, details: parsed.details, code: 'VALIDATION_ERROR' },
         { status: 400 }
       );
+    }
+
+    // Build update data from validated fields (only defined ones)
+    const updateData: Record<string, string> = {};
+    for (const [key, value] of Object.entries(parsed.data)) {
+      if (value !== undefined) {
+        updateData[key] = value;
+      }
     }
 
     // Update profile

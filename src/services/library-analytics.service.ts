@@ -110,6 +110,9 @@ export class LibraryAnalyticsService {
     ]);
   }
 
+  // SECURITY: Map timeframe to safe integer days — never interpolate interval strings into SQL
+  private static readonly TIMEFRAME_DAYS: Record<string, number> = { day: 1, week: 7, month: 30 };
+
   async getLibraryAnalytics(libraryId: string, timeframe: 'day' | 'week' | 'month' = 'week'): Promise<{
     totalSearches: number;
     totalClicks: number;
@@ -117,36 +120,30 @@ export class LibraryAnalyticsService {
     topQueries: Array<{ query: string; count: number }>;
     trending: boolean;
   }> {
-    const intervalMap = {
-      day: '1 day',
-      week: '7 days',
-      month: '30 days'
-    };
-
-    const interval = intervalMap[timeframe];
+    const days = LibraryAnalyticsService.TIMEFRAME_DAYS[timeframe] ?? 7;
 
     const [searchesResult, clicksResult, topQueriesResult] = await Promise.all([
       this.db.query(`
         SELECT COUNT(*) as count
         FROM search_logs
         WHERE clicked_result = $1
-          AND created_at > NOW() - INTERVAL '${interval}'
-      `, [libraryId]),
+          AND created_at > NOW() - make_interval(days => $2)
+      `, [libraryId, days]),
       this.db.query(`
         SELECT COUNT(*) as count
         FROM search_clicks
         WHERE library_id = $1
-          AND created_at > NOW() - INTERVAL '${interval}'
-      `, [libraryId]),
+          AND created_at > NOW() - make_interval(days => $2)
+      `, [libraryId, days]),
       this.db.query(`
         SELECT query, COUNT(*) as count
         FROM search_clicks
         WHERE library_id = $1
-          AND created_at > NOW() - INTERVAL '${interval}'
+          AND created_at > NOW() - make_interval(days => $2)
         GROUP BY query
         ORDER BY count DESC
         LIMIT 5
-      `, [libraryId])
+      `, [libraryId, days])
     ]);
 
     const totalSearches = parseInt(searchesResult.rows[0].count);
@@ -186,13 +183,8 @@ export class LibraryAnalyticsService {
     clicks: number;
     clickRate: number;
   }>> {
-    const intervalMap = {
-      day: '1 day',
-      week: '7 days',
-      month: '30 days'
-    };
-
-    const interval = intervalMap[timeframe];
+    const days = LibraryAnalyticsService.TIMEFRAME_DAYS[timeframe] ?? 7;
+    const safeLimit = Math.min(Math.max(1, Math.floor(Number(limit) || 10)), 100);
 
     const result = await this.db.query(`
       SELECT 
@@ -207,14 +199,14 @@ export class LibraryAnalyticsService {
         END as click_rate
       FROM libraries l
       LEFT JOIN search_logs sl ON l.id = sl.clicked_result
-        AND sl.created_at > NOW() - INTERVAL '${interval}'
+        AND sl.created_at > NOW() - make_interval(days => $2)
       LEFT JOIN search_clicks sc ON l.id = sc.library_id
-        AND sc.created_at > NOW() - INTERVAL '${interval}'
+        AND sc.created_at > NOW() - make_interval(days => $2)
       GROUP BY l.id, l.name
       HAVING COUNT(DISTINCT sl.id) > 0 OR COUNT(DISTINCT sc.id) > 0
       ORDER BY searches DESC, clicks DESC
       LIMIT $1
-    `, [limit]);
+    `, [safeLimit, days]);
 
     return result.rows.map(row => ({
       libraryId: row.library_id,

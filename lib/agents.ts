@@ -8,7 +8,13 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db as _db } from './firebase';
-const db = _db!;
+
+// Lazy access — avoid crash at import time if Firebase client SDK is not initialized
+// (e.g. during build, tests, or server-side rendering without client config)
+function getDb() {
+  if (!_db) throw new Error('Firebase Firestore client is not initialized');
+  return _db;
+}
 
 interface CreateChatbotRequest {
   name: string;
@@ -42,7 +48,7 @@ function generateAgentId(): string {
 // Fonction pour créer un agent
 export async function createAgent(userId: string, data: CreateChatbotRequest): Promise<Chatbot> {
   try {
-    const agentsRef = collection(db, 'agents');
+    const agentsRef = collection(getDb(), 'agents');
     const agentId = generateAgentId();
 
     const agentData = {
@@ -74,7 +80,7 @@ export async function createAgent(userId: string, data: CreateChatbotRequest): P
 
 export async function getAgent(agentId: string): Promise<Chatbot | null> {
   try {
-    const agentRef = doc(db, 'agents', agentId);
+    const agentRef = doc(getDb(), 'agents', agentId);
     const agentSnap = await getDoc(agentRef);
 
     if (!agentSnap.exists()) {
@@ -96,9 +102,18 @@ export async function updateAgent(
   data: Partial<CreateChatbotRequest>
 ): Promise<void> {
   try {
-    const agentRef = doc(db, 'agents', agentId);
+    // SECURITY: Whitelist mutable fields — prevent overwriting userId, status, publicUrl, etc.
+    const safeFields: Record<string, unknown> = {};
+    if (data.name !== undefined) safeFields.name = data.name;
+    if (data.description !== undefined) safeFields.description = data.description;
+    if (data.model !== undefined) safeFields.model = data.model;
+    if (data.systemPrompt !== undefined) safeFields.systemPrompt = data.systemPrompt;
+    if (data.temperature !== undefined) safeFields.temperature = data.temperature;
+    if (data.maxTokens !== undefined) safeFields.maxTokens = data.maxTokens;
+
+    const agentRef = doc(getDb(), 'agents', agentId);
     await updateDoc(agentRef, {
-      ...data,
+      ...safeFields,
       updatedAt: Timestamp.now(),
     });
   } catch (error) {
@@ -109,7 +124,7 @@ export async function updateAgent(
 
 export async function deleteAgent(agentId: string): Promise<void> {
   try {
-    const agentRef = doc(db, 'agents', agentId);
+    const agentRef = doc(getDb(), 'agents', agentId);
     await deleteDoc(agentRef);
   } catch (error) {
     console.error('Error deleting agent:', error);

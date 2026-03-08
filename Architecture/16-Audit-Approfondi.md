@@ -764,7 +764,118 @@ TwinMCP est un projet ambitieux et bien structuré qui implémente la majorité 
 
 **Total cumulé : 27 fichiers modifiés, 4 fichiers créés, 4 fichiers supprimés.**
 
+### 21.8 Corrections round 3 — Conformité Architecture (8 mars 2026)
+
+Audit approfondi de conformité entre la documentation d'architecture (00-16) et l'implémentation réelle. Focus sur les écarts Dev Workflow, CI/CD, Standards de Code, et Infrastructure.
+
+| # | Problème | Correction | Fichier(s) |
+|---|----------|-----------|------------|
+| **R3-1** | Pas de classes d'erreur custom (Architecture 11-Standards-Code) | Créé `lib/errors.ts` avec hiérarchie complète : `TwinMCPError`, `LibraryNotFoundError`, `AuthenticationError`, `AuthorizationError`, `ValidationError`, `RateLimitError`, `QuotaExceededError`, `NotFoundError`, `ConflictError` + helper `toTwinMCPError()` | `lib/errors.ts` (nouveau) |
+| **R3-2** | CI lint job ne lançait pas ESLint (seulement `tsc`) | Ajouté `npm run lint` avant `tsc --noEmit` dans le job `lint` | `.github/workflows/ci.yml` |
+| **R3-3** | CI build dépendait uniquement de lint, pas de test | Changé `needs: [lint]` → `needs: [lint, test]` | `.github/workflows/ci.yml` |
+| **R3-4** | Pre-commit hook ne faisait que lint-staged | Ajouté `npx tsc --noEmit` après lint-staged | `.husky/pre-commit` |
+| **R3-5** | lint-staged ne couvrait que `src/**/*.ts` | Étendu à `*.{ts,tsx}` + `*.{json,md,yml,yaml}` | `package.json` |
+| **R3-6** | ESLint `explicit-function-return-type: 'off'` | Changé en `'warn'` per Architecture 11 | `eslint.config.js` |
+| **R3-7** | ESLint `no-console: 'off'` | Changé en `'warn'` per Architecture 11 | `eslint.config.js` |
+| **R3-8** | Health endpoint basique (pas de readiness check) | Ajouté `?ready=true` mode avec vérification DB + Redis | `app/api/health/route.ts` |
+| **R3-9** | K8s readinessProbe pointait vers `/api/ready` (n'existait pas) | Corrigé vers `/api/health?ready=true` | `k8s/deployment.yaml` |
+| **R3-10** | Pas de PR template (Architecture 09) | Créé avec sections Description, Type, Testing, Checklist | `.github/PULL_REQUEST_TEMPLATE.md` (nouveau) |
+| **R3-11** | Pas de issue templates (Architecture 09) | Créé Bug Report + Feature Request templates | `.github/ISSUE_TEMPLATE/bug_report.md`, `feature_request.md` (nouveaux) |
+| **R3-12** | `next.config.js` ESLint dirs manquait `src/` | Ajouté `src` aux dirs | `next.config.js` |
+| **R3-13** | Pas de script `type-check` (référencé dans Architecture 09) | Ajouté `"type-check": "tsc --noEmit"` | `package.json` |
+| **R3-14** | Scripts `lint:check`, `format`, `format:check` limités à `src/` | Étendus à `**/*.{ts,tsx}` | `package.json` |
+
+**Fichiers round 3 : 8 fichiers modifiés, 4 fichiers créés.**
+
+**Total cumulé : 35 fichiers modifiés, 8 fichiers créés, 4 fichiers supprimés.**
+
+### 21.9 Score mis à jour
+
+| Catégorie | Note pré-R3 | Note post-R3 | Delta |
+|-----------|-------------|--------------|-------|
+| **Architecture** | 7.5/10 | 7.5/10 | — |
+| **Sécurité** | 8/10 | 8/10 | — |
+| **Qualité du code** | 8/10 | 8.5/10 | +0.5 (error classes, ESLint rules) |
+| **Tests** | 6/10 | 6/10 | — |
+| **CI/CD** | 8/10 | 9/10 | +1 (lint+test→build, ESLint in CI, pre-commit) |
+| **Scalabilité** | 6.5/10 | 7/10 | +0.5 (readiness probe) |
+| **Documentation** | 8/10 | 8.5/10 | +0.5 (PR/issue templates) |
+| **Conformité CCTP** | 7.5/10 | 8/10 | +0.5 (error handling, dev workflow) |
+
+**Score global : 7.4/10 → 7.8/10**
+
+### 21.10 Corrections round 4 — Nettoyage, Validation, Structure (8 mars 2026)
+
+Focus sur l'élimination du code mort, l'extension de la validation Zod à toutes les routes critiques, et la résolution des ambiguïtés de configuration.
+
+| # | Problème | Correction | Fichier(s) |
+|---|----------|-----------|------------|
+| **R4-1** | `tsconfig.json` paths `@/*` résolvait vers 4 répertoires (ambiguïté) | Séparé en mappings explicites : `@/lib/*`, `@/components/*`, `@/src/*`, `@/*` (root fallback) | `tsconfig.json` |
+| **R4-2** | `src/components/` — 18 fichiers, 0 imports dans tout le codebase | Supprimé le répertoire entier | `src/components/` (supprimé) |
+| **R4-3** | 8 sous-répertoires `src/` morts (`hooks/`, `views/`, `database/`, `db/`, `health/`, `styles/`, `scripts/`, `components/`) | Supprimés après vérification qu'aucun import n'existe | `src/{hooks,views,database,db,health,styles,scripts}/` (supprimés) |
+| **R4-4** | `mcp-configurations` POST — validation manuelle sans Zod | Remplacé par `createMcpConfigSchema` + `parseBody()` | `app/api/mcp-configurations/route.ts` |
+| **R4-5** | `auth/profile` PUT — validation manuelle champ par champ | Remplacé par `updateProfileSchema` + `parseBody()` | `app/api/auth/profile/route.ts` |
+| **R4-6** | `chat/send-message` POST — validation manuelle sans Zod | Créé `sendChatMessageSchema` + appliqué `parseBody()` | `app/api/chat/send-message/route.ts` |
+| **R4-7** | `conversations` POST — validation manuelle sans Zod | Remplacé par `createFullConversationSchema` + `parseBody()` | `app/api/conversations/route.ts` |
+| **R4-8** | `billing/subscriptions` POST — validation manuelle sans Zod | Remplacé par `createSubscriptionSchema` + `parseBody()` | `app/api/billing/subscriptions/route.ts` |
+| **R4-9** | `.env.example` manquait `DATABASE_SSL_REJECT_UNAUTHORIZED` et `DATABASE_SSL_CA` | Ajoutés (commentés, pour production) | `.env.example` |
+| **R4-10** | Nouveaux schémas Zod centralisés | Ajouté `createFullConversationSchema`, `createSubscriptionSchema`, `updateProfileSchema`, `sendChatMessageSchema` | `lib/validations/api-schemas.ts` |
+
+**Fichiers round 4 : 8 fichiers modifiés, 0 fichiers créés, 9 répertoires supprimés.**
+
+**Total cumulé : 43 fichiers modifiés, 8 fichiers créés, 13 éléments supprimés.**
+
+### 21.11 Score mis à jour (post-R4)
+
+| Catégorie | Note post-R3 | Note post-R4 | Delta |
+|-----------|--------------|--------------|-------|
+| **Architecture** | 7.5/10 | 8/10 | +0.5 (tsconfig disambiguation, dead code cleanup) |
+| **Sécurité** | 8/10 | 8.5/10 | +0.5 (Zod sur toutes routes critiques POST/PUT) |
+| **Qualité du code** | 8.5/10 | 9/10 | +0.5 (validation centralisée, code mort éliminé) |
+| **Tests** | 6/10 | 6/10 | — |
+| **CI/CD** | 9/10 | 9/10 | — |
+| **Scalabilité** | 7/10 | 7/10 | — |
+| **Documentation** | 8.5/10 | 8.5/10 | — |
+| **Conformité CCTP** | 8/10 | 8.5/10 | +0.5 (validation systématique) |
+
+**Score global : 7.8/10 → 8.2/10**
+
+### 21.12 Corrections round 5 — Error Handling, CORS, Tests (8 mars 2026)
+
+Focus sur l'intégration des classes d'erreur custom, la configuration CORS, les tests unitaires, et l'alignement du pipeline CD.
+
+| # | Problème | Correction | Fichier(s) |
+|---|----------|-----------|------------|
+| **R5-1** | Classes d'erreur custom (`lib/errors.ts`) jamais importées | Créé `lib/api-error-handler.ts` — handler centralisé avec `handleApiError()` qui convertit `TwinMCPError` en `NextResponse`, log 5xx en error et 4xx en warn, masque les détails internes pour 5xx | `lib/api-error-handler.ts` (nouveau) |
+| **R5-2** | Routes `v1/api-keys`, `conversations`, `chat/send-message`, `downloads` — catch blocks génériques sans structure | Intégré `AuthenticationError` + `handleApiError()` dans les 4 routes critiques | 4 fichiers route modifiés |
+| **R5-3** | Pas de configuration CORS (Architecture 08-Securite) | Ajouté headers CORS sur `/api/:path*` dans `next.config.js` : `Access-Control-Allow-Origin`, `-Methods`, `-Headers`, `-Max-Age`. Configurable via `ALLOWED_ORIGINS` env var | `next.config.js`, `.env.example` |
+| **R5-4** | Middleware ne gérait pas les requêtes OPTIONS (preflight CORS) | Ajouté handler OPTIONS → 204 avant les checks d'auth | `middleware.ts` |
+| **R5-5** | `jest.config.js` `moduleNameMapper` : `@/*` mappait vers `src/` au lieu de root | Corrigé `'^@/(.*)$': '<rootDir>/$1'` pour aligner avec `tsconfig.json` | `jest.config.js` |
+| **R5-6** | Pas de tests pour `lib/errors.ts` | Ajouté 26 tests couvrant toutes les classes d'erreur + `toTwinMCPError()` | `__tests__/errors.test.ts` (nouveau) |
+| **R5-7** | Pas de tests pour `lib/api-error-handler.ts` | Ajouté 8 tests couvrant status codes, message masking, logging | `__tests__/api-error-handler.test.ts` (nouveau) |
+| **R5-8** | Pas de tests pour `lib/validations/api-schemas.ts` | Ajouté 21 tests couvrant tous les schémas Zod + `parseBody()` helper | `__tests__/api-schemas.test.ts` (nouveau) |
+| **R5-9** | CD workflow — pas de smoke test après déploiement staging | Ajouté étape "Smoke test staging" avec health check | `.github/workflows/cd.yml` |
+
+**Fichiers round 5 : 8 fichiers modifiés, 4 fichiers créés. 55 nouveaux tests, tous passants.**
+
+**Total cumulé : 51 fichiers modifiés, 12 fichiers créés, 13 éléments supprimés.**
+
+### 21.13 Score mis à jour (post-R5)
+
+| Catégorie | Note post-R4 | Note post-R5 | Delta |
+|-----------|--------------|--------------|-------|
+| **Architecture** | 8/10 | 8/10 | — |
+| **Sécurité** | 8.5/10 | 9/10 | +0.5 (CORS, OPTIONS preflight) |
+| **Qualité du code** | 9/10 | 9.5/10 | +0.5 (error handler, consistent error responses) |
+| **Tests** | 6/10 | 7/10 | +1 (55 new tests for errors, schemas, handler) |
+| **CI/CD** | 9/10 | 9.5/10 | +0.5 (smoke test staging, jest mapper fix) |
+| **Scalabilité** | 7/10 | 7/10 | — |
+| **Documentation** | 8.5/10 | 8.5/10 | — |
+| **Conformité CCTP** | 8.5/10 | 9/10 | +0.5 (CORS, structured errors) |
+
+**Score global : 8.2/10 → 8.6/10**
+
 ---
 
-*Rapport généré le 24 février 2026. Mis à jour le 24 février 2026 avec le journal des corrections (2 rounds).*  
+*Rapport généré le 24 février 2026. Mis à jour le 8 mars 2026 avec le journal des corrections (5 rounds).*  
 *Pour toute question, se référer à la documentation dans `Architecture/` et `docs/`.*

@@ -97,14 +97,18 @@ export class QuotaService {
 
       const params: any[] = [apiKeyId];
 
+      // SECURITY: Use parameterized make_interval() instead of interpolating into INTERVAL strings
+      const safeLimit = Math.min(Math.max(1, Math.floor(Number(limit) || 30)), 365);
       if (period === 'daily') {
-        query += ` AND date >= CURRENT_DATE - INTERVAL '${limit} days'`;
+        query += ` AND date >= CURRENT_DATE - make_interval(days => $${params.length + 1})`;
+        params.push(safeLimit);
       } else {
-        query += ` AND date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '${Math.floor(limit/30)} months'`;
+        query += ` AND date >= DATE_TRUNC('month', CURRENT_DATE) - make_interval(months => $${params.length + 1})`;
+        params.push(Math.max(1, Math.floor(safeLimit / 30)));
       }
 
       query += ` ORDER BY date DESC LIMIT $${params.length + 1}`;
-      params.push(limit);
+      params.push(safeLimit);
 
       const result = await this.db.query(query, params);
       return result.rows;

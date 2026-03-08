@@ -83,48 +83,44 @@ export class SearchAnalyticsService {
     topQueries: Array<{ query: string; count: number }>;
     zeroResultQueries: Array<{ query: string; count: number }>;
   }> {
-    const intervalMap = {
-      day: '1 day',
-      week: '7 days',
-      month: '30 days'
-    };
-
-    const interval = intervalMap[timeframe];
+    // SECURITY: Map timeframe to safe integer days — never interpolate interval strings into SQL
+    const daysMap: Record<string, number> = { day: 1, week: 7, month: 30 };
+    const days = daysMap[timeframe] ?? 7;
 
     const [totalResult, uniqueResult, avgResult, topQueries, zeroResultQueries] = await Promise.all([
       this.db.query(`
         SELECT COUNT(*) as count
         FROM search_logs
-        WHERE created_at > NOW() - INTERVAL '${interval}'
-      `),
+        WHERE created_at > NOW() - make_interval(days => $1)
+      `, [days]),
       this.db.query(`
         SELECT COUNT(DISTINCT query) as count
         FROM search_logs
-        WHERE created_at > NOW() - INTERVAL '${interval}'
-      `),
+        WHERE created_at > NOW() - make_interval(days => $1)
+      `, [days]),
       this.db.query(`
         SELECT AVG(result_count) as avg
         FROM search_logs
-        WHERE created_at > NOW() - INTERVAL '${interval}'
+        WHERE created_at > NOW() - make_interval(days => $1)
           AND result_count > 0
-      `),
+      `, [days]),
       this.db.query(`
         SELECT query, COUNT(*) as count
         FROM search_logs
-        WHERE created_at > NOW() - INTERVAL '${interval}'
+        WHERE created_at > NOW() - make_interval(days => $1)
         GROUP BY query
         ORDER BY count DESC
         LIMIT 10
-      `),
+      `, [days]),
       this.db.query(`
         SELECT query, COUNT(*) as count
         FROM search_logs
         WHERE result_count = 0 
-          AND created_at > NOW() - INTERVAL '${interval}'
+          AND created_at > NOW() - make_interval(days => $1)
         GROUP BY query
         ORDER BY count DESC
         LIMIT 10
-      `)
+      `, [days])
     ]);
 
     return {
@@ -142,36 +138,31 @@ export class SearchAnalyticsService {
     topQueries: Array<{ query: string; count: number }>;
     clickRate: number;
   }> {
-    const intervalMap = {
-      day: '1 day',
-      week: '7 days',
-      month: '30 days'
-    };
-
-    const interval = intervalMap[timeframe];
+    const daysMap2: Record<string, number> = { day: 1, week: 7, month: 30 };
+    const days2 = daysMap2[timeframe] ?? 7;
 
     const [clicksResult, queriesResult, topQueriesResult, searchesResult] = await Promise.all([
       this.db.query(`
         SELECT COUNT(*) as count
         FROM search_clicks
         WHERE library_id = $1
-          AND created_at > NOW() - INTERVAL '${interval}'
-      `, [libraryId]),
+          AND created_at > NOW() - make_interval(days => $2)
+      `, [libraryId, days2]),
       this.db.query(`
         SELECT COUNT(DISTINCT query) as count
         FROM search_clicks
         WHERE library_id = $1
-          AND created_at > NOW() - INTERVAL '${interval}'
-      `, [libraryId]),
+          AND created_at > NOW() - make_interval(days => $2)
+      `, [libraryId, days2]),
       this.db.query(`
         SELECT query, COUNT(*) as count
         FROM search_clicks
         WHERE library_id = $1
-          AND created_at > NOW() - INTERVAL '${interval}'
+          AND created_at > NOW() - make_interval(days => $2)
         GROUP BY query
         ORDER BY count DESC
         LIMIT 10
-      `, [libraryId]),
+      `, [libraryId, days2]),
       this.db.query(`
         SELECT COUNT(*) as count
         FROM search_logs
@@ -179,10 +170,10 @@ export class SearchAnalyticsService {
           SELECT DISTINCT query
           FROM search_clicks
           WHERE library_id = $1
-            AND created_at > NOW() - INTERVAL '${interval}'
+            AND created_at > NOW() - make_interval(days => $2)
         )
-          AND created_at > NOW() - INTERVAL '${interval}'
-      `, [libraryId])
+          AND created_at > NOW() - make_interval(days => $2)
+      `, [libraryId, days2])
     ]);
 
     const totalClicks = parseInt(clicksResult.rows[0].count);
@@ -279,14 +270,16 @@ export class SearchAnalyticsService {
   }
 
   async cleanupOldLogs(daysToKeep: number = 90): Promise<void> {
-    await this.db.query(`
-      DELETE FROM search_logs
-      WHERE created_at < NOW() - INTERVAL '${daysToKeep} days'
-    `);
-    await this.db.query(`
-      DELETE FROM search_clicks
-      WHERE created_at < NOW() - INTERVAL '${daysToKeep} days'
-    `);
+    // SECURITY: Validate daysToKeep is a safe positive integer to prevent SQL injection
+    const safeDays = Math.max(1, Math.min(Math.floor(Number(daysToKeep) || 90), 3650));
+    await this.db.query(
+      `DELETE FROM search_logs WHERE created_at < NOW() - make_interval(days => $1)`,
+      [safeDays]
+    );
+    await this.db.query(
+      `DELETE FROM search_clicks WHERE created_at < NOW() - make_interval(days => $1)`,
+      [safeDays]
+    );
   }
 
   async logExport(data: {

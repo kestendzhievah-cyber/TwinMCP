@@ -216,13 +216,17 @@ export class DisputeService {
       }
     }
 
-    const setClauses = Object.keys(updates)
-      .map((key, i) => `${key} = $${i + 1}`)
+    // SECURITY: Whitelist allowed column names to prevent SQL injection if updates object is ever extended
+    const ALLOWED_DISPUTE_COLUMNS = new Set(['status', 'updated_at', 'resolved_at', 'resolution']);
+    const safeEntries = Object.entries(updates).filter(([key]) => ALLOWED_DISPUTE_COLUMNS.has(key));
+
+    const setClauses = safeEntries
+      .map(([key], i) => `"${key}" = $${i + 1}`)
       .join(', ');
 
     await this.db.query(
-      `UPDATE disputes SET ${setClauses} WHERE id = $${Object.keys(updates).length + 1}`,
-      [...Object.values(updates), disputeId]
+      `UPDATE disputes SET ${setClauses} WHERE id = $${safeEntries.length + 1}`,
+      [...safeEntries.map(([, v]) => v), disputeId]
     );
 
     await this.logActivity(

@@ -20,8 +20,9 @@ export class EncryptionService {
 
   async encrypt(data: string, context?: string): Promise<EncryptedData> {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher(this.algorithm, this.currentKey);
-    cipher.setAAD(Buffer.from(context || ''));
+    // SECURITY: Use createCipheriv (not deprecated createCipher) — IV is required for AES-GCM
+    const cipher = crypto.createCipheriv(this.algorithm, this.currentKey, iv);
+    if (context) cipher.setAAD(Buffer.from(context));
     
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -43,8 +44,10 @@ export class EncryptionService {
       this.currentKey = await this.kms.getEncryptionKey(encryptedData.keyId);
     }
 
-    const decipher = crypto.createDecipher(this.algorithm, this.currentKey);
-    decipher.setAAD(Buffer.from(context || ''));
+    const iv = Buffer.from(encryptedData.iv, 'hex');
+    // SECURITY: Use createDecipheriv (not deprecated createDecipher) — IV is required for AES-GCM
+    const decipher = crypto.createDecipheriv(this.algorithm, this.currentKey, iv);
+    if (context) decipher.setAAD(Buffer.from(context));
     decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'hex'));
     
     let decrypted = decipher.update(encryptedData.data, 'hex', 'utf8');
@@ -88,10 +91,10 @@ export class EncryptionService {
 
   private isPIIField(field: string): boolean {
     const piiFields = [
-      'email', 'name', 'firstName', 'lastName', 'phone',
-      'address', 'ssn', 'creditCard', 'bankAccount',
-      'dateOfBirth', 'nationalId', 'passportNumber',
-      'billingAddress', 'customerInfo'
+      'email', 'name', 'firstname', 'lastname', 'phone',
+      'address', 'ssn', 'creditcard', 'bankaccount',
+      'dateofbirth', 'nationalid', 'passportnumber',
+      'billingaddress', 'customerinfo'
     ];
     
     return piiFields.includes(field.toLowerCase());

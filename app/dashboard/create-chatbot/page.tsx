@@ -471,20 +471,12 @@ export default function CreateChatbotPage() {
                 </div>
 
                 <div className="flex justify-center">
-                  {createdChatbot.qrCode.startsWith('data:image/svg') ? (
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: atob(createdChatbot.qrCode.split(',')[1]),
-                      }}
-                      className="w-32 h-32 border rounded-lg p-2 bg-white"
-                    />
-                  ) : (
-                    <img
-                      src={createdChatbot.qrCode}
-                      alt="QR Code"
-                      className="w-32 h-32 border rounded-lg"
-                    />
-                  )}
+                  {/* SECURITY: Always use <img> with data URI — never dangerouslySetInnerHTML */}
+                  <img
+                    src={createdChatbot.qrCode}
+                    alt="QR Code"
+                    className="w-32 h-32 border rounded-lg"
+                  />
                 </div>
 
                 <div className="flex gap-3">

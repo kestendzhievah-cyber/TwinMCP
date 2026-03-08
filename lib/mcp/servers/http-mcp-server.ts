@@ -49,10 +49,11 @@ export class HttpMCPServer {
       }
     );
 
-    // CORS
+    // CORS — SECURITY: Do not use origin:true (reflects any origin with credentials)
     if (this.config.cors) {
+      const allowedOrigins = (process.env.TWINMCP_CORS_ORIGINS || 'http://localhost:3000').split(',').map(s => s.trim());
       this.server.register(import('@fastify/cors'), {
-        origin: true,
+        origin: allowedOrigins,
         credentials: true,
       });
     }

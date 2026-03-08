@@ -5,9 +5,14 @@
  * burst bucket status, and top consumers.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     // Lazy-import to avoid circular deps at module load
     const { rateLimiter } = await import('@/lib/mcp/middleware/rate-limit');
 
@@ -42,7 +47,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to fetch quota stats',
-        details: error instanceof Error ? error.message : String(error),
+        details: 'Internal error',
       },
       { status: 500 }
     );

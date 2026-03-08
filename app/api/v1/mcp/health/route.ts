@@ -20,7 +20,8 @@ async function checkDatabase(): Promise<{
     await prisma.$queryRaw`SELECT 1`;
     return { status: 'healthy', latencyMs: Date.now() - start };
   } catch (error: any) {
-    return { status: 'unhealthy', latencyMs: Date.now() - start, error: error.message };
+    logger.error('Database health check failed:', error);
+    return { status: 'unhealthy', latencyMs: Date.now() - start, error: 'Connection failed' };
   }
 }
 
@@ -34,7 +35,8 @@ async function checkRedis(): Promise<{ status: ServiceStatus; latencyMs: number;
     await redis.ping();
     return { status: 'healthy', latencyMs: Date.now() - start };
   } catch (error: any) {
-    return { status: 'unhealthy', latencyMs: Date.now() - start, error: error.message };
+    logger.error('Redis health check failed:', error);
+    return { status: 'unhealthy', latencyMs: Date.now() - start, error: 'Connection failed' };
   }
 }
 
@@ -137,7 +139,7 @@ export async function GET(request: NextRequest) {
       {
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
-        error: error.message,
+        error: 'Health check failed',
         apiVersion: 'v1',
       },
       { status: 503 }

@@ -190,7 +190,7 @@ export default function LibrariesPage() {
           <select
             value={selectedEcosystem}
             onChange={e => setSelectedEcosystem(e.target.value)}
-            className="appearance-none px-4 py-3 pr-10 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition cursor-pointer"
+            className="appearance-none w-full lg:w-auto px-4 py-3 pr-10 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition cursor-pointer"
           >
             <option value="all">Tous les écosystèmes</option>
             <option value="npm">NPM</option>
@@ -205,7 +205,7 @@ export default function LibrariesPage() {
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
-            className="appearance-none px-4 py-3 pr-10 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition cursor-pointer"
+            className="appearance-none w-full lg:w-auto px-4 py-3 pr-10 bg-[#1a1b2e] border border-purple-500/20 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition cursor-pointer"
           >
             <option value="popularity">Popularité</option>
             <option value="name">Nom</option>
@@ -219,13 +219,13 @@ export default function LibrariesPage() {
         <div className="flex items-center gap-1 bg-[#1a1b2e] border border-purple-500/20 rounded-xl p-1">
           <button
             onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-lg transition ${viewMode === 'grid' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white'}`}
+            className={`p-2.5 rounded-lg transition touch-target flex items-center justify-center ${viewMode === 'grid' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white'}`}
           >
             <Grid className="w-5 h-5" />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-lg transition ${viewMode === 'list' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white'}`}
+            className={`p-2.5 rounded-lg transition touch-target flex items-center justify-center ${viewMode === 'list' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white'}`}
           >
             <List className="w-5 h-5" />
           </button>

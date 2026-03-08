@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       {
         jsonrpc: '2.0',
         id: null,
-        error: { code: -32603, message: error instanceof Error ? error.message : 'Unknown error' },
+        error: { code: -32603, message: 'Internal error' },
       },
       { status: 200 }
     );

@@ -1,6 +1,8 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { ContextQuery, ContextResult } from '@/src/types/context-intelligent.types';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { prisma } from '@/lib/prisma';
 
 let _svc: { contextService: any; db: any } | null = null;
 async function getContextServices() {
@@ -30,6 +32,11 @@ async function getContextServices() {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { contextService } = await getContextServices();
     const body = await request.json();
     const contextQuery: ContextQuery = body;
@@ -50,10 +57,7 @@ export async function POST(request: NextRequest) {
     logger.error('Context processing error:', error);
 
     return NextResponse.json(
-      {
-        error: 'Failed to process context',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to process context' },
       { status: 500 }
     );
   }
@@ -61,12 +65,26 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { db } = await getContextServices();
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get('conversationId');
 
     if (!conversationId) {
       return NextResponse.json({ error: 'Missing conversationId parameter' }, { status: 400 });
+    }
+
+    // SECURITY: Verify conversation belongs to the authenticated user
+    const owned = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { userId: true },
+    });
+    if (!owned || owned.userId !== userId) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
     // Récupération des résultats de contexte pour une conversation
@@ -88,10 +106,7 @@ export async function GET(request: NextRequest) {
     logger.error('Context retrieval error:', error);
 
     return NextResponse.json(
-      {
-        error: 'Failed to retrieve context',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to retrieve context' },
       { status: 500 }
     );
   }

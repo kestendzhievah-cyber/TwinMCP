@@ -10,6 +10,24 @@ function createRedisClient(): Redis {
     console.warn('[redis] Redis disabled or REDIS_URL not set — using in-memory mock');
     // Return a lightweight mock that satisfies the Redis interface at runtime.
     // Only the methods actually called by the app are implemented.
+    // Build a chainable pipeline/multi mock that collects commands and
+    // returns plausible default results on exec().
+    function createChainableMock() {
+      const commands: (() => [null, any])[] = [];
+      const chain: Record<string, (...args: any[]) => any> = {};
+      const methods = ['get', 'set', 'setex', 'del', 'incr', 'decr', 'expire',
+        'zadd', 'zcard', 'zremrangebyscore', 'llen', 'hset', 'hget'];
+      for (const m of methods) {
+        chain[m] = (..._args: any[]) => {
+          const defaultVal = m === 'incr' ? 1 : m === 'zcard' ? 0 : m === 'llen' ? 0 : 'OK';
+          commands.push(() => [null, defaultVal]);
+          return chain;
+        };
+      }
+      chain.exec = async () => commands.map(fn => fn());
+      return chain;
+    }
+
     return {
       get: async () => null,
       set: async () => 'OK',
@@ -17,6 +35,7 @@ function createRedisClient(): Redis {
       del: async () => 1,
       exists: async () => 0,
       incr: async () => 1,
+      decr: async () => 0,
       expire: async () => 1,
       ping: async () => 'PONG',
       connect: async () => {},
@@ -24,6 +43,12 @@ function createRedisClient(): Redis {
       disconnect: async () => {},
       on: function () { return this; },
       status: 'ready',
+      pipeline: () => createChainableMock(),
+      multi: () => createChainableMock(),
+      llen: async () => 0,
+      zadd: async () => 0,
+      zcard: async () => 0,
+      zremrangebyscore: async () => 0,
     } as unknown as Redis;
   }
 

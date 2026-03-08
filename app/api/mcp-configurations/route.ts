@@ -2,12 +2,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
+import { createMcpConfigSchema, parseBody } from '@/lib/validations/api-schemas';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // Fonction helper pour vérifier le token d'authentification
 async function getAuthenticatedUserId(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    throw new Error("Token d'authentification manquant ou invalide");
+    throw new AuthenticationError();
   }
 
   const token = authHeader.split('Bearer ')[1];
@@ -19,7 +22,7 @@ async function getAuthenticatedUserId(request: NextRequest) {
     const decodedToken: any = await adminAuth.verifyIdToken(token);
     return decodedToken.uid;
   } catch (error) {
-    throw new Error('Token invalide');
+    throw new AuthenticationError('Token invalide');
   }
 }
 
@@ -41,11 +44,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération des configurations:', error);
-    if (error instanceof Error && error.message.includes('Token')) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    return handleApiError(error, 'ListMcpConfigurations');
   }
 }
 
@@ -54,31 +53,30 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await getAuthenticatedUserId(request);
 
-    const body = await request.json();
-    const { name, description, configData, productId } = body;
-
-    if (!name || !configData) {
-      return NextResponse.json(
-        { error: 'Nom et données de configuration requis' },
-        { status: 400 }
-      );
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
+
+    const parsed = parseBody(createMcpConfigSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error, details: parsed.details }, { status: 400 });
+    }
+    const { name, description, configData } = parsed.data;
 
     const configuration = await prisma.mCPConfiguration.create({
       data: {
         name,
-        description: description || null,
-        configData: typeof configData === 'string' ? JSON.parse(configData) : configData,
+        description: description ?? null,
+        configData: configData as any,
         userId,
       },
     });
 
     return NextResponse.json(configuration, { status: 201 });
   } catch (error) {
-    logger.error('Erreur lors de la création de la configuration:', error);
-    if (error instanceof Error && error.message.includes('Token')) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    return handleApiError(error, 'CreateMcpConfiguration');
   }
 }

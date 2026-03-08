@@ -434,11 +434,28 @@ export class ReportingService {
     return parseFloat(result.rows[0].avg) || 0;
   }
 
+  // Whitelist of allowed dimension fields to prevent SQL injection
+  private static ALLOWED_DIMENSION_FIELDS: Record<string, string> = {
+    'user_id': 'user_id',
+    'library_id': 'library_id',
+    'tool_name': 'tool_name',
+    'status': 'status',
+    'category': 'category',
+    'source': 'source',
+    'type': 'type',
+    'provider': 'provider',
+    'region': 'region',
+  };
+
   private async getDimensionData(dimension: any, period: { start: Date; end: Date }): Promise<any[]> {
+    const safeField = ReportingService.ALLOWED_DIMENSION_FIELDS[dimension.field];
+    if (!safeField) {
+      throw new Error(`Invalid dimension field: ${dimension.field}. Allowed: ${Object.keys(ReportingService.ALLOWED_DIMENSION_FIELDS).join(', ')}`);
+    }
     const result = await this.db.query(
-      `SELECT DISTINCT ${dimension.field} as value, COUNT(*) as count 
+      `SELECT DISTINCT "${safeField}" as value, COUNT(*) as count 
        FROM events WHERE timestamp BETWEEN $1 AND $2 
-       GROUP BY ${dimension.field} ORDER BY count DESC`,
+       GROUP BY "${safeField}" ORDER BY count DESC`,
       [period.start, period.end]
     );
     return result.rows;

@@ -14,7 +14,7 @@ export async function GET() {
     checks.database = {
       status: 'error',
       latencyMs: Date.now() - dbStart,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Database connection failed',
     };
   }
 
@@ -27,7 +27,7 @@ export async function GET() {
     checks.redis = {
       status: 'warning',
       latencyMs: Date.now() - redisStart,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Redis connection failed',
     };
   }
 

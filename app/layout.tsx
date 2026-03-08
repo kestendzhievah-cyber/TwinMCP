@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
@@ -11,12 +11,25 @@ const inter = Inter({
   preload: true,
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
+  themeColor: '#0a0118',
+};
+
 export const metadata: Metadata = {
   title: 'TwinMCP - Plateforme SaaS pour Agents IA',
   description:
     "Créez, gérez et optimisez des agents d'intelligence artificielle personnalisés avec TwinMCP",
-  other: {
-    'theme-color': '#0a0118',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'TwinMCP',
+  },
+  formatDetection: {
+    telephone: false,
   },
 };
 
@@ -28,10 +41,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={inter.className}>
-        <StripeProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </StripeProvider>
+      <body className={`${inter.className} antialiased overscroll-none`}>
+        <AuthProvider>
+          <StripeProvider>{children}</StripeProvider>
+        </AuthProvider>
         <SpeedInsights />
       </body>
     </html>

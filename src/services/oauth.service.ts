@@ -446,6 +446,11 @@ export class OAuthService {
   }
 
   private async generateIdToken(userId: string, clientId: string, expiresAt: Date): Promise<string> {
+    const secret = process.env['JWT_SECRET'];
+    if (!secret || secret.length < 32) {
+      throw new Error('JWT_SECRET is not configured or too short');
+    }
+
     const payload = {
       iss: this.config.authorizationServer.issuer,
       sub: userId,
@@ -455,7 +460,7 @@ export class OAuthService {
       auth_time: Math.floor(Date.now() / 1000)
     };
 
-    return sign(payload, process.env['JWT_SECRET']!, { algorithm: 'HS256' });
+    return sign(payload, secret, { algorithm: 'HS256' });
   }
 
   private verifyPKCE(codeChallenge: string, codeChallengeMethod: string | null, codeVerifier: string): boolean {

@@ -13,6 +13,16 @@
 
 import crypto from 'crypto';
 
+// SECURITY: Escape XML special characters to prevent XML injection
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 export interface SSOProvider {
   id: string;
   name: string;
@@ -194,6 +204,14 @@ export class SSOService {
       return { success: false, error: 'Provider not found or not SAML' };
     }
 
+    // SECURITY: This implementation does NOT verify XML signatures.
+    // In production, SAML responses MUST be cryptographically verified
+    // using the IdP certificate before trusting any attributes.
+    // Without signature verification, an attacker can forge any SAML response.
+    if (process.env.NODE_ENV === 'production' && !process.env.SAML_SKIP_SIGNATURE_CHECK) {
+      return { success: false, error: 'SAML signature verification not implemented — cannot accept responses in production' };
+    }
+
     const config = provider.config as SAMLConfig;
 
     try {
@@ -298,7 +316,8 @@ export class SSOService {
     if (!config.sloUrl) return null;
 
     const requestId = `_${crypto.randomUUID()}`;
-    const xml = `<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${requestId}" Version="2.0" IssueInstant="${new Date().toISOString()}" Destination="${config.sloUrl}"><saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${this.spEntityId}</saml:Issuer><saml:NameID xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${session.email}</saml:NameID></samlp:LogoutRequest>`;
+    // SECURITY: Escape all interpolated values to prevent XML injection
+    const xml = `<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${escapeXml(requestId)}" Version="2.0" IssueInstant="${escapeXml(new Date().toISOString())}" Destination="${escapeXml(config.sloUrl)}"><saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${escapeXml(this.spEntityId)}</saml:Issuer><saml:NameID xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${escapeXml(session.email)}</saml:NameID></samlp:LogoutRequest>`;
 
     const encoded = Buffer.from(xml).toString('base64');
     this.destroySession(sessionId);
@@ -310,10 +329,11 @@ export class SSOService {
 
   /** Get SP metadata XML for IdP configuration. */
   getSPMetadata(callbackUrl: string): string {
+    // SECURITY: Escape all interpolated values to prevent XML injection
     return `<?xml version="1.0"?>
-<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="${this.spEntityId}">
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="${escapeXml(this.spEntityId)}">
   <md:SPSSODescriptor AuthnRequestsSigned="false" WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
-    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="${callbackUrl}" index="0" isDefault="true"/>
+    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="${escapeXml(callbackUrl)}" index="0" isDefault="true"/>
   </md:SPSSODescriptor>
 </md:EntityDescriptor>`;
   }
@@ -321,7 +341,8 @@ export class SSOService {
   // ── Helpers ────────────────────────────────────────────────
 
   private buildAuthnRequestXML(request: SAMLAuthnRequest): string {
-    return `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${request.id}" Version="2.0" IssueInstant="${request.timestamp}" Destination="${request.destination}" AssertionConsumerServiceURL="${request.assertionConsumerServiceURL}" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"><saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${request.issuer}</saml:Issuer></samlp:AuthnRequest>`;
+    // SECURITY: Escape all interpolated values to prevent XML injection
+    return `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${escapeXml(request.id)}" Version="2.0" IssueInstant="${escapeXml(request.timestamp)}" Destination="${escapeXml(request.destination)}" AssertionConsumerServiceURL="${escapeXml(request.assertionConsumerServiceURL)}" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"><saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">${escapeXml(request.issuer)}</saml:Issuer></samlp:AuthnRequest>`;
   }
 
   private extractXMLValue(xml: string, attributeName: string): string | undefined {

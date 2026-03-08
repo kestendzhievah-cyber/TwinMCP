@@ -411,10 +411,15 @@ export class LLMService extends EventEmitter {
         }
       }
       
-      if (pattern && typeof value === 'string') {
-        const regex = new RegExp(pattern);
-        if (!regex.test(value)) {
-          throw new Error(`Variable ${variable.name} does not match pattern ${pattern}`);
+      if (pattern && typeof value === 'string' && typeof pattern === 'string' && pattern.length <= 256) {
+        try {
+          const regex = new RegExp(pattern);
+          if (!regex.test(value.slice(0, 8192))) {
+            throw new Error(`Variable ${variable.name} does not match pattern ${pattern}`);
+          }
+        } catch (e: any) {
+          if (e.message.includes('does not match')) throw e;
+          // Invalid regex pattern — skip validation rather than crash
         }
       }
     }

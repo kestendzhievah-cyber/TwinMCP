@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 /**
  * LLM A/B Testing Service.
  *
@@ -131,7 +133,7 @@ export class LLMABTestingService {
     const exp = this.experiments.get(experimentId)
     if (!exp || exp.status !== 'running') return null
 
-    const rand = Math.random()
+    const rand = crypto.randomInt(0, 1000000) / 1000000
     let cumulative = 0
     for (const variant of exp.variants) {
       cumulative += exp.trafficSplit[variant.id] || 0

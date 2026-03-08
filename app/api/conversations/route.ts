@@ -2,16 +2,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationService } from './_shared';
 import { Conversation, ConversationSearch } from '@/src/types/conversation.types';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { createFullConversationSchema, parseBody } from '@/lib/validations/api-schemas';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Use authenticated userId — ignore query param to prevent IDOR
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
+    }
+
     const conversationService = await getConversationService();
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
-    }
 
     // Paramètres de recherche
     const search: ConversationSearch = {
@@ -48,23 +53,32 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    logger.error('Error fetching conversations:', error);
-    return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 });
+    return handleApiError(error, 'ListConversations');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const conversationService = await getConversationService();
-    const body = await request.json();
-    const { userId, title, provider, model, systemPrompt, settings } = body;
-
-    if (!userId || !title || !provider || !model) {
-      return NextResponse.json(
-        { error: 'Missing required fields: userId, title, provider, model' },
-        { status: 400 }
-      );
+    // SECURITY: Use authenticated userId — ignore body.userId to prevent IDOR
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
     }
+
+    const conversationService = await getConversationService();
+
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = parseBody(createFullConversationSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error, details: parsed.details }, { status: 400 });
+    }
+    const { title, provider, model, systemPrompt, settings } = parsed.data;
 
     const conversation = await conversationService.createConversation(userId, {
       title,
@@ -76,7 +90,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ conversation }, { status: 201 });
   } catch (error) {
-    logger.error('Error creating conversation:', error);
-    return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
+    return handleApiError(error, 'CreateConversation');
   }
 }

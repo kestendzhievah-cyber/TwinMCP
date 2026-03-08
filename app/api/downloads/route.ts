@@ -1,6 +1,9 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createDownloadSchema, parseBody } from '@/lib/validations/api-schemas';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let _downloadManager: any = null;
 async function getDownloadManager() {
@@ -16,6 +19,12 @@ async function getDownloadManager() {
 
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Require authentication — prevent unauthenticated download task creation
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
+    }
+
     const downloadManager = await getDownloadManager();
 
     let rawBody: unknown;
@@ -81,19 +90,17 @@ export async function POST(request: NextRequest) {
       message: 'Download task created successfully',
     });
   } catch (error) {
-    logger.error('Error creating download task:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'CreateDownload');
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
+    }
+
     const downloadManager = await getDownloadManager();
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get('taskId');
@@ -111,13 +118,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, queue });
     }
   } catch (error) {
-    logger.error('Error fetching download status:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GetDownloadStatus');
   }
 }

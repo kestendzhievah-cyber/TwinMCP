@@ -2,16 +2,18 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillingServices } from '../_shared';
 import { validateAuth } from '@/lib/firebase-admin-auth';
+import { createSubscriptionSchema, parseBody } from '@/lib/validations/api-schemas';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { subscriptionService } = await getBillingServices();
-    // Use authenticated userId — ignore query param to prevent IDOR
     const userId = auth.userId;
 
     const subscriptions = await subscriptionService.getUserSubscriptions(userId);
@@ -21,11 +23,7 @@ export async function GET(request: NextRequest) {
       data: { subscriptions },
     });
   } catch (error) {
-    logger.error('Error fetching subscriptions:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ListSubscriptions');
   }
 }
 
@@ -33,37 +31,31 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { subscriptionService } = await getBillingServices();
-    const body = await request.json();
-    const { planId, paymentMethodId, trialDays = 0 } = body;
+
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = parseBody(createSubscriptionSchema, rawBody);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error, details: parsed.details }, { status: 400 });
+    }
+    const { planId, paymentMethodId, trialDays } = parsed.data;
     // Use authenticated userId — ignore body.userId to prevent IDOR
     const userId = auth.userId;
-
-    if (!planId || !paymentMethodId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Validate planId is a known plan
-    if (typeof planId !== 'string' || !['free', 'pro', 'professional', 'enterprise', 'starter'].includes(planId)) {
-      return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 });
-    }
-
-    // Validate paymentMethodId format (Stripe pm_ prefix)
-    if (typeof paymentMethodId !== 'string' || !/^pm_[a-zA-Z0-9]+$/.test(paymentMethodId)) {
-      return NextResponse.json({ error: 'Invalid payment method ID' }, { status: 400 });
-    }
-
-    // Validate trialDays is a reasonable non-negative integer
-    const safeTrialDays = Math.max(0, Math.min(Math.floor(Number(trialDays) || 0), 30));
 
     const subscription = await subscriptionService.createSubscription(
       userId,
       planId,
       paymentMethodId,
-      safeTrialDays
+      trialDays
     );
 
     return NextResponse.json({
@@ -72,10 +64,6 @@ export async function POST(request: NextRequest) {
       message: 'Subscription created successfully',
     });
   } catch (error) {
-    logger.error('Error creating subscription:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'CreateSubscription');
   }
 }

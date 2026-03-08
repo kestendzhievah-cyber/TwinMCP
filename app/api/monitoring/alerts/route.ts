@@ -1,9 +1,16 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../_shared';
+import { validateAuth } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Require authentication — monitoring data is sensitive
+    const auth = await validateAuth(request.headers.get('authorization'));
+    if (!auth.valid) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const monitoringService = await getMonitoringService();
     const { searchParams } = new URL(request.url);
     const severity = searchParams.get('severity') as any;
@@ -30,6 +37,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Require authentication for alert creation
+    const authPost = await validateAuth(request.headers.get('authorization'));
+    if (!authPost.valid) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     // Validate required fields

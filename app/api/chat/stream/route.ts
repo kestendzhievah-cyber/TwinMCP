@@ -24,6 +24,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Verify the conversation belongs to this user
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { userId: true },
+    });
+    if (!conversation || conversation.userId !== userId) {
+      return new Response(JSON.stringify({ error: 'Conversation not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // Persist the user message
     try {
       await prisma.message.create({

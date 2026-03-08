@@ -139,6 +139,42 @@ export const createConversationMessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']).optional().default('user'),
 });
 
+export const createFullConversationSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200).trim(),
+  provider: z.string().min(1, 'Provider is required').max(50),
+  model: z.string().min(1, 'Model is required').max(100),
+  systemPrompt: z.string().max(10000).optional(),
+  settings: z.record(z.unknown()).optional(),
+});
+
+// ─── Subscriptions ─────────────────────────────────────────────
+export const createSubscriptionSchema = z.object({
+  planId: z.enum(['free', 'pro', 'professional', 'enterprise', 'starter']),
+  paymentMethodId: z.string().regex(/^pm_[a-zA-Z0-9]+$/, 'Invalid Stripe payment method ID'),
+  trialDays: z.number().int().min(0).max(30).optional().default(0),
+});
+
+// ─── Profile ───────────────────────────────────────────────────
+export const updateProfileSchema = z.object({
+  firstName: z.string().max(200).trim().optional(),
+  lastName: z.string().max(200).trim().optional(),
+  phone: z.string().max(200).trim().optional(),
+  address: z.string().max(200).trim().optional(),
+  city: z.string().max(200).trim().optional(),
+  country: z.string().max(200).trim().optional(),
+  postalCode: z.string().max(200).trim().optional(),
+}).refine(data => Object.values(data).some(v => v !== undefined), {
+  message: 'At least one field must be provided',
+});
+
+// ─── Chat Send Message ─────────────────────────────────────────
+export const sendChatMessageSchema = z.object({
+  chatbotId: z.string().min(1, 'chatbotId is required'),
+  message: z.string().min(1, 'Message is required').max(10000, 'Message must be under 10000 characters'),
+  conversationId: z.string().optional(),
+  visitorId: z.string().min(1, 'visitorId is required'),
+});
+
 // ─── Helper: parse and return error response ─────────────────────
 export function parseBody<T>(
   schema: z.ZodSchema<T>,

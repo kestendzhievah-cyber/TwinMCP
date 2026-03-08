@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     logger.error('Documentation generation error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate documentation' },
+      { error: 'Failed to generate documentation' },
       { status: 500 }
     );
   }

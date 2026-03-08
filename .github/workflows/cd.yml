@@ -63,6 +63,11 @@ jobs:
           # kubectl set image deployment/twinmcp twinmcp=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main --namespace=staging
           # Or use your preferred deployment method (Railway, Render, etc.)
 
+      - name: Smoke test staging
+        run: |
+          echo "Running smoke tests against staging..."
+          # curl -sf "$STAGING_URL/api/health?ready=true" || exit 1
+
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest

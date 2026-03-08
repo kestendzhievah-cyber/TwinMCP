@@ -1,9 +1,15 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../_shared';
+import { validateAuth } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await validateAuth(request.headers.get('authorization'));
+    if (!auth.valid) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const monitoringService = await getMonitoringService();
     // Get monitoring service status
     const serviceStatus = monitoringService.getStatus();
@@ -89,10 +95,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Admin-only: require Authorization header with valid token
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized: admin access required' }, { status: 401 });
+    // SECURITY: Actually verify the token, not just check prefix
+    const authPost = await validateAuth(request.headers.get('authorization'));
+    if (!authPost.valid) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const monitoringService = await getMonitoringService();

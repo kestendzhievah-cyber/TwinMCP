@@ -1,6 +1,7 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 interface ImportRequest {
   source: string;
@@ -14,18 +15,6 @@ interface RepoMetadata {
   language: string;
   defaultBranch: string;
   topics: string[];
-}
-
-// Extract user ID from Firebase JWT token
-function extractUserIdFromToken(token: string): string | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-    return payload.user_id || payload.sub || payload.uid || null;
-  } catch {
-    return null;
-  }
 }
 
 // Parse GitHub URL
@@ -201,12 +190,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Source non valide' }, { status: 400 });
     }
 
-    // Get user ID from auth header (optional)
-    let userId: string | null = null;
-    const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      userId = extractUserIdFromToken(authHeader.substring(7));
-    }
+    // Get user ID from auth header (optional but validated properly)
+    const userId = await getAuthUserId(request.headers.get('authorization'));
 
     // Parse URL and extract info
     let libraryName = '';

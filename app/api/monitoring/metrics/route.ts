@@ -1,9 +1,15 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../_shared';
+import { validateAuth } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await validateAuth(request.headers.get('authorization'));
+    if (!auth.valid) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const monitoringService = await getMonitoringService();
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period');
@@ -77,6 +83,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authPost = await validateAuth(request.headers.get('authorization'));
+    if (!authPost.valid) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const monitoringService = await getMonitoringService();
     const body = await request.json();
 

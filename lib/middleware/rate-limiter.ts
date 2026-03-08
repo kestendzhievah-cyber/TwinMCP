@@ -125,11 +125,11 @@ export async function checkRateLimit(
     };
   } catch (error) {
     logger.error('[RateLimit] Redis error:', error);
-    // On error, allow the request (fail open)
+    // SECURITY: Fail closed — deny requests when Redis is unavailable
     return {
-      success: true,
-      remaining: config.maxRequests,
-      resetTime: now + config.windowMs,
+      success: false,
+      remaining: 0,
+      resetTime: now + 60000,
       limit: config.maxRequests,
     };
   }

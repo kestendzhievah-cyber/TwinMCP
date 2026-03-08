@@ -2,10 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== MOBILE-FIRST FOUNDATION ===== */
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+  /* Safe area insets for notched devices (iPhone X+, etc.) */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -16,6 +23,12 @@
   }
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
@@ -24,6 +37,68 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  /* Prevent pull-to-refresh jank on mobile */
+  overscroll-behavior-y: contain;
+  /* Prevent iOS tap highlight */
+  -webkit-tap-highlight-color: transparent;
+  /* Safe area padding for notched devices */
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+/* ===== TOUCH-FRIENDLY TARGETS (WCAG 2.5.8 - min 44x44px) ===== */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .safe-top { padding-top: var(--safe-area-top); }
+  .safe-bottom { padding-bottom: var(--safe-area-bottom); }
+  .safe-left { padding-left: var(--safe-area-left); }
+  .safe-right { padding-right: var(--safe-area-right); }
+}
+
+/* ===== REDUCED MOTION (accessibility) ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== HOVER GUARD — prevent sticky hover on touch devices ===== */
+@media (hover: none) {
+  .hover-lift:hover,
+  .hover-scale:hover,
+  .hover-glow:hover {
+    transform: none !important;
+    box-shadow: inherit !important;
+    border-color: inherit !important;
+  }
+  .btn-animated:hover::before {
+    left: -100% !important;
+  }
+  .btn-animated:hover {
+    transform: none !important;
+  }
+}
+
+/* ===== MOBILE SCROLL & INPUTS ===== */
+@media (max-width: 768px) {
+  /* Hide scrollbar on mobile for cleaner look */
+  ::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* Prevent iOS zoom on input focus by ensuring 16px min */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Improve scrolling in overflow containers */
+  .overflow-x-auto, .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ===== LANDING PAGE ANIMATIONS ===== */

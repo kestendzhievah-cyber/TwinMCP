@@ -176,6 +176,12 @@ export class APIKeyService {
     return result.rows.length > 0 ? result.rows[0] : null;
   }
 
+  // SECURITY: Whitelist of columns that can be updated — prevents SQL injection via key names
+  private static readonly ALLOWED_UPDATE_COLUMNS = new Set([
+    'name', 'is_active', 'permissions', 'expires_at', 'tier',
+    'quota_daily', 'quota_monthly', 'quota_requests_per_day', 'quota_requests_per_minute',
+  ]);
+
   async updateAPIKey(keyId: string, userId: string, updates: Partial<APIKey>): Promise<boolean> {
     const fields: string[] = [];
     const values: any[] = [];
@@ -183,8 +189,10 @@ export class APIKeyService {
 
     for (const [key, value] of Object.entries(updates)) {
       if (key === 'id' || key === 'created_at') continue;
+      // SECURITY: Only allow whitelisted column names to prevent SQL injection
+      if (!APIKeyService.ALLOWED_UPDATE_COLUMNS.has(key)) continue;
       
-      fields.push(`${key} = $${paramIndex}`);
+      fields.push(`"${key}" = $${paramIndex}`);
       values.push(value);
       paramIndex++;
     }

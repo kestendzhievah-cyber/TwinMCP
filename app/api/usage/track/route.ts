@@ -8,8 +8,16 @@ const INTERNAL_KEY = process.env.TWINMCP_INTERNAL_KEY || '';
 export async function POST(request: NextRequest) {
   try {
     // Verify internal key for server-to-server calls
+    // SECURITY: Reject if TWINMCP_INTERNAL_KEY is not configured — prevents open access in misconfigured deployments
+    if (!INTERNAL_KEY) {
+      logger.error('TWINMCP_INTERNAL_KEY is not configured — rejecting usage tracking request');
+      return NextResponse.json(
+        { success: false, error: 'Service not configured', code: 'MISSING_INTERNAL_KEY' },
+        { status: 503 }
+      );
+    }
     const internalKey = request.headers.get('x-internal-key');
-    if (INTERNAL_KEY && internalKey !== INTERNAL_KEY) {
+    if (internalKey !== INTERNAL_KEY) {
       return NextResponse.json(
         {
           success: false,

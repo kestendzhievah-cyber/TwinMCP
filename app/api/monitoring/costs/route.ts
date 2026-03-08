@@ -2,10 +2,15 @@
  * GET /api/monitoring/costs — Embedding cost dashboard API.
  * Returns cost summaries, model usage, budgets, and projections.
  */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     const { costMonitorService } = await import('@/src/services/embeddings/cost-monitor.service');
 
     const now = new Date();
@@ -29,7 +34,7 @@ export async function GET() {
     });
   } catch (error) {
     return NextResponse.json(
-      { status: 'error', message: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 'error', message: 'Failed to fetch cost data' },
       { status: 500 }
     );
   }

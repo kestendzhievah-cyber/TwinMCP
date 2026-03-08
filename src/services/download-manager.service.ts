@@ -222,7 +222,8 @@ export class DownloadManagerService {
 
     try {
       await execFileAsync('npm', ['pack', packageSpec, `--pack-destination=${localPath}`], { timeout: this.config.timeout });
-      await execAsync(`tar -xzf "${tarballPath}" -C "${localPath}"`);
+      // SECURITY: Use execFileAsync to avoid shell injection via tarballPath/localPath
+      await execFileAsync('tar', ['-xzf', tarballPath, '-C', localPath], { timeout: this.config.timeout });
       await fsPromises.unlink(tarballPath);
     } catch (error) {
       throw new Error(`NPM download failed: ${(error as Error).message}`);

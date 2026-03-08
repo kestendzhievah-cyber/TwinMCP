@@ -248,7 +248,7 @@ export class DashboardRenderer {
     
     for (const [key, value] of Object.entries(filters)) {
       const placeholder = `{{${key}}}`;
-      filteredQuery = filteredQuery.replace(new RegExp(placeholder, 'g'), String(value));
+      filteredQuery = filteredQuery.replaceAll(placeholder, String(value));
     }
 
     return filteredQuery;

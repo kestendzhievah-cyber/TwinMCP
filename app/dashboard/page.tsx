@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [revokingKey, setRevokingKey] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmRevokeKeyId, setConfirmRevokeKeyId] = useState<string | null>(null);
   const [githubUrl, setGithubUrl] = useState('');
   const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
     'idle'
@@ -278,12 +279,8 @@ export default function DashboardPage() {
     }
   };
 
-  // Revoke API key
+  // Revoke API key — uses state-based confirmation instead of native confirm()
   const handleRevokeKey = async (keyId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir révoquer cette clé ? Cette action est irréversible.')) {
-      return;
-    }
-
     if (!user) return;
 
     setRevokingKey(keyId);
@@ -587,18 +584,18 @@ export default function DashboardPage() {
         </div>
 
         {mcpStatus.isOnline && (
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-[#0f1020] rounded-lg p-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="bg-[#0f1020] rounded-lg p-2 sm:p-3">
               <p className="text-xs text-gray-400 mb-1">Version</p>
-              <p className="font-semibold">{mcpStatus.serverInfo?.version}</p>
+              <p className="font-semibold text-sm sm:text-base">{mcpStatus.serverInfo?.version}</p>
             </div>
-            <div className="bg-[#0f1020] rounded-lg p-3">
+            <div className="bg-[#0f1020] rounded-lg p-2 sm:p-3">
               <p className="text-xs text-gray-400 mb-1">Outils</p>
-              <p className="font-semibold">{mcpStatus.tools.length}</p>
+              <p className="font-semibold text-sm sm:text-base">{mcpStatus.tools.length}</p>
             </div>
-            <div className="bg-[#0f1020] rounded-lg p-3">
+            <div className="bg-[#0f1020] rounded-lg p-2 sm:p-3">
               <p className="text-xs text-gray-400 mb-1">Latence</p>
-              <p className="font-semibold">{mcpStatus.responseTime}ms</p>
+              <p className="font-semibold text-sm sm:text-base">{mcpStatus.responseTime}ms</p>
             </div>
           </div>
         )}
@@ -610,19 +607,19 @@ export default function DashboardPage() {
           <ExternalLink className="w-5 h-5 text-purple-400" />
           Importer depuis GitHub
         </h2>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
-            type="text"
+            type="url"
             placeholder="https://github.com/owner/repo"
             value={githubUrl}
             onChange={e => setGithubUrl(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleImportFromGitHub()}
-            className="flex-1 px-4 py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-sm"
+            className="flex-1 px-4 py-3 sm:py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-sm"
           />
           <button
             onClick={handleImportFromGitHub}
             disabled={importStatus === 'loading' || !githubUrl.trim()}
-            className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            className="px-5 py-3 sm:py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm touch-target"
           >
             {importStatus === 'loading' ? (
               <>
@@ -708,7 +705,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleRevokeKey(key.id)}
+                    onClick={() => setConfirmRevokeKeyId(key.id)}
                     disabled={revokingKey === key.id}
                     className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition"
                   >
@@ -720,7 +717,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 sm:gap-3">
                   <div className="bg-[#0f1020] rounded-lg p-2">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-gray-400">Aujourd'hui</span>
@@ -935,6 +932,45 @@ export default function DashboardPage() {
             >
               J'ai sauvegardé ma clé
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Revoke Confirmation Modal */}
+      {confirmRevokeKeyId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1a1b2e] border border-red-500/30 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Révoquer la clé API</h3>
+                <p className="text-sm text-gray-400">Cette action est irréversible</p>
+              </div>
+            </div>
+            <p className="text-gray-300 text-sm mb-6">
+              Êtes-vous sûr de vouloir révoquer cette clé ? Toutes les applications utilisant
+              cette clé perdront immédiatement l'accès.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmRevokeKeyId(null)}
+                className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => {
+                  const keyId = confirmRevokeKeyId;
+                  setConfirmRevokeKeyId(null);
+                  handleRevokeKey(keyId);
+                }}
+                className="flex-1 px-4 py-2.5 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl hover:bg-red-500/30 transition font-medium"
+              >
+                Révoquer
+              </button>
+            </div>
           </div>
         </div>
       )}

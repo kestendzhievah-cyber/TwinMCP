@@ -72,8 +72,10 @@ export const getScopeDescription = (scope: string): string => {
   return scopeDescriptions[scope as keyof typeof scopeDescriptions]?.description || 'Permission personnalisée';
 };
 
-// Configuration des clients OAuth par défaut (pour développement)
-export const defaultOAuthClients = [
+// Configuration des clients OAuth par défaut (DEVELOPMENT ONLY)
+// WARNING: These contain known secret hashes — never use in production.
+// In production, clients must be registered via DB with unique, rotated secrets.
+export const defaultOAuthClients = process.env.NODE_ENV === 'production' ? [] : [
   {
     clientId: 'twinmcp-ide-plugin',
     clientSecretHash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', // 'ide-plugin-secret'
@@ -142,6 +144,11 @@ export const validateOAuthConfig = (): void => {
   if (!oauthConfig.authorizationServer.issuer.startsWith('https://') && 
       !oauthConfig.authorizationServer.issuer.startsWith('http://localhost')) {
     logger.warn('OAUTH_ISSUER devrait utiliser HTTPS en production');
+  }
+
+  // Block hardcoded OAuth clients in production
+  if (process.env.NODE_ENV === 'production' && defaultOAuthClients.length > 0) {
+    throw new Error('Hardcoded OAuth clients must not be used in production — register clients via database');
   }
 };
 

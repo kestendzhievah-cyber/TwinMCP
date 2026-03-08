@@ -15,16 +15,19 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const status = url.searchParams.get('status') as any;
-    const limit = parseInt(url.searchParams.get('limit') || '20');
-    const offset = parseInt(url.searchParams.get('offset') || '0');
+    const rawLimit = parseInt(url.searchParams.get('limit') || '20');
+    const rawOffset = parseInt(url.searchParams.get('offset') || '0');
+    // Cap pagination to prevent abuse
+    const limit = Math.min(Math.max(isNaN(rawLimit) ? 20 : rawLimit, 1), 100);
+    const offset = Math.max(isNaN(rawOffset) ? 0 : rawOffset, 0);
 
     const queue = getQueue();
 
-    let jobs;
+    // SECURITY: Always scope jobs to the authenticated user.
+    // The previous code allowed any user to list ALL jobs by status — IDOR violation.
+    let jobs = await queue.getJobsByUser(authContext.userId);
     if (status) {
-      jobs = await queue.getJobsByStatus(status);
-    } else {
-      jobs = await queue.getJobsByUser(authContext.userId);
+      jobs = jobs.filter((j: any) => j.status === status);
     }
 
     // Pagination
@@ -55,9 +58,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     logger.error('Queue list error:', error);
+    const statusCode = error.statusCode || 500;
     return NextResponse.json(
-      { error: error.message || 'Failed to list queue jobs' },
-      { status: error.statusCode || 500 }
+      { error: statusCode === 401 ? 'Authentication required' : statusCode < 500 ? 'Request failed' : 'Failed to list queue jobs' },
+      { status: statusCode }
     );
   }
 }

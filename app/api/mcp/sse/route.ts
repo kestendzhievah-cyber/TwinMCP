@@ -268,7 +268,7 @@ async function processMessage(message: any): Promise<any> {
         return {
           jsonrpc: '2.0',
           id,
-          error: { code: -32603, message: error instanceof Error ? error.message : String(error) },
+          error: { code: -32603, message: 'Tool execution failed' },
         };
       }
     }
@@ -397,7 +397,7 @@ export async function POST(request: NextRequest) {
         error: {
           code: -32603,
           message: 'Internal server error',
-          data: error instanceof Error ? error.message : String(error),
+          data: 'An internal error occurred',
         },
       };
       sendSSE(session.controller, 'message', JSON.stringify(errorResponse));

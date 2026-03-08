@@ -1,9 +1,15 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getReportingServices } from '../../_shared';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { reportingService } = await getReportingServices();
     const reportId = (await params).id;
 
@@ -21,6 +27,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { reportingService } = await getReportingServices();
     const reportId = (await params).id;
     const body = await request.json();
@@ -30,9 +41,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 
+    // SECURITY: Only allow updating known safe fields — prevent prototype pollution
+    // and mass assignment (attacker overwriting id, metadata.version, etc.)
+    const { title, description, query, format, schedule, filters, config } = body;
     const updatedReport = {
       ...report,
-      ...body,
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(query !== undefined && { query }),
+      ...(format !== undefined && { format }),
+      ...(schedule !== undefined && { schedule }),
+      ...(filters !== undefined && { filters }),
+      ...(config !== undefined && { config }),
       metadata: {
         ...report.metadata,
         updatedAt: new Date(),
@@ -57,6 +77,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { db } = await getReportingServices();
     const reportId = (await params).id;
 

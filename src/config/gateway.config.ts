@@ -8,7 +8,7 @@ export const gatewayConfig: APIGatewayConfig = {
   },
   cors: {
     enabled: process.env['CORS_ENABLED'] !== 'false',
-    origins: process.env['CORS_ORIGINS']?.split(',') || ['*'],
+    origins: process.env['CORS_ORIGINS']?.split(',') || (process.env.NODE_ENV === 'production' ? [] : ['http://localhost:3000']),
     credentials: process.env['CORS_CREDENTIALS'] === 'true'
   },
   logging: {

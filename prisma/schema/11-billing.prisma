@@ -66,6 +66,7 @@ model Subscription {
   updatedAt             DateTime          @updatedAt @map("updated_at")
   metadata              Json              @default("{}")
   
+  @@index([userId, status])
   @@map("subscriptions")
 }
 

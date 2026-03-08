@@ -3,11 +3,23 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsServices } from '../_shared';
 import { AnalyticsQuery } from '@/src/types/analytics.types';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
 
 export async function POST(request: NextRequest) {
   try {
+    const authUserId = await getAuthUserId(request.headers.get('authorization'));
+    if (!authUserId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { analyticsService } = await getAnalyticsServices();
-    const body = await request.json();
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     // Validate required fields
     const { query, format } = body;
@@ -74,6 +86,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const authUserId = await getAuthUserId(request.headers.get('authorization'));
+    if (!authUserId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const { analyticsService } = await getAnalyticsServices();
     const { searchParams } = new URL(request.url);
     const exportId = searchParams.get('exportId');

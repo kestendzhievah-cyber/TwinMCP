@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error('[MCP /call legacy] Error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal error' },
       { status: 500 }
     );
   }
