@@ -52,6 +52,18 @@ const nextConfig = {
         'puppeteer': 'commonjs puppeteer',
         'sharp': 'commonjs sharp',
         '@qdrant/js-client-rest': 'commonjs @qdrant/js-client-rest',
+        // Heavy MCP/API dependencies — resolved at runtime from node_modules
+        'googleapis': 'commonjs googleapis',
+        'nodemailer': 'commonjs nodemailer',
+        '@modelcontextprotocol/sdk': 'commonjs @modelcontextprotocol/sdk',
+        '@octokit/rest': 'commonjs @octokit/rest',
+        '@octokit/webhooks': 'commonjs @octokit/webhooks',
+        'firebase-admin': 'commonjs firebase-admin',
+        'openai': 'commonjs openai',
+        'natural': 'commonjs natural',
+        '@google-cloud/text-to-speech': 'commonjs @google-cloud/text-to-speech',
+        '@google-cloud/vision': 'commonjs @google-cloud/vision',
+        '@pinecone-database/pinecone': 'commonjs @pinecone-database/pinecone',
       });
     }
 

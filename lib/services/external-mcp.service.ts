@@ -2,23 +2,27 @@ import { prisma } from '@/lib/prisma';
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 import { logger } from '@/lib/logger';
 
-const ENCRYPTION_KEY = (() => {
+let _encryptionKey: string | null = null;
+function getEncryptionKey(): string {
+  if (_encryptionKey) return _encryptionKey;
   const key = process.env.EXTERNAL_MCP_ENCRYPTION_KEY;
   if (!key) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('EXTERNAL_MCP_ENCRYPTION_KEY is required in production');
     }
     logger.warn('[external-mcp] EXTERNAL_MCP_ENCRYPTION_KEY not set — using random key (secrets will NOT survive restarts)');
-    return randomBytes(32).toString('hex');
+    _encryptionKey = randomBytes(32).toString('hex');
+    return _encryptionKey;
   }
-  return key;
-})();
+  _encryptionKey = key;
+  return _encryptionKey;
+}
 const ALGORITHM = 'aes-256-gcm';
 
 // ─── Encryption helpers ──────────────────────────────────────────
 
 function encrypt(text: string): string {
-  const key = Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex');
+  const key = Buffer.from(getEncryptionKey().slice(0, 64), 'hex');
   const iv = randomBytes(16);
   const cipher = createCipheriv(ALGORITHM, key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -28,7 +32,7 @@ function encrypt(text: string): string {
 }
 
 function decrypt(encryptedText: string): string {
-  const key = Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex');
+  const key = Buffer.from(getEncryptionKey().slice(0, 64), 'hex');
   const [ivHex, authTagHex, encrypted] = encryptedText.split(':');
   const iv = Buffer.from(ivHex, 'hex');
   const authTag = Buffer.from(authTagHex, 'hex');
