@@ -1,9 +1,34 @@
 import Fuse from 'fuse.js';
 import leven from 'leven';
-import { compareTwoStrings } from 'string-similarity';
 import { EmbeddingGenerationService } from '../embedding-generation.service';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
+
+// Dice coefficient (same algorithm as `string-similarity` compareTwoStrings)
+function compareTwoStrings(a: string, b: string): number {
+  const first = a.replace(/\s+/g, '');
+  const second = b.replace(/\s+/g, '');
+  if (!first.length && !second.length) return 1;
+  if (!first.length || !second.length) return 0;
+  if (first === second) return 1;
+  if (first.length === 1 && second.length === 1) return 0;
+  if (first.length < 2 || second.length < 2) return 0;
+  const bigrams = new Map<string, number>();
+  for (let i = 0; i < first.length - 1; i++) {
+    const bigram = first.substring(i, i + 2);
+    bigrams.set(bigram, (bigrams.get(bigram) || 0) + 1);
+  }
+  let intersections = 0;
+  for (let i = 0; i < second.length - 1; i++) {
+    const bigram = second.substring(i, i + 2);
+    const count = bigrams.get(bigram) || 0;
+    if (count > 0) {
+      bigrams.set(bigram, count - 1);
+      intersections++;
+    }
+  }
+  return (2.0 * intersections) / (first.length + second.length - 2);
+}
 
 interface Library {
   id: string;

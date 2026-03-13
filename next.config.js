@@ -60,7 +60,6 @@ const nextConfig = {
         '@octokit/webhooks': 'commonjs @octokit/webhooks',
         'firebase-admin': 'commonjs firebase-admin',
         'openai': 'commonjs openai',
-        'natural': 'commonjs natural',
         '@google-cloud/text-to-speech': 'commonjs @google-cloud/text-to-speech',
         '@google-cloud/vision': 'commonjs @google-cloud/vision',
         '@pinecone-database/pinecone': 'commonjs @pinecone-database/pinecone',
