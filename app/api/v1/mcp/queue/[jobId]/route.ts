@@ -2,6 +2,8 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { authService } from '@/lib/mcp/middleware/auth';
 import { getQueue } from '@/lib/mcp/utils/queue';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET /api/v1/mcp/queue/[jobId] - Status d'un job
 export async function GET(
@@ -12,9 +14,7 @@ export async function GET(
 
   try {
     const authContext = await authService.authenticate(request);
-    if (!authContext.isAuthenticated) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    if (!authContext.isAuthenticated) throw new AuthenticationError();
 
     const { jobId } = await params;
     const queue = getQueue();
@@ -47,13 +47,8 @@ export async function GET(
         isOwner: job.userId === authContext.userId,
       },
     });
-  } catch (error: any) {
-    logger.error('Queue job status error:', error);
-    const statusCode = error.statusCode || 500;
-    return NextResponse.json(
-      { error: statusCode === 401 ? 'Authentication required' : statusCode < 500 ? 'Request failed' : 'Failed to get job status' },
-      { status: statusCode }
-    );
+  } catch (error) {
+    return handleApiError(error, 'QueueJobStatus');
   }
 }
 
@@ -66,9 +61,7 @@ export async function DELETE(
 
   try {
     const authContext = await authService.authenticate(request);
-    if (!authContext.isAuthenticated) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    if (!authContext.isAuthenticated) throw new AuthenticationError();
 
     const { jobId } = await params;
     const queue = getQueue();
@@ -87,12 +80,7 @@ export async function DELETE(
         executionTime: Date.now() - startTime,
       },
     });
-  } catch (error: any) {
-    logger.error('Queue job cancel error:', error);
-    const statusCode = error.statusCode || 500;
-    return NextResponse.json(
-      { error: statusCode === 401 ? 'Authentication required' : statusCode < 500 ? 'Request failed' : 'Failed to cancel job' },
-      { status: statusCode }
-    );
+  } catch (error) {
+    return handleApiError(error, 'QueueJobCancel');
   }
 }

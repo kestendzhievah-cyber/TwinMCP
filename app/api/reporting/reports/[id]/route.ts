@@ -15,6 +15,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { reportingService } = await getReportingServices();
     const reportId = (await params).id;
 
+    const { db } = await getReportingServices();
+    // SECURITY: Scope to authenticated user to prevent IDOR
+    const ownerCheck = await db.query('SELECT id FROM reports WHERE id = $1 AND created_by = $2', [reportId, userId]);
+    if (ownerCheck.rows.length === 0) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    }
+
     const report = await reportingService.getReport(reportId);
     if (!report) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 });
@@ -36,6 +43,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { reportingService } = await getReportingServices();
     const reportId = (await params).id;
     const body = await request.json();
+
+    // SECURITY: Verify ownership before allowing update
+    const { db } = await getReportingServices();
+    const ownerCheck = await db.query('SELECT id FROM reports WHERE id = $1 AND created_by = $2', [reportId, userId]);
+    if (ownerCheck.rows.length === 0) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    }
 
     const report = await reportingService.getReport(reportId);
     if (!report) {
@@ -85,7 +99,8 @@ export async function DELETE(
     const { db } = await getReportingServices();
     const reportId = (await params).id;
 
-    const result = await db.query('DELETE FROM reports WHERE id = $1', [reportId]);
+    // SECURITY: Scope delete to authenticated user to prevent IDOR
+    const result = await db.query('DELETE FROM reports WHERE id = $1 AND created_by = $2', [reportId, userId]);
 
     if (result.rowCount === 0) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 });

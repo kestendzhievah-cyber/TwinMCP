@@ -118,28 +118,32 @@ function PricingContent() {
         return;
       }
 
-      // Professional - create checkout session
-      let authToken: string | null = null;
-      if (user) {
-        try {
-          authToken = await user.getIdToken();
-        } catch {
-          // Token fetch may fail — continue without it
-        }
+      // Professional - require auth first
+      if (!user) {
+        router.push(`/auth?redirect=/pricing&plan=${planId}&billing=${isAnnual ? 'yearly' : 'monthly'}`);
+        return;
+      }
+
+      let authToken: string;
+      try {
+        authToken = await user.getIdToken();
+      } catch {
+        setError('Impossible de vérifier votre identité. Veuillez vous reconnecter.');
+        return;
       }
 
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           planId,
           billingPeriod: isAnnual ? 'yearly' : 'monthly',
-          userId: user?.uid || null,
-          userEmail: user?.email || null,
-          userName: user?.displayName || null,
+          userId: user.uid,
+          userEmail: user.email,
+          userName: user.displayName,
         }),
       });
 

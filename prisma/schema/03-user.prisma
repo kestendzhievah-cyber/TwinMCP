@@ -26,7 +26,10 @@ model User {
   conversationShares ConversationShare[]
   profile           UserProfile?
   externalMcpServers ExternalMcpServer[] @relation("ExternalMcpServers")
+  mcpToolActivations McpToolActivation[] @relation("McpToolActivations")
+  mcpToolUsageLogs   McpToolUsageLog[]   @relation("McpToolUsageLogs")
 
+  @@index([oauthId])
   @@map("users")
 }
 
@@ -48,10 +51,11 @@ model UserProfile {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
   
-  invoices   Invoice[]
-  payments   Payment[]
-  subscriptions Subscription[]
-  credits    Credit[]
+  invoices       Invoice[]
+  payments       Payment[]
+  paymentMethods PaymentMethod[]
+  subscriptions  Subscription[]
+  credits        Credit[]
   
   @@map("user_profiles")
 }

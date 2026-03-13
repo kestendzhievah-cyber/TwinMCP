@@ -2,9 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
-import { PLAN_CONFIG, resolvePlanId, type PlanId } from '@/lib/services/stripe-billing.service';
+import { PLAN_CONFIG, resolvePlanId, isStripeConfigured, type PlanId } from '@/lib/services/stripe-billing.service';
 import { AuthenticationError } from '@/lib/errors';
 import { handleApiError } from '@/lib/api-error-handler';
+import Stripe from 'stripe';
 
 function getPlanDetails(planId: string) {
   const resolved = resolvePlanId(planId);
@@ -33,9 +34,8 @@ export async function GET(request: NextRequest) {
     let dbUser;
     try {
       dbUser = await prisma.user.findFirst({
-        where: {
-          OR: [{ id: userId }, { oauthId: userId }],
-        },
+        where: { OR: [{ id: userId }, { oauthId: userId }] },
+        select: { id: true },
       });
 
       if (!dbUser) {
@@ -80,8 +80,108 @@ export async function GET(request: NextRequest) {
       logger.warn('Could not fetch billing data:', e);
     }
 
-    // Get active subscription
-    const activeSubscription = subscriptions.find(s => s.status === 'ACTIVE');
+    // Get most relevant subscription: ACTIVE > PAUSED > CANCELLED (most recent)
+    let activeSubscription =
+      subscriptions.find(s => s.status === 'ACTIVE') ||
+      subscriptions.find(s => s.status === 'PAUSED') ||
+      subscriptions.find(s => s.status === 'CANCELLED' && s.plan !== 'free') ||
+      null;
+
+    // Fallback: if no paid subscription in DB but user has stripeCustomerId,
+    // query Stripe directly (handles race condition where webhooks haven't arrived yet)
+    if (!activeSubscription && userProfile?.stripeCustomerId && isStripeConfigured()) {
+      try {
+        const stripeKey = process.env.STRIPE_SECRET_KEY!;
+        const stripe = new Stripe(stripeKey);
+        // Query for active or trialing subscriptions (trial users don't have 'active' status yet)
+        const [activeList, trialingList] = await Promise.all([
+          stripe.subscriptions.list({
+            customer: userProfile.stripeCustomerId,
+            status: 'active',
+            limit: 1,
+            expand: ['data.items.data.price'],
+          }),
+          stripe.subscriptions.list({
+            customer: userProfile.stripeCustomerId,
+            status: 'trialing',
+            limit: 1,
+            expand: ['data.items.data.price'],
+          }),
+        ]);
+        const stripeSubs = { data: [...activeList.data, ...trialingList.data] };
+
+        const activeSub = stripeSubs.data[0];
+        if (activeSub) {
+          const firstItem = activeSub.items.data[0];
+          const rawAmount = firstItem?.price?.unit_amount ?? firstItem?.plan?.amount ?? 0;
+          const subInterval = firstItem?.price?.recurring?.interval ?? firstItem?.plan?.interval;
+          const subPlanId = activeSub.metadata?.planId ?? 'pro';
+
+          // Sync back into DB for future fast lookups
+          try {
+            const synced = await prisma.subscription.upsert({
+              where: { stripeSubscriptionId: activeSub.id },
+              update: {
+                status: 'ACTIVE',
+                plan: resolvePlanId(subPlanId),
+                amount: rawAmount / 100,
+                currency: activeSub.currency.toUpperCase(),
+                interval: subInterval === 'year' ? 'YEAR' : 'MONTH',
+                currentPeriodStart: new Date((activeSub as any).current_period_start * 1000),
+                currentPeriodEnd: new Date((activeSub as any).current_period_end * 1000),
+                cancelAtPeriodEnd: activeSub.cancel_at_period_end,
+                trialEnd: (activeSub as any).trial_end ? new Date((activeSub as any).trial_end * 1000) : null,
+              },
+              create: {
+                userId: userProfile.id,
+                stripeSubscriptionId: activeSub.id,
+                stripeCustomerId: userProfile.stripeCustomerId,
+                stripePriceId: firstItem?.price?.id ?? undefined,
+                status: 'ACTIVE',
+                plan: resolvePlanId(subPlanId),
+                amount: rawAmount / 100,
+                currency: activeSub.currency.toUpperCase(),
+                interval: subInterval === 'year' ? 'YEAR' : 'MONTH',
+                currentPeriodStart: new Date((activeSub as any).current_period_start * 1000),
+                currentPeriodEnd: new Date((activeSub as any).current_period_end * 1000),
+                cancelAtPeriodEnd: activeSub.cancel_at_period_end,
+                trialEnd: (activeSub as any).trial_end ? new Date((activeSub as any).trial_end * 1000) : null,
+              },
+            });
+            activeSubscription = synced as any;
+
+            // Also update userProfile.plan if still on free
+            if (userProfile.plan === 'free') {
+              await prisma.userProfile.updateMany({
+                where: { id: userProfile.id },
+                data: { plan: resolvePlanId(subPlanId) },
+              });
+              userProfile.plan = resolvePlanId(subPlanId);
+            }
+          } catch (syncErr) {
+            logger.warn('[v1/billing] Could not sync Stripe subscription to DB:', syncErr);
+            // Still use Stripe data for this response even if DB sync fails
+            activeSubscription = {
+              id: activeSub.id,
+              plan: resolvePlanId(subPlanId),
+              status: 'ACTIVE',
+              amount: rawAmount / 100,
+              currency: activeSub.currency.toUpperCase(),
+              interval: subInterval === 'year' ? 'YEAR' : 'MONTH',
+              currentPeriodStart: new Date((activeSub as any).current_period_start * 1000),
+              currentPeriodEnd: new Date((activeSub as any).current_period_end * 1000),
+              cancelAtPeriodEnd: activeSub.cancel_at_period_end,
+              trialEnd: (activeSub as any).trial_end ? new Date((activeSub as any).trial_end * 1000) : null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            } as any;
+          }
+        }
+      } catch (stripeErr) {
+        logger.warn('[v1/billing] Could not fetch subscription from Stripe:', stripeErr);
+      }
+    }
+
     // Use userProfile.plan as source of truth (updated by webhooks)
     const plan = userProfile?.plan || activeSubscription?.plan || 'free';
     const planInfo = getPlanDetails(plan);

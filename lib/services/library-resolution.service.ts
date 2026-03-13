@@ -205,12 +205,24 @@ export class LibraryResolutionService {
     normalizedQuery: string,
     input: ResolveLibraryIdInput
   ): Promise<LibraryResult[]> {
-    const scoredResults: LibraryResult[] = [];
+    // Batch-fetch all aliases in one query instead of N+1
+    const resultIds = results.map(r => r.id);
+    const aliasMap = new Map<string, string[]>();
+    if (resultIds.length > 0) {
+      const allAliases = await this.db.libraryAlias.findMany({
+        where: { libraryId: { in: resultIds } },
+        select: { libraryId: true, alias: true },
+      });
+      for (const a of allAliases) {
+        const existing = aliasMap.get(a.libraryId) || [];
+        existing.push(a.alias);
+        aliasMap.set(a.libraryId, existing);
+      }
+    }
 
-    for (const result of results) {
+    return results.map(result => {
       const score = this.calculateRelevanceScore(result, normalizedQuery, input);
-
-      scoredResults.push({
+      return {
         id: result.id,
         name: result.name,
         displayName: result.displayName,
@@ -219,16 +231,14 @@ export class LibraryResolutionService {
         ecosystem: result.ecosystem,
         popularityScore: parseFloat(result.popularityScore),
         relevanceScore: score,
-        aliases: await this.getLibraryAliases(result.id),
+        aliases: aliasMap.get(result.id) || [],
         tags: result.tags || [],
         latestVersion: result.latestVersion,
         homepage: result.homepage,
         repository: result.repository,
         matchDetails: this.getMatchDetails(result, normalizedQuery),
-      });
-    }
-
-    return scoredResults;
+      };
+    });
   }
 
   private calculateRelevanceScore(

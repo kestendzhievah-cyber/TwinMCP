@@ -296,6 +296,21 @@ export default function BillingPage() {
                         Actif
                       </span>
                     )}
+                    {data.subscription?.status === 'PAUSED' && (
+                      <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded-full">
+                        Paiement échoué
+                      </span>
+                    )}
+                    {data.subscription?.status === 'CANCELLED' && (
+                      <span className="px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded-full">
+                        Annulé
+                      </span>
+                    )}
+                    {data.subscription?.status === 'EXPIRED' && (
+                      <span className="px-2 py-0.5 text-xs bg-gray-500/20 text-gray-400 rounded-full">
+                        Expiré
+                      </span>
+                    )}
                   </h2>
                   {data.subscription ? (
                     <p className="text-gray-400 text-sm mt-1">
@@ -324,14 +339,16 @@ export default function BillingPage() {
               </div>
 
               <div className="flex gap-3">
-                {data.plan.id === 'free' ? (
+                {data.plan.id === 'free' || data.subscription?.status === 'CANCELLED' || data.subscription?.status === 'EXPIRED' ? (
                   <Link
                     href="/pricing"
                     className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-pink-600 transition flex items-center gap-2"
                     data-testid="upgrade-plan-btn"
                   >
                     <ArrowUpRight className="w-4 h-4" />
-                    Passer au Pro
+                    {data.subscription?.status === 'CANCELLED' || data.subscription?.status === 'EXPIRED'
+                      ? 'Réactiver le Pro'
+                      : 'Passer au Pro'}
                   </Link>
                 ) : (
                   <button
@@ -423,13 +440,9 @@ export default function BillingPage() {
                 <Receipt className="w-5 h-5 text-blue-400" />
                 Factures récentes
               </h2>
-              <Link
-                href="/dashboard/invoices"
-                className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
-              >
-                Voir tout
-                <ArrowUpRight className="w-4 h-4" />
-              </Link>
+              <span className="text-sm text-gray-500">
+                {data.invoices.length} facture{data.invoices.length !== 1 ? 's' : ''}
+              </span>
             </div>
 
             {data.invoices.length > 0 ? (

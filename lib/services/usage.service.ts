@@ -221,10 +221,11 @@ export class UsageService {
     }
   }
 
-  // Get usage stats for a single API key
+  // Get usage stats for a single API key (kept for backward compat, but prefer batch version)
   async getKeyUsageStats(apiKeyId: string): Promise<UsageStats | null> {
     const apiKey = await this.prisma.apiKey.findUnique({
       where: { id: apiKeyId },
+      select: { id: true, name: true, keyPrefix: true, tier: true, lastUsedAt: true, createdAt: true },
     });
 
     if (!apiKey) return null;
@@ -232,62 +233,33 @@ export class UsageService {
     const tier = (apiKey.tier || 'free') as 'free' | 'pro' | 'enterprise';
     const limits = PLAN_LIMITS[tier] || PLAN_LIMITS.free;
 
-    let usedToday = 0;
-    let usedThisHour = 0;
-    let usedThisMonth = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const hourAgo = new Date(Date.now() - 3600000);
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
 
-    if (this.redis) {
-      const dailyKey = this.getDailyKey(apiKeyId);
-      const hourlyKey = this.getHourlyKey(apiKeyId);
-      const monthlyKey = this.getMonthlyKey(apiKeyId);
+    // Single parallel batch: 3 counts + 1 aggregate for success rate
+    const [daily, hourly, monthly, successAgg] = await Promise.all([
+      this.redis
+        ? this.redis.get(this.getDailyKey(apiKeyId)).then(v => parseInt(v || '0', 10))
+        : this.prisma.usageLog.count({ where: { apiKeyId, createdAt: { gte: today } } }),
+      this.redis
+        ? this.redis.get(this.getHourlyKey(apiKeyId)).then(v => parseInt(v || '0', 10))
+        : this.prisma.usageLog.count({ where: { apiKeyId, createdAt: { gte: hourAgo } } }),
+      this.redis
+        ? this.redis.get(this.getMonthlyKey(apiKeyId)).then(v => parseInt(v || '0', 10))
+        : this.prisma.usageLog.count({ where: { apiKeyId, createdAt: { gte: monthStart } } }),
+      // DB-level success rate: count total + count successful in one shot
+      Promise.all([
+        this.prisma.usageLog.count({ where: { apiKeyId }, take: 100 }),
+        this.prisma.usageLog.count({ where: { apiKeyId, success: true }, take: 100 }),
+      ]),
+    ]);
 
-      const [daily, hourly, monthly] = await Promise.all([
-        this.redis.get(dailyKey),
-        this.redis.get(hourlyKey),
-        this.redis.get(monthlyKey),
-      ]);
-
-      usedToday = parseInt(daily || '0', 10);
-      usedThisHour = parseInt(hourly || '0', 10);
-      usedThisMonth = parseInt(monthly || '0', 10);
-    } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const hourAgo = new Date(Date.now() - 3600000);
-
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-
-      const [daily, hourly, monthly] = await Promise.all([
-        this.prisma.usageLog.count({
-          where: { apiKeyId, createdAt: { gte: today } },
-        }),
-        this.prisma.usageLog.count({
-          where: { apiKeyId, createdAt: { gte: hourAgo } },
-        }),
-        this.prisma.usageLog.count({
-          where: { apiKeyId, createdAt: { gte: monthStart } },
-        }),
-      ]);
-
-      usedToday = daily;
-      usedThisHour = hourly;
-      usedThisMonth = monthly;
-    }
-
-    // Calculate success rate
-    const recentLogs = await this.prisma.usageLog.findMany({
-      where: { apiKeyId },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
-
-    const successCount = recentLogs.filter(
-      (log: (typeof recentLogs)[number]) => log.success
-    ).length;
-    const successRate = recentLogs.length > 0 ? (successCount / recentLogs.length) * 100 : 100;
+    const [totalRecent, successRecent] = successAgg;
+    const successRate = totalRecent > 0 ? (successRecent / totalRecent) * 100 : 100;
 
     return {
       apiKeyId: apiKey.id,
@@ -295,62 +267,123 @@ export class UsageService {
       keyPrefix: apiKey.keyPrefix,
       tier,
       quotaDaily: limits.dailyLimit,
-      usedToday,
-      usedThisHour,
-      usedThisMonth,
-      remainingToday: Math.max(0, limits.dailyLimit - usedToday),
+      usedToday: daily,
+      usedThisHour: hourly,
+      usedThisMonth: monthly,
+      remainingToday: Math.max(0, limits.dailyLimit - daily),
       successRate: Math.round(successRate * 10) / 10,
       lastUsedAt: apiKey.lastUsedAt,
       createdAt: apiKey.createdAt,
     };
   }
 
-  // Get dashboard stats for a user
+  // Get dashboard stats for a user — batch-optimized (6 queries total, not 4*N)
   async getDashboardStats(userId: string): Promise<DashboardStats> {
-    // Get user's subscription/plan
-    const userProfile = await this.prisma.userProfile.findUnique({
-      where: { userId },
-      include: { subscriptions: { where: { status: 'ACTIVE' } } },
-    });
+    // Parallel: user profile + API keys + recent activity
+    const [userProfile, apiKeys, recentLogs] = await Promise.all([
+      this.prisma.userProfile.findUnique({
+        where: { userId },
+        select: { plan: true, subscriptions: { where: { status: 'ACTIVE' }, select: { plan: true }, take: 1 } },
+      }),
+      this.prisma.apiKey.findMany({
+        where: { userId, isActive: true },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, keyPrefix: true, tier: true, lastUsedAt: true, createdAt: true },
+      }),
+      this.prisma.usageLog.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { createdAt: true, toolName: true, success: true, responseTimeMs: true },
+      }),
+    ]);
 
     const subscription = userProfile?.subscriptions?.[0];
-    const rawPlan = subscription?.plan || 'free';
+    const rawPlan = subscription?.plan || userProfile?.plan || 'free';
     const tier = resolvePlanId(rawPlan) as 'free' | 'pro' | 'enterprise';
     const limits = PLAN_LIMITS[tier] || PLAN_LIMITS.free;
 
-    // Get all user's API keys
-    const apiKeys = await this.prisma.apiKey.findMany({
-      where: { userId, isActive: true },
-      orderBy: { createdAt: 'desc' },
+    const keyIds = apiKeys.map(k => k.id);
+
+    // Batch stats: groupBy for all keys at once (replaces N+1 per-key queries)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const hourAgo = new Date(Date.now() - 3600000);
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const dailyByKey = new Map<string, number>();
+    const hourlyByKey = new Map<string, number>();
+    const monthlyByKey = new Map<string, number>();
+    const successByKey = new Map<string, number>();
+
+    if (keyIds.length > 0) {
+      const [dailyAgg, hourlyAgg, monthlyAgg, recentSuccessLogs] = await Promise.all([
+        this.prisma.usageLog.groupBy({
+          by: ['apiKeyId'],
+          where: { apiKeyId: { in: keyIds }, createdAt: { gte: today } },
+          _count: true,
+        }),
+        this.prisma.usageLog.groupBy({
+          by: ['apiKeyId'],
+          where: { apiKeyId: { in: keyIds }, createdAt: { gte: hourAgo } },
+          _count: true,
+        }),
+        this.prisma.usageLog.groupBy({
+          by: ['apiKeyId'],
+          where: { apiKeyId: { in: keyIds }, createdAt: { gte: monthStart } },
+          _count: true,
+        }),
+        this.prisma.usageLog.findMany({
+          where: { apiKeyId: { in: keyIds } },
+          orderBy: { createdAt: 'desc' },
+          take: keyIds.length * 50,
+          select: { apiKeyId: true, success: true },
+        }),
+      ]);
+
+      for (const r of dailyAgg) { if (r.apiKeyId) dailyByKey.set(r.apiKeyId, r._count); }
+      for (const r of hourlyAgg) { if (r.apiKeyId) hourlyByKey.set(r.apiKeyId, r._count); }
+      for (const r of monthlyAgg) { if (r.apiKeyId) monthlyByKey.set(r.apiKeyId, r._count); }
+
+      const logsByKey = new Map<string, { total: number; success: number }>();
+      for (const log of recentSuccessLogs) {
+        if (!log.apiKeyId) continue;
+        const e = logsByKey.get(log.apiKeyId) || { total: 0, success: 0 };
+        e.total++;
+        if (log.success) e.success++;
+        logsByKey.set(log.apiKeyId, e);
+      }
+      for (const [kid, s] of logsByKey) {
+        successByKey.set(kid, s.total > 0 ? Math.round((s.success / s.total) * 1000) / 10 : 100);
+      }
+    }
+
+    const validKeys: UsageStats[] = apiKeys.map(key => {
+      const usedToday = dailyByKey.get(key.id) || 0;
+      return {
+        apiKeyId: key.id,
+        keyName: key.name || 'Sans nom',
+        keyPrefix: key.keyPrefix,
+        tier: (key.tier || 'free') as 'free' | 'pro' | 'enterprise',
+        quotaDaily: limits.dailyLimit,
+        usedToday,
+        usedThisHour: hourlyByKey.get(key.id) || 0,
+        usedThisMonth: monthlyByKey.get(key.id) || 0,
+        remainingToday: Math.max(0, limits.dailyLimit - usedToday),
+        successRate: successByKey.get(key.id) ?? 100,
+        lastUsedAt: key.lastUsedAt,
+        createdAt: key.createdAt,
+      };
     });
 
-    // Get usage stats for each key
-    const keysWithStats = await Promise.all(
-      apiKeys.map((key: (typeof apiKeys)[number]) => this.getKeyUsageStats(key.id))
-    );
-
-    const validKeys = keysWithStats.filter((k): k is UsageStats => k !== null);
-
-    // Calculate totals
     const totalRequestsToday = validKeys.reduce((sum, k) => sum + k.usedToday, 0);
     const totalRequestsMonth = validKeys.reduce((sum, k) => sum + k.usedThisMonth, 0);
     const avgSuccessRate =
       validKeys.length > 0
         ? validKeys.reduce((sum, k) => sum + k.successRate, 0) / validKeys.length
         : 100;
-
-    // Get recent activity
-    const recentLogs = await this.prisma.usageLog.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      select: {
-        createdAt: true,
-        toolName: true,
-        success: true,
-        responseTimeMs: true,
-      },
-    });
 
     return {
       totalKeys: apiKeys.length,

@@ -109,14 +109,20 @@ const mainNavItems: NavItem[] = [
     badge: 'Live',
     badgeColor: 'bg-green-500',
   },
-  { name: 'MCP Externes', href: '/dashboard/external-mcp', icon: Globe },
+  {
+    name: 'Outils MCP',
+    href: '/dashboard/mcp-tools',
+    icon: Sparkles,
+    badge: 'Pro',
+    badgeColor: 'bg-purple-500',
+  },
   { name: 'Monitoring', href: '/dashboard/monitoring', icon: Activity },
 ];
 
 const secondaryNavItems: NavItem[] = [
   { name: 'Documentation', href: '/dashboard/docs', icon: BookOpen },
   { name: 'Paramètres', href: '/dashboard/settings', icon: Settings },
-  { name: 'Facturation', href: '/dashboard/invoices', icon: CreditCard },
+  { name: 'Facturation', href: '/dashboard/billing', icon: CreditCard },
   { name: 'Aide', href: '/dashboard/docs/troubleshooting', icon: HelpCircle },
 ];
 

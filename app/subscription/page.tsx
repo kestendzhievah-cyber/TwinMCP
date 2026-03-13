@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Check, Sparkles, ArrowRight, Zap, Shield, Crown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, Sparkles, ArrowRight, Zap, Shield, Crown, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -10,6 +11,14 @@ export default function SubscriptionPage() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  // Redirect unauthenticated users to /auth with return URL
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth?redirect=/subscription');
+    }
+  }, [authLoading, user, router]);
 
   const plans = [
     {
@@ -32,7 +41,7 @@ export default function SubscriptionPage() {
       isContactSales: false,
     },
     {
-      id: 'professional',
+      id: 'pro',
       name: 'Professional',
       price: '14.99',
       priceAnnual: '11.24',
@@ -87,13 +96,32 @@ export default function SubscriptionPage() {
         return;
       }
 
+      if (!user) {
+        router.push('/auth?redirect=/subscription');
+        return;
+      }
+
+      // Get Firebase auth token
+      let authToken: string | null = null;
+      try {
+        authToken = await user.getIdToken();
+      } catch {
+        setError('Impossible de vérifier votre identité. Veuillez vous reconnecter.');
+        return;
+      }
+
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({
           planId,
           billingPeriod: isAnnual ? 'yearly' : 'monthly',
-          mode: 'subscription',
+          userId: user.uid,
+          userEmail: user.email,
+          userName: user.displayName,
         }),
       });
 

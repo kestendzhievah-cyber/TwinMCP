@@ -2,25 +2,25 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // DELETE - Revoke API key
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await validateAuthWithApiKey(
-    request.headers.get('authorization'),
-    request.headers.get('x-api-key')
-  );
-  const auth = authResult.valid ? { userId: authResult.userId } : null;
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    const authResult = await validateAuthWithApiKey(
+      request.headers.get('authorization'),
+      request.headers.get('x-api-key')
+    );
+    if (!authResult.valid) throw new AuthenticationError();
+    const userId = authResult.userId;
+
     const { id } = await params;
     const apiKey = await prisma.apiKey.findFirst({
-      where: { id, userId: auth.userId },
+      where: { id, userId },
     });
 
     if (!apiKey) {
@@ -37,29 +37,28 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'API key revoked successfully' });
   } catch (error) {
-    logger.error('Failed to revoke API key:', error);
-    return NextResponse.json({ error: 'Failed to revoke API key' }, { status: 500 });
+    return handleApiError(error, 'RevokeApiKey');
   }
 }
 
 // PATCH - Update API key (name, tier, etc.)
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await validateAuthWithApiKey(
-    request.headers.get('authorization'),
-    request.headers.get('x-api-key')
-  );
-  const auth = authResult.valid ? { userId: authResult.userId } : null;
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    const authResult = await validateAuthWithApiKey(
+      request.headers.get('authorization'),
+      request.headers.get('x-api-key')
+    );
+    if (!authResult.valid) throw new AuthenticationError();
+    const userId = authResult.userId;
+
     const { id } = await params;
     const body = await request.json();
-    const { name, isActive } = body;
+    // Whitelist safe fields
+    const name = typeof body.name === 'string' ? body.name : undefined;
+    const isActive = typeof body.isActive === 'boolean' ? body.isActive : undefined;
 
     const apiKey = await prisma.apiKey.findFirst({
-      where: { id, userId: auth.userId },
+      where: { id, userId },
     });
 
     if (!apiKey) {
@@ -70,7 +69,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       where: { id },
       data: {
         ...(name && { name }),
-        ...(typeof isActive === 'boolean' && { isActive }),
+        ...(isActive !== undefined && { isActive }),
         updatedAt: new Date(),
       },
       select: {
@@ -85,7 +84,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     return NextResponse.json({ apiKey: updated });
   } catch (error) {
-    logger.error('Failed to update API key:', error);
-    return NextResponse.json({ error: 'Failed to update API key' }, { status: 500 });
+    return handleApiError(error, 'UpdateApiKey');
   }
 }

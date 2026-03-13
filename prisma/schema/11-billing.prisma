@@ -22,6 +22,7 @@ model Invoice {
   
   payments    Payment[]
   
+  @@index([userId, issueDate])
   @@map("invoices")
 }
 
@@ -84,7 +85,29 @@ model Credit {
   createdAt DateTime          @default(now()) @map("created_at")
   metadata  Json              @default("{}")
   
+  @@index([userId, usedAt])
   @@map("credits")
+}
+
+model PaymentMethod {
+  id               String      @id @default(cuid())
+  userId           String      @map("user_id")
+  userProfile      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             String      // card, bank_account, sepa
+  provider         String      // stripe, paypal, wise
+  isDefault        Boolean     @default(false) @map("is_default")
+  providerMethodId String      @map("provider_method_id")
+  lastFour         String?     @map("last_four")
+  expiryMonth      Int?        @map("expiry_month")
+  expiryYear       Int?        @map("expiry_year")
+  brand            String?     // visa, mastercard, etc.
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  metadata         Json        @default("{}")
+
+  @@index([userId])
+  @@index([userId, isDefault])
+  @@map("payment_methods")
 }
 
 model BillingAlert {

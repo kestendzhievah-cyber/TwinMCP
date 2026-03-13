@@ -1,0 +1,39 @@
+// ─── MCP Tools Models ────────────────────────────────────────────
+
+enum McpToolStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+model McpToolActivation {
+  id          String        @id @default(cuid())
+  userId      String        @map("user_id")
+  user        User          @relation("McpToolActivations", fields: [userId], references: [id], onDelete: Cascade)
+  toolId      String        @map("tool_id")
+  status      McpToolStatus @default(ACTIVE)
+  config      Json          @default("{}")
+  activatedAt DateTime      @default(now()) @map("activated_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@unique([userId, toolId])
+  @@index([userId, status])
+  @@map("mcp_tool_activations")
+}
+
+model McpToolUsageLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation("McpToolUsageLogs", fields: [userId], references: [id], onDelete: Cascade)
+  toolId    String   @map("tool_id")
+  action    String
+  latencyMs Int?     @map("latency_ms")
+  success   Boolean  @default(true)
+  error     String?
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([toolId, createdAt])
+  @@map("mcp_tool_usage_logs")
+}

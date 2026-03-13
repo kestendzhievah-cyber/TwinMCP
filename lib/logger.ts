@@ -22,8 +22,11 @@ function getLogLevel(): LogLevel {
   return process.env.NODE_ENV === 'production' ? 'warn' : 'info';
 }
 
+// Cache resolved level at module load to avoid process.env lookup on every call
+const _cachedLevel = LEVEL_PRIORITY[getLogLevel()];
+
 function shouldLog(level: LogLevel): boolean {
-  return LEVEL_PRIORITY[level] >= LEVEL_PRIORITY[getLogLevel()];
+  return LEVEL_PRIORITY[level] >= _cachedLevel;
 }
 
 export const logger = {

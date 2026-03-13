@@ -1,31 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { externalMcpService } from '@/lib/services/external-mcp.service';
-import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
-
-async function getAuthUserId(request: NextRequest): Promise<string> {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    const err: any = new Error('Authentication required');
-    err.statusCode = 401;
-    throw err;
-  }
-  const token = authHeader.split('Bearer ')[1];
-  const adminAuth = await getFirebaseAdminAuth();
-  if (!adminAuth) {
-    const err: any = new Error('Firebase Admin not configured');
-    err.statusCode = 500;
-    throw err;
-  }
-  const decoded: any = await adminAuth.verifyIdToken(token);
-  return decoded.uid;
-}
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 async function handleProxy(
   request: NextRequest,
   { params }: { params: Promise<{ serverId: string; path: string[] }> }
 ) {
   try {
-    const userId = await getAuthUserId(request);
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) throw new AuthenticationError();
     const { serverId, path } = await params;
     const targetPath = path.join('/');
 
@@ -48,13 +33,8 @@ async function handleProxy(
     );
 
     return NextResponse.json(result.data, { status: result.status });
-  } catch (error: any) {
-    const status = error.statusCode || 502;
-    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
-    return NextResponse.json(
-      { success: false, error: safeMessages[status] || 'Proxy request failed' },
-      { status }
-    );
+  } catch (error) {
+    return handleApiError(error, 'ExternalMcpProxy');
   }
 }
 

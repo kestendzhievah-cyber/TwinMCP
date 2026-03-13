@@ -11,6 +11,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 
@@ -67,10 +68,14 @@ export async function validateApiKey(
   if (!apiKey) return { valid: false };
 
   try {
-    const { createHash } = await import('crypto');
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
     const { prisma } = await import('@/lib/prisma');
-    const key = await prisma.apiKey.findUnique({ where: { keyHash } });
+
+    // Select only the fields we need — avoid fetching the entire row
+    const key = await prisma.apiKey.findUnique({
+      where: { keyHash },
+      select: { id: true, userId: true, tier: true, isActive: true, revokedAt: true, expiresAt: true },
+    });
 
     if (!key || !key.isActive || key.revokedAt) return { valid: false };
 
@@ -92,27 +97,83 @@ export async function validateApiKey(
 // Rate-limit check
 // ---------------------------------------------------------------------------
 
+// In-memory rate-limit counters — reset on deploy, but fast O(1) check.
+// Redis is preferred when available; this is the fallback.
+const _rlCounters = new Map<string, { count: number; resetAt: number }>();
+const _RL_WINDOW_MS = 60_000; // 1-minute sliding window for burst protection
+
 export async function checkRateLimit(
   userId: string,
   plan: string
 ): Promise<{ allowed: boolean; remaining: number }> {
-  const limits: Record<string, number> = {
+  const dailyLimits: Record<string, number> = {
     free: 200,
     pro: 10000,
     enterprise: 100000,
   };
-  const limit = limits[plan] || limits.free;
-  const now = new Date();
-  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dailyLimit = dailyLimits[plan] || dailyLimits.free;
 
+  // Per-minute burst limits (prevents thundering herd)
+  const burstLimits: Record<string, number> = {
+    free: 20,
+    pro: 200,
+    enterprise: 2000,
+  };
+  const burstLimit = burstLimits[plan] || burstLimits.free;
+
+  // Fast path: in-memory burst check (O(1), no DB)
+  const now = Date.now();
+  const burstKey = `burst:${userId}`;
+  let burst = _rlCounters.get(burstKey);
+  if (!burst || burst.resetAt < now) {
+    burst = { count: 0, resetAt: now + _RL_WINDOW_MS };
+  }
+  burst.count++;
+  _rlCounters.set(burstKey, burst);
+
+  if (burst.count > burstLimit) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  // Periodic cleanup to prevent memory leak (every 10k entries)
+  if (_rlCounters.size > 10_000) {
+    for (const [k, v] of _rlCounters) {
+      if (v.resetAt < now) _rlCounters.delete(k);
+    }
+  }
+
+  // Daily limit: check Redis first, fallback to DB
   try {
-    const { prisma } = await import('@/lib/prisma');
-    const usage = await prisma.usageLog.count({
-      where: { userId, createdAt: { gte: dayStart } },
-    });
-    return { allowed: usage < limit, remaining: Math.max(0, limit - usage) };
+    let usage: number;
+    try {
+      const { redis } = await import('@/lib/redis');
+      const dayKey = `mcp:daily:${userId}:${new Date().toISOString().slice(0, 10)}`;
+      const cached = await redis.get(dayKey);
+      if (cached !== null) {
+        usage = parseInt(cached, 10);
+      } else {
+        const { prisma } = await import('@/lib/prisma');
+        const dayStart = new Date();
+        dayStart.setHours(0, 0, 0, 0);
+        usage = await prisma.usageLog.count({
+          where: { userId, createdAt: { gte: dayStart } },
+        });
+        // Cache for 30s to avoid repeated COUNT queries
+        await redis.setex(dayKey, 30, usage.toString());
+      }
+    } catch {
+      // Redis unavailable — fallback to DB
+      const { prisma } = await import('@/lib/prisma');
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      usage = await prisma.usageLog.count({
+        where: { userId, createdAt: { gte: dayStart } },
+      });
+    }
+    return { allowed: usage < dailyLimit, remaining: Math.max(0, dailyLimit - usage) };
   } catch {
-    return { allowed: true, remaining: limit };
+    // Fail open to avoid blocking legitimate requests
+    return { allowed: true, remaining: dailyLimit };
   }
 }
 
@@ -120,7 +181,7 @@ export async function checkRateLimit(
 // Usage tracking
 // ---------------------------------------------------------------------------
 
-export async function trackUsage(
+export function trackUsage(
   userId: string,
   tool: string,
   tokens: number,
@@ -128,21 +189,31 @@ export async function trackUsage(
   success: boolean = true,
   errorMessage?: string
 ) {
-  try {
-    const { prisma } = await import('@/lib/prisma');
-    await prisma.usageLog.create({
-      data: {
-        userId,
-        toolName: tool,
-        tokensReturned: tokens,
-        success,
-        responseTimeMs,
-        errorMessage: errorMessage || null,
-      },
-    });
-  } catch (e) {
-    logger.error('[MCP] Failed to track usage:', e);
-  }
+  // Fire-and-forget — don't block the response on usage tracking
+  import('@/lib/prisma')
+    .then(({ prisma }) =>
+      prisma.usageLog.create({
+        data: {
+          userId,
+          toolName: tool,
+          tokensReturned: tokens,
+          success,
+          responseTimeMs,
+          errorMessage: errorMessage || null,
+        },
+      })
+    )
+    .then(() => {
+      // Bump daily counter in Redis so rate-limit reads are fresh
+      import('@/lib/redis')
+        .then(({ redis }) => {
+          const dayKey = `mcp:daily:${userId}:${new Date().toISOString().slice(0, 10)}`;
+          redis.incr(dayKey).catch(() => {});
+          redis.expire(dayKey, 86400).catch(() => {});
+        })
+        .catch(() => {});
+    })
+    .catch((e) => logger.error('[MCP] Failed to track usage:', e));
 }
 
 // ---------------------------------------------------------------------------

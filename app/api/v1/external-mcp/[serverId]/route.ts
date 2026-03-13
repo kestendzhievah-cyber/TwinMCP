@@ -1,24 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { externalMcpService } from '@/lib/services/external-mcp.service';
-import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
-
-async function getAuthUserId(request: NextRequest): Promise<string> {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    const err: any = new Error('Authentication required');
-    err.statusCode = 401;
-    throw err;
-  }
-  const token = authHeader.split('Bearer ')[1];
-  const adminAuth = await getFirebaseAdminAuth();
-  if (!adminAuth) {
-    const err: any = new Error('Firebase Admin not configured');
-    err.statusCode = 500;
-    throw err;
-  }
-  const decoded: any = await adminAuth.verifyIdToken(token);
-  return decoded.uid;
-}
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET /api/v1/external-mcp/[serverId] — Get server details
 export async function GET(
@@ -26,20 +10,16 @@ export async function GET(
   { params }: { params: Promise<{ serverId: string }> }
 ) {
   try {
-    const userId = await getAuthUserId(request);
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) throw new AuthenticationError();
     const { serverId } = await params;
     const server = await externalMcpService.getById(serverId, userId);
     if (!server) {
       return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
     }
     return NextResponse.json({ success: true, data: server });
-  } catch (error: any) {
-    const status = error.statusCode || 500;
-    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
-    return NextResponse.json(
-      { success: false, error: safeMessages[status] || 'Internal server error' },
-      { status }
-    );
+  } catch (error) {
+    return handleApiError(error, 'GetExternalMcpServer');
   }
 }
 
@@ -49,18 +29,25 @@ export async function PUT(
   { params }: { params: Promise<{ serverId: string }> }
 ) {
   try {
-    const userId = await getAuthUserId(request);
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) throw new AuthenticationError();
     const { serverId } = await params;
     const body = await request.json();
-    const server = await externalMcpService.update(serverId, userId, body);
+    // Whitelist safe fields to prevent mass assignment (e.g., overwriting ownerId, encryptedSecret)
+    const safeUpdate: Record<string, unknown> = {};
+    if (typeof body.name === 'string') safeUpdate.name = body.name;
+    if (typeof body.description === 'string') safeUpdate.description = body.description;
+    if (typeof body.baseUrl === 'string') safeUpdate.baseUrl = body.baseUrl;
+    if (typeof body.authType === 'string' && ['NONE', 'API_KEY', 'BEARER', 'OAUTH'].includes(body.authType)) {
+      safeUpdate.authType = body.authType;
+    }
+    const server = await externalMcpService.update(serverId, userId, safeUpdate);
     return NextResponse.json({ success: true, data: server });
-  } catch (error: any) {
-    const status = error.message === 'Server not found' ? 404 : error.statusCode || 500;
-    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
-    return NextResponse.json(
-      { success: false, error: safeMessages[status] || 'Internal server error' },
-      { status }
-    );
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Server not found') {
+      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    }
+    return handleApiError(error, 'UpdateExternalMcpServer');
   }
 }
 
@@ -70,16 +57,15 @@ export async function DELETE(
   { params }: { params: Promise<{ serverId: string }> }
 ) {
   try {
-    const userId = await getAuthUserId(request);
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) throw new AuthenticationError();
     const { serverId } = await params;
     await externalMcpService.delete(serverId, userId);
     return NextResponse.json({ success: true, message: 'Server deleted' });
-  } catch (error: any) {
-    const status = error.message === 'Server not found' ? 404 : error.statusCode || 500;
-    const safeMessages: Record<number, string> = { 401: 'Authentication required', 404: 'Server not found' };
-    return NextResponse.json(
-      { success: false, error: safeMessages[status] || 'Internal server error' },
-      { status }
-    );
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Server not found') {
+      return NextResponse.json({ success: false, error: 'Server not found' }, { status: 404 });
+    }
+    return handleApiError(error, 'DeleteExternalMcpServer');
   }
 }

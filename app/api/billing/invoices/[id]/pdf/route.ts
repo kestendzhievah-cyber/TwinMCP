@@ -2,13 +2,13 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillingServices } from '../../../_shared';
 import { validateAuth } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
-    if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!auth.valid || !auth.userId) throw new AuthenticationError();
 
     const { invoiceService } = await getBillingServices();
     const invoiceId = (await params).id;
@@ -34,10 +34,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       },
     });
   } catch (error) {
-    logger.error('Error generating invoice PDF:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GenerateInvoicePDF');
   }
 }

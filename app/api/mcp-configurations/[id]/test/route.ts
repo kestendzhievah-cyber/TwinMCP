@@ -1,14 +1,20 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // POST /api/mcp-configurations/[id]/test - Tester une configuration MCP
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) throw new AuthenticationError();
+
     const { id } = await params;
 
     const config = await prisma.mCPConfiguration.findUnique({ where: { id } });
-    if (!config) {
+    if (!config || config.userId !== userId) {
       return NextResponse.json(
         {
           success: false,
@@ -38,16 +44,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json(testResult);
   } catch (error) {
-    logger.error('Erreur lors du test de la configuration:', error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Erreur lors du test de la configuration',
-        error: 'Erreur interne',
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'TestMcpConfiguration');
   }
 }

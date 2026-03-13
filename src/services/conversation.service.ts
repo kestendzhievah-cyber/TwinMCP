@@ -638,6 +638,29 @@ export class ConversationService {
     return cached ? JSON.parse(cached) : null;
   }
 
+  async deleteConversation(conversationId: string, userId: string): Promise<void> {
+    const conversation = await this.getConversation(conversationId, userId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    // Delete in dependency order: attachments, reactions, messages, shares, exports, then conversation
+    await this.db.query(
+      `DELETE FROM message_attachments WHERE message_id IN (SELECT id FROM messages WHERE conversation_id = $1)`,
+      [conversationId]
+    );
+    await this.db.query(
+      `DELETE FROM message_reactions WHERE message_id IN (SELECT id FROM messages WHERE conversation_id = $1)`,
+      [conversationId]
+    );
+    await this.db.query(`DELETE FROM messages WHERE conversation_id = $1`, [conversationId]);
+    await this.db.query(`DELETE FROM conversation_shares WHERE conversation_id = $1`, [conversationId]);
+    await this.db.query(`DELETE FROM conversation_exports WHERE conversation_id = $1`, [conversationId]);
+    await this.db.query(`DELETE FROM conversations WHERE id = $1 AND user_id = $2`, [conversationId, userId]);
+
+    await this.invalidateConversationCache(conversationId);
+  }
+
   private async invalidateConversationCache(conversationId: string): Promise<void> {
     await this.redis.del(`conversation:${conversationId}`);
   }

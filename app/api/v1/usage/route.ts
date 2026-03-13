@@ -44,58 +44,57 @@ export async function GET(request: NextRequest) {
       whereClause.apiKeyId = apiKeyId;
     }
 
-    // Get usage logs
-    const usageLogs = await prisma.usageLog.findMany({
+    // DB-level aggregation — avoid fetching thousands of rows into memory
+    const [totalRequests, successCount, summaryAgg, toolAgg] = await Promise.all([
+      prisma.usageLog.count({ where: whereClause }),
+      prisma.usageLog.count({ where: { ...whereClause, success: true } }),
+      prisma.usageLog.aggregate({
+        where: whereClause,
+        _sum: { tokensReturned: true, responseTimeMs: true },
+      }),
+      prisma.usageLog.groupBy({
+        by: ['toolName'],
+        where: whereClause,
+        _count: true,
+        _sum: { tokensReturned: true, responseTimeMs: true },
+        orderBy: { _count: { toolName: 'desc' } },
+      }),
+    ]);
+
+    const totalTokens = summaryAgg._sum.tokensReturned || 0;
+    const totalResponseTime = summaryAgg._sum.responseTimeMs || 0;
+
+    const byTool: Record<string, { count: number; tokens: number; avgResponseTime: number }> = {};
+    for (const row of toolAgg) {
+      byTool[row.toolName] = {
+        count: row._count,
+        tokens: row._sum.tokensReturned || 0,
+        avgResponseTime: row._count > 0 ? Math.round((row._sum.responseTimeMs || 0) / row._count) : 0,
+      };
+    }
+
+    // Usage over time: fetch capped logs with only needed fields, bucket with Map
+    const bucketSize = period === 'day' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    const timeLogs = await prisma.usageLog.findMany({
       where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      take: 1000,
+      orderBy: { createdAt: 'asc' },
+      take: 10000,
+      select: { createdAt: true, tokensReturned: true },
     });
 
-    // Aggregate by tool
-    const byTool: Record<string, { count: number; tokens: number; avgResponseTime: number }> = {};
-    let totalRequests = 0;
-    let totalTokens = 0;
-    let totalResponseTime = 0;
-    let successCount = 0;
-
-    for (const log of usageLogs) {
-      totalRequests++;
-      totalTokens += log.tokensReturned || 0;
-      totalResponseTime += log.responseTimeMs || 0;
-      if (log.success) successCount++;
-
-      if (!byTool[log.toolName]) {
-        byTool[log.toolName] = { count: 0, tokens: 0, avgResponseTime: 0 };
-      }
-      byTool[log.toolName].count++;
-      byTool[log.toolName].tokens += log.tokensReturned || 0;
-      byTool[log.toolName].avgResponseTime += log.responseTimeMs || 0;
-    }
-
-    // Calculate averages
-    for (const tool of Object.keys(byTool)) {
-      byTool[tool].avgResponseTime = Math.round(byTool[tool].avgResponseTime / byTool[tool].count);
-    }
-
-    // Get usage over time (hourly for day, daily for week/month)
-    const usageOverTime: { timestamp: string; requests: number; tokens: number }[] = [];
-    const bucketSize = period === 'day' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    const buckets: Record<number, { requests: number; tokens: number }> = {};
-
-    for (const log of usageLogs) {
+    const bucketMap = new Map<number, { requests: number; tokens: number }>();
+    for (const log of timeLogs) {
       const bucketTime = Math.floor(log.createdAt.getTime() / bucketSize) * bucketSize;
-      if (!buckets[bucketTime]) {
-        buckets[bucketTime] = { requests: 0, tokens: 0 };
-      }
-      buckets[bucketTime].requests++;
-      buckets[bucketTime].tokens += log.tokensReturned || 0;
+      const existing = bucketMap.get(bucketTime) || { requests: 0, tokens: 0 };
+      existing.requests++;
+      existing.tokens += log.tokensReturned || 0;
+      bucketMap.set(bucketTime, existing);
     }
 
-    // Sort and format
-    const sortedBuckets = Object.entries(buckets)
-      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+    const sortedBuckets = Array.from(bucketMap.entries())
+      .sort(([a], [b]) => a - b)
       .map(([timestamp, data]) => ({
-        timestamp: new Date(parseInt(timestamp)).toISOString(),
+        timestamp: new Date(timestamp).toISOString(),
         ...data,
       }));
 

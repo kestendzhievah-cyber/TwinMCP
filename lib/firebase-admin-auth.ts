@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { logger } from '@/lib/logger';
 
 /**
@@ -170,7 +171,6 @@ async function _validateApiKeyHash(
   apiKey: string
 ): Promise<{ valid: true; userId: string; tier?: string } | { valid: false; error: string }> {
   try {
-    const { createHash } = await import('crypto');
     const { prisma } = await import('@/lib/prisma');
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
 

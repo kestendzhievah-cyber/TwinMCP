@@ -400,49 +400,21 @@ export class OAuthService {
   }
 
   async getUserActiveTokens(userId: string): Promise<UserTokens> {
-    const accessTokens = await this.prisma.oAuthAccessToken.findMany({
-      where: {
-        userId,
-        expiresAt: {
-          gt: new Date()
-        }
-      },
-      include: {
-        client: {
-          select: {
-            name: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const now = new Date();
+    const [accessTokens, refreshTokens] = await Promise.all([
+      this.prisma.oAuthAccessToken.findMany({
+        where: { userId, expiresAt: { gt: now } },
+        include: { client: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.oAuthRefreshToken.findMany({
+        where: { userId, expiresAt: { gt: now }, isRevoked: false },
+        include: { client: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
 
-    const refreshTokens = await this.prisma.oAuthRefreshToken.findMany({
-      where: {
-        userId,
-        expiresAt: {
-          gt: new Date()
-        },
-        isRevoked: false
-      },
-      include: {
-        client: {
-          select: {
-            name: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-
-    return {
-      accessTokens,
-      refreshTokens
-    };
+    return { accessTokens, refreshTokens };
   }
 
   private async generateIdToken(userId: string, clientId: string, expiresAt: Date): Promise<string> {

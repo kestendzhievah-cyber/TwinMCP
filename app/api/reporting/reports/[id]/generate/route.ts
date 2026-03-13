@@ -2,13 +2,13 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getReportingServices } from '../../../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
-    if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    if (!userId) throw new AuthenticationError();
 
     const { reportingService } = await getReportingServices();
     const reportId = (await params).id;
@@ -25,17 +25,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       generation,
     });
   } catch (error) {
-    logger.error('Error generating report:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'GenerateReport');
   }
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
-    if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    if (!userId) throw new AuthenticationError();
 
     const { reportingService, db } = await getReportingServices();
     const reportId = (await params).id;
@@ -69,7 +66,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ generations });
     }
   } catch (error) {
-    logger.error('Error fetching report generations:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'GetReportGenerations');
   }
 }

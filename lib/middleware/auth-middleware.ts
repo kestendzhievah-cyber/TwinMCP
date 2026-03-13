@@ -183,11 +183,7 @@ async function authenticateWithApiKey(
 
     const key = await prisma.apiKey.findUnique({
       where: { keyHash },
-      include: {
-        user: {
-          select: { id: true },
-        },
-      },
+      select: { id: true, userId: true, tier: true, isActive: true, revokedAt: true, expiresAt: true },
     });
 
     if (!key || !key.isActive || key.revokedAt) {
@@ -199,11 +195,11 @@ async function authenticateWithApiKey(
       return { success: false };
     }
 
-    // Update last used
-    await prisma.apiKey.update({
+    // Fire-and-forget — don't block response on non-critical lastUsedAt write
+    prisma.apiKey.update({
       where: { id: key.id },
       data: { lastUsedAt: new Date() },
-    });
+    }).catch(() => {});
 
     return {
       success: true,

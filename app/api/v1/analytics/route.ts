@@ -24,9 +24,8 @@ export async function GET(request: NextRequest) {
     let dbUser;
     try {
       dbUser = await prisma.user.findFirst({
-        where: {
-          OR: [{ id: userId }, { oauthId: userId }],
-        },
+        where: { OR: [{ id: userId }, { oauthId: userId }] },
+        select: { id: true },
       });
 
       if (!dbUser) {
@@ -49,108 +48,97 @@ export async function GET(request: NextRequest) {
 
     switch (period) {
       case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 7 * 86400000);
         break;
       case 'month':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 30 * 86400000);
         break;
       default: // day
         startDate = new Date(now);
         startDate.setHours(0, 0, 0, 0);
     }
 
-    // Get user's plan
-    let plan = 'free';
-    try {
-      const userProfile = await prisma.userProfile.findUnique({
+    // Parallel: profile + API keys (independent queries)
+    const [userProfile, apiKeys] = await Promise.all([
+      prisma.userProfile.findUnique({
         where: { userId: dbUser.id },
-        include: { subscriptions: { where: { status: 'ACTIVE' } } },
-      });
-      plan = userProfile?.subscriptions?.[0]?.plan || 'free';
-    } catch {
-      // Default to free
-    }
+        select: { subscriptions: { where: { status: 'ACTIVE' }, select: { plan: true }, take: 1 } },
+      }).catch(() => null),
+      prisma.apiKey.findMany({
+        where: { userId: dbUser.id, isActive: true },
+        select: { id: true, name: true, keyPrefix: true, tier: true },
+      }),
+    ]);
 
+    const plan = userProfile?.subscriptions?.[0]?.plan || 'free';
     const resolvedTier = resolvePlanId(plan);
     const limits = getApiKeyLimits(resolvedTier);
 
-    // Get user's API keys
-    const apiKeys = await prisma.apiKey.findMany({
-      where: { userId: dbUser.id, isActive: true },
-      select: { id: true, name: true, keyPrefix: true, tier: true },
-    });
+    // Use DB-level aggregation instead of fetching all logs into memory
+    const logWhere = { userId: dbUser.id, createdAt: { gte: startDate } };
 
-    // Get usage logs for the period
-    const usageLogs = await prisma.usageLog.findMany({
-      where: {
-        userId: dbUser.id,
-        createdAt: { gte: startDate },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    // Summary: count, sum tokens, avg response time — single DB roundtrip
+    const [totalRequests, successCount, summaryAgg] = await Promise.all([
+      prisma.usageLog.count({ where: logWhere }),
+      prisma.usageLog.count({ where: { ...logWhere, success: true } }),
+      prisma.usageLog.aggregate({
+        where: logWhere,
+        _sum: { tokensReturned: true, responseTimeMs: true },
+      }),
+    ]);
 
-    // Calculate summary
-    const totalRequests = usageLogs.length;
-    const totalTokens = usageLogs.reduce(
-      (sum: number, log: (typeof usageLogs)[number]) => sum + (log.tokensReturned || 0),
-      0
-    );
+    const totalTokens = summaryAgg._sum.tokensReturned || 0;
     const avgResponseTime =
       totalRequests > 0
-        ? Math.round(
-            usageLogs.reduce(
-              (sum: number, log: (typeof usageLogs)[number]) => sum + (log.responseTimeMs || 0),
-              0
-            ) / totalRequests
-          )
+        ? Math.round((summaryAgg._sum.responseTimeMs || 0) / totalRequests)
         : 0;
-    const successCount = usageLogs.filter((log: (typeof usageLogs)[number]) => log.success).length;
     const successRate =
       totalRequests > 0 ? Math.round((successCount / totalRequests) * 1000) / 10 : 100;
 
-    // Group by tool
-    const byToolMap = new Map<string, { count: number; tokens: number; totalTime: number }>();
-    for (const log of usageLogs) {
-      const toolName = log.toolName;
-      const existing = byToolMap.get(toolName) || { count: 0, tokens: 0, totalTime: 0 };
-      byToolMap.set(toolName, {
-        count: existing.count + 1,
-        tokens: existing.tokens + (log.tokensReturned || 0),
-        totalTime: existing.totalTime + (log.responseTimeMs || 0),
-      });
-    }
+    // Group by tool — DB-level groupBy instead of in-memory loop
+    const toolAgg = await prisma.usageLog.groupBy({
+      by: ['toolName'],
+      where: logWhere,
+      _count: true,
+      _sum: { tokensReturned: true, responseTimeMs: true },
+      orderBy: { _count: { toolName: 'desc' } },
+    });
 
-    const byTool = Array.from(byToolMap.entries())
-      .map(([tool, data]) => ({
-        tool,
-        count: data.count,
-        tokens: data.tokens,
-        avgResponseTime: data.count > 0 ? Math.round(data.totalTime / data.count) : 0,
-      }))
-      .sort((a, b) => b.count - a.count);
+    const byTool = toolAgg.map((row) => ({
+      tool: row.toolName,
+      count: row._count,
+      tokens: row._sum.tokensReturned || 0,
+      avgResponseTime: row._count > 0 ? Math.round((row._sum.responseTimeMs || 0) / row._count) : 0,
+    }));
 
-    // Group usage over time
+    // Usage over time: fetch capped logs and bucket in memory (Map-based O(n))
     const timeSlots = period === 'day' ? 24 : period === 'week' ? 7 : 30;
     const slotDuration = period === 'day' ? 3600000 : 86400000;
 
+    const cappedLogs = await prisma.usageLog.findMany({
+      where: logWhere,
+      orderBy: { createdAt: 'asc' },
+      take: 50000,
+      select: { createdAt: true, tokensReturned: true },
+    });
+
+    // Bucket using Map — O(n) instead of O(n*slots)
+    const buckets = new Map<number, { requests: number; tokens: number }>();
+    const startMs = startDate.getTime();
+    for (const log of cappedLogs) {
+      const slotIdx = Math.floor((log.createdAt.getTime() - startMs) / slotDuration);
+      const clamped = Math.max(0, Math.min(slotIdx, timeSlots - 1));
+      const existing = buckets.get(clamped) || { requests: 0, tokens: 0 };
+      existing.requests++;
+      existing.tokens += log.tokensReturned || 0;
+      buckets.set(clamped, existing);
+    }
+
     const usageOverTime: { timestamp: string; requests: number; tokens: number }[] = [];
     for (let i = 0; i < timeSlots; i++) {
-      const slotStart = new Date(startDate.getTime() + i * slotDuration);
-      const slotEnd = new Date(slotStart.getTime() + slotDuration);
-
-      const slotLogs = usageLogs.filter((log: (typeof usageLogs)[number]) => {
-        const logTime = new Date(log.createdAt).getTime();
-        return logTime >= slotStart.getTime() && logTime < slotEnd.getTime();
-      });
-
-      usageOverTime.push({
-        timestamp: slotStart.toISOString(),
-        requests: slotLogs.length,
-        tokens: slotLogs.reduce(
-          (sum: number, log: (typeof usageLogs)[number]) => sum + (log.tokensReturned || 0),
-          0
-        ),
-      });
+      const slotStart = new Date(startMs + i * slotDuration);
+      const bucket = buckets.get(i) || { requests: 0, tokens: 0 };
+      usageOverTime.push({ timestamp: slotStart.toISOString(), ...bucket });
     }
 
     // Calculate quota usage for each key

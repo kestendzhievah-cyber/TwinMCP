@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       try {
         const dbUser = await prisma.user.findFirst({
           where: { OR: [{ id: resolvedUserId }, { oauthId: resolvedUserId }] },
-          include: { profile: true },
+          select: { id: true, email: true, name: true, profile: { select: { id: true } } },
         });
 
         if (dbUser) {

@@ -15,6 +15,7 @@ model Conversation {
   shares   ConversationShare[]
   exports  ConversationExport[]
   
+  @@index([userId, updatedAt])
   @@map("conversations")
 }
 
@@ -30,6 +31,7 @@ model Message {
   reactions      MessageReaction[]
   attachments    MessageAttachment[]
   
+  @@index([conversationId, timestamp])
   @@map("messages")
 }
 

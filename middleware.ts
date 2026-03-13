@@ -40,6 +40,7 @@ const SELF_AUTH_ROUTES = [
   '/api/v1/billing',
   '/api/v1/usage',
   '/api/v1/external-mcp',
+  '/api/v1/mcp-tools',
   '/api/v1/mcp',
   '/api/libraries',
   '/api/mcp',
@@ -67,6 +68,7 @@ const SELF_AUTH_ROUTES = [
   '/api/usage',
   '/api/voice',
   '/api/workspace',
+  '/api/account',
 ];
 
 // Pre-build a Set of exact SELF_AUTH routes for O(1) exact match

@@ -30,6 +30,7 @@ export type ApiKeyLimits = ReturnType<typeof getApiKeyLimits>;
 export async function ensureUser(userId: string, email?: string) {
   let user = await prisma.user.findFirst({
     where: { OR: [{ id: userId }, { oauthId: userId }] },
+    select: { id: true, email: true, name: true, oauthId: true, clientId: true },
   });
 
   if (!user) {
@@ -56,7 +57,7 @@ export async function getUserTier(userId: string): Promise<PlanId> {
   try {
     const profile = await prisma.userProfile.findUnique({
       where: { userId },
-      include: { subscriptions: { where: { status: 'ACTIVE' } } },
+      select: { plan: true, subscriptions: { where: { status: 'ACTIVE' }, select: { plan: true }, take: 1 } },
     });
     const plan = profile?.plan || profile?.subscriptions?.[0]?.plan || 'free';
     return resolvePlanId(plan);
@@ -196,6 +197,7 @@ export async function revokeApiKey(
   // Verify ownership
   const key = await prisma.apiKey.findFirst({
     where: { id: keyId, userId },
+    select: { id: true, keyPrefix: true, isActive: true, revokedAt: true },
   });
 
   if (!key) {
@@ -229,6 +231,7 @@ export async function listApiKeys(userId: string, tier: PlanId) {
   const apiKeys = await prisma.apiKey.findMany({
     where: { userId, isActive: true, revokedAt: null },
     orderBy: { createdAt: 'desc' },
+    select: { id: true, keyPrefix: true, name: true, tier: true, createdAt: true, lastUsedAt: true },
   });
 
   // Batch stats: groupBy instead of N+1 queries
@@ -243,7 +246,8 @@ export async function listApiKeys(userId: string, tier: PlanId) {
 
   if (keyIds.length > 0) {
     try {
-      const [dailyAgg, hourlyAgg, recentLogs] = await Promise.all([
+      // 3 lightweight groupBy queries instead of fetching N*50 rows
+      const [dailyAgg, hourlyAgg, successAgg] = await Promise.all([
         prisma.usageLog.groupBy({
           by: ['apiKeyId'],
           where: { apiKeyId: { in: keyIds }, createdAt: { gte: today } },
@@ -254,11 +258,10 @@ export async function listApiKeys(userId: string, tier: PlanId) {
           where: { apiKeyId: { in: keyIds }, createdAt: { gte: hourAgo } },
           _count: true,
         }),
-        prisma.usageLog.findMany({
+        prisma.usageLog.groupBy({
+          by: ['apiKeyId', 'success'],
           where: { apiKeyId: { in: keyIds } },
-          orderBy: { createdAt: 'desc' },
-          take: keyIds.length * 50,
-          select: { apiKeyId: true, success: true },
+          _count: true,
         }),
       ]);
 
@@ -269,13 +272,14 @@ export async function listApiKeys(userId: string, tier: PlanId) {
         if (row.apiKeyId) hourlyByKey.set(row.apiKeyId, row._count);
       }
 
+      // Build success rate from groupBy(apiKeyId, success) — no row fetching needed
       const logsByKey = new Map<string, { total: number; success: number }>();
-      for (const log of recentLogs) {
-        if (!log.apiKeyId) continue;
-        const entry = logsByKey.get(log.apiKeyId) || { total: 0, success: 0 };
-        entry.total++;
-        if (log.success) entry.success++;
-        logsByKey.set(log.apiKeyId, entry);
+      for (const row of successAgg) {
+        if (!row.apiKeyId) continue;
+        const entry = logsByKey.get(row.apiKeyId) || { total: 0, success: 0 };
+        entry.total += row._count;
+        if (row.success) entry.success += row._count;
+        logsByKey.set(row.apiKeyId, entry);
       }
       for (const [kid, stats] of logsByKey) {
         successByKey.set(

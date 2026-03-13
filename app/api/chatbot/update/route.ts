@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Chatbot mis Ã  jour avec succès',
+      message: 'Chatbot mis à jour avec succès',
     });
   } catch (error) {
     return handleApiError(error, 'UpdateChatbot');

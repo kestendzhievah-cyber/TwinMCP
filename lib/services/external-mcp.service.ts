@@ -78,12 +78,24 @@ export class ExternalMcpService {
     const servers = await prisma.externalMcpServer.findMany({
       where: { ownerId },
       orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, name: true, description: true, baseUrl: true, authType: true,
+        status: true, errorMessage: true, lastCheckedAt: true, lastLatencyMs: true,
+        toolsDiscovered: true, createdAt: true, updatedAt: true,
+      },
     });
     return servers.map(this.toDTO);
   }
 
   async getById(id: string, ownerId: string) {
-    return prisma.externalMcpServer.findFirst({ where: { id, ownerId } });
+    return prisma.externalMcpServer.findFirst({
+      where: { id, ownerId },
+      select: {
+        id: true, name: true, description: true, baseUrl: true, authType: true,
+        encryptedSecret: true, status: true, errorMessage: true, lastCheckedAt: true,
+        lastLatencyMs: true, toolsDiscovered: true, ownerId: true, createdAt: true, updatedAt: true,
+      },
+    });
   }
 
   async create(

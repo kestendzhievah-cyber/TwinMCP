@@ -59,6 +59,9 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+# Performance: increase V8 old-space for analytics aggregation, UV threads for DB concurrency
+ENV NODE_OPTIONS="--max-old-space-size=512 --dns-result-order=ipv4first"
+ENV UV_THREADPOOL_SIZE=16
 
 # Copy only what is needed at runtime
 COPY --from=builder /app/public ./public

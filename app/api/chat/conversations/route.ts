@@ -15,7 +15,15 @@ export async function GET(req: NextRequest) {
     const conversations = await prisma.conversation.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
-      include: {
+      take: 50,
+      select: {
+        id: true,
+        title: true,
+        userId: true,
+        metadata: true,
+        settings: true,
+        createdAt: true,
+        updatedAt: true,
         _count: { select: { messages: true } },
       },
     });

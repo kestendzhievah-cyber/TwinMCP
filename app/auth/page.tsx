@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Mail,
@@ -21,7 +21,7 @@ import {
 import { useAuth } from '../../lib/auth-context';
 import { getFirebaseDiagnostics } from '../../lib/firebase';
 
-export default function AuthPage() {
+function AuthPageContent() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,6 +30,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     signIn,
     signInWithGoogle,
@@ -41,12 +42,19 @@ export default function AuthPage() {
     firebaseReady,
   } = useAuth();
 
+  // Compute safe redirect URL from query params (only allow relative paths)
+  const redirectTo = useMemo(() => {
+    const raw = searchParams.get('redirect');
+    if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw;
+    return '/dashboard';
+  }, [searchParams]);
+
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user) {
-      router.push('/dashboard');
+      router.push(redirectTo);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, redirectTo]);
 
   useEffect(() => {
     if (!loading && !firebaseReady) {
@@ -77,7 +85,7 @@ export default function AuthPage() {
     try {
       await signIn(email, password, rememberMe);
       setSuccess('Connexion réussie ! Redirection...');
-      setTimeout(() => router.push('/dashboard'), 1500);
+      setTimeout(() => router.push(redirectTo), 1500);
     } catch (err: any) {
       let errorMessage = 'Une erreur est survenue';
       switch (err.code) {
@@ -119,7 +127,7 @@ export default function AuthPage() {
     try {
       await signInWithGoogle(rememberMe);
       setSuccess('Connexion réussie ! Redirection...');
-      setTimeout(() => router.push('/dashboard'), 1500);
+      setTimeout(() => router.push(redirectTo), 1500);
     } catch (err: any) {
       let errorMessage = 'Erreur lors de la connexion Google';
       switch (err.code) {
@@ -160,7 +168,7 @@ export default function AuthPage() {
     try {
       await signInWithGithub(rememberMe);
       setSuccess('Connexion réussie ! Redirection...');
-      setTimeout(() => router.push('/dashboard'), 1500);
+      setTimeout(() => router.push(redirectTo), 1500);
     } catch (err: any) {
       let errorMessage = 'Erreur lors de la connexion GitHub';
       switch (err.code) {
@@ -554,5 +562,13 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense>
+      <AuthPageContent />
+    </Suspense>
   );
 }

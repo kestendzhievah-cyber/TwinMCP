@@ -34,6 +34,7 @@ export const PLAN_CONFIG = {
       'Accès bibliothèque publique',
       'Support communauté',
       'Documentation complète',
+      'Outils MCP (catalogue uniquement)',
     ],
     limits: {
       mcpServers: 3,
@@ -49,6 +50,7 @@ export const PLAN_CONFIG = {
     features: [
       'Serveurs MCP illimités',
       '10 000 requêtes/jour',
+      'Outils MCP (146 intégrations)',
       'Serveurs privés',
       'Support prioritaire 24/7',
       'Analytics avancés',
@@ -376,18 +378,76 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
+  const resolved = resolvePlanId(planId);
+
   // Persist Stripe customer ID and update plan — use updateMany to avoid P2025
   // if a concurrent handleSubscriptionUpdated transaction is modifying the same row
   const updated = await prisma.userProfile.updateMany({
     where: { id: userProfileId },
     data: {
       stripeCustomerId: customerId,
-      plan: resolvePlanId(planId),
+      plan: resolved,
     },
   });
 
   if (updated.count === 0) {
     logger.warn(`[stripe-webhook] checkout.session.completed — profile ${userProfileId} not found for update`);
+  }
+
+  // Also create/upsert Subscription record so billing dashboard shows it immediately
+  // (the subscription.created webhook may arrive later or in a different order)
+  const stripeSubId =
+    typeof session.subscription === 'string'
+      ? session.subscription
+      : (session.subscription as any)?.id;
+
+  if (stripeSubId) {
+    try {
+      const stripe = getStripe();
+      const sub = await stripe.subscriptions.retrieve(stripeSubId);
+      const firstItem = sub.items.data[0];
+      // Modern Stripe uses price.unit_amount; legacy uses plan.amount
+      const rawAmount = firstItem?.price?.unit_amount ?? firstItem?.plan?.amount ?? 0;
+      const interval = firstItem?.price?.recurring?.interval ?? firstItem?.plan?.interval;
+      const amount = rawAmount / 100;
+
+      await prisma.subscription.upsert({
+        where: { stripeSubscriptionId: stripeSubId },
+        update: {
+          status: mapStripeSubStatus(sub.status),
+          plan: resolved,
+          stripeCustomerId: customerId,
+          stripePriceId: firstItem?.price?.id ?? undefined,
+          currentPeriodStart: new Date((sub as any).current_period_start * 1000),
+          currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
+          cancelAtPeriodEnd: sub.cancel_at_period_end,
+          amount,
+          currency: sub.currency.toUpperCase(),
+          interval: (interval === 'year' ? 'YEAR' : 'MONTH') as 'YEAR' | 'MONTH',
+          trialStart: (sub as any).trial_start ? new Date((sub as any).trial_start * 1000) : null,
+          trialEnd: (sub as any).trial_end ? new Date((sub as any).trial_end * 1000) : null,
+        },
+        create: {
+          userId: userProfileId,
+          stripeSubscriptionId: stripeSubId,
+          status: mapStripeSubStatus(sub.status),
+          plan: resolved,
+          stripeCustomerId: customerId,
+          stripePriceId: firstItem?.price?.id ?? undefined,
+          currentPeriodStart: new Date((sub as any).current_period_start * 1000),
+          currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
+          cancelAtPeriodEnd: sub.cancel_at_period_end,
+          amount,
+          currency: sub.currency.toUpperCase(),
+          interval: (interval === 'year' ? 'YEAR' : 'MONTH') as 'YEAR' | 'MONTH',
+          trialStart: (sub as any).trial_start ? new Date((sub as any).trial_start * 1000) : null,
+          trialEnd: (sub as any).trial_end ? new Date((sub as any).trial_end * 1000) : null,
+        },
+      });
+    } catch (subErr) {
+      // Non-fatal: subscription.created/updated webhook will also handle this
+      logger.warn('[stripe-webhook] checkout.session.completed — could not upsert subscription:', subErr);
+    }
   }
 
   logger.info(`[stripe-webhook] Checkout completed for profile=${userProfileId}, plan=${planId}`);
@@ -422,8 +482,10 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   if (!firstItem) {
     logger.warn(`[stripe-webhook] subscription.updated — sub ${sub.id} has no items`);
   }
-  const interval = firstItem?.plan?.interval;
-  const amount = (firstItem?.plan?.amount ?? 0) / 100;
+  // Modern Stripe uses price.unit_amount; legacy uses plan.amount
+  const rawAmount = firstItem?.price?.unit_amount ?? firstItem?.plan?.amount ?? 0;
+  const interval = firstItem?.price?.recurring?.interval ?? firstItem?.plan?.interval;
+  const amount = rawAmount / 100;
 
   // Atomic: upsert subscription + update user plan in a single transaction
   const newPlan = sub.status === 'active' || sub.status === 'trialing' ? resolved : 'free';

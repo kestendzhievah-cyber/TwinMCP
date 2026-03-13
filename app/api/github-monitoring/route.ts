@@ -27,19 +27,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const monitoringData = {
-      owner,
-      repository,
-      stars: 1250,
-      forks: 89,
-      lastCommit: '2024-01-13T10:30:00Z',
-      openIssues: 23,
-      status: 'active',
-    };
+    // Fetch real monitoring data from DB
+    const result = await db.query(
+      `SELECT owner, repository, webhook_url, stars, forks, last_commit, open_issues, status, created_at, updated_at
+       FROM github_monitoring
+       WHERE owner = $1 AND repository = $2`,
+      [owner, repository]
+    );
 
+    if (result.rows.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: { owner, repository, status: 'not_monitored' },
+      });
+    }
+
+    const row = result.rows[0];
     return NextResponse.json({
       success: true,
-      data: monitoringData,
+      data: {
+        owner: row.owner,
+        repository: row.repository,
+        stars: row.stars ?? 0,
+        forks: row.forks ?? 0,
+        lastCommit: row.last_commit,
+        openIssues: row.open_issues ?? 0,
+        status: row.status ?? 'active',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      },
     });
   } catch (error) {
     return handleApiError(error, 'GitHubMonitoringGet');

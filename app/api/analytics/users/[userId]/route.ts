@@ -3,6 +3,8 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsServices } from '../../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(
   request: NextRequest,
@@ -10,9 +12,7 @@ export async function GET(
 ) {
   try {
     const authUserId = await getAuthUserId(request.headers.get('authorization'));
-    if (!authUserId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    if (!authUserId) throw new AuthenticationError();
 
     const { analyticsService } = await getAnalyticsServices();
     const { userId } = await params;
@@ -49,7 +49,6 @@ export async function GET(
 
     return NextResponse.json(userAnalytics);
   } catch (error) {
-    logger.error('Error fetching user analytics:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'GetUserAnalytics');
   }
 }

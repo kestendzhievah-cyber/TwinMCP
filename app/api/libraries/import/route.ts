@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
 import { handleApiError } from '@/lib/api-error-handler';
 
 interface ImportRequest {
@@ -191,8 +192,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Source non valide' }, { status: 400 });
     }
 
-    // Get user ID from auth header (optional but validated properly)
+    // SECURITY: Require authentication — importing libraries creates DB records
     const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
+    }
 
     // Parse URL and extract info
     let libraryName = '';

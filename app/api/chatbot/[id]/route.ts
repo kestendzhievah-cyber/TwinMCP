@@ -23,6 +23,23 @@ function getDb(): Firestore {
 // GET /api/chatbot/[id]
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // SECURITY: Require authentication — chatbot details (system prompts) are sensitive
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new AuthenticationError();
+    }
+    const token = authHeader.substring(7);
+    const adminAuth = await getFirebaseAdminAuth();
+    if (!adminAuth) {
+      return NextResponse.json({ error: 'Auth service unavailable' }, { status: 503 });
+    }
+    let decodedToken: any;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch {
+      throw new AuthenticationError('Invalid token');
+    }
+
     const { id } = await params;
 
     if (!id) {
@@ -42,6 +59,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const data = doc.data();
+
+    // SECURITY: Verify ownership — prevent reading other users' chatbots
+    if (data?.userId && data.userId !== decodedToken.uid) {
+      return NextResponse.json({ error: 'Chatbot non trouvé' }, { status: 404 });
+    }
 
     // Formater les données pour correspondre à l'interface Chatbot
     const chatbot = {

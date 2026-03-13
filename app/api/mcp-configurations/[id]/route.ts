@@ -1,40 +1,61 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET /api/mcp-configurations/[id] - Récupérer une configuration spécifique
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) throw new AuthenticationError();
+
     const { id } = await params;
 
     const configuration = await prisma.mCPConfiguration.findUnique({
       where: { id },
     });
 
-    if (!configuration) {
+    if (!configuration || configuration.userId !== userId) {
       return NextResponse.json({ error: 'Configuration non trouvée' }, { status: 404 });
     }
 
     return NextResponse.json(configuration);
   } catch (error) {
-    logger.error('Erreur lors de la récupération de la configuration:', error);
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    return handleApiError(error, 'GetMcpConfiguration');
   }
 }
 
 // PUT /api/mcp-configurations/[id] - Mettre à jour une configuration
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await params;
-    const body = await request.json();
-    const { name, description, configData, status } = body;
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) throw new AuthenticationError();
 
-    const data: any = {};
-    if (name !== undefined) data.name = name;
-    if (description !== undefined) data.description = description;
-    if (configData !== undefined)
-      data.configData = typeof configData === 'string' ? JSON.parse(configData) : configData;
-    if (status !== undefined) data.status = status;
+    const { id } = await params;
+
+    // Verify ownership before update
+    const existing = await prisma.mCPConfiguration.findUnique({ where: { id } });
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: 'Configuration non trouvée' }, { status: 404 });
+    }
+
+    const body = await request.json();
+    // Whitelist only safe fields to prevent mass assignment
+    const data: Record<string, unknown> = {};
+    if (typeof body.name === 'string' && body.name.length <= 200) data.name = body.name;
+    if (typeof body.description === 'string' && body.description.length <= 2000) data.description = body.description;
+    if (body.configData !== undefined) {
+      try {
+        data.configData = typeof body.configData === 'string' ? JSON.parse(body.configData) : body.configData;
+      } catch {
+        return NextResponse.json({ error: 'Invalid configData JSON' }, { status: 400 });
+      }
+    }
+    if (typeof body.status === 'string' && ['ACTIVE', 'INACTIVE', 'TESTING', 'ERROR'].includes(body.status)) {
+      data.status = body.status;
+    }
 
     const configuration = await prisma.mCPConfiguration.update({
       where: { id },
@@ -43,8 +64,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json(configuration);
   } catch (error) {
-    logger.error('Erreur lors de la mise à jour de la configuration:', error);
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    return handleApiError(error, 'UpdateMcpConfiguration');
   }
 }
 
@@ -54,13 +74,21 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = await getAuthUserId(request.headers.get('authorization'));
+    if (!userId) throw new AuthenticationError();
+
     const { id } = await params;
+
+    // Verify ownership before delete
+    const existing = await prisma.mCPConfiguration.findUnique({ where: { id } });
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: 'Configuration non trouvée' }, { status: 404 });
+    }
 
     await prisma.mCPConfiguration.delete({ where: { id } });
 
     return NextResponse.json({ message: 'Configuration supprimée avec succès' });
   } catch (error) {
-    logger.error('Erreur lors de la suppression de la configuration:', error);
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    return handleApiError(error, 'DeleteMcpConfiguration');
   }
 }

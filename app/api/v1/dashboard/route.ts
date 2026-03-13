@@ -66,38 +66,28 @@ export async function GET(request: NextRequest) {
         (sum, k) => sum + (k.usage?.requestsToday || 0),
         0
       );
-      let totalRequestsMonth = 0;
-      try {
-        totalRequestsMonth = await prisma.usageLog.count({
-          where: { userId: dbUser.id, createdAt: { gte: monthStart } },
-        });
-      } catch {
-        totalRequestsMonth = keysWithStats.reduce(
-          (sum, k) => sum + (k.usage?.requestsToday || 0),
-          0
-        );
-      }
       const avgSuccessRate =
         keysWithStats.length > 0
           ? keysWithStats.reduce((sum, k) => sum + (k.usage?.successRate || 100), 0) /
             keysWithStats.length
           : 100;
 
-      // Get recent activity
+      // Parallel: monthly count + recent activity (independent queries)
+      let totalRequestsMonth = 0;
       let recentActivity: { timestamp: Date; toolName: string; success: boolean; responseTimeMs: number }[] = [];
       try {
-        const recentLogs = await prisma.usageLog.findMany({
-          where: { userId: dbUser.id },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-          select: {
-            createdAt: true,
-            toolName: true,
-            success: true,
-            responseTimeMs: true,
-          },
-        });
-
+        const [monthCount, recentLogs] = await Promise.all([
+          prisma.usageLog.count({
+            where: { userId: dbUser.id, createdAt: { gte: monthStart } },
+          }),
+          prisma.usageLog.findMany({
+            where: { userId: dbUser.id },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: { createdAt: true, toolName: true, success: true, responseTimeMs: true },
+          }),
+        ]);
+        totalRequestsMonth = monthCount;
         recentActivity = recentLogs.map((log: (typeof recentLogs)[number]) => ({
           timestamp: log.createdAt,
           toolName: log.toolName,
@@ -105,7 +95,10 @@ export async function GET(request: NextRequest) {
           responseTimeMs: log.responseTimeMs || 0,
         }));
       } catch {
-        // Empty activity
+        totalRequestsMonth = keysWithStats.reduce(
+          (sum, k) => sum + (k.usage?.requestsToday || 0),
+          0
+        );
       }
 
       const responseData = {

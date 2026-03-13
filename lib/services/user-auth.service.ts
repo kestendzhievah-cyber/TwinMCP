@@ -339,8 +339,8 @@ export class UserAuthService {
       logger.warn('[Auth] Redis session write failed, session not persisted');
     }
 
-    // Log login
-    await this.logLogin(user.id);
+    // Fire-and-forget — don't block session creation on analytics write
+    this.logLogin(user.id);
 
     return session;
   }
@@ -403,42 +403,40 @@ export class UserAuthService {
         logger.warn('[Auth] Redis auth cache read failed, continuing without cache');
       }
 
-      // Get user with relations
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          client: true,
-        },
-      });
-
-      if (!user) return null;
-
-      // Get profile with subscriptions (Subscription FK → UserProfile.id)
-      const profile = await this.prisma.userProfile.findUnique({
-        where: { userId },
-        include: {
-          subscriptions: {
-            where: { status: 'ACTIVE' },
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-          },
-        },
-      });
-
-      const activeSubscription = profile?.subscriptions?.[0] ?? null;
-
-      // Get stats
+      // Parallel: user + profile + stats (all independent queries)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const monthStart = new Date();
       monthStart.setDate(1);
       monthStart.setHours(0, 0, 0, 0);
 
-      const [apiKeysCount, requestsToday, requestsMonth] = await Promise.all([
+      const [user, profile, apiKeysCount, requestsToday, requestsMonth] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, email: true, name: true, avatar: true, role: true, clientId: true },
+        }),
+        this.prisma.userProfile.findUnique({
+          where: { userId },
+          select: {
+            plan: true,
+            firstName: true, lastName: true, phone: true,
+            address: true, city: true, country: true,
+            subscriptions: {
+              where: { status: 'ACTIVE' },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+              select: { plan: true, status: true, currentPeriodEnd: true },
+            },
+          },
+        }),
         this.prisma.apiKey.count({ where: { userId, isActive: true } }),
         this.prisma.usageLog.count({ where: { userId, createdAt: { gte: today } } }),
         this.prisma.usageLog.count({ where: { userId, createdAt: { gte: monthStart } } }),
       ]);
+
+      if (!user) return null;
+
+      const activeSubscription = profile?.subscriptions?.[0] ?? null;
 
       const authenticatedUser: AuthenticatedUser = {
         id: user.id,

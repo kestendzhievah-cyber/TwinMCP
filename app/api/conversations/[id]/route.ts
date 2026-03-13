@@ -65,14 +65,7 @@ export async function DELETE(
     const conversationId = (await params).id;
 
     const conversationService = await getConversationService();
-    // Verify ownership before deleting
-    const conversation = await conversationService.getConversation(conversationId, userId);
-    if (!conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
-    }
-
-    // TODO: Implement deleteConversation in the service
-    // await conversationService.deleteConversation(conversationId, userId);
+    await conversationService.deleteConversation(conversationId, userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

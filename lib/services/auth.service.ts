@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import { Redis } from 'ioredis';
 import { logger } from '@/lib/logger';
 
@@ -126,11 +127,11 @@ export class AuthService {
         };
       }
 
-      // Mettre à jour le dernier usage
-      await this.db.apiKey.update({
+      // Fire-and-forget — don't block response on lastUsedAt write
+      this.db.apiKey.update({
         where: { id: apiKeyRecord.id },
         data: { lastUsedAt: new Date() },
-      });
+      }).catch(() => {});
 
       const quotaRequestsPerMinute = Math.max(1, Math.floor(apiKeyRecord.quotaDaily / (24 * 60)));
 
@@ -206,7 +207,6 @@ export class AuthService {
     quotaDaily: number = 200,
     quotaMonthly: number = 6000
   ): Promise<{ apiKey: string; prefix: string; id: string }> {
-    const { createHash, randomBytes } = await import('crypto');
     const keyPrefix_str = tier === 'free' ? 'twinmcp_free_' : 'twinmcp_live_';
     const randomPart = randomBytes(24).toString('hex');
     const apiKey = keyPrefix_str + randomPart;

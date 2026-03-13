@@ -140,21 +140,35 @@ export class AnalyticsService {
         providersUsed: data.providers_used || [],
         modelsUsed: data.models_used || []
       },
-      behavior: {
-        peakHours: await this.getPeakHours(userId, period),
-        preferredProvider: this.getPreferredProvider(data.providers_used || []),
-        preferredModel: this.getPreferredModel(data.models_used || []),
-        averageResponseTime: await this.getAverageResponseTime(userId, period),
-        errorRate: await this.getErrorRate(userId, period),
-        featureUsage: await this.getFeatureUsage(userId, period)
-      },
-      engagement: {
-        sharesCreated: data.shares_created || 0,
-        exportsGenerated: data.exports_generated || 0,
-        customizationsMade: data.customizations_made || 0,
-        feedbackGiven: await this.getFeedbackCount(userId, period),
-        supportTickets: await this.getSupportTickets(userId, period)
-      }
+      behavior: await (async () => {
+        const [peakHours, avgResponseTime, errRate, featureUsage] = await Promise.all([
+          this.getPeakHours(userId, period),
+          this.getAverageResponseTime(userId, period),
+          this.getErrorRate(userId, period),
+          this.getFeatureUsage(userId, period),
+        ]);
+        return {
+          peakHours,
+          preferredProvider: this.getPreferredProvider(data.providers_used || []),
+          preferredModel: this.getPreferredModel(data.models_used || []),
+          averageResponseTime: avgResponseTime,
+          errorRate: errRate,
+          featureUsage,
+        };
+      })(),
+      engagement: await (async () => {
+        const [feedbackGiven, supportTickets] = await Promise.all([
+          this.getFeedbackCount(userId, period),
+          this.getSupportTickets(userId, period),
+        ]);
+        return {
+          sharesCreated: data.shares_created || 0,
+          exportsGenerated: data.exports_generated || 0,
+          customizationsMade: data.customizations_made || 0,
+          feedbackGiven,
+          supportTickets,
+        };
+      })()
     };
   }
 
@@ -223,21 +237,43 @@ export class AnalyticsService {
 
     const data = result.rows[0];
 
+    // Parallel: all independent metric queries at once (was 13 sequential awaits)
+    const [
+      totalUsers, churnedUsers, retainedUsers,
+      totalSessions, pagesPerSession,
+      avgResponseTime, errorRate, uptime, pageLoadTime,
+      totalRevenue, avgRevenuePerUser, avgRevenuePerSession, revenueGrowth,
+    ] = await Promise.all([
+      this.getTotalUsers(period),
+      this.getChurnedUsers(period),
+      this.getRetainedUsers(period),
+      this.getTotalSessions(period),
+      this.getPagesPerSession(period),
+      this.getAverageResponseTime(null, period),
+      this.getErrorRate(null, period),
+      this.getUptime(period),
+      this.getPageLoadTime(period),
+      this.getTotalRevenue(period),
+      this.getAverageRevenuePerUser(period),
+      this.getAverageRevenuePerSession(period),
+      this.getRevenueGrowth(period),
+    ]);
+
     return {
       period,
       users: {
-        total: await this.getTotalUsers(period),
+        total: totalUsers,
         active: data.total_active_users || 0,
         new: data.total_new_users || 0,
         returning: (data.total_active_users || 0) - (data.total_new_users || 0),
-        churned: await this.getChurnedUsers(period),
-        retained: await this.getRetainedUsers(period)
+        churned: churnedUsers,
+        retained: retainedUsers
       },
       sessions: {
-        total: await this.getTotalSessions(period),
+        total: totalSessions,
         averageDuration: data.avg_session_duration || 0,
         bounceRate: data.avg_bounce_rate || 0,
-        pagesPerSession: await this.getPagesPerSession(period)
+        pagesPerSession: pagesPerSession
       },
       conversations: {
         total: data.total_conversations || 0,
@@ -247,16 +283,16 @@ export class AnalyticsService {
         completionRate: data.completion_rate || 0
       },
       performance: {
-        averageResponseTime: await this.getAverageResponseTime(null, period),
-        errorRate: await this.getErrorRate(null, period),
-        uptime: await this.getUptime(period),
-        pageLoadTime: await this.getPageLoadTime(period)
+        averageResponseTime: avgResponseTime,
+        errorRate: errorRate,
+        uptime: uptime,
+        pageLoadTime: pageLoadTime
       },
       revenue: {
-        total: await this.getTotalRevenue(period),
-        averagePerUser: await this.getAverageRevenuePerUser(period),
-        averagePerSession: await this.getAverageRevenuePerSession(period),
-        growth: await this.getRevenueGrowth(period)
+        total: totalRevenue,
+        averagePerUser: avgRevenuePerUser,
+        averagePerSession: avgRevenuePerSession,
+        growth: revenueGrowth
       }
     };
   }

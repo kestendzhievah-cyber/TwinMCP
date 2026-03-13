@@ -151,12 +151,34 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
       whereClause.tags = { has: tag };
     }
 
+    // Cap page size to prevent abuse on this public endpoint
+    const safePage = Math.max(1, Math.min(page, 1000));
+    const safeLimit = Math.max(1, Math.min(limit, 100));
+
     const libraries = await prisma.library.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        vendor: true,
+        ecosystem: true,
+        language: true,
+        description: true,
+        repoUrl: true,
+        docsUrl: true,
+        defaultVersion: true,
+        popularityScore: true,
+        totalTokens: true,
+        totalSnippets: true,
+        lastCrawledAt: true,
+        createdAt: true,
+        tags: true,
+        metadata: true,
         versions: {
           where: { isLatest: true },
           take: 1,
+          select: { version: true },
         },
       },
       orderBy:
@@ -167,6 +189,8 @@ async function handleListLibraries(request: NextRequest, clientLibraries: any[])
             : sortBy === 'updated'
               ? { lastCrawledAt: 'desc' }
               : { popularityScore: 'desc' },
+      take: safeLimit,
+      skip: (safePage - 1) * safeLimit,
     });
 
     // Transform database libraries to match expected format

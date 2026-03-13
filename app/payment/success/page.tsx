@@ -21,7 +21,7 @@ interface SessionData {
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const sessionId = searchParams.get('session_id');
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +63,8 @@ function PaymentSuccessContent() {
         if (response.ok) {
           setSessionData(data);
           launchConfetti();
+          // Refresh auth profile so plan updates from 'free' to 'pro' immediately
+          refreshProfile().catch(() => {});
         } else {
           setError(data.error || 'Impossible de récupérer les détails');
         }

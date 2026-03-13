@@ -18,6 +18,11 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const status = searchParams.get('status');
 
+    const rawLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
+    const limit = Math.min(Math.max(isNaN(rawLimit) ? 50 : rawLimit, 1), 100);
+    const offset = Math.max(isNaN(rawOffset) ? 0 : rawOffset, 0);
+
     let reports;
 
     if (type || category || status) {
@@ -26,9 +31,9 @@ export async function GET(request: NextRequest) {
       if (category) filters.category = category;
       if (status) filters.status = status;
 
-      reports = await getReportsByFilters(db, filters);
+      reports = await getReportsByFilters(db, userId, filters, limit, offset);
     } else {
-      reports = await getAllReports(db);
+      reports = await getAllReports(db, userId, limit, offset);
     }
 
     return NextResponse.json({
@@ -106,11 +111,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getAllReports(db: any) {
+async function getAllReports(db: any, userId: string, limit: number, offset: number) {
   const result = await db.query(`
-    SELECT * FROM reports 
+    SELECT * FROM reports
+    WHERE created_by = $1
     ORDER BY created_at DESC
-  `);
+    LIMIT $2 OFFSET $3
+  `, [userId, limit, offset]);
 
   return result.rows.map((row: any) => ({
     id: row.id,
@@ -128,10 +135,10 @@ async function getAllReports(db: any) {
   }));
 }
 
-async function getReportsByFilters(db: any, filters: any) {
-  let whereClause = 'WHERE 1=1';
-  const params: any[] = [];
-  let paramIndex = 1;
+async function getReportsByFilters(db: any, userId: string, filters: any, limit: number, offset: number) {
+  let whereClause = 'WHERE created_by = $1';
+  const params: any[] = [userId];
+  let paramIndex = 2;
 
   if (filters.type) {
     whereClause += ` AND type->>'id' = $${paramIndex}`;
@@ -156,8 +163,9 @@ async function getReportsByFilters(db: any, filters: any) {
     SELECT * FROM reports 
     ${whereClause}
     ORDER BY created_at DESC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `,
-    params
+    [...params, limit, offset]
   );
 
   return result.rows.map((row: any) => ({
