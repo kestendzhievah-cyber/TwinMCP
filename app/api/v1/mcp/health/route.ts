@@ -6,6 +6,7 @@ import { getQueue } from '@/lib/mcp/utils/queue';
 import { getMetrics } from '@/lib/mcp/utils/metrics';
 import { rateLimiter } from '@/lib/mcp/middleware/rate-limit';
 import { ensureMCPInitialized, isMCPInitialized } from '@/lib/mcp/ensure-init';
+import { handleApiError } from '@/lib/api-error-handler';
 
 type ServiceStatus = 'healthy' | 'degraded' | 'unhealthy';
 
@@ -133,16 +134,7 @@ export async function GET(request: NextRequest) {
         'X-Response-Time': `${Date.now() - startTime}ms`,
       },
     });
-  } catch (error: any) {
-    logger.error('Health check error:', error);
-    return NextResponse.json(
-      {
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: 'Health check failed',
-        apiVersion: 'v1',
-      },
-      { status: 503 }
-    );
+  } catch (error) {
+    return handleApiError(error, 'McpHealth');
   }
 }

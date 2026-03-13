@@ -7,6 +7,7 @@
 
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET() {
   return NextResponse.json({
@@ -52,14 +53,6 @@ export async function POST(request: NextRequest) {
     const result = await response.json();
     return NextResponse.json(result, { status: response.status });
   } catch (error) {
-    logger.error('[MCP-Server Legacy] Error:', error);
-    return NextResponse.json(
-      {
-        jsonrpc: '2.0',
-        id: null,
-        error: { code: -32603, message: 'Internal error' },
-      },
-      { status: 200 }
-    );
+    return handleApiError(error, 'McpServerLegacy');
   }
 }

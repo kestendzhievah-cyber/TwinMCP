@@ -2,12 +2,14 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getReportingServices } from '../../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { reportingService } = await getReportingServices();
@@ -20,8 +22,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ report });
   } catch (error) {
-    logger.error('Error fetching report:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'GetReport');
   }
 }
 
@@ -29,7 +30,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { reportingService } = await getReportingServices();
@@ -67,8 +68,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       report: updatedReport,
     });
   } catch (error) {
-    logger.error('Error updating report:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'UpdateReport');
   }
 }
 
@@ -79,7 +79,7 @@ export async function DELETE(
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { db } = await getReportingServices();
@@ -96,7 +96,6 @@ export async function DELETE(
       message: 'Report deleted successfully',
     });
   } catch (error) {
-    logger.error('Error deleting report:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'DeleteReport');
   }
 }

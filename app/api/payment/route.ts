@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { isStripeConfigured } from '@/lib/services/stripe-billing.service';
 import { validateAuth } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // Cached Stripe client singleton — avoids creating a new client per request
 let _stripe: Stripe | null = null;
@@ -26,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     const auth = await validateAuth(req.headers.get('authorization'));
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const stripe = getStripe();
@@ -70,10 +72,6 @@ export async function POST(req: NextRequest) {
       paymentIntentId: paymentIntent.id,
     });
   } catch (error) {
-    logger.error('Erreur lors de la création du Payment Intent:', error);
-    return NextResponse.json(
-      { error: 'Erreur interne du serveur' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'CreatePaymentIntent');
   }
 }

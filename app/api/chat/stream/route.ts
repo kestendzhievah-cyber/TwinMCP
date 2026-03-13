@@ -3,15 +3,14 @@ import { NextRequest } from 'next/server';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
 import { prisma } from '@/lib/prisma';
 import { streamResponse, estimateTokens } from '@/lib/services/llm-gateway.service';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(req: NextRequest) {
   try {
     const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return new Response(JSON.stringify({ error: 'Authentication required' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      throw new AuthenticationError();
     }
 
     const body = await req.json();
@@ -120,10 +119,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Error in stream:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return handleApiError(error, 'ChatStream');
   }
 }

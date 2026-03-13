@@ -3,6 +3,7 @@ import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
+import { handleApiError } from '@/lib/api-error-handler';
 export async function POST(request: NextRequest) {
   try {
     const apiKey =
@@ -150,14 +151,6 @@ export async function POST(request: NextRequest) {
       permissions: apiKeyRecord.permissions,
     });
   } catch (error) {
-    logger.error('Error validating API key:', error);
-    return NextResponse.json(
-      {
-        valid: false,
-        error: 'Authentication failed',
-        code: 'INTERNAL_ERROR',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ValidateApiKey');
   }
 }

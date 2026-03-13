@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,13 +19,7 @@ export async function GET(request: NextRequest) {
       count: themes.length,
     });
   } catch (error) {
-    logger.error('Error getting themes:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to get themes',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ListThemes');
   }
 }
 
@@ -32,10 +28,7 @@ export async function POST(request: NextRequest) {
     // SECURITY: Require proper authentication for theme creation
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Authentication required for creating custom themes' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     const personalizationService = await getPersonalizationService();
@@ -58,12 +51,6 @@ export async function POST(request: NextRequest) {
       message: 'Custom theme created successfully',
     });
   } catch (error) {
-    logger.error('Error creating theme:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to create theme',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'CreateTheme');
   }
 }

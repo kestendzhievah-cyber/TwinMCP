@@ -6,6 +6,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/middleware/auth-middleware';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,10 +41,6 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    logger.error('[Auth Me] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'AuthMe');
   }
 }

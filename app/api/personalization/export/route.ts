@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +11,7 @@ export async function GET(request: NextRequest) {
     // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const exportData = await personalizationService.exportPreferences(userId);
@@ -23,12 +25,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Error exporting preferences:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to export preferences',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ExportPreferences');
   }
 }

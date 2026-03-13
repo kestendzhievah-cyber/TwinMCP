@@ -2,12 +2,14 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../_shared';
 import { validateAuth } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
     if (!auth.valid) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const monitoringService = await getMonitoringService();
@@ -76,8 +78,7 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    logger.error('Error fetching metrics:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'GetMetrics');
   }
 }
 
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
   try {
     const authPost = await validateAuth(request.headers.get('authorization'));
     if (!authPost.valid) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const monitoringService = await getMonitoringService();
@@ -100,7 +101,6 @@ export async function POST(request: NextRequest) {
       metrics,
     });
   } catch (error) {
-    logger.error('Error collecting metrics:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'CollectMetrics');
   }
 }

@@ -2,12 +2,14 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getBillingServices } from '../_shared';
 import { validateAuth } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { paymentService } = await getBillingServices();
@@ -31,11 +33,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Error fetching payments:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ListPayments');
   }
 }
 
@@ -43,7 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { paymentService } = await getBillingServices();
@@ -101,10 +99,6 @@ export async function POST(request: NextRequest) {
       message: 'Payment created successfully',
     });
   } catch (error) {
-    logger.error('Error creating payment:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'CreatePayment');
   }
 }

@@ -3,12 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getBillingServices } from '../../_shared';
 import { InvoiceStatus } from '@/src/types/invoice.types';
 import { validateAuth } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { invoiceService } = await getBillingServices();
@@ -37,11 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       data: { invoice },
     });
   } catch (error) {
-    logger.error('Error fetching invoice:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GetInvoice');
   }
 }
 
@@ -49,7 +47,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const auth = await validateAuth(request.headers.get('authorization'));
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { invoiceService } = await getBillingServices();
@@ -109,10 +107,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data: { invoice: updatedInvoice },
     });
   } catch (error) {
-    logger.error('Error updating invoice:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'UpdateInvoice');
   }
 }

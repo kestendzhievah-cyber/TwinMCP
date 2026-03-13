@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { handleApiError } from '@/lib/api-error-handler';
 
 interface ImportRequest {
   source: string;
@@ -422,11 +423,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error("Erreur lors de l'import:", error);
-    return NextResponse.json(
-      { success: false, error: 'Erreur interne du serveur. Veuillez réessayer.' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ImportLibrary');
   }
 }
 

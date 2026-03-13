@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringServices } from '../_shared';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,8 +35,7 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    logger.error('Error fetching health status:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'HealthCheck');
   }
 }
 
@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
       healthCheck,
     });
   } catch (error) {
-    logger.error('Error performing health check:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'TriggerHealthCheck');
   }
 }

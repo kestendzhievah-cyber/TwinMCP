@@ -2,13 +2,15 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationService } from '../../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const conversationService = await getConversationService();
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const body = await request.json();
@@ -33,8 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
-    logger.error('Error adding message:', error);
-    return NextResponse.json({ error: 'Failed to add message' }, { status: 500 });
+    return handleApiError(error, 'AddMessage');
   }
 }
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const conversationService = await getConversationService();
@@ -59,7 +60,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ messages: conversation.messages });
   } catch (error) {
-    logger.error('Error fetching messages:', error);
-    return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
+    return handleApiError(error, 'GetMessages');
   }
 }

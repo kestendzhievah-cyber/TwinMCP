@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { redis } from '@/lib/redis';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { handleApiError } from '@/lib/api-error-handler';
 // Internal key for server-to-server communication
 const INTERNAL_KEY = process.env.TWINMCP_INTERNAL_KEY || '';
 
@@ -109,15 +110,7 @@ export async function POST(request: NextRequest) {
       timestamp: now.toISOString(),
     });
   } catch (error) {
-    logger.error('Error tracking usage:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to track usage',
-        code: 'INTERNAL_ERROR',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'TrackUsage');
   }
 }
 
@@ -220,14 +213,6 @@ export async function GET(request: NextRequest) {
       timestamp: now.toISOString(),
     });
   } catch (error) {
-    logger.error('Error getting usage stats:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to get usage statistics',
-        code: 'INTERNAL_ERROR',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GetUsageStats');
   }
 }

@@ -1,6 +1,8 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 import {
   ensureUser,
   getUserTier,
@@ -27,10 +29,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request);
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     const user = await ensureUser(auth.userId, auth.email);
@@ -51,11 +50,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    logger.error('List API keys error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ListApiKeys');
   }
 }
 
@@ -64,10 +59,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request);
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     const user = await ensureUser(auth.userId, auth.email);
@@ -116,11 +108,7 @@ export async function POST(request: NextRequest) {
       warning: 'Sauvegardez cette clé maintenant. Elle ne sera plus affichée.',
     });
   } catch (error) {
-    logger.error('Create API key error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'CreateApiKey');
   }
 }
 
@@ -129,10 +117,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request);
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     const user = await ensureUser(auth.userId, auth.email);
@@ -158,10 +143,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'API key revoked successfully' });
   } catch (error) {
-    logger.error('Revoke API key error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'RevokeApiKey');
   }
 }

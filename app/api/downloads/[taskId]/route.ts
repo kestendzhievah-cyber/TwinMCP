@@ -1,6 +1,8 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let _services: { downloadManager: any; db: any } | null = null;
 async function getServices() {
@@ -25,7 +27,7 @@ export async function GET(
   try {
     const userId = await getAuthUserId(_request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { downloadManager } = await getServices();
@@ -38,14 +40,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, task });
   } catch (error) {
-    logger.error('Error fetching download task:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch download task',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GetDownloadTask');
   }
 }
 
@@ -56,7 +51,7 @@ export async function DELETE(
   try {
     const userId = await getAuthUserId(_request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { downloadManager, db } = await getServices();
@@ -82,13 +77,6 @@ export async function DELETE(
       message: 'Task deleted successfully',
     });
   } catch (error) {
-    logger.error('Error deleting download task:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to delete download task',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'DeleteDownloadTask');
   }
 }

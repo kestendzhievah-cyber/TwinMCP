@@ -16,6 +16,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiKey, checkRateLimit } from '@/lib/mcp/mcp-server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // ---------------------------------------------------------------------------
 // Lazy services (same as mcp-server.ts singleton, kept in sync)
@@ -384,14 +385,7 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch (error) {
-    logger.error('[MCP] POST error:', error);
-    return NextResponse.json(
-      jsonrpc(id, undefined, {
-        code: -32603,
-        message: 'Internal error',
-      }),
-      { status: 200, headers: hdrs }
-    );
+    return handleApiError(error, 'McpPost');
   }
 }
 

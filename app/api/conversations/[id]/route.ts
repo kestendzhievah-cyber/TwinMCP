@@ -2,13 +2,15 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getConversationService } from '../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const conversationService = await getConversationService();
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
     const conversationId = (await params).id;
 
@@ -23,8 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ conversation });
   } catch (error) {
-    logger.error('Error fetching conversation:', error);
-    return NextResponse.json({ error: 'Failed to fetch conversation' }, { status: 500 });
+    return handleApiError(error, 'GetConversation');
   }
 }
 
@@ -32,7 +33,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const conversationService = await getConversationService();
@@ -48,8 +49,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ conversation });
   } catch (error) {
-    logger.error('Error updating conversation:', error);
-    return NextResponse.json({ error: 'Failed to update conversation' }, { status: 500 });
+    return handleApiError(error, 'UpdateConversation');
   }
 }
 
@@ -60,7 +60,7 @@ export async function DELETE(
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
     const conversationId = (await params).id;
 
@@ -76,7 +76,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error('Error deleting conversation:', error);
-    return NextResponse.json({ error: 'Failed to delete conversation' }, { status: 500 });
+    return handleApiError(error, 'DeleteConversation');
   }
 }

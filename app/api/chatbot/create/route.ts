@@ -4,6 +4,8 @@ import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 import { createAgent } from '@/lib/agents';
 import { canCreateAgent, updateUserAgentsCount } from '@/lib/user-limits';
 import QRCode from 'qrcode';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 interface CreateChatbotRequest {
   name: string;
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest) {
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      throw new AuthenticationError('Invalid token');
     }
 
     const userId = decodedToken.uid;
@@ -96,7 +98,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Error creating chatbot:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'CreateChatbot');
   }
 }

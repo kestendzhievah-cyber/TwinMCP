@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { loginSchema, parseBody } from '@/lib/validations/api-schemas';
 import { verifyRecaptcha } from '@/lib/utils/recaptcha';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,30 +51,27 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    logger.error('Erreur lors de la connexion:', error);
-
-    // Gestion des erreurs Firebase
-    let errorMessage = 'Erreur lors de la connexion';
-
-    switch (error.code) {
-      case 'auth/user-not-found':
-      case 'auth/wrong-password':
-      case 'auth/invalid-credential':
-        errorMessage = 'Email ou mot de passe incorrect';
-        break;
-      case 'auth/invalid-email':
-        errorMessage = 'Adresse email invalide';
-        break;
-      case 'auth/user-disabled':
-        errorMessage = 'Ce compte a été désactivé';
-        break;
-      case 'auth/too-many-requests':
-        errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
-        break;
-      default:
-        errorMessage = 'Erreur lors de la connexion';
+    // Firebase auth errors have a .code property — map to user-friendly messages
+    if (error?.code?.startsWith('auth/')) {
+      let errorMessage = 'Erreur lors de la connexion';
+      switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          errorMessage = 'Email ou mot de passe incorrect';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Adresse email invalide';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'Ce compte a été désactivé';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Trop de tentatives. Veuillez réessayer plus tard';
+          break;
+      }
+      return NextResponse.json({ error: errorMessage }, { status: 401 });
     }
-
-    return NextResponse.json({ error: errorMessage }, { status: 401 });
+    return handleApiError(error, 'AuthLogin');
   }
 }

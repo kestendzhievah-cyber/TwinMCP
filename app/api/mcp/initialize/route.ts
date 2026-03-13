@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 const SERVER_INFO = {
   name: 'twinmcp-server',
@@ -57,12 +58,6 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Initialization failed',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'McpInitialize');
   }
 }

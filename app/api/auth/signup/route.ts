@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { signupSchema, parseBody } from '@/lib/validations/api-schemas';
 import { verifyRecaptcha } from '@/lib/utils/recaptcha';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,28 +51,25 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    logger.error("Erreur lors de l'inscription:", error);
-
-    // Gestion des erreurs Firebase
-    let errorMessage = "Erreur lors de l'inscription";
-
-    switch (error.code) {
-      case 'auth/email-already-in-use':
-        errorMessage = 'Cette adresse email est déjà utilisée';
-        break;
-      case 'auth/invalid-email':
-        errorMessage = 'Adresse email invalide';
-        break;
-      case 'auth/operation-not-allowed':
-        errorMessage = "L'inscription par email n'est pas activée";
-        break;
-      case 'auth/weak-password':
-        errorMessage = 'Le mot de passe est trop faible';
-        break;
-      default:
-        errorMessage = "Erreur lors de l'inscription";
+    // Firebase auth errors have a .code property — map to user-friendly messages
+    if (error?.code?.startsWith('auth/')) {
+      let errorMessage = "Erreur lors de l'inscription";
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'Cette adresse email est déjà utilisée';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Adresse email invalide';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = "L'inscription par email n'est pas activée";
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Le mot de passe est trop faible';
+          break;
+      }
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
-
-    return NextResponse.json({ error: errorMessage }, { status: 400 });
+    return handleApiError(error, 'AuthSignup');
   }
 }

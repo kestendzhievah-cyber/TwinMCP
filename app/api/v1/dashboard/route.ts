@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
 import { ensureUser, getUserTier, getApiKeyLimits, listApiKeys } from '@/lib/services/api-key.service';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // Get empty stats
 function getEmptyStats() {
@@ -29,10 +31,7 @@ export async function GET(request: NextRequest) {
     const auth = await validateAuth(request.headers.get('authorization'));
 
     if (!auth.valid) {
-      return NextResponse.json(
-        { success: false, error: auth.error || 'Unauthorized' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     const userId = auth.userId;
@@ -142,7 +141,6 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    logger.error('Dashboard API error:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'V1Dashboard');
   }
 }

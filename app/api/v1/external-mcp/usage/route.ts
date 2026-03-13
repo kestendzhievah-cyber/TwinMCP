@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { externalMcpService } from '@/lib/services/external-mcp.service';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
+import { handleApiError } from '@/lib/api-error-handler';
 
 async function getAuthUserId(request: NextRequest): Promise<string> {
   const authHeader = request.headers.get('authorization');
@@ -30,12 +31,7 @@ export async function GET(request: NextRequest) {
 
     const usage = await externalMcpService.getUsage(userId, serverId, days);
     return NextResponse.json({ success: true, data: usage });
-  } catch (error: any) {
-    const status = error.statusCode || 500;
-    const safeMessages: Record<number, string> = { 401: 'Authentication required' };
-    return NextResponse.json(
-      { success: false, error: safeMessages[status] || 'Failed to fetch usage data' },
-      { status }
-    );
+  } catch (error) {
+    return handleApiError(error, 'ExternalMcpUsage');
   }
 }

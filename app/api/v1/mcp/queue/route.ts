@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authService } from '@/lib/mcp/middleware/auth';
 import { getQueue } from '@/lib/mcp/utils/queue';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET /api/v1/mcp/queue - Liste des jobs de l'utilisateur
 export async function GET(request: NextRequest) {
@@ -56,12 +57,7 @@ export async function GET(request: NextRequest) {
         queueStats: queue.getStats(),
       },
     });
-  } catch (error: any) {
-    logger.error('Queue list error:', error);
-    const statusCode = error.statusCode || 500;
-    return NextResponse.json(
-      { error: statusCode === 401 ? 'Authentication required' : statusCode < 500 ? 'Request failed' : 'Failed to list queue jobs' },
-      { status: statusCode }
-    );
+  } catch (error) {
+    return handleApiError(error, 'McpQueue');
   }
 }

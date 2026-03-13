@@ -1,6 +1,7 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { docsGenerator } from '@/lib/mcp/utils/docs-generator';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET /api/v1/mcp/docs - Générer la documentation
 export async function GET(request: NextRequest) {
@@ -22,11 +23,7 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-  } catch (error: any) {
-    logger.error('Documentation generation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate documentation' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error, 'McpDocs');
   }
 }

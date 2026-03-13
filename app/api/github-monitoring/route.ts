@@ -1,6 +1,8 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 import { pool as db } from '@/lib/prisma';
 
@@ -8,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { searchParams } = new URL(request.url);
@@ -40,14 +42,7 @@ export async function GET(request: NextRequest) {
       data: monitoringData,
     });
   } catch (error) {
-    logger.error('Error in GitHub monitoring:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch monitoring data',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GitHubMonitoringGet');
   }
 }
 
@@ -55,7 +50,7 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const body = await request.json();
@@ -115,13 +110,6 @@ export async function POST(request: NextRequest) {
       message: 'GitHub monitoring configured successfully',
     });
   } catch (error) {
-    logger.error('Error configuring GitHub monitoring:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to configure GitHub monitoring',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GitHubMonitoringPost');
   }
 }

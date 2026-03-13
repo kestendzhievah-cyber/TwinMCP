@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // Default library catalog (fallback when database is unavailable)
 const DEFAULT_LIBRARY_CATALOG = [
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
     // Delegate to the same logic as GET, but with clientLibraries from body
     return handleListLibraries(request, clientLibraries);
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
+    return handleApiError(error, 'LibrariesPost');
   }
 }
 

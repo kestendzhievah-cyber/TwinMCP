@@ -1,6 +1,8 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let _codeExecutionService: any = null;
 async function getCodeExecutionService() {
@@ -19,7 +21,7 @@ export async function POST(req: NextRequest) {
   try {
     const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const codeExecutionService = await getCodeExecutionService();
@@ -40,8 +42,7 @@ export async function POST(req: NextRequest) {
     const result = await codeExecutionService.executeSandboxed(code, language, Math.min(timeout || 5000, 10000));
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    logger.error('Error executing code:', error);
-    return NextResponse.json({ error: 'Failed to execute code' }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, 'CodeExecute');
   }
 }

@@ -6,12 +6,14 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
     // Lazy-import to avoid circular deps at module load
     const { rateLimiter } = await import('@/lib/mcp/middleware/rate-limit');
@@ -44,12 +46,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(overview);
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch quota stats',
-        details: 'Internal error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'MonitoringQuotas');
   }
 }

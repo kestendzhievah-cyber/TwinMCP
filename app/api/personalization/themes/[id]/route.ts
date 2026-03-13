@@ -2,6 +2,8 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -23,13 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       data: theme,
     });
   } catch (error) {
-    logger.error('Error getting theme:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to get theme',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GetTheme');
   }
 }
 
@@ -39,7 +35,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
     const themeId = (await params).id;
 
@@ -57,27 +53,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       message: 'Theme updated successfully',
     });
   } catch (error) {
-    logger.error('Error updating theme:', error);
-
-    // Gestion des erreurs spécifiques
-    if (error instanceof Error) {
-      if (error.message.includes('not found or access denied')) {
-        return NextResponse.json({ error: 'Theme not found or access denied' }, { status: 404 });
-      }
-      if (error.message.includes('validation failed')) {
-        return NextResponse.json(
-          { error: 'Theme validation failed' },
-          { status: 400 }
-        );
-      }
-    }
-
-    return NextResponse.json(
-      {
-        error: 'Failed to update theme',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'UpdateTheme');
   }
 }
 
@@ -90,7 +66,7 @@ export async function DELETE(
     // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
     const themeId = (await params).id;
 
@@ -105,18 +81,6 @@ export async function DELETE(
       message: 'Theme deleted successfully',
     });
   } catch (error) {
-    logger.error('Error deleting theme:', error);
-
-    // Gestion des erreurs spécifiques
-    if (error instanceof Error && error.message.includes('not found or access denied')) {
-      return NextResponse.json({ error: 'Theme not found or access denied' }, { status: 404 });
-    }
-
-    return NextResponse.json(
-      {
-        error: 'Failed to delete theme',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'DeleteTheme');
   }
 }

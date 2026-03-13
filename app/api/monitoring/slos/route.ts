@@ -2,12 +2,14 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringServices } from '../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { monitoringService, db } = await getMonitoringServices();
@@ -58,8 +60,7 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    logger.error('Error fetching SLOs:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'ListSLOs');
   }
 }
 
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { monitoringService } = await getMonitoringServices();
@@ -99,7 +100,6 @@ export async function POST(request: NextRequest) {
       slo,
     });
   } catch (error) {
-    logger.error('Error creating SLO:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'CreateSLO');
   }
 }

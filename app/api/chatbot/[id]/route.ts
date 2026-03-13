@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getFirebaseAdminApp } from '@/lib/firebase/admin';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // Lazy initialization of Firestore
 let db: Firestore | null = null;
@@ -58,8 +60,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json(chatbot);
   } catch (error) {
-    logger.error('Erreur lors de la récupération du chatbot:', error);
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    return handleApiError(error, 'GetChatbot');
   }
 }
 
@@ -69,7 +70,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // SECURITY: Require authentication for updates
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
     const token = authHeader.substring(7);
     const adminAuth = await getFirebaseAdminAuth();
@@ -80,7 +81,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
     } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      throw new AuthenticationError('Invalid token');
     }
 
     const { id } = await params;
@@ -146,10 +147,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json(updatedChatbot);
   } catch (error) {
-    logger.error('Erreur lors de la mise à jour du chatbot:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la mise à jour du chatbot' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'UpdateChatbotById');
   }
 }

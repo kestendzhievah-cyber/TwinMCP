@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { externalMcpService } from '@/lib/services/external-mcp.service';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
+import { handleApiError } from '@/lib/api-error-handler';
 
 async function getAuthUserId(request: NextRequest): Promise<string> {
   const authHeader = request.headers.get('authorization');
@@ -26,13 +27,8 @@ export async function GET(request: NextRequest) {
     const userId = await getAuthUserId(request);
     const servers = await externalMcpService.list(userId);
     return NextResponse.json({ success: true, data: servers });
-  } catch (error: any) {
-    const status = error.statusCode || 500;
-    const safeMessages: Record<number, string> = { 401: 'Authentication required' };
-    return NextResponse.json(
-      { success: false, error: safeMessages[status] || 'Failed to list external MCP servers' },
-      { status }
-    );
+  } catch (error) {
+    return handleApiError(error, 'ExternalMcpList');
   }
 }
 
@@ -94,16 +90,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: server }, { status: 201 });
-  } catch (error: any) {
-    const isConflict = error.message?.includes('Unique constraint');
-    const status = isConflict ? 409 : (error.statusCode || 500);
-    const safeMessages: Record<number, string> = {
-      401: 'Authentication required',
-      409: 'An external MCP server with this configuration already exists',
-    };
-    return NextResponse.json(
-      { success: false, error: safeMessages[status] || 'Failed to create external MCP server' },
-      { status }
-    );
+  } catch (error) {
+    return handleApiError(error, 'ExternalMcpCreate');
   }
 }

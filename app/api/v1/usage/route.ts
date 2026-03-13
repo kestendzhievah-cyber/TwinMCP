@@ -2,13 +2,15 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET - Get usage statistics for user
 export async function GET(request: NextRequest) {
   const start = Date.now();
   const userId = await getAuthUserId(request.headers.get('authorization'));
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return handleApiError(new AuthenticationError(), 'V1UsageGet');
   }
   const auth = { userId };
 
@@ -153,8 +155,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    logger.error('Failed to fetch usage:', error);
-    return NextResponse.json({ error: 'Failed to fetch usage statistics' }, { status: 500 });
+    return handleApiError(error, 'V1UsageGet');
   }
 }
 
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
   try {
     const authUserId = await getAuthUserId(request.headers.get('authorization'));
     if (!authUserId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     let body: any;
@@ -254,7 +255,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ logged: true, id: log.id });
   } catch (error) {
-    logger.error('Failed to log usage:', error);
-    return NextResponse.json({ error: 'Failed to log usage' }, { status: 500 });
+    return handleApiError(error, 'V1UsagePost');
   }
 }

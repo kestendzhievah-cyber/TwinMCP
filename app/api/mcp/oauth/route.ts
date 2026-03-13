@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { trackUsage } from '@/lib/mcp/mcp-server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -307,11 +308,7 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch (error) {
-    logger.error('[MCP/OAuth] POST error:', error);
-    return NextResponse.json(
-      jsonrpc(id, undefined, { code: -32603, message: 'Internal error' }),
-      { status: 200, headers: hdrs }
-    );
+    return handleApiError(error, 'McpOAuth');
   }
 }
 

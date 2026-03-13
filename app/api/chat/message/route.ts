@@ -3,12 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
 import { prisma } from '@/lib/prisma';
 import { generateResponse } from '@/lib/services/llm-gateway.service';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(req: NextRequest) {
   try {
     const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const body = await req.json();
@@ -75,7 +77,6 @@ export async function POST(req: NextRequest) {
       metadata: response.metadata,
     });
   } catch (error) {
-    logger.error('Error sending message:', error);
-    return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
+    return handleApiError(error, 'ChatMessage');
   }
 }

@@ -3,13 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdminAuth } from '@/lib/firebase-admin-auth';
 import { deleteAgent } from '@/lib/agents';
 import { updateUserAgentsCount, countActiveAgents } from '@/lib/user-limits';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function DELETE(request: NextRequest) {
   try {
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -22,7 +24,7 @@ export async function DELETE(request: NextRequest) {
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
     } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      throw new AuthenticationError('Invalid token');
     }
 
     const userId = decodedToken.uid;
@@ -55,7 +57,6 @@ export async function DELETE(request: NextRequest) {
         newCount > 0 ? 'Vous pouvez maintenant créer un nouvel agent' : 'Aucun agent restant',
     });
   } catch (error) {
-    logger.error('Error deleting chatbot:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'DeleteChatbot');
   }
 }

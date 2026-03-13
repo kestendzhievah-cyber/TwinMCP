@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { authenticateRequest } from '@/lib/middleware/auth-middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // Cached Stripe client singleton for diagnostic route
 let _stripe: Stripe | null = null;

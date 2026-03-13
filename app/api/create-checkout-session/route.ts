@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
 import Stripe from 'stripe';
+import { handleApiError } from '@/lib/api-error-handler';
 import {
   createCheckoutSession,
   isStripeConfigured,
@@ -177,11 +178,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    logger.error('Checkout session error:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la création de la session de paiement' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'CreateCheckoutSession');
   }
 }
 
@@ -237,10 +234,6 @@ export async function GET(req: NextRequest) {
       } : null,
     });
   } catch (error) {
-    logger.error('Session retrieval error:', error);
-    return NextResponse.json(
-      { error: 'Impossible de récupérer les détails de la session' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GetCheckoutSession');
   }
 }

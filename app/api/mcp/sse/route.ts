@@ -11,6 +11,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiKey, checkRateLimit } from '@/lib/mcp/mcp-server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // ---------------------------------------------------------------------------
 // In-memory session store for SSE connections

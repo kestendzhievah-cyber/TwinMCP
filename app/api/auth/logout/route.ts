@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { UserAuthService } from '@/lib/services/user-auth.service';
 import { authenticateRequest } from '@/lib/middleware/auth-middleware';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let authService: UserAuthService | null = null;
 
@@ -62,10 +63,6 @@ export async function POST(request: NextRequest) {
       message: 'Logged out successfully',
     });
   } catch (error) {
-    logger.error('[Auth Logout] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'AuthLogout');
   }
 }

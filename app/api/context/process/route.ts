@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ContextQuery, ContextResult } from '@/src/types/context-intelligent.types';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
 import { prisma } from '@/lib/prisma';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let _svc: { contextService: any; db: any } | null = null;
 async function getContextServices() {
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { contextService } = await getContextServices();
@@ -54,12 +56,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    logger.error('Context processing error:', error);
-
-    return NextResponse.json(
-      { error: 'Failed to process context' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ContextProcess');
   }
 }
 
@@ -67,7 +64,7 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { db } = await getContextServices();
@@ -103,11 +100,6 @@ export async function GET(request: NextRequest) {
       total: results.rows.length,
     });
   } catch (error) {
-    logger.error('Context retrieval error:', error);
-
-    return NextResponse.json(
-      { error: 'Failed to retrieve context' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ContextRetrieve');
   }
 }

@@ -2,13 +2,15 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoringService } from '../_shared';
 import { validateAuth } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     // SECURITY: Require authentication — monitoring data is sensitive
     const auth = await validateAuth(request.headers.get('authorization'));
     if (!auth.valid) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const monitoringService = await getMonitoringService();
@@ -30,8 +32,7 @@ export async function GET(request: NextRequest) {
       filters,
     });
   } catch (error) {
-    logger.error('Error fetching alerts:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'ListAlerts');
   }
 }
 
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     // SECURITY: Require authentication for alert creation
     const authPost = await validateAuth(request.headers.get('authorization'));
     if (!authPost.valid) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const body = await request.json();
@@ -79,7 +80,6 @@ export async function POST(request: NextRequest) {
       alert,
     });
   } catch (error) {
-    logger.error('Error creating alert:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'CreateAlert');
   }
 }

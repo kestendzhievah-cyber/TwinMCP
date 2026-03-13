@@ -2,6 +2,8 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 import {
   createCustomerPortalSession,
   isStripeConfigured,
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const auth = await validateAuth(req.headers.get('authorization'));
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     // Find user profile
@@ -69,10 +71,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url });
   } catch (error) {
-    logger.error('Customer portal error:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la création du portail client' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'BillingPortal');
   }
 }

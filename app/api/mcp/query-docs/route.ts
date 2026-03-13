@@ -1,6 +1,7 @@
 ﻿import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { vectorSearchService } from '@/lib/mcp-tools';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let _authService: any = null;
 async function getAuthService() {
@@ -94,21 +95,7 @@ export async function POST(request: NextRequest) {
       data: result,
     });
   } catch (error) {
-    logger.error('Error in query-docs:', error);
-
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR',
-        message:
-          process.env.NODE_ENV === 'development'
-            ? error instanceof Error
-              ? error.message
-              : String(error)
-            : undefined,
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'McpQueryDocs');
   }
 }
 

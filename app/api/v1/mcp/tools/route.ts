@@ -6,6 +6,7 @@ import { validator } from '@/lib/mcp/core/validator';
 import { rateLimiter } from '@/lib/mcp/middleware/rate-limit';
 import { getMetrics } from '@/lib/mcp/utils/metrics';
 import { ensureMCPInitialized } from '@/lib/mcp/ensure-init';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET /api/v1/mcp/tools - Liste des outils disponibles
 export async function GET(request: NextRequest) {
@@ -96,15 +97,6 @@ export async function GET(request: NextRequest) {
       estimatedCost: 0,
     });
 
-    logger.error('Tools list error:', error);
-    const statusCode = error.statusCode || 500;
-    const safeMessage = statusCode === 401 ? 'Authentication required'
-      : statusCode === 403 ? 'Access denied'
-      : statusCode < 500 ? 'Request failed'
-      : 'Failed to list tools';
-    return NextResponse.json(
-      { error: safeMessage, code: statusCode < 500 ? error.code : undefined },
-      { status: statusCode }
-    );
+    return handleApiError(error, 'McpToolsList');
   }
 }

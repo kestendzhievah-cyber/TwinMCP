@@ -3,12 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getConversationHistory } from '@/lib/conversation';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
 import { prisma } from '@/lib/prisma';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const url = new URL(request.url);
@@ -38,7 +40,6 @@ export async function GET(request: NextRequest) {
       conversation,
     });
   } catch (error) {
-    logger.error('Error getting conversation history:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'GetChatHistory');
   }
 }

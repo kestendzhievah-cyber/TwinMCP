@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +11,7 @@ export async function POST(request: NextRequest) {
     // SECURITY: Use authenticated userId instead of trusting x-user-id header (IDOR)
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const { data, options } = await request.json();
@@ -31,26 +33,6 @@ export async function POST(request: NextRequest) {
       message: 'Preferences imported successfully',
     });
   } catch (error) {
-    logger.error('Error importing preferences:', error);
-
-    // Gestion des erreurs spécifiques
-    if (error instanceof Error) {
-      if (error.message.includes('version')) {
-        return NextResponse.json({ error: 'Unsupported preferences version' }, { status: 400 });
-      }
-      if (error.message.includes('Invalid preferences data')) {
-        return NextResponse.json(
-          { error: 'Invalid preferences format' },
-          { status: 400 }
-        );
-      }
-    }
-
-    return NextResponse.json(
-      {
-        error: 'Failed to import preferences',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ImportPreferences');
   }
 }

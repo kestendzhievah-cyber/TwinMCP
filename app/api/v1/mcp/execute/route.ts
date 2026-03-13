@@ -7,6 +7,7 @@ import { rateLimiter } from '@/lib/mcp/middleware/rate-limit';
 import { getQueue } from '@/lib/mcp/utils/queue';
 import { getMetrics } from '@/lib/mcp/utils/metrics';
 import { ensureMCPInitialized } from '@/lib/mcp/ensure-init';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // POST /api/v1/mcp/execute - Exécuter un outil
 export async function POST(request: NextRequest) {
@@ -229,21 +230,6 @@ export async function POST(request: NextRequest) {
       estimatedCost: 0,
     });
 
-    logger.error('Tool execution error:', error);
-    // Only expose error details for known auth/validation errors (4xx);
-    // generic message for unexpected 5xx to prevent info leakage.
-    const statusCode = error.statusCode || 500;
-    const safeMessage = statusCode === 401 ? 'Authentication required'
-      : statusCode === 403 ? 'Access denied'
-      : statusCode < 500 ? 'Request failed'
-      : 'Tool execution failed';
-    return NextResponse.json(
-      {
-        error: safeMessage,
-        code: statusCode < 500 ? error.code : undefined,
-        apiVersion: 'v1',
-      },
-      { status: statusCode }
-    );
+    return handleApiError(error, 'McpExecute');
   }
 }

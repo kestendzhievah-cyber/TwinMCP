@@ -3,14 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createConversationSchema, parseBody } from '@/lib/validations/api-schemas';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(req: NextRequest) {
-  const userId = await getAuthUserId(req.headers.get('authorization'));
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    const userId = await getAuthUserId(req.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
+    }
+
     const conversations = await prisma.conversation.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
@@ -25,18 +27,17 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: conversations });
   } catch (error) {
-    logger.error('Error fetching conversations:', error);
-    return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 });
+    return handleApiError(error, 'ChatListConversations');
   }
 }
 
 export async function POST(req: NextRequest) {
-  const userId = await getAuthUserId(req.headers.get('authorization'));
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    const userId = await getAuthUserId(req.headers.get('authorization'));
+    if (!userId) {
+      throw new AuthenticationError();
+    }
+
     let rawBody: unknown;
     try {
       rawBody = await req.json();
@@ -55,7 +56,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: conversation });
   } catch (error) {
-    logger.error('Error creating conversation:', error);
-    return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
+    return handleApiError(error, 'ChatCreateConversation');
   }
 }

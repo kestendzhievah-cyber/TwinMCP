@@ -9,6 +9,7 @@
 
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,10 +45,6 @@ export async function POST(request: NextRequest) {
     if (result.error) return NextResponse.json({ error: result.error.message }, { status: 400 });
     return NextResponse.json(result);
   } catch (error) {
-    logger.error('[MCP /call legacy] Error:', error);
-    return NextResponse.json(
-      { error: 'Internal error' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'McpCallLegacy');
   }
 }

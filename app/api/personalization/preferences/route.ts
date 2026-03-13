@@ -2,13 +2,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonalizationService } from '../_shared';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     // SECURITY: Use verified auth — never trust x-user-id header (IDOR vector)
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const personalizationService = await getPersonalizationService();
@@ -20,13 +22,7 @@ export async function GET(request: NextRequest) {
       data: preferences,
     });
   } catch (error) {
-    logger.error('Error getting user preferences:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to get preferences',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GetPreferences');
   }
 }
 
@@ -34,7 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const personalizationService = await getPersonalizationService();
@@ -54,13 +50,7 @@ export async function POST(request: NextRequest) {
       message: 'Preferences updated successfully',
     });
   } catch (error) {
-    logger.error('Error updating user preferences:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to update preferences',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'UpdatePreferences');
   }
 }
 
@@ -68,7 +58,7 @@ export async function PUT(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const personalizationService = await getPersonalizationService();
@@ -91,12 +81,6 @@ export async function PUT(request: NextRequest) {
       message: 'Preferences replaced successfully',
     });
   } catch (error) {
-    logger.error('Error replacing user preferences:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to replace preferences',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, 'ReplacePreferences');
   }
 }

@@ -2,12 +2,14 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(req: NextRequest) {
   try {
     const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const conversations = await prisma.conversation.findMany({
@@ -33,8 +35,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ conversations: formatted });
   } catch (error) {
-    logger.error('Error fetching conversations:', error);
-    return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 });
+    return handleApiError(error, 'ChatConversationsList');
   }
 }
 
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
   try {
     const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const body = await req.json();
@@ -76,7 +77,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ conversation });
   } catch (error) {
-    logger.error('Error creating conversation:', error);
-    return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
+    return handleApiError(error, 'ChatConversationsCreate');
   }
 }

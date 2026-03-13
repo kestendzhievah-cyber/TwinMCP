@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createMCPGraphQLGateway, GraphQLContext } from '@/lib/mcp/middleware/graphql';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let gateway: ReturnType<typeof createMCPGraphQLGateway> | null = null;
 
@@ -115,10 +116,7 @@ export async function POST(request: NextRequest) {
     const result = await gw.execute(body, context);
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json(
-      { errors: [{ message: 'Internal server error' }] },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GraphQL');
   }
 }
 

@@ -13,6 +13,7 @@ import { redis } from '@/lib/redis';
 import { UserAuthService } from '@/lib/services/user-auth.service';
 import { authenticateRequest } from '@/lib/middleware/auth-middleware';
 import { updateProfileSchema, parseBody } from '@/lib/validations/api-schemas';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let authService: UserAuthService | null = null;
 
@@ -57,11 +58,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('[Auth Profile GET] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'AuthProfileGET');
   }
 }
 
@@ -133,10 +130,6 @@ export async function PUT(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('[Auth Profile PUT] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'AuthProfilePUT');
   }
 }

@@ -12,6 +12,7 @@ import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { UserAuthService } from '@/lib/services/user-auth.service';
 import { authenticateRequest } from '@/lib/middleware/auth-middleware';
+import { handleApiError } from '@/lib/api-error-handler';
 
 let authService: UserAuthService | null = null;
 
@@ -67,11 +68,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('[Auth Session GET] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'AuthSessionGET');
   }
 }
 
@@ -119,10 +116,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('[Auth Session POST] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'AuthSessionPOST');
   }
 }

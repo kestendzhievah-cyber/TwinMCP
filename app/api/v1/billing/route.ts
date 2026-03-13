@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuth } from '@/lib/firebase-admin-auth';
 import { PLAN_CONFIG, resolvePlanId, type PlanId } from '@/lib/services/stripe-billing.service';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 function getPlanDetails(planId: string) {
   const resolved = resolvePlanId(planId);
@@ -22,10 +24,7 @@ export async function GET(request: NextRequest) {
     const auth = await validateAuth(request.headers.get('authorization'));
 
     if (!auth.valid || !auth.userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     const userId = auth.userId;
@@ -171,8 +170,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    logger.error('Billing API error:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'V1Billing');
   }
 }
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authService } from '@/lib/mcp/middleware/auth';
 import { getMetrics } from '@/lib/mcp/utils/metrics';
 import { getQueue } from '@/lib/mcp/utils/queue';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET /api/v1/mcp/metrics - Métriques système et outils
 export async function GET(request: NextRequest) {
@@ -71,15 +72,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(metrics);
-  } catch (error: any) {
-    logger.error('Metrics error:', error);
-    const statusCode = error.statusCode || 500;
-    return NextResponse.json(
-      {
-        error: statusCode === 401 ? 'Authentication required' : statusCode < 500 ? 'Request failed' : 'Failed to retrieve metrics',
-        apiVersion: 'v1',
-      },
-      { status: statusCode }
-    );
+  } catch (error) {
+    return handleApiError(error, 'McpMetrics');
   }
 }

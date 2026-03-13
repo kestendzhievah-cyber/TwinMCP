@@ -1,6 +1,8 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 const MAX_AUDIO_SIZE = 25 * 1024 * 1024; // 25MB (Whisper limit)
 
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const voiceService = await getVoiceService();
@@ -36,11 +38,7 @@ export async function POST(req: NextRequest) {
     const transcription = await voiceService.transcribe(audioBuffer);
 
     return NextResponse.json({ transcription });
-  } catch (error: any) {
-    logger.error('Error transcribing audio:', error);
-    return NextResponse.json(
-      { error: 'Failed to transcribe audio' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error, 'VoiceTranscribe');
   }
 }

@@ -2,12 +2,14 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const conversationId = (await params).id;
@@ -29,8 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     return NextResponse.json({ conversation });
   } catch (error) {
-    logger.error('Error fetching conversation:', error);
-    return NextResponse.json({ error: 'Failed to fetch conversation' }, { status: 500 });
+    return handleApiError(error, 'GetChatConversation');
   }
 }
 
@@ -38,7 +39,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     const userId = await getAuthUserId(req.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const conversationId = (await params).id;
@@ -61,7 +62,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error('Error deleting conversation:', error);
-    return NextResponse.json({ error: 'Failed to delete conversation' }, { status: 500 });
+    return handleApiError(error, 'DeleteChatConversation');
   }
 }

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { UserAuthService } from '@/lib/services/user-auth.service';
+import { handleApiError } from '@/lib/api-error-handler';
 import {
   checkRateLimit,
   RATE_LIMIT_CONFIGS,
@@ -126,10 +127,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('[Auth Verify] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'SERVER_ERROR' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'AuthVerify');
   }
 }

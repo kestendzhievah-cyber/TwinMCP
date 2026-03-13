@@ -4,12 +4,14 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      throw new AuthenticationError();
     }
     const { costMonitorService } = await import('@/src/services/embeddings/cost-monitor.service');
 
@@ -33,9 +35,6 @@ export async function GET(request: NextRequest) {
       alerts: costMonitorService.getAlerts().slice(-20),
     });
   } catch (error) {
-    return NextResponse.json(
-      { status: 'error', message: 'Failed to fetch cost data' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'MonitoringCosts');
   }
 }

@@ -2,6 +2,8 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
+import { AuthenticationError } from '@/lib/errors';
+import { handleApiError } from '@/lib/api-error-handler';
 
 // GET - Get real-time usage statistics
 export async function GET(request: NextRequest) {
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!auth.valid) {
-      return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const userId = auth.userId!;
@@ -192,7 +194,6 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    logger.error('Usage stats error:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 'V1UsageStats');
   }
 }
