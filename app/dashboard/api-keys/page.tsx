@@ -44,21 +44,34 @@ export default function ApiKeysPage() {
   const [revokingKey, setRevokingKey] = useState<string | null>(null);
   const [revokeConfirm, setRevokeConfirm] = useState<{ id: string; name: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [dbUnavailable, setDbUnavailable] = useState(false);
 
   // Chargement des clés API depuis le backend
   const loadApiKeys = useCallback(async () => {
     setLoading(true);
+    setDbUnavailable(false);
     try {
       const result = await apiClient.getApiKeys();
 
       if (result.success && Array.isArray(result.data)) {
         setApiKeys(result.data);
+      } else if (result.code === 'DB_UNAVAILABLE') {
+        setDbUnavailable(true);
+        setApiKeys([]);
       } else {
         console.error('API Error:', result.error);
+        setErrorMessage(result.error || 'Erreur lors du chargement des cl\u00e9s API');
+        setTimeout(() => setErrorMessage(null), 6000);
         setApiKeys([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading API keys:', error);
+      if (error.message?.includes('503') || error.message?.includes('indisponible')) {
+        setDbUnavailable(true);
+      } else {
+        setErrorMessage(error.message || 'Erreur de connexion');
+        setTimeout(() => setErrorMessage(null), 6000);
+      }
       setApiKeys([]);
     } finally {
       setLoading(false);
@@ -77,8 +90,6 @@ export default function ApiKeysPage() {
       const result = await apiClient.createApiKey(newKeyName.trim());
 
       if (result.success && result.data) {
-        // result.data.key = the full raw API key (only shown once)
-        // result.data.id = the database record ID
         setNewApiKey({
           key: result.data.key,
           prefix: result.data.keyPrefix,
@@ -86,11 +97,11 @@ export default function ApiKeysPage() {
         setShowCreateModal(false);
         setNewKeyName('');
 
-        // Ajouter la clé à la liste locale
         const newKey: ApiKey = {
           id: result.data.id,
           keyPrefix: result.data.keyPrefix,
           name: result.data.name || newKeyName.trim(),
+          tier: result.data.tier,
           quotaRequestsPerMinute: result.data.quotaRequestsPerMinute || 20,
           quotaRequestsPerDay: result.data.quotaRequestsPerDay || 200,
           createdAt: result.data.createdAt,
@@ -98,8 +109,12 @@ export default function ApiKeysPage() {
         };
 
         setApiKeys(prev => [newKey, ...prev]);
+      } else if (result.code === 'DB_UNAVAILABLE') {
+        setDbUnavailable(true);
+        setShowCreateModal(false);
       } else {
-        throw new Error(result.error || 'Failed to create API key');
+        setErrorMessage(result.error || 'Impossible de cr\u00e9er la cl\u00e9 API');
+        setTimeout(() => setErrorMessage(null), 6000);
       }
     } catch (error) {
       console.error('Error creating API key:', error);
@@ -118,8 +133,11 @@ export default function ApiKeysPage() {
 
       if (result.success) {
         setApiKeys(prev => prev.filter(key => key.id !== keyId));
+      } else if (result.code === 'DB_UNAVAILABLE') {
+        setDbUnavailable(true);
       } else {
-        throw new Error(result.error || 'Failed to revoke API key');
+        setErrorMessage(result.error || 'Impossible de r\u00e9voquer la cl\u00e9 API');
+        setTimeout(() => setErrorMessage(null), 6000);
       }
     } catch (error) {
       console.error('Error revoking API key:', error);
@@ -200,6 +218,27 @@ export default function ApiKeysPage() {
           </button>
         </div>
       </div>
+
+      {/* DB Unavailable Banner */}
+      {dbUnavailable && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-5 flex items-center gap-4">
+          <AlertTriangle className="w-6 h-6 text-yellow-400 flex-shrink-0" />
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-yellow-300">Base de donn\u00e9es indisponible</h3>
+            <p className="text-sm text-yellow-400/80 mt-0.5">
+              La base de donn\u00e9es n&apos;est pas accessible. Les cl\u00e9s API ne peuvent pas \u00eatre charg\u00e9es pour le moment.
+            </p>
+          </div>
+          <button
+            onClick={loadApiKeys}
+            disabled={loading}
+            className="px-4 py-2 bg-yellow-500/20 text-yellow-300 text-sm font-medium rounded-lg hover:bg-yellow-500/30 transition disabled:opacity-50 flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            R\u00e9essayer
+          </button>
+        </div>
+      )}
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

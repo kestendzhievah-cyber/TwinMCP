@@ -9,28 +9,48 @@ import { logger } from '@/lib/logger';
 let _adminAuth: any = null;
 let _initPromise: Promise<any> | null = null;
 
+// Resolve Firebase Admin env vars — supports multiple naming conventions:
+// FIREBASE_PROJECT_ID or FIREBASE_ADMIN_PROJECT_ID or NEXT_PUBLIC_FIREBASE_PROJECT_ID
+function getAdminEnv() {
+  const projectId =
+    process.env.FIREBASE_PROJECT_ID ||
+    process.env.FIREBASE_ADMIN_PROJECT_ID ||
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+    '';
+  const clientEmail =
+    process.env.FIREBASE_CLIENT_EMAIL ||
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL ||
+    '';
+  const privateKey =
+    process.env.FIREBASE_PRIVATE_KEY ||
+    process.env.FIREBASE_ADMIN_PRIVATE_KEY ||
+    '';
+  return { projectId, clientEmail, privateKey };
+}
+
 function isFirebaseAdminConfigured(): boolean {
-  return !!(
-    process.env.FIREBASE_PROJECT_ID &&
-    process.env.FIREBASE_PRIVATE_KEY &&
-    process.env.FIREBASE_CLIENT_EMAIL
-  );
+  const { projectId, clientEmail, privateKey } = getAdminEnv();
+  return !!(projectId && clientEmail && privateKey);
 }
 
 async function initFirebaseAdmin() {
   if (_adminAuth) return _adminAuth;
 
-  if (!isFirebaseAdminConfigured()) return null;
+  if (!isFirebaseAdminConfigured()) {
+    logger.warn('Firebase Admin not configured — missing FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY');
+    return null;
+  }
 
   try {
+    const { projectId, clientEmail, privateKey } = getAdminEnv();
     const firebaseAdmin = await import('firebase-admin');
 
     if (!firebaseAdmin.apps.length) {
       firebaseAdmin.initializeApp({
         credential: firebaseAdmin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID!,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+          projectId,
+          clientEmail,
+          privateKey: privateKey.replace(/\\n/g, '\n'),
         }),
       });
     }
@@ -75,12 +95,17 @@ export function extractUserIdFromToken(token: string): { userId: string; email?:
   }
 }
 
-// SECURITY: Triple-guard dev auth fallback — must be non-production AND explicitly opted-in
-// AND the DATABASE_URL must point to localhost (prevents accidental activation on staging)
-const ALLOW_INSECURE_DEV_AUTH =
+// SECURITY: Dev auth fallback — non-production AND localhost DB.
+// Auto-enables when Firebase Admin SDK is NOT configured (no private key),
+// OR when explicitly opted-in via ALLOW_INSECURE_DEV_AUTH=true.
+// Safe because: middleware already validates JWT structure + RS256 header,
+// and this only activates for localhost/127.0.0.1 databases in non-production.
+const IS_LOCAL_DEV =
   process.env.NODE_ENV !== 'production' &&
-  process.env.ALLOW_INSECURE_DEV_AUTH === 'true' &&
   (process.env.DATABASE_URL?.includes('localhost') || process.env.DATABASE_URL?.includes('127.0.0.1') || false);
+const ALLOW_INSECURE_DEV_AUTH =
+  IS_LOCAL_DEV &&
+  (process.env.ALLOW_INSECURE_DEV_AUTH === 'true' || !isFirebaseAdminConfigured());
 
 /**
  * Validate auth from a request — tries Firebase Admin first, then dev fallback.

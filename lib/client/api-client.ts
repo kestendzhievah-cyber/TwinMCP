@@ -84,13 +84,14 @@ class ApiClient {
     };
 
     const response = await fetch(url, config);
+    const data = await response.json().catch(() => ({ success: false, error: `HTTP ${response.status}` }));
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      // Return the error payload so callers can check .code and .error
+      return { success: false, error: data.error || `HTTP ${response.status}: ${response.statusText}`, code: data.code, status: response.status, ...data };
     }
 
-    return response.json();
+    return data;
   }
 
   // Méthodes spécifiques pour les clés API

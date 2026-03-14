@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateAuthWithApiKey } from '@/lib/firebase-admin-auth';
 import { AuthenticationError } from '@/lib/errors';
 import { handleApiError } from '@/lib/api-error-handler';
+import { prisma } from '@/lib/prisma';
 import {
   ensureUser,
   getUserTier,
@@ -11,6 +12,21 @@ import {
   revokeApiKey,
   sanitizeKeyName,
 } from '@/lib/services/api-key.service';
+
+async function checkDbHealth(): Promise<boolean> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const DB_UNAVAILABLE_RESPONSE = () =>
+  NextResponse.json(
+    { success: false, error: 'Base de données indisponible. Veuillez réessayer dans quelques instants.', code: 'DB_UNAVAILABLE' },
+    { status: 503 }
+  );
 
 // ─── Auth helper ───
 async function authenticateRequest(
@@ -31,6 +47,8 @@ export async function GET(request: NextRequest) {
     if (!auth) {
       return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
+
+    if (!(await checkDbHealth())) return DB_UNAVAILABLE_RESPONSE();
 
     const user = await ensureUser(auth.userId, auth.email);
     const tier = await getUserTier(user.id);
@@ -61,6 +79,8 @@ export async function POST(request: NextRequest) {
     if (!auth) {
       throw new AuthenticationError();
     }
+
+    if (!(await checkDbHealth())) return DB_UNAVAILABLE_RESPONSE();
 
     const user = await ensureUser(auth.userId, auth.email);
     const tier = await getUserTier(user.id);
@@ -113,6 +133,8 @@ export async function DELETE(request: NextRequest) {
     if (!auth) {
       return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
+
+    if (!(await checkDbHealth())) return DB_UNAVAILABLE_RESPONSE();
 
     const user = await ensureUser(auth.userId, auth.email);
 
