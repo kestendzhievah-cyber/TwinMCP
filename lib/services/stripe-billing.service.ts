@@ -193,6 +193,7 @@ export interface CreateCheckoutParams {
   userName?: string | null;
   successUrl: string;
   cancelUrl: string;
+  stripeCustomerId?: string;
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams) {
@@ -213,12 +214,14 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
     throw new Error('INVALID_PRICE');
   }
 
-  // Get or create Stripe customer
-  const customerId = await getOrCreateStripeCustomer(
-    params.userProfileId,
-    params.userEmail,
-    params.userName
-  );
+  // Get or create Stripe customer — use pre-provided ID if available (DB-less flow)
+  const customerId = params.stripeCustomerId
+    ? params.stripeCustomerId
+    : await getOrCreateStripeCustomer(
+        params.userProfileId,
+        params.userEmail,
+        params.userName
+      );
 
   // Build line items — prefer Stripe Price IDs from env if available
   const envPriceId =
@@ -228,7 +231,7 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
 
   let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
 
-  if (envPriceId && !envPriceId.includes('your-')) {
+  if (envPriceId && !envPriceId.includes('your-') && envPriceId.startsWith('price_')) {
     lineItems = [{ price: envPriceId, quantity: 1 }];
   } else {
     // Create price on the fly (works for testing without pre-created Stripe prices)

@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     let userProfileId: string | null = null;
     let resolvedUserId = userId;
     let resolvedEmail = userEmail;
+    let dbAvailable = true;
 
     // Try to get from auth header first
     const authHeader = req.headers.get('authorization');
@@ -94,7 +95,8 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (e) {
-        logger.warn('User lookup failed during checkout:', e);
+        logger.warn('User lookup failed during checkout (DB may be unavailable):', e);
+        dbAvailable = false;
       }
     }
 
@@ -118,8 +120,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create profile if we still don't have one (anonymous checkout)
-    if (!userProfileId) {
+    // Create profile if we still don't have one and DB is available
+    if (!userProfileId && dbAvailable) {
       try {
         const profile = await prisma.userProfile.create({
           data: {
@@ -130,18 +132,37 @@ export async function POST(req: NextRequest) {
         userProfileId = profile.id;
       } catch {
         // Profile may already exist — scope to anon users to avoid hijacking real profiles
-        const existing = await prisma.userProfile.findFirst({
-          where: { email: resolvedEmail, userId: { startsWith: 'anon_' } },
-        });
-        userProfileId = existing?.id ?? null;
+        try {
+          const existing = await prisma.userProfile.findFirst({
+            where: { email: resolvedEmail, userId: { startsWith: 'anon_' } },
+          });
+          userProfileId = existing?.id ?? null;
+        } catch {
+          logger.warn('DB unavailable for profile lookup fallback');
+          dbAvailable = false;
+        }
       }
     }
 
+    // DB-less fallback: create Stripe customer directly and proceed without DB profile
+    let stripeCustomerId: string | undefined;
     if (!userProfileId) {
-      return NextResponse.json(
-        { error: 'Impossible de créer le profil utilisateur' },
-        { status: 500 }
-      );
+      if (!dbAvailable) {
+        logger.info('[checkout] DB unavailable — creating Stripe customer directly');
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+        const customer = await stripe.customers.create({
+          email: resolvedEmail,
+          name: userName ?? undefined,
+          metadata: { userId: resolvedUserId ?? 'anonymous' },
+        });
+        stripeCustomerId = customer.id;
+        userProfileId = `stripe_${customer.id}`;
+      } else {
+        return NextResponse.json(
+          { error: 'Impossible de créer le profil utilisateur' },
+          { status: 500 }
+        );
+      }
     }
 
     const result = await createCheckoutSession({
@@ -153,6 +174,7 @@ export async function POST(req: NextRequest) {
       userName,
       successUrl: `${req.nextUrl.origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${req.nextUrl.origin}/pricing?canceled=true`,
+      stripeCustomerId,
     });
 
     return NextResponse.json(result);
