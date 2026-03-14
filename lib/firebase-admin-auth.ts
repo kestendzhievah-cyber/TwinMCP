@@ -30,7 +30,16 @@ function getAdminEnv() {
 
 function isFirebaseAdminConfigured(): boolean {
   const { projectId, clientEmail, privateKey } = getAdminEnv();
-  return !!(projectId && clientEmail && privateKey);
+  if (!projectId || !clientEmail || !privateKey) return false;
+
+  // Detect placeholder values from .env.example that were never replaced
+  const placeholders = ['your-', 'YOUR_', 'xxxxx', 'VOTRE-', 'your_project', 'your-project'];
+  if (placeholders.some(p => projectId.includes(p) || clientEmail.includes(p))) return false;
+  if (!privateKey.includes('PRIVATE KEY')) return false;
+  // A real private key is much longer than the placeholder
+  if (privateKey.replace(/\\n/g, '\n').length < 200) return false;
+
+  return true;
 }
 
 async function initFirebaseAdmin() {
@@ -95,16 +104,14 @@ export function extractUserIdFromToken(token: string): { userId: string; email?:
   }
 }
 
-// SECURITY: Dev auth fallback — non-production AND localhost DB.
+// SECURITY: Dev auth fallback — non-production only.
 // Auto-enables when Firebase Admin SDK is NOT configured (no private key),
 // OR when explicitly opted-in via ALLOW_INSECURE_DEV_AUTH=true.
 // Safe because: middleware already validates JWT structure + RS256 header,
-// and this only activates for localhost/127.0.0.1 databases in non-production.
-const IS_LOCAL_DEV =
-  process.env.NODE_ENV !== 'production' &&
-  (process.env.DATABASE_URL?.includes('localhost') || process.env.DATABASE_URL?.includes('127.0.0.1') || false);
+// and this NEVER activates in production (NODE_ENV=production).
+const IS_DEV = process.env.NODE_ENV !== 'production';
 const ALLOW_INSECURE_DEV_AUTH =
-  IS_LOCAL_DEV &&
+  IS_DEV &&
   (process.env.ALLOW_INSECURE_DEV_AUTH === 'true' || !isFirebaseAdminConfigured());
 
 /**
