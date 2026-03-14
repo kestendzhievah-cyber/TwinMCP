@@ -157,7 +157,7 @@ export async function validateAuthWithApiKey(
   authHeader: string | null,
   apiKeyHeader: string | null
 ): Promise<
-  { valid: true; userId: string; email?: string; tier?: string } | { valid: false; error: string }
+  { valid: true; userId: string; email?: string; tier?: string; apiKeyId?: string } | { valid: false; error: string }
 > {
   // 1) Try Firebase JWT first
   if (authHeader?.startsWith('Bearer ')) {
@@ -201,7 +201,7 @@ export async function validateAuthWithApiKey(
 
 async function _validateApiKeyHash(
   apiKey: string
-): Promise<{ valid: true; userId: string; tier?: string } | { valid: false; error: string }> {
+): Promise<{ valid: true; userId: string; tier?: string; apiKeyId: string } | { valid: false; error: string }> {
   try {
     const { prisma } = await import('@/lib/prisma');
     const keyHash = createHash('sha256').update(apiKey).digest('hex');
@@ -218,13 +218,23 @@ async function _validateApiKeyHash(
       return { valid: false, error: 'API key has expired' };
     }
 
+    // Enforce daily quota
+    if (key.quotaDaily > 0 && key.usedDaily >= key.quotaDaily) {
+      return { valid: false, error: 'Daily quota exceeded. Upgrade your plan for higher limits.' };
+    }
+
+    // Enforce monthly quota
+    if (key.quotaMonthly > 0 && key.usedMonthly >= key.quotaMonthly) {
+      return { valid: false, error: 'Monthly quota exceeded. Upgrade your plan for higher limits.' };
+    }
+
     // Update lastUsedAt (fire-and-forget, non-blocking)
     prisma.apiKey.update({
       where: { id: key.id },
       data: { lastUsedAt: new Date() },
     }).catch(() => {});
 
-    return { valid: true, userId: key.userId, tier: key.tier };
+    return { valid: true, userId: key.userId, tier: key.tier, apiKeyId: key.id };
   } catch (error) {
     logger.error('API key validation error:', error);
     return { valid: false, error: 'Authentication failed' };
