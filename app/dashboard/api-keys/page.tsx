@@ -16,6 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { apiClient } from '@/lib/client/api-client';
+import { useAuth } from '@/lib/auth-context';
 
 interface ApiKey {
   id: string;
@@ -34,6 +35,7 @@ interface ApiKey {
 }
 
 export default function ApiKeysPage() {
+  const { user, loading: authLoading } = useAuth();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -79,8 +81,14 @@ export default function ApiKeysPage() {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return; // Wait for Firebase auth to resolve
+    if (!user) {
+      setLoading(false);
+      setErrorMessage('Veuillez vous connecter pour g\u00e9rer vos cl\u00e9s API');
+      return;
+    }
     loadApiKeys();
-  }, [loadApiKeys]);
+  }, [loadApiKeys, user, authLoading]);
 
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;
