@@ -1,7 +1,7 @@
 /**
  * API Key Service — Single source of truth for all API key operations.
- * Centralizes: creation, validation, revocation, listing, plan limits.
- * Eliminates duplication across api-keys/route.ts, v1/api-keys/route.ts, auth.service.ts.
+ * Startup-grade: creation, validation, revocation, listing, rename, expiration,
+ * usage tracking, analytics, daily counter reset.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -25,6 +25,17 @@ export function getApiKeyLimits(plan: string) {
 }
 
 export type ApiKeyLimits = ReturnType<typeof getApiKeyLimits>;
+
+// ─── Expiration presets ───────────────────────────────────────────
+export const EXPIRATION_PRESETS = {
+  '30d': { label: '30 jours', days: 30 },
+  '90d': { label: '90 jours', days: 90 },
+  '180d': { label: '6 mois', days: 180 },
+  '365d': { label: '1 an', days: 365 },
+  never: { label: 'Jamais', days: 0 },
+} as const;
+
+export type ExpirationPreset = keyof typeof EXPIRATION_PRESETS;
 
 // ─── Ensure user exists in DB (idempotent) ────────────────────────
 export async function ensureUser(userId: string, email?: string) {
@@ -99,6 +110,7 @@ export interface CreateKeyResult {
     tier: string;
     quotaRequestsPerDay: number;
     quotaRequestsPerMinute: number;
+    expiresAt: string | null;
     createdAt: string;
     usage: { requestsToday: number; requestsThisHour: number; successRate: number };
   };
@@ -114,9 +126,20 @@ export interface CreateKeyError {
 export async function createApiKey(
   userId: string,
   name: string,
-  tier: PlanId
+  tier: PlanId,
+  expiresIn?: ExpirationPreset
 ): Promise<CreateKeyResult | CreateKeyError> {
   const limits = getApiKeyLimits(tier);
+
+  // Compute expiration date
+  let expiresAt: Date | null = null;
+  if (expiresIn && expiresIn !== 'never') {
+    const preset = EXPIRATION_PRESETS[expiresIn];
+    if (preset && preset.days > 0) {
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + preset.days);
+    }
+  }
 
   // Atomic check: use a transaction to prevent race condition on key count
   try {
@@ -151,6 +174,7 @@ export async function createApiKey(
           quotaDaily: limits.dailyLimit,
           quotaMonthly: limits.monthlyLimit,
           permissions: ['read', 'write'],
+          expiresAt,
         },
       });
 
@@ -164,6 +188,7 @@ export async function createApiKey(
           tier: apiKey.tier,
           quotaRequestsPerDay: limits.dailyLimit,
           quotaRequestsPerMinute: limits.rateLimit,
+          expiresAt: apiKey.expiresAt?.toISOString() || null,
           createdAt: apiKey.createdAt.toISOString(),
           usage: { requestsToday: 0, requestsThisHour: 0, successRate: 100 },
         },
@@ -175,6 +200,7 @@ export async function createApiKey(
       userId,
       keyId: result.success ? result.apiKey.id : undefined,
       tier,
+      expiresAt: expiresAt?.toISOString() || 'never',
       action: 'CREATE',
     });
 
@@ -231,7 +257,7 @@ export async function listApiKeys(userId: string, tier: PlanId) {
   const apiKeys = await prisma.apiKey.findMany({
     where: { userId, isActive: true, revokedAt: null },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, keyPrefix: true, name: true, tier: true, createdAt: true, lastUsedAt: true },
+    select: { id: true, keyPrefix: true, name: true, tier: true, expiresAt: true, createdAt: true, lastUsedAt: true },
   });
 
   // Batch stats: groupBy instead of N+1 queries
@@ -299,6 +325,7 @@ export async function listApiKeys(userId: string, tier: PlanId) {
     tier: key.tier,
     quotaRequestsPerDay: limits.dailyLimit,
     quotaRequestsPerMinute: limits.rateLimit,
+    expiresAt: key.expiresAt?.toISOString() || null,
     createdAt: key.createdAt.toISOString(),
     lastUsedAt: key.lastUsedAt?.toISOString() || null,
     usage: {
@@ -309,6 +336,263 @@ export async function listApiKeys(userId: string, tier: PlanId) {
   }));
 
   return { keys: keysWithStats, limits };
+}
+
+// ─── Rename API key ──────────────────────────────────────────────
+export async function renameApiKey(
+  keyId: string,
+  userId: string,
+  newName: string
+): Promise<{ success: boolean; error?: string; status?: number }> {
+  const nameResult = sanitizeKeyName(newName);
+  if (!nameResult.valid) {
+    return { success: false, error: nameResult.error, status: 400 };
+  }
+
+  const key = await prisma.apiKey.findFirst({
+    where: { id: keyId, userId, isActive: true, revokedAt: null },
+    select: { id: true },
+  });
+
+  if (!key) {
+    return { success: false, error: 'API key not found', status: 404 };
+  }
+
+  await prisma.apiKey.update({
+    where: { id: keyId },
+    data: { name: nameResult.name },
+  });
+
+  logger.info('[api-key] Key renamed', { userId, keyId, newName: nameResult.name, action: 'RENAME' });
+  return { success: true };
+}
+
+// ─── Get single API key detail ───────────────────────────────────
+export async function getApiKeyDetail(keyId: string, userId: string) {
+  const key = await prisma.apiKey.findFirst({
+    where: { id: keyId, userId },
+    select: {
+      id: true,
+      keyPrefix: true,
+      name: true,
+      tier: true,
+      quotaDaily: true,
+      quotaMonthly: true,
+      usedDaily: true,
+      usedMonthly: true,
+      isActive: true,
+      expiresAt: true,
+      createdAt: true,
+      lastUsedAt: true,
+      revokedAt: true,
+      permissions: true,
+    },
+  });
+
+  if (!key) return null;
+
+  const limits = getApiKeyLimits(key.tier);
+  return {
+    ...key,
+    quotaRequestsPerDay: limits.dailyLimit,
+    quotaRequestsPerMinute: limits.rateLimit,
+    createdAt: key.createdAt.toISOString(),
+    lastUsedAt: key.lastUsedAt?.toISOString() || null,
+    expiresAt: key.expiresAt?.toISOString() || null,
+    revokedAt: key.revokedAt?.toISOString() || null,
+  };
+}
+
+// ─── Log API key usage (called by middleware/routes on each API call) ─
+export async function logKeyUsage(opts: {
+  apiKeyId: string;
+  userId: string;
+  toolName: string;
+  query?: string;
+  responseTimeMs?: number;
+  tokensReturned?: number;
+  success: boolean;
+  errorMessage?: string;
+}): Promise<void> {
+  try {
+    // Fire-and-forget: create log + increment counters in parallel
+    await Promise.all([
+      prisma.usageLog.create({
+        data: {
+          apiKeyId: opts.apiKeyId,
+          userId: opts.userId,
+          toolName: opts.toolName,
+          query: opts.query?.substring(0, 500) || null,
+          responseTimeMs: opts.responseTimeMs || null,
+          tokensReturned: opts.tokensReturned || null,
+          success: opts.success,
+          errorMessage: opts.errorMessage?.substring(0, 500) || null,
+        },
+      }),
+      prisma.apiKey.update({
+        where: { id: opts.apiKeyId },
+        data: {
+          usedDaily: { increment: 1 },
+          usedMonthly: { increment: 1 },
+          lastUsedAt: new Date(),
+        },
+      }),
+    ]);
+  } catch (error) {
+    logger.error('[api-key] logKeyUsage failed:', { error, apiKeyId: opts.apiKeyId });
+  }
+}
+
+// ─── Get per-key usage history (last N days) ─────────────────────
+export async function getKeyUsageHistory(
+  keyId: string,
+  userId: string,
+  days: number = 30
+): Promise<{ date: string; requests: number; successes: number; errors: number; avgResponseTime: number }[]> {
+  // Verify ownership
+  const key = await prisma.apiKey.findFirst({
+    where: { id: keyId, userId },
+    select: { id: true },
+  });
+  if (!key) return [];
+
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  since.setHours(0, 0, 0, 0);
+
+  // Raw SQL for date-grouped aggregation (much faster than groupBy on large tables)
+  const rows = await prisma.$queryRaw<
+    { day: Date; total: bigint; successes: bigint; errors: bigint; avg_rt: number | null }[]
+  >`
+    SELECT
+      DATE("created_at") as day,
+      COUNT(*) as total,
+      COUNT(*) FILTER (WHERE success = true) as successes,
+      COUNT(*) FILTER (WHERE success = false) as errors,
+      AVG("response_time_ms") FILTER (WHERE "response_time_ms" IS NOT NULL) as avg_rt
+    FROM usage_logs
+    WHERE api_key_id = ${keyId}
+      AND created_at >= ${since}
+    GROUP BY DATE("created_at")
+    ORDER BY day ASC
+  `;
+
+  return rows.map((r) => ({
+    date: r.day.toISOString().split('T')[0],
+    requests: Number(r.total),
+    successes: Number(r.successes),
+    errors: Number(r.errors),
+    avgResponseTime: Math.round(r.avg_rt || 0),
+  }));
+}
+
+// ─── Get per-key usage analytics (top tools, error breakdown) ────
+export async function getKeyUsageAnalytics(
+  keyId: string,
+  userId: string
+): Promise<{
+  topTools: { tool: string; count: number; successRate: number }[];
+  recentErrors: { tool: string; error: string; at: string }[];
+  totals: { today: number; thisWeek: number; thisMonth: number; allTime: number };
+  avgResponseTime: number;
+} | null> {
+  // Verify ownership
+  const key = await prisma.apiKey.findFirst({
+    where: { id: keyId, userId },
+    select: { id: true },
+  });
+  if (!key) return null;
+
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - 7);
+  weekStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now);
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [topToolsRaw, recentErrors, todayCount, weekCount, monthCount, allTimeCount, avgRt] =
+    await Promise.all([
+      // Top tools
+      prisma.usageLog.groupBy({
+        by: ['toolName', 'success'],
+        where: { apiKeyId: keyId },
+        _count: true,
+        orderBy: { _count: { toolName: 'desc' } },
+      }),
+      // Recent errors
+      prisma.usageLog.findMany({
+        where: { apiKeyId: keyId, success: false },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { toolName: true, errorMessage: true, createdAt: true },
+      }),
+      // Counts
+      prisma.usageLog.count({ where: { apiKeyId: keyId, createdAt: { gte: todayStart } } }),
+      prisma.usageLog.count({ where: { apiKeyId: keyId, createdAt: { gte: weekStart } } }),
+      prisma.usageLog.count({ where: { apiKeyId: keyId, createdAt: { gte: monthStart } } }),
+      prisma.usageLog.count({ where: { apiKeyId: keyId } }),
+      // Avg response time
+      prisma.usageLog.aggregate({
+        where: { apiKeyId: keyId, responseTimeMs: { not: null } },
+        _avg: { responseTimeMs: true },
+      }),
+    ]);
+
+  // Merge tool stats
+  const toolMap = new Map<string, { total: number; success: number }>();
+  for (const row of topToolsRaw) {
+    const entry = toolMap.get(row.toolName) || { total: 0, success: 0 };
+    entry.total += row._count;
+    if (row.success) entry.success += row._count;
+    toolMap.set(row.toolName, entry);
+  }
+  const topTools = Array.from(toolMap.entries())
+    .map(([tool, s]) => ({
+      tool,
+      count: s.total,
+      successRate: s.total > 0 ? Math.round((s.success / s.total) * 1000) / 10 : 100,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  return {
+    topTools,
+    recentErrors: recentErrors.map((e) => ({
+      tool: e.toolName,
+      error: e.errorMessage || 'Unknown error',
+      at: e.createdAt.toISOString(),
+    })),
+    totals: {
+      today: todayCount,
+      thisWeek: weekCount,
+      thisMonth: monthCount,
+      allTime: allTimeCount,
+    },
+    avgResponseTime: Math.round(avgRt._avg.responseTimeMs || 0),
+  };
+}
+
+// ─── Reset daily counters (called by cron or on first request of the day) ─
+export async function resetDailyCounters(): Promise<number> {
+  const result = await prisma.apiKey.updateMany({
+    where: { isActive: true, usedDaily: { gt: 0 } },
+    data: { usedDaily: 0 },
+  });
+  logger.info('[api-key] Daily counters reset', { count: result.count });
+  return result.count;
+}
+
+// ─── Reset monthly counters ──────────────────────────────────────
+export async function resetMonthlyCounters(): Promise<number> {
+  const result = await prisma.apiKey.updateMany({
+    where: { isActive: true, usedMonthly: { gt: 0 } },
+    data: { usedMonthly: 0 },
+  });
+  logger.info('[api-key] Monthly counters reset', { count: result.count });
+  return result.count;
 }
 
 // ─── Timing-safe API key hash comparison ──────────────────────────

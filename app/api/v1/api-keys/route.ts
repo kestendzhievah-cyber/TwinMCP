@@ -97,7 +97,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: nameResult.error }, { status: 400 });
     }
 
-    const result = await createApiKey(user.id, nameResult.name, tier);
+    // Validate expiresIn if provided
+    const validExpirations = ['30d', '90d', '180d', '365d', 'never'] as const;
+    const rawExpires = typeof body?.expiresIn === 'string' ? body.expiresIn : undefined;
+    const expiresIn = rawExpires && (validExpirations as readonly string[]).includes(rawExpires)
+      ? (rawExpires as import('@/lib/services/api-key.service').ExpirationPreset)
+      : undefined;
+
+    const result = await createApiKey(user.id, nameResult.name, tier, expiresIn);
 
     if (!result.success) {
       return NextResponse.json(
@@ -116,6 +123,7 @@ export async function POST(request: NextRequest) {
         tier: result.apiKey.tier,
         quotaRequestsPerDay: result.apiKey.quotaRequestsPerDay,
         quotaRequestsPerMinute: result.apiKey.quotaRequestsPerMinute,
+        expiresAt: result.apiKey.expiresAt,
         createdAt: result.apiKey.createdAt,
         usage: result.apiKey.usage,
       },

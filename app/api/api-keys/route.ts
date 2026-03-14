@@ -102,8 +102,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate expiresIn if provided
+    const validExpirations = ['30d', '90d', '180d', '365d', 'never'] as const;
+    const rawExpires = typeof rawBody?.expiresIn === 'string' ? rawBody.expiresIn : undefined;
+    const expiresIn = rawExpires && (validExpirations as readonly string[]).includes(rawExpires)
+      ? (rawExpires as import('@/lib/services/api-key.service').ExpirationPreset)
+      : undefined;
+
     // Atomic create inside transaction (prevents race condition on key count)
-    const result = await createApiKey(user.id, nameResult.name, tier);
+    const result = await createApiKey(user.id, nameResult.name, tier, expiresIn);
 
     if (!result.success) {
       return NextResponse.json(
@@ -122,6 +129,7 @@ export async function POST(request: NextRequest) {
         tier: result.apiKey.tier,
         quotaRequestsPerDay: result.apiKey.quotaRequestsPerDay,
         quotaRequestsPerMinute: result.apiKey.quotaRequestsPerMinute,
+        expiresAt: result.apiKey.expiresAt,
         createdAt: result.apiKey.createdAt,
         usage: result.apiKey.usage,
       },

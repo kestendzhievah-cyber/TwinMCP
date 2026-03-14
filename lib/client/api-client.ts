@@ -99,10 +99,10 @@ class ApiClient {
     return this.request('/api/api-keys');
   }
 
-  async createApiKey(name: string) {
+  async createApiKey(name: string, expiresIn?: string) {
     return this.request('/api/api-keys', {
       method: 'POST',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, ...(expiresIn && { expiresIn }) }),
     });
   }
 
@@ -110,6 +110,21 @@ class ApiClient {
     return this.request(`/api/api-keys?id=${encodeURIComponent(keyId)}`, {
       method: 'DELETE',
     });
+  }
+
+  async renameApiKey(keyId: string, name: string) {
+    return this.request(`/api/v1/api-keys/${encodeURIComponent(keyId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async getKeyDetail(keyId: string) {
+    return this.request(`/api/v1/api-keys/${encodeURIComponent(keyId)}`);
+  }
+
+  async getKeyUsage(keyId: string, days: number = 30) {
+    return this.request(`/api/v1/api-keys/${encodeURIComponent(keyId)}/usage?days=${days}`);
   }
 
   // Méthodes pour les outils MCP
