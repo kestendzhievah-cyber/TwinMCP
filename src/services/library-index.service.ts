@@ -67,16 +67,18 @@ export class LibraryIndexService {
     
     sqlQuery += ` WHERE ${whereConditions.join(' AND ')}`;
 
-    // Tri
-    const sortMapping = {
-      relevance: 'relevance_score DESC',
-      popularity: 'l.popularity_score DESC',
-      quality: 'l.quality_score DESC',
-      updated: 'l.last_updated_at DESC',
-      downloads: 'l.weekly_downloads DESC'
+    // Tri — whitelist sort/order to prevent SQL injection
+    const sortMapping: Record<string, string> = {
+      relevance: 'relevance_score',
+      popularity: 'l.popularity_score',
+      quality: 'l.quality_score',
+      updated: 'l.last_updated_at',
+      downloads: 'l.weekly_downloads'
     };
+    const safeSort = sortMapping[sort] || 'relevance_score';
+    const safeOrder = order === 'asc' ? 'ASC' : 'DESC';
 
-    sqlQuery += ` ORDER BY ${sortMapping[sort]} ${order.toUpperCase()}`;
+    sqlQuery += ` ORDER BY ${safeSort} ${safeOrder}`;
 
     // Pagination
     sqlQuery += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
