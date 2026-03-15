@@ -183,10 +183,11 @@ export class APIGateway {
         reply.status(503).send(health);
       }
     } catch (error) {
+      this.server.log.error({ err: error }, 'Health check failed');
       reply.status(503).send({
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
-        error: (error as Error).message
+        error: 'Health check failed'
       });
     }
   }

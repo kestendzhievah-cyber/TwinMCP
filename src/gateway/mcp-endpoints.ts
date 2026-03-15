@@ -85,11 +85,10 @@ export class MCPEndpoints {
       
       reply.status(400).send({
         jsonrpc: '2.0',
-        id: (request.body as any).id,
+        id: (request.body as any)?.id ?? null,
         error: {
           code: -32600,
-          message: 'Invalid Request',
-          data: (error as Error).message
+          message: 'Invalid Request'
         }
       });
     }
@@ -137,11 +136,10 @@ export class MCPEndpoints {
       
       reply.status(400).send({
         jsonrpc: '2.0',
-        id: (request.body as any).id,
+        id: (request.body as any)?.id ?? null,
         error: {
           code: -32600,
-          message: 'Invalid Request',
-          data: (error as Error).message
+          message: 'Invalid Request'
         }
       });
     }
