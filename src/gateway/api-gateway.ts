@@ -120,42 +120,36 @@ export class APIGateway {
   }
 
   private async registerPlugins(): Promise<void> {
-    // TODO: Fix plugin version compatibility issues
-    // CORS - Temporarily disabled due to version mismatch
-    // if (this.config.cors.enabled) {
-    //   await this.server.register(import('@fastify/cors'), {
-    //     origin: this.config.cors.origins,
-    //     credentials: this.config.cors.credentials,
-    //     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    //     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
-    //   });
-    // }
+    // CORS — @fastify/cors is installed
+    if (this.config.cors.enabled) {
+      try {
+        const cors = await import('@fastify/cors');
+        await this.server.register(cors.default || cors, {
+          origin: this.config.cors.origins,
+          credentials: this.config.cors.credentials,
+          methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+          allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+        });
+        this.server.log.info('CORS plugin registered');
+      } catch (err) {
+        this.server.log.warn('Could not register @fastify/cors, falling back to manual headers');
+        this.server.addHook('onRequest', async (_request, reply) => {
+          reply.header('Access-Control-Allow-Origin', this.config.cors.origins?.[0] || '*');
+          reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+          reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+        });
+      }
+    }
 
-    // Rate limiting global - Temporarily disabled due to version mismatch
-    // if (this.config.rateLimit.enabled) {
-    //   await this.server.register(import('@fastify/rate-limit'), {
-    //     max: this.config.rateLimit.globalLimit,
-    //     timeWindow: this.config.rateLimit.windowMs,
-    //     keyGenerator: (request) => request.ip,
-    //     errorResponseBuilder: (_request, context) => ({
-    //       statusCode: 429,
-    //       error: 'Too Many Requests',
-    //       message: `Rate limit exceeded, try again in ${context.ttl} seconds`,
-    //       ttl: context.ttl
-    //     })
-    //   });
-    // }
-
-    // Helmet pour sécurité - Temporarily disabled due to version mismatch
-    // await this.server.register(import('@fastify/helmet'), {
-    //   contentSecurityPolicy: false, // Désactivé pour API
-    //   crossOriginEmbedderPolicy: false
-    // });
-
-    // Compression - Temporarily disabled due to version mismatch
-    // await this.server.register(import('@fastify/compress'), {
-    //   threshold: 1024
-    // });
+    // Security headers (replaces @fastify/helmet which is not installed)
+    this.server.addHook('onSend', async (_request, reply) => {
+      reply.header('X-Content-Type-Options', 'nosniff');
+      reply.header('X-Frame-Options', 'DENY');
+      reply.header('X-XSS-Protection', '0');
+      reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+      reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+      reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    });
   }
 
   private setupRoutes(): void {

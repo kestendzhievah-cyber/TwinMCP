@@ -158,58 +158,60 @@ export class OAuthRoutes {
   }
 
   private async jwksHandler(_request: any, reply: any) {
-    // Pour l'instant, nous utilisons HS256 (symétrique)
-    // Si nous passons à RS256 (asymétrique), nous devrons générer des clés RSA
+    // HS256 uses a symmetric secret — NEVER expose it via JWKS.
+    // JWKS is designed for asymmetric keys (RS256, ES256).
+    // Return an empty key set with a note that HS256 secrets are out-of-band.
     const jwks = {
-      keys: [
-        {
-          kty: 'oct', // Octet string sequence (pour HS256)
-          alg: 'HS256',
-          use: 'sig',
-          kid: '1',
-          k: process.env['JWT_SECRET'] ? Buffer.from(process.env['JWT_SECRET']).toString('base64url') : ''
-        }
-      ]
+      keys: []
     };
 
     reply.header('Content-Type', 'application/json');
-    reply.header('Cache-Control', 'public, max-age=86400'); // 24 heures
+    reply.header('Cache-Control', 'public, max-age=86400');
     return reply.send(jwks);
   }
 
   private async listClientsHandler(_request: any, reply: any) {
     // TODO: Implémenter la liste des clients OAuth
-    reply.send({
-      clients: [],
-      message: 'Endpoint à implémenter'
+    return reply.code(501).send({
+      success: false,
+      error: 'Not implemented',
+      message: 'OAuth client management is not yet available'
     });
   }
 
   private async createClientHandler(_request: any, reply: any) {
     // TODO: Implémenter la création de clients OAuth
-    reply.send({
-      message: 'Endpoint à implémenter'
+    return reply.code(501).send({
+      success: false,
+      error: 'Not implemented',
+      message: 'OAuth client creation is not yet available'
     });
   }
 
   private async revokeUserTokensHandler(_request: any, reply: any) {
     // TODO: Implémenter la révocation des tokens utilisateur
-    reply.send({
-      message: 'Endpoint à implémenter'
+    return reply.code(501).send({
+      success: false,
+      error: 'Not implemented',
+      message: 'Token revocation is not yet available'
     });
   }
 
   private async cleanupTokensHandler(_request: any, reply: any) {
     // TODO: Implémenter le nettoyage des tokens expirés
-    reply.send({
-      message: 'Endpoint à implémenter'
+    return reply.code(501).send({
+      success: false,
+      error: 'Not implemented',
+      message: 'Token cleanup is not yet available'
     });
   }
 
   private async oauthStatsHandler(_request: any, reply: any) {
     // TODO: Implémenter les statistiques OAuth
-    reply.send({
-      message: 'Endpoint à implémenter'
+    return reply.code(501).send({
+      success: false,
+      error: 'Not implemented',
+      message: 'OAuth statistics are not yet available'
     });
   }
 

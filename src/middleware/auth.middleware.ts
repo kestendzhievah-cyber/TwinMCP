@@ -1,10 +1,30 @@
 import { logger } from '../utils/logger';
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { verify, JwtPayload } from 'jsonwebtoken';
+
+function getJwtSecret(): string {
+  const secret = process.env['JWT_SECRET'];
+  if (!secret || secret.length < 32) {
+    throw new Error('JWT_SECRET is not configured or too short (min 32 chars)');
+  }
+  return secret;
+}
+
+function verifyToken(token: string): { id: string; email?: string } {
+  const secret = getJwtSecret();
+  const decoded = verify(token, secret, { algorithms: ['HS256'] }) as JwtPayload;
+
+  const userId = decoded.sub || decoded.userId || decoded.id;
+  if (!userId || typeof userId !== 'string') {
+    throw new Error('Token missing subject (sub) claim');
+  }
+
+  return { id: userId, email: decoded.email };
+}
 
 export const authMiddleware = {
   required: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // Vérifier l'en-tête d'autorisation
       const authHeader = request.headers.authorization;
       
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -15,23 +35,18 @@ export const authMiddleware = {
       }
 
       const token = authHeader.split(' ')[1];
-      
-      // TODO: Implémenter la vérification JWT ici
-      // Pour l'instant, simulation basique
-      if (!token || token === 'invalid') {
+      if (!token) {
         return reply.code(401).send({
           success: false,
           error: 'Invalid token'
         });
       }
 
-      // Ajouter les informations utilisateur à la requête
-      (request as any).user = {
-        id: 'user-123', // TODO: Extraire du token JWT
-        email: 'user@example.com'
-      };
+      const user = verifyToken(token);
+      (request as any).user = user;
 
     } catch (error) {
+      logger.warn('Auth middleware rejection:', error instanceof Error ? error.message : 'Unknown error');
       return reply.code(401).send({
         success: false,
         error: 'Authentication failed'
@@ -45,18 +60,14 @@ export const authMiddleware = {
       
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
-        
-        // TODO: Implémenter la vérification JWT ici
-        if (token && token !== 'invalid') {
-          (request as any).user = {
-            id: 'user-123', // TODO: Extraire du token JWT
-            email: 'user@example.com'
-          };
+        if (token) {
+          const user = verifyToken(token);
+          (request as any).user = user;
         }
       }
     } catch (error) {
       // L'authentification optionnelle ne doit pas bloquer la requête
-      logger.error('Optional auth error:', error);
+      logger.warn('Optional auth failed (non-blocking):', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 };
