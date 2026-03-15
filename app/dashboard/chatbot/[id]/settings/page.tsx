@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import {
   Bot,
   ArrowLeft,
@@ -98,6 +99,7 @@ export default function EditChatbotPage() {
   const router = useRouter();
   const params = useParams();
   const chatbotId = params.id as string;
+  const { user } = useAuth();
 
   // États de chargement
   const [loadState, setLoadState] = useState<LoadingState>('idle');
@@ -125,7 +127,15 @@ export default function EditChatbotPage() {
       setLoadState('loading');
 
       try {
-        const response = await fetch(`/api/chatbot/${chatbotId}`);
+        let token = '';
+        if (user) {
+          try { token = await user.getIdToken(); } catch { /* continue without token */ }
+        }
+        const response = await fetch(`/api/chatbot/${chatbotId}`, {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        });
 
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
@@ -197,10 +207,15 @@ export default function EditChatbotPage() {
     setSaveState('loading');
 
     try {
+      let token = '';
+      if (user) {
+        try { token = await user.getIdToken(); } catch { /* continue without token */ }
+      }
       const response = await fetch(`/api/chatbot/${chatbotId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify(formData),
       });

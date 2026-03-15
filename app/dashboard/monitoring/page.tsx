@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import {
   Activity,
   AlertTriangle,
@@ -188,6 +189,7 @@ function ProgressBar({
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function MonitoringPage() {
+  const { user } = useAuth();
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [healthChecks, setHealthChecks] = useState<HealthCheck[]>([]);
@@ -200,14 +202,25 @@ export default function MonitoringPage() {
   const [expandedService, setExpandedService] = useState<string | null>(null);
   const [alertFilter, setAlertFilter] = useState<string>('all');
 
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (!user) return {};
+    try {
+      const token = await user.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    } catch {
+      return {};
+    }
+  }, [user]);
+
   const fetchData = useCallback(async () => {
     try {
       setError(null);
+      const headers = await getAuthHeaders();
       const [statusRes, alertsRes, healthRes, slosRes] = await Promise.allSettled([
-        fetch('/api/monitoring/status'),
-        fetch('/api/monitoring/alerts'),
-        fetch('/api/monitoring/health'),
-        fetch('/api/monitoring/slos'),
+        fetch('/api/monitoring/status', { headers }),
+        fetch('/api/monitoring/alerts', { headers }),
+        fetch('/api/monitoring/health', { headers }),
+        fetch('/api/monitoring/slos', { headers }),
       ]);
 
       if (statusRes.status === 'fulfilled' && statusRes.value.ok) {
@@ -232,7 +245,7 @@ export default function MonitoringPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAuthHeaders]);
 
   useEffect(() => {
     fetchData();
@@ -250,10 +263,10 @@ export default function MonitoringPage() {
 
   const handleAcknowledge = async (alertId: string) => {
     try {
+      const headers = await getAuthHeaders();
       await fetch(`/api/monitoring/alerts/${alertId}/acknowledge`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'admin' }),
+        headers: { ...headers, 'Content-Type': 'application/json' },
       });
       fetchData();
     } catch (err) {
@@ -263,10 +276,10 @@ export default function MonitoringPage() {
 
   const handleResolve = async (alertId: string) => {
     try {
+      const headers = await getAuthHeaders();
       await fetch(`/api/monitoring/alerts/${alertId}/resolve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'admin' }),
+        headers: { ...headers, 'Content-Type': 'application/json' },
       });
       fetchData();
     } catch (err) {

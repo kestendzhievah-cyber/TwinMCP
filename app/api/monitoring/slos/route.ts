@@ -5,6 +5,15 @@ import { getAuthUserId } from '@/lib/firebase-admin-auth';
 import { AuthenticationError } from '@/lib/errors';
 import { handleApiError } from '@/lib/api-error-handler';
 
+function safeParse(value: unknown, fallback: unknown = null): unknown {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try { return JSON.parse(value); } catch { return fallback; }
+  }
+  return fallback;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
@@ -33,8 +42,8 @@ export async function GET(request: NextRequest) {
           indicator: row.indicator,
           target: parseFloat(row.target),
           window: row.window,
-          alerting: JSON.parse(row.alerting),
-          current: JSON.parse(row.current),
+          alerting: safeParse(row.alerting, {}),
+          current: safeParse(row.current, {}),
           createdAt: row.created_at,
           updatedAt: row.updated_at,
         })),
@@ -52,8 +61,8 @@ export async function GET(request: NextRequest) {
           indicator: row.indicator,
           target: parseFloat(row.target),
           window: row.window,
-          alerting: JSON.parse(row.alerting),
-          current: JSON.parse(row.current),
+          alerting: safeParse(row.alerting, {}),
+          current: safeParse(row.current, {}),
           createdAt: row.created_at,
           updatedAt: row.updated_at,
         })),
