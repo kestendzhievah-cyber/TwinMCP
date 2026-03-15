@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { sendPasswordResetEmail, deleteUser } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth as firebaseAuth } from '@/lib/firebase';
 import {
   Settings,
@@ -705,8 +705,22 @@ export default function SettingsPage() {
                           if (deleteConfirmText !== 'SUPPRIMER') return;
                           setDeleteLoading(true);
                           try {
-                            if (firebaseAuth?.currentUser) {
-                              await deleteUser(firebaseAuth.currentUser);
+                            // Call API to delete all DB data + Firebase user (RGPD)
+                            let token = '';
+                            if (user) {
+                              try { token = await user.getIdToken(); } catch { /* continue */ }
+                            }
+                            const res = await fetch('/api/account/delete', {
+                              method: 'DELETE',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                ...(token && { Authorization: `Bearer ${token}` }),
+                              },
+                              body: JSON.stringify({ confirm: true }),
+                            });
+                            if (!res.ok) {
+                              const data = await res.json().catch(() => ({}));
+                              throw new Error(data.error || 'Erreur lors de la suppression');
                             }
                             await logout();
                             router.push('/auth');
