@@ -81,7 +81,10 @@ export async function DELETE(request: NextRequest) {
       await tx.usageLog.deleteMany({ where: { userId } });
       await tx.apiKey.deleteMany({ where: { userId } });
 
-      // 4. Delete OAuth tokens
+      // 4. Delete OAuth tokens and authorization data
+      await tx.oAuthRefreshToken.deleteMany({ where: { userId } });
+      await tx.oAuthAccessToken.deleteMany({ where: { userId } });
+      await tx.oAuthAuthorizationCode.deleteMany({ where: { userId } });
       await tx.oAuthToken.deleteMany({ where: { userId } });
 
       // 5. Delete MCP configurations, external MCP servers, and MCP tool data
@@ -93,10 +96,24 @@ export async function DELETE(request: NextRequest) {
       await tx.mcpToolUsageLog.deleteMany({ where: { userId } });
       await tx.mcpToolActivation.deleteMany({ where: { userId } });
 
-      // 6. Delete user profile
+      // 6. Delete billing data (explicitly, not relying on DB cascade)
+      const profile = await tx.userProfile.findUnique({ where: { userId }, select: { id: true } });
+      if (profile) {
+        await tx.payment.deleteMany({ where: { userId: profile.id } });
+        await tx.invoice.deleteMany({ where: { userId: profile.id } });
+        await tx.credit.deleteMany({ where: { userId: profile.id } });
+        await tx.subscription.deleteMany({ where: { userId: profile.id } });
+        await tx.paymentMethod.deleteMany({ where: { userId: profile.id } });
+      }
+      await tx.billingAlert.deleteMany({ where: { userId } });
+
+      // 7. Delete prompt execution history
+      await tx.promptExecution.deleteMany({ where: { userId } });
+
+      // 8. Delete user profile
       await tx.userProfile.deleteMany({ where: { userId } });
 
-      // 7. Finally, delete the user record
+      // 9. Finally, delete the user record
       await tx.user.delete({ where: { id: userId } });
     });
 
