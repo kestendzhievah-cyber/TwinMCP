@@ -58,7 +58,7 @@ export class SSEController {
       logger.error('Stream setup error:', error);
       reply.code(500).send({
         success: false,
-        error: (error as Error).message
+        error: 'Internal server error'
       });
     }
   }
@@ -79,9 +79,10 @@ export class SSEController {
       });
 
     } catch (error) {
+      logger.error('Connection metrics error:', error);
       reply.code(500).send({
         success: false,
-        error: (error as Error).message
+        error: 'Internal server error'
       });
     }
   }
@@ -96,9 +97,10 @@ export class SSEController {
       });
 
     } catch (error) {
+      logger.error('Active connections error:', error);
       reply.code(500).send({
         success: false,
-        error: (error as Error).message
+        error: 'Internal server error'
       });
     }
   }
@@ -115,9 +117,10 @@ export class SSEController {
       });
 
     } catch (error) {
+      logger.error('Close connection error:', error);
       reply.code(500).send({
         success: false,
-        error: (error as Error).message
+        error: 'Internal server error'
       });
     }
   }
@@ -132,9 +135,10 @@ export class SSEController {
       });
 
     } catch (error) {
+      logger.error('System stats error:', error);
       reply.code(500).send({
         success: false,
-        error: (error as Error).message
+        error: 'Internal server error'
       });
     }
   }

@@ -86,17 +86,13 @@ export class OAuthController {
       });
 
     } catch (error) {
-      // Rediriger avec erreur
-      const errorParams = new URLSearchParams({
+      // SECURITY: Do NOT redirect to unvalidated redirect_uri — open redirect vulnerability.
+      // Return a JSON error instead. Only redirect to a validated redirect_uri.
+      request.log.error({ msg: 'OAuth authorization error', error: (error as Error).message });
+      return reply.code(400).send({
         error: 'invalid_request',
-        error_description: (error as Error).message
+        error_description: 'Authorization request failed'
       });
-
-      if ((request.query as any).state) {
-        errorParams.append('state', (request.query as any).state);
-      }
-
-      return reply.redirect(`${(request.query as any).redirect_uri}?${errorParams.toString()}`);
     }
   }
 
@@ -149,17 +145,11 @@ export class OAuthController {
 
     } catch (error) {
       request.log.error({ msg: 'OAuth consent error', error: (error as Error).message });
-      
-      const errorParams = new URLSearchParams({
+      // SECURITY: Do NOT redirect to unvalidated redirect_uri from body.
+      return reply.code(500).send({
         error: 'server_error',
-        error_description: 'Erreur interne du serveur'
+        error_description: 'Internal server error during consent processing'
       });
-
-      if ((request.body as any).state) {
-        errorParams.append('state', (request.body as any).state);
-      }
-
-      return reply.redirect(`${(request.body as any).redirect_uri}?${errorParams.toString()}`);
     }
   }
 
@@ -241,7 +231,7 @@ export class OAuthController {
       
       const errorResponse: OAuthError = {
         error: 'invalid_grant',
-        error_description: (error as Error).message
+        error_description: 'Token request failed'
       };
 
       reply.status(400);
@@ -299,7 +289,7 @@ export class OAuthController {
       reply.status(400);
       return reply.send({
         error: 'invalid_request',
-        error_description: (error as Error).message
+        error_description: 'Token revocation failed'
       });
     }
   }
@@ -349,7 +339,7 @@ export class OAuthController {
       reply.status(400);
       return reply.send({
         error: 'invalid_request',
-        error_description: (error as Error).message
+        error_description: 'Token introspection failed'
       });
     }
   }
