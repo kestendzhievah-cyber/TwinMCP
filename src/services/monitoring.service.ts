@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { EventEmitter } from 'events';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
@@ -589,8 +590,8 @@ export class MonitoringService extends EventEmitter {
           indicator: row.indicator,
           target: row.target,
           window: row.window,
-          alerting: JSON.parse(row.alerting),
-          current: JSON.parse(row.current)
+          alerting: safeParse(row.alerting, {}) as any,
+          current: safeParse(row.current, {}) as any
         };
         this.sloMonitors.set(slo.id, slo);
       }
@@ -690,11 +691,11 @@ export class MonitoringService extends EventEmitter {
   private mapRowToMetrics(row: any): PerformanceMetrics {
     return {
       timestamp: row.timestamp,
-      system: JSON.parse(row.system),
-      application: JSON.parse(row.application),
-      database: JSON.parse(row.database),
-      network: JSON.parse(row.network),
-      business: JSON.parse(row.business)
+      system: safeParse(row.system, {}) as any,
+      application: safeParse(row.application, {}) as any,
+      database: safeParse(row.database, {}) as any,
+      network: safeParse(row.network, {}) as any,
+      business: safeParse(row.business, {}) as any
     };
   }
 

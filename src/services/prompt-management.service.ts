@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import { EventEmitter } from 'events';
@@ -656,12 +657,12 @@ export class PromptManagementService extends EventEmitter {
       version: row.version,
       status: row.status,
       template: row.template,
-      variables: JSON.parse(row.variables),
-      examples: JSON.parse(row.examples),
-      metadata: JSON.parse(row.metadata),
-      constraints: JSON.parse(row.constraints),
-      optimization: JSON.parse(row.optimization),
-      testing: JSON.parse(row.testing),
+      variables: safeParse(row.variables, []) as any,
+      examples: safeParse(row.examples, []) as any,
+      metadata: safeParse(row.metadata, {}) as any,
+      constraints: safeParse(row.constraints, {}) as any,
+      optimization: safeParse(row.optimization, {}) as any,
+      testing: safeParse(row.testing, {}) as any,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

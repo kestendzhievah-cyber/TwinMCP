@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { Pool } from 'pg';
 import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
@@ -593,10 +594,10 @@ export class DownloadManagerService {
 
     return result.rows.map(row => ({
       ...row,
-      source: JSON.parse(row.source),
-      options: JSON.parse(row.options),
-      progress: JSON.parse(row.progress),
-      metadata: JSON.parse(row.metadata || '{}'),
+      source: safeParse(row.source) as any,
+      options: safeParse(row.options, {}) as any,
+      progress: safeParse(row.progress, {}) as any,
+      metadata: safeParse(row.metadata, {}) as any,
     }));
   }
 

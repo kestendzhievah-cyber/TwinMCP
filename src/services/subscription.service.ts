@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
+import { safeParse } from '../utils/safe-parse';
 import { 
   Subscription, 
   SubscriptionStatus, 
@@ -282,7 +283,7 @@ export class SubscriptionService {
       trialEnd: row.trial_end,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse(row.metadata, {}) as any
     };
   }
 
@@ -298,7 +299,7 @@ export class SubscriptionService {
       usedAt: row.used_at,
       invoiceId: row.invoice_id,
       createdAt: row.created_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse(row.metadata, {}) as any
     };
   }
 
@@ -311,10 +312,10 @@ export class SubscriptionService {
       currency: row.currency,
       interval: row.interval as 'month' | 'year',
       features: row.features,
-      limits: JSON.parse(row.limits),
+      limits: safeParse(row.limits, {}) as any,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse(row.metadata, {}) as any
     };
   }
 }

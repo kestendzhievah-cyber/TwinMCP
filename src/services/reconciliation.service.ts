@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
+import { safeParse } from '../utils/safe-parse';
 import { AuditService } from './security/audit.service';
 // @ts-ignore - xlsx may not be installed
 let XLSX: any;
@@ -487,7 +488,7 @@ export class ReconciliationService {
       status: row.status,
       reconciledAt: row.reconciled_at ? new Date(row.reconciled_at) : undefined,
       matchedPaymentId: row.matched_payment_id,
-      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      metadata: safeParse(row.metadata) as any,
     };
   }
 }

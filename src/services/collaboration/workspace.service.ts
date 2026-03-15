@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { nanoid } from 'nanoid';
+import { safeParse } from '../../utils/safe-parse';
 
 export interface WorkspaceOptions {
   settings?: any;
@@ -175,7 +176,7 @@ export class WorkspaceService {
       workspaceId: row.workspace_id,
       userId: row.user_id,
       role: row.role,
-      permissions: JSON.parse(row.permissions),
+      permissions: safeParse(row.permissions, {}) as any,
       joinedAt: row.joined_at
     }));
   }
@@ -193,7 +194,7 @@ export class WorkspaceService {
       name: row.name,
       slug: row.slug,
       ownerId: row.owner_id,
-      settings: JSON.parse(row.settings),
+      settings: safeParse(row.settings, {}) as any,
       plan: row.plan,
       createdAt: row.created_at,
       updatedAt: row.updated_at

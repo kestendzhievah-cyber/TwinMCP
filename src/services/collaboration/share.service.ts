@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { nanoid } from 'nanoid';
+import { safeParse } from '../../utils/safe-parse';
 import QRCode from 'qrcode';
 import bcrypt from 'bcryptjs';
 
@@ -150,7 +151,7 @@ export class ShareService {
       id: row.id,
       conversationId: row.conversation_id,
       createdBy: row.created_by,
-      permissions: JSON.parse(row.permissions),
+      permissions: safeParse(row.permissions, {}) as any,
       password: row.password,
       expiresAt: row.expires_at,
       maxViews: row.max_views,

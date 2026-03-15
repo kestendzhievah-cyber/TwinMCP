@@ -1,4 +1,7 @@
 // src/services/personalization.service.ts
+import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
+import { EventEmitter } from 'events';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import crypto from 'crypto';
@@ -651,12 +654,12 @@ export class PersonalizationService {
       name: row.name,
       description: row.description,
       category: row.category,
-      colors: JSON.parse(row.colors),
-      typography: JSON.parse(row.typography),
-      spacing: JSON.parse(row.spacing),
-      shadows: JSON.parse(row.shadows),
-      borderRadius: JSON.parse(row.border_radius),
-      animations: JSON.parse(row.animations),
+      colors: safeParse(row.colors, {}) as any,
+      typography: safeParse(row.typography, {}) as any,
+      spacing: safeParse(row.spacing, {}) as any,
+      shadows: safeParse(row.shadows, {}) as any,
+      borderRadius: safeParse(row.border_radius, {}) as any,
+      animations: safeParse(row.animations, {}) as any,
       custom: row.custom
     };
   }

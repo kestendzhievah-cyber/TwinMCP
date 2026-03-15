@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
 import { AuditService } from './security/audit.service';
@@ -327,7 +328,7 @@ export class DisputeService {
       description: row.description,
       performedBy: row.performed_by,
       createdAt: new Date(row.created_at),
-      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      metadata: safeParse(row.metadata) as any,
     }));
   }
 
@@ -477,7 +478,7 @@ export class DisputeService {
       updatedAt: new Date(row.updated_at),
       resolvedAt: row.resolved_at ? new Date(row.resolved_at) : undefined,
       resolution: row.resolution,
-      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      metadata: safeParse(row.metadata) as any,
     };
   }
 }

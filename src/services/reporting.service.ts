@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { randomUUID } from 'crypto';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
@@ -785,18 +786,18 @@ export class ReportingService {
       id: row.id,
       name: row.name,
       description: row.description,
-      type: JSON.parse(row.type),
-      category: JSON.parse(row.category),
-      frequency: JSON.parse(row.frequency),
+      type: safeParse(row.type) as any,
+      category: safeParse(row.category) as any,
+      frequency: safeParse(row.frequency) as any,
       status: row.status,
-      config: JSON.parse(row.config),
-      schedule: JSON.parse(row.schedule),
+      config: safeParse(row.config) as any,
+      schedule: safeParse(row.schedule) as any,
       lastRun: row.last_run,
       nextRun: row.next_run,
       createdBy: row.created_by,
-      recipients: JSON.parse(row.recipients),
-      output: JSON.parse(row.output),
-      metadata: JSON.parse(row.metadata)
+      recipients: safeParse(row.recipients, []) as any,
+      output: safeParse(row.output) as any,
+      metadata: safeParse(row.metadata, {}) as any
     };
   }
 
@@ -806,12 +807,12 @@ export class ReportingService {
       name: row.name,
       description: row.description,
       type: row.type,
-      layout: JSON.parse(row.layout),
-      widgets: JSON.parse(row.widgets),
-      filters: JSON.parse(row.filters),
+      layout: safeParse(row.layout) as any,
+      widgets: safeParse(row.widgets, []) as any,
+      filters: safeParse(row.filters, []) as any,
       refreshInterval: row.refresh_interval,
-      permissions: JSON.parse(row.permissions),
-      metadata: JSON.parse(row.metadata)
+      permissions: safeParse(row.permissions, {}) as any,
+      metadata: safeParse(row.metadata, {}) as any
     };
   }
 
@@ -824,15 +825,15 @@ export class ReportingService {
         description: row.type_description || '',
         category: row.type_category || 'general',
         algorithm: row.type_algorithm || 'basic',
-        parameters: row.type_parameters ? JSON.parse(row.type_parameters) : {}
+        parameters: safeParse(row.type_parameters, {}) as any
       },
       title: row.title,
       description: row.description,
       severity: row.severity,
       confidence: row.confidence,
       impact: row.impact,
-      data: JSON.parse(row.data),
-      recommendations: JSON.parse(row.recommendations),
+      data: safeParse(row.data) as any,
+      recommendations: safeParse(row.recommendations, []) as any,
       timestamp: row.timestamp,
       reportId: row.report_id
     };
@@ -851,9 +852,9 @@ export class ReportingService {
       tax: row.tax,
       total: row.total,
       currency: row.currency,
-      items: JSON.parse(row.items),
-      billingAddress: JSON.parse(row.billing_address),
-      metadata: JSON.parse(row.metadata)
+      items: safeParse(row.items, []) as any,
+      billingAddress: safeParse(row.billing_address) as any,
+      metadata: safeParse(row.metadata, {}) as any
     };
   }
 }

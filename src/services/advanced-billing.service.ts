@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
+import { safeParse } from '../utils/safe-parse';
 import { Invoice } from '../types/invoice.types';
 import { InvoiceService } from './invoice.service';
 import { AuditService } from './security/audit.service';
@@ -488,7 +489,7 @@ export class AdvancedBillingService {
       quantity: Number.parseFloat(row.quantity),
       unit: row.unit,
       timestamp: new Date(row.timestamp),
-      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      metadata: safeParse(row.metadata) as any,
     };
   }
 }

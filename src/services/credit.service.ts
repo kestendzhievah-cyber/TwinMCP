@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
+import { safeParse } from '../utils/safe-parse';
 import { AuditService } from './security/audit.service';
 
 export interface Credit {
@@ -451,7 +452,7 @@ export class CreditService {
       status: row.status,
       source: row.source,
       description: row.description,
-      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      metadata: safeParse(row.metadata) as any,
     };
   }
 
@@ -467,7 +468,7 @@ export class CreditService {
       invoiceId: row.invoice_id,
       description: row.description,
       createdAt: new Date(row.created_at),
-      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      metadata: safeParse(row.metadata) as any,
     };
   }
 }

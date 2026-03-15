@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { Pool } from 'pg';
 import { randomUUID } from 'crypto';
 import { 
@@ -66,14 +67,14 @@ export class PaymentService {
       amount: parseFloat(row.amount),
       currency: row.currency,
       status: row.status as PaymentStatus,
-      method: JSON.parse(row.payment_method),
+      method: safeParse(row.payment_method) as any,
       provider: row.provider,
       providerTransactionId: row.provider_transaction_id,
       failureReason: row.failure_reason,
       refundedAmount: row.refunded_amount ? parseFloat(row.refunded_amount) : undefined,
       createdAt: row.created_at,
       processedAt: row.processed_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse(row.metadata, {}) as any
     };
   }
 
@@ -93,14 +94,14 @@ export class PaymentService {
       amount: parseFloat(row.amount),
       currency: row.currency,
       status: row.status as PaymentStatus,
-      method: JSON.parse(row.payment_method),
+      method: safeParse(row.payment_method) as any,
       provider: row.provider,
       providerTransactionId: row.provider_transaction_id,
       failureReason: row.failure_reason,
       refundedAmount: row.refunded_amount ? parseFloat(row.refunded_amount) : undefined,
       createdAt: row.created_at,
       processedAt: row.processed_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse(row.metadata, {}) as any
     };
   }
 
@@ -117,14 +118,14 @@ export class PaymentService {
       amount: parseFloat(row.amount),
       currency: row.currency,
       status: row.status as PaymentStatus,
-      method: JSON.parse(row.payment_method),
+      method: safeParse(row.payment_method) as any,
       provider: row.provider,
       providerTransactionId: row.provider_transaction_id,
       failureReason: row.failure_reason,
       refundedAmount: row.refunded_amount ? parseFloat(row.refunded_amount) : undefined,
       createdAt: row.created_at,
       processedAt: row.processed_at,
-      metadata: JSON.parse(row.metadata)
+      metadata: safeParse(row.metadata, {}) as any
     }));
   }
 

@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { 
   Conversation, 
   ConversationMessage, 
@@ -752,9 +753,9 @@ export class ConversationService {
       title: row.title,
       userId: row.user_id,
       messages: row.messages || [],
-      metadata: JSON.parse(row.metadata),
-      settings: JSON.parse(row.settings),
-      analytics: JSON.parse(row.analytics)
+      metadata: safeParse(row.metadata, {}) as any,
+      settings: safeParse(row.settings, {}) as any,
+      analytics: safeParse(row.analytics, {}) as any
     };
   }
 }

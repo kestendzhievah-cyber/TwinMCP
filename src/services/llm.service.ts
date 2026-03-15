@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
 import { EventEmitter } from 'events';
@@ -227,9 +228,9 @@ export class LLMService extends EventEmitter {
       description: row.description,
       category: row.category,
       template: row.template,
-      variables: JSON.parse(row.variables),
-      examples: JSON.parse(row.examples),
-      metadata: JSON.parse(row.metadata)
+      variables: safeParse(row.variables, []) as any,
+      examples: safeParse(row.examples, []) as any,
+      metadata: safeParse(row.metadata, {}) as any
     } as PromptTemplate;
   }
 

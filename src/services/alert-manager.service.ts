@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { safeParse } from '../utils/safe-parse';
 import { EventEmitter } from 'events';
 import { Pool } from 'pg';
 import { Redis } from 'ioredis';
@@ -526,10 +527,10 @@ export class AlertManager extends EventEmitter {
           name: row.name,
           description: row.description,
           metric: row.metric,
-          threshold: JSON.parse(row.threshold),
+          threshold: safeParse(row.threshold) as any,
           severity: row.severity,
           source: row.source,
-          tags: JSON.parse(row.tags),
+          tags: safeParse(row.tags, []) as any,
           enabled: row.enabled,
           cooldown: row.cooldown
         };
@@ -548,7 +549,7 @@ export class AlertManager extends EventEmitter {
           id: row.id,
           name: row.name,
           type: row.type,
-          config: JSON.parse(row.config),
+          config: safeParse(row.config) as any,
           enabled: row.enabled
         };
         this.notificationChannels.set(channel.id, channel);
@@ -565,7 +566,7 @@ export class AlertManager extends EventEmitter {
         const policy: EscalationPolicy = {
           id: row.id,
           name: row.name,
-          rules: JSON.parse(row.rules),
+          rules: safeParse(row.rules, []) as any,
           enabled: row.enabled
         };
         this.escalationPolicies.set(policy.id, policy);
@@ -591,15 +592,15 @@ export class AlertManager extends EventEmitter {
           status: row.status,
           source: row.source,
           metric: row.metric,
-          threshold: JSON.parse(row.threshold),
+          threshold: safeParse(row.threshold) as any,
           currentValue: row.current_value,
           timestamp: row.created_at,
           acknowledgedAt: row.acknowledged_at,
           resolvedAt: row.resolved_at,
           acknowledgedBy: row.acknowledged_by,
           resolvedBy: row.resolved_by,
-          tags: JSON.parse(row.tags),
-          annotations: JSON.parse(row.annotations || '[]')
+          tags: safeParse(row.tags, []) as any,
+          annotations: safeParse(row.annotations, []) as any
         };
         this.activeAlerts.set(alert.id, alert);
       }
