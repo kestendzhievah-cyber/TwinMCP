@@ -1,6 +1,4 @@
-﻿import { logger } from '@/lib/logger';
-import { NextRequest, NextResponse } from 'next/server';
-import { libraryResolutionService } from '@/lib/mcp-tools';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api-error-handler';
 
 let _authService: any = null;
@@ -12,6 +10,24 @@ async function getAuthService() {
     _authService = new AuthService(prisma, redis);
   }
   return _authService;
+}
+
+let _libraryService: any = null;
+let _servicesReady = false;
+async function ensureServices() {
+  if (_servicesReady) return;
+  _servicesReady = true;
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    let redis: any = null;
+    try { redis = (await import('@/lib/redis')).redis; } catch { /* ok */ }
+    try {
+      const { LibraryResolutionService } = await import('@/lib/services/library-resolution.service');
+      _libraryService = new LibraryResolutionService(prisma, redis);
+    } catch { /* ok */ }
+  } catch {
+    _servicesReady = false;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -61,7 +77,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Exécuter la résolution
-    const result = await libraryResolutionService.resolveLibrary({
+    await ensureServices();
+    if (!_libraryService) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          results: [],
+          totalFound: 0,
+          query,
+          _note: 'LibraryResolutionService not available. Configure database for full library resolution.',
+        },
+      });
+    }
+    const result = await _libraryService.resolveLibrary({
       query,
       context,
       limit: limit || 5,

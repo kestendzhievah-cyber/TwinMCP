@@ -77,6 +77,12 @@ export class HttpMCPServer {
         if (entry.count > maxReq) {
           reply.code(429).send({ error: 'Too Many Requests' });
         }
+        // Periodic cleanup to prevent memory leak (every 10k unique IPs)
+        if (ipHits.size > 10_000) {
+          for (const [k, v] of ipHits) {
+            if (v.reset < now) ipHits.delete(k);
+          }
+        }
       });
     }
 

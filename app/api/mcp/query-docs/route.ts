@@ -1,6 +1,4 @@
-﻿import { logger } from '@/lib/logger';
-import { NextRequest, NextResponse } from 'next/server';
-import { vectorSearchService } from '@/lib/mcp-tools';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api-error-handler';
 
 let _authService: any = null;
@@ -12,6 +10,24 @@ async function getAuthService() {
     _authService = new AuthService(prisma, redis);
   }
   return _authService;
+}
+
+let _vectorService: any = null;
+let _servicesReady = false;
+async function ensureServices() {
+  if (_servicesReady) return;
+  _servicesReady = true;
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    let redis: any = null;
+    try { redis = (await import('@/lib/redis')).redis; } catch { /* ok */ }
+    try {
+      const { VectorSearchService } = await import('@/lib/services/vector-search.service');
+      _vectorService = new VectorSearchService(prisma, redis);
+    } catch { /* ok */ }
+  } catch {
+    _servicesReady = false;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -71,7 +87,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Exécuter la recherche de documentation
-    const result = await vectorSearchService.searchDocuments({
+    await ensureServices();
+    if (!_vectorService) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          libraryId: library_id,
+          query,
+          results: [],
+          totalResults: 0,
+          totalTokens: 0,
+          _note: 'VectorSearchService not available. Configure database and vector store for full documentation search.',
+        },
+      });
+    }
+    const result = await _vectorService.searchDocuments({
       library_id,
       query,
       version,
