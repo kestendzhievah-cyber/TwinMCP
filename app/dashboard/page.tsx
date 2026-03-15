@@ -326,9 +326,16 @@ export default function DashboardPage() {
     setImportTaskId(null);
 
     try {
+      let token = '';
+      if (user) {
+        try { token = await user.getIdToken(); } catch { /* continue */ }
+      }
       const res = await fetch('/api/downloads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
         body: JSON.stringify({ githubUrl: githubUrl.trim() }),
       });
 
