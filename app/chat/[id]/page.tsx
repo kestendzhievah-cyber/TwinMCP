@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import {
   Bot,
   Send,
@@ -32,6 +33,7 @@ interface Chatbot {
 export default function ChatPage() {
   const params = useParams();
   const chatbotId = params.id as string;
+  const { user } = useAuth();
 
   const [chatbot, setChatbot] = useState<Chatbot | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -47,7 +49,15 @@ export default function ChatPage() {
   useEffect(() => {
     const loadChatbot = async () => {
       try {
-        const res = await fetch(`/api/chatbots/${chatbotId}`);
+        let token = '';
+        if (user) {
+          try { token = await user.getIdToken(); } catch { /* continue */ }
+        }
+        const res = await fetch(`/api/chatbot/${chatbotId}`, {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        });
         if (res.ok) {
           const data = await res.json();
           setChatbot(data);
@@ -108,9 +118,16 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
+      let token = '';
+      if (user) {
+        try { token = await user.getIdToken(); } catch { /* continue */ }
+      }
       const res = await fetch('/api/chat/send-message', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
         body: JSON.stringify({
           message: userMessage.content,
           chatbotId,
