@@ -123,9 +123,9 @@ async function getAllReports(db: any, userId: string, limit: number, offset: num
     id: row.id,
     name: row.name,
     description: row.description,
-    type: JSON.parse(row.type),
-    category: JSON.parse(row.category),
-    frequency: JSON.parse(row.frequency),
+    type: safeParse(row.type),
+    category: safeParse(row.category),
+    frequency: safeParse(row.frequency),
     status: row.status,
     lastRun: row.last_run,
     nextRun: row.next_run,
@@ -133,6 +133,15 @@ async function getAllReports(db: any, userId: string, limit: number, offset: num
     createdAt: row.metadata?.createdAt || row.created_at,
     updatedAt: row.metadata?.updatedAt || row.updated_at,
   }));
+}
+
+function safeParse(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try { return JSON.parse(value); } catch { return value; }
+  }
+  return value;
 }
 
 async function getReportsByFilters(db: any, userId: string, filters: any, limit: number, offset: number) {
@@ -172,9 +181,9 @@ async function getReportsByFilters(db: any, userId: string, filters: any, limit:
     id: row.id,
     name: row.name,
     description: row.description,
-    type: JSON.parse(row.type),
-    category: JSON.parse(row.category),
-    frequency: JSON.parse(row.frequency),
+    type: safeParse(row.type),
+    category: safeParse(row.category),
+    frequency: safeParse(row.frequency),
     status: row.status,
     lastRun: row.last_run,
     nextRun: row.next_run,

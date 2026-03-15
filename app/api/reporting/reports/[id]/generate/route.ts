@@ -5,6 +5,15 @@ import { getAuthUserId } from '@/lib/firebase-admin-auth';
 import { AuthenticationError } from '@/lib/errors';
 import { handleApiError } from '@/lib/api-error-handler';
 
+function safeParse(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try { return JSON.parse(value); } catch { return value; }
+  }
+  return value;
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await getAuthUserId(request.headers.get('authorization'));
@@ -56,8 +65,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         id: row.id,
         reportId: row.report_id,
         status: row.status,
-        progress: JSON.parse(row.progress),
-        output: JSON.parse(row.output),
+        progress: safeParse(row.progress),
+        output: safeParse(row.output),
         error: row.error,
         startedAt: row.started_at,
         completedAt: row.completed_at,
