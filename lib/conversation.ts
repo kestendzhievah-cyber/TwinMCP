@@ -12,7 +12,11 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db as _db } from './firebase';
-const db = _db!;
+
+function getDb() {
+  if (!_db) throw new Error('Firebase Firestore is not initialized. Check Firebase configuration.');
+  return _db;
+}
 
 interface Message {
   role: 'user' | 'assistant';
@@ -31,7 +35,7 @@ interface Conversation {
 
 export async function getConversationHistory(conversationId: string): Promise<Conversation | null> {
   try {
-    const conversationRef = doc(db, 'conversations', conversationId);
+    const conversationRef = doc(getDb(), 'conversations', conversationId);
     const conversationSnap = await getDoc(conversationRef);
 
     if (!conversationSnap.exists()) {
@@ -50,7 +54,7 @@ export async function getConversationHistory(conversationId: string): Promise<Co
 
 export async function createConversation(chatbotId: string, visitorId: string): Promise<string> {
   try {
-    const conversationsRef = collection(db, 'conversations');
+    const conversationsRef = collection(getDb(), 'conversations');
     const conversationData = {
       chatbotId,
       visitorId,
@@ -72,7 +76,7 @@ export async function addMessageToConversation(
   message: Omit<Message, 'timestamp'>
 ): Promise<string> {
   try {
-    const conversationRef = doc(db, 'conversations', conversationId);
+    const conversationRef = doc(getDb(), 'conversations', conversationId);
     const conversationSnap = await getDoc(conversationRef);
 
     if (!conversationSnap.exists()) {
