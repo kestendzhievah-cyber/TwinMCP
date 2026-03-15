@@ -51,8 +51,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create conversation (simplified for now)
+    const visitorId = body.visitorId || userId;
     const conversationId =
-      body.conversationId || (await createConversation(body.chatbotId, body.visitorId));
+      body.conversationId || (await createConversation(body.chatbotId, visitorId));
 
     // Add user message to conversation
     await addMessageToConversation(conversationId, {

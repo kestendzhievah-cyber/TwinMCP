@@ -172,7 +172,7 @@ export const sendChatMessageSchema = z.object({
   chatbotId: z.string().min(1, 'chatbotId is required'),
   message: z.string().min(1, 'Message is required').max(10000, 'Message must be under 10000 characters'),
   conversationId: z.string().optional(),
-  visitorId: z.string().min(1, 'visitorId is required'),
+  visitorId: z.string().min(1).optional(),
 });
 
 // ─── Helper: parse and return error response ─────────────────────
