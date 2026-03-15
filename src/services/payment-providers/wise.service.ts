@@ -163,13 +163,16 @@ export class WiseService {
         }
       };
     } catch (error) {
+      // Sanitize error — raw Wise errors can contain sensitive info (API tokens, internal codes)
+      const rawMsg = error instanceof Error ? error.message : 'Unknown error';
+      const safeMsg = rawMsg.replace(/[^\w\s.,;:!?()\-]/g, '').slice(0, 200) || 'Payment failed';
       return {
         ...payment,
         status: PaymentStatus.FAILED,
-        failureReason: error instanceof Error ? error.message : 'Unknown error',
+        failureReason: safeMsg,
         metadata: {
           ...payment.metadata,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: safeMsg
         }
       };
     }
