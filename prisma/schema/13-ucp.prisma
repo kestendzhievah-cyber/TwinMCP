@@ -1,0 +1,105 @@
+// ─── UCP (Universal Context Protocol) Models ─────────────────────
+
+enum AvailabilityStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  PRE_ORDER
+}
+
+enum UCPContextStatus {
+  DRAFT
+  PUBLISHED
+  OUTDATED
+  ERROR
+}
+
+model Store {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  name        String
+  platform    String
+  url         String?
+  apiKey      String?  @map("api_key")
+  status      Status   @default(ACTIVE)
+  lastSyncAt  DateTime? @map("last_sync_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@index([userId])
+  @@map("stores")
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  storeId      String?  @map("store_id")
+  name         String
+  description  String
+  category     String   @default("")
+  brand        String?
+  sku          String?
+  price        Float    @default(0)
+  currency     String   @default("EUR") @db.VarChar(3)
+  imageUrl     String?  @map("image_url")
+  attributes   Json?
+  availability AvailabilityStatus @default(IN_STOCK)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store        Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  ucpContexts  UCPContext[]
+  analysisHistory AnalysisHistory[]
+
+  @@index([userId])
+  @@index([storeId])
+  @@index([userId, category])
+  @@map("products")
+}
+
+model UCPContext {
+  id            String           @id @default(cuid())
+  productId     String           @map("product_id")
+  userId        String           @map("user_id")
+  contextData   Json             @map("context_data")
+  schemaVersion String           @default("1.0") @map("schema_version")
+  status        UCPContextStatus @default(DRAFT)
+  validationErrors String[]      @default([]) @map("validation_errors")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId])
+  @@index([userId, status])
+  @@map("ucp_contexts")
+}
+
+model AnalysisHistory {
+  id               String   @id @default(cuid())
+  productId        String   @map("product_id")
+  userId           String   @map("user_id")
+  overallScore     Int      @map("overall_score")
+  titleScore       Int      @map("title_score")
+  descriptionScore Int      @map("description_score")
+  attributesScore  Int      @map("attributes_score")
+  categoryScore    Int      @map("category_score")
+  llmReadiness     Int      @map("llm_readiness")
+  semanticRichness Int      @map("semantic_richness")
+  contextClarity   Int      @map("context_clarity")
+  recommendations  Json     @default("[]")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId, createdAt])
+  @@map("analysis_history")
+}

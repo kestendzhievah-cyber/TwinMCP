@@ -1,986 +1,359 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { DashboardPageSkeleton } from '@/components/DashboardSkeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { FadeIn, StaggerContainer, StaggerItem, CountUp } from '@/components/ui/animated';
+import { cn, getScoreColor, getScoreLabel, formatNumber } from '@/lib/utils';
 import {
-  Plus,
-  Sparkles,
-  Key,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  Activity,
-  AlertTriangle,
-  Server,
-  BarChart3,
-  Zap,
   ArrowRight,
-  Copy,
-  Trash2,
-  ExternalLink,
-  Crown,
-  Shield,
-  BookOpen,
-  MessageSquare,
-  Eye,
-  EyeOff,
-  Loader2,
+  ArrowUpRight,
+  BarChart3,
+  Bot,
+  CheckCircle2,
+  FileJson,
+  LayoutGrid,
+  Package,
+  Sparkles,
+  TrendingUp,
+  Zap,
+  AlertTriangle,
 } from 'lucide-react';
 
-interface ApiKeyStats {
-  id: string;
-  keyPrefix: string;
-  name: string;
-  tier: string;
-  quotaDaily: number;
-  quotaHourly: number;
-  createdAt: string;
-  lastUsedAt: string | null;
-  usage: {
-    requestsToday: number;
-    requestsThisHour: number;
-    successRate: number;
-  };
-}
-
-interface DashboardData {
-  totalKeys: number;
-  totalRequestsToday: number;
-  totalRequestsMonth: number;
-  averageSuccessRate: number;
-  subscription: {
-    plan: string;
-    dailyLimit: number;
-    monthlyLimit: number;
-    usedToday: number;
-    usedMonth: number;
-  };
-  keys: ApiKeyStats[];
-  recentActivity: {
-    timestamp: string;
-    toolName: string;
-    success: boolean;
-    responseTimeMs: number;
-  }[];
-}
-
-interface MCPServerStatus {
-  isOnline: boolean;
-  serverInfo: { name: string; version: string } | null;
-  tools: { name: string; description: string }[];
-  lastChecked: Date;
-  responseTime: number;
-  error?: string;
-}
-
-const PLAN_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  free: {
-    label: 'Gratuit',
-    color: 'text-gray-400 bg-gray-500/20 border-gray-500/30',
-    icon: <Zap className="w-4 h-4" />,
-  },
-  pro: {
-    label: 'Pro',
-    color: 'text-purple-400 bg-purple-500/20 border-purple-500/30',
-    icon: <Crown className="w-4 h-4" />,
-  },
-  enterprise: {
-    label: 'Enterprise',
-    color: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30',
-    icon: <Shield className="w-4 h-4" />,
-  },
+// Demo data — in production this would come from API
+const demoStats = {
+  totalProducts: 247,
+  analyzedProducts: 189,
+  averageScore: 68,
+  publishedContexts: 94,
+  scoreDistribution: { excellent: 42, good: 67, needsWork: 55, critical: 25 },
+  recentTrend: 12,
 };
 
+const recentProducts = [
+  { id: '1', name: 'Nike Air Max 90 Essential', score: 87, status: 'published', category: 'Chaussures' },
+  { id: '2', name: 'MacBook Pro 14" M3', score: 92, status: 'published', category: 'Électronique' },
+  { id: '3', name: 'Crème hydratante bio', score: 45, status: 'draft', category: 'Cosmétiques' },
+  { id: '4', name: 'T-shirt coton bio homme', score: 61, status: 'draft', category: 'Mode' },
+  { id: '5', name: 'Casque Sony WH-1000XM5', score: 88, status: 'published', category: 'Audio' },
+];
+
+const recentRecommendations = [
+  { type: 'critical' as const, count: 12, label: 'Descriptions trop courtes', icon: AlertTriangle },
+  { type: 'warning' as const, count: 23, label: 'Marque manquante', icon: AlertTriangle },
+  { type: 'info' as const, count: 45, label: 'Attributs à enrichir', icon: Sparkles },
+];
+
 export default function DashboardPage() {
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [mcpStatus, setMcpStatus] = useState<MCPServerStatus>({
-    isOnline: false,
-    serverInfo: null,
-    tools: [],
-    lastChecked: new Date(),
-    responseTime: 0,
-  });
-  const [mcpLoading, setMcpLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
-  const [creatingKey, setCreatingKey] = useState(false);
-  const [newApiKey, setNewApiKey] = useState<{ key: string; name: string } | null>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [revokingKey, setRevokingKey] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [confirmRevokeKeyId, setConfirmRevokeKeyId] = useState<string | null>(null);
-  const [githubUrl, setGithubUrl] = useState('');
-  const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
-    'idle'
-  );
-  const [importTaskId, setImportTaskId] = useState<string | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
+  const stats = demoStats;
 
-  // Fetch dashboard data
-  const fetchDashboardData = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      let token = '';
-      try {
-        token = await user.getIdToken();
-      } catch (tokenError) {
-        console.warn('Could not get ID token, user may need to re-authenticate');
-      }
-
-      const response = await fetch('/api/v1/dashboard', {
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setDashboardData(result.data);
-        setError(null);
-      } else if (response.status === 401) {
-        // User needs to re-authenticate
-        setError('Session expirée. Veuillez vous reconnecter.');
-        // Set empty data to show dashboard skeleton
-        setDashboardData({
-          totalKeys: 0,
-          totalRequestsToday: 0,
-          totalRequestsMonth: 0,
-          averageSuccessRate: 100,
-          subscription: {
-            plan: 'free',
-            dailyLimit: 200,
-            monthlyLimit: 6000,
-            usedToday: 0,
-            usedMonth: 0,
-          },
-          keys: [],
-          recentActivity: [],
-        });
-      } else {
-        setError(result.error || 'Erreur de chargement');
-        // Set empty data on error
-        setDashboardData({
-          totalKeys: 0,
-          totalRequestsToday: 0,
-          totalRequestsMonth: 0,
-          averageSuccessRate: 100,
-          subscription: {
-            plan: 'free',
-            dailyLimit: 200,
-            monthlyLimit: 6000,
-            usedToday: 0,
-            usedMonth: 0,
-          },
-          keys: [],
-          recentActivity: [],
-        });
-      }
-    } catch (err) {
-      console.error('Dashboard fetch error:', err);
-      setError('Impossible de charger les données');
-      // Set empty data to show dashboard anyway
-      setDashboardData({
-        totalKeys: 0,
-        totalRequestsToday: 0,
-        totalRequestsMonth: 0,
-        averageSuccessRate: 100,
-        subscription: {
-          plan: 'free',
-          dailyLimit: 200,
-          monthlyLimit: 6000,
-          usedToday: 0,
-          usedMonth: 0,
-        },
-        keys: [],
-        recentActivity: [],
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [user]);
-
-  // Check MCP status via the v1 health endpoint
-  const checkMCPStatus = useCallback(async () => {
-    const startTime = Date.now();
-    try {
-      const response = await fetch('/api/v1/mcp/health');
-      if (!response.ok) throw new Error(`Status ${response.status}`);
-      const data = await response.json();
-      const toolsList = data.services?.registry?.categories
-        ? data.services.registry.categories.map((cat: string) => ({ name: cat, description: cat }))
-        : [];
-      setMcpStatus({
-        isOnline: data.status === 'healthy' || data.status === 'degraded',
-        serverInfo: { name: 'TwinMCP', version: data.version || '1.0.0' },
-        tools: toolsList,
-        lastChecked: new Date(),
-        responseTime: data.metadata?.executionTime || Date.now() - startTime,
-      });
-    } catch (error) {
-      setMcpStatus({
-        isOnline: false,
-        serverInfo: null,
-        tools: [],
-        lastChecked: new Date(),
-        responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Connection failed',
-      });
-    } finally {
-      setMcpLoading(false);
-    }
-  }, []);
-
-  // Create new API key
-  const handleCreateKey = async () => {
-    if (!newKeyName.trim() || !user) return;
-
-    setCreatingKey(true);
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch('/api/v1/api-keys', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: newKeyName.trim() }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setNewApiKey({ key: result.data.key, name: newKeyName });
-        setShowCreateModal(false);
-        setNewKeyName('');
-        fetchDashboardData();
-      } else {
-        setError(result.error || 'Erreur lors de la création');
-        setTimeout(() => setError(null), 6000);
-      }
-    } catch (err) {
-      console.error('Create key error:', err);
-      setError('Erreur lors de la création de la clé');
-      setTimeout(() => setError(null), 6000);
-    } finally {
-      setCreatingKey(false);
-    }
-  };
-
-  // Revoke API key — uses state-based confirmation instead of native confirm()
-  const handleRevokeKey = async (keyId: string) => {
-    if (!user) return;
-
-    setRevokingKey(keyId);
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch(`/api/v1/api-keys?id=${keyId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        fetchDashboardData();
-      } else {
-        setError(result.error || 'Erreur lors de la révocation');
-        setTimeout(() => setError(null), 6000);
-      }
-    } catch (err) {
-      console.error('Revoke key error:', err);
-      setError('Erreur lors de la révocation');
-      setTimeout(() => setError(null), 6000);
-    } finally {
-      setRevokingKey(null);
-    }
-  };
-
-  // Import from GitHub
-  const handleImportFromGitHub = async () => {
-    if (!githubUrl.trim()) return;
-
-    const match = githubUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-    if (!match) {
-      setImportError('URL GitHub invalide. Format attendu : https://github.com/owner/repo');
-      setTimeout(() => setImportError(null), 5000);
-      return;
-    }
-
-    setImportStatus('loading');
-    setImportError(null);
-    setImportTaskId(null);
-
-    try {
-      let token = '';
-      if (user) {
-        try { token = await user.getIdToken(); } catch { /* continue */ }
-      }
-      const res = await fetch('/api/downloads', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: JSON.stringify({ githubUrl: githubUrl.trim() }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setImportTaskId(data.taskId);
-        setImportStatus('success');
-        setGithubUrl('');
-      } else {
-        setImportError(data.error || "Erreur lors de l'import");
-        setImportStatus('error');
-      }
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Erreur réseau');
-      setImportStatus('error');
-    }
-  };
-
-  // Copy to clipboard
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(text);
-    setTimeout(() => setCopiedKey(null), 3000);
-  };
-
-  // Refresh data
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchDashboardData();
-    checkMCPStatus();
-  };
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth');
-      return undefined;
-    }
-
-    if (user) {
-      fetchDashboardData();
-      checkMCPStatus();
-
-      // Auto-refresh dashboard data every 60 seconds
-      const dataInterval = setInterval(fetchDashboardData, 60000);
-      // MCP health check every 2 minutes (less critical)
-      const mcpInterval = setInterval(checkMCPStatus, 120000);
-
-      return () => {
-        clearInterval(dataInterval);
-        clearInterval(mcpInterval);
-      };
-    }
-    return undefined;
-  }, [user, authLoading, router, fetchDashboardData, checkMCPStatus]);
-
-  // Hooks must be called before any early returns to respect React rules of hooks
-  const plan = dashboardData?.subscription?.plan || 'free';
-  const planInfo = PLAN_LABELS[plan] || PLAN_LABELS.free;
-  const usagePercentToday = useMemo(
-    () =>
-      dashboardData
-        ? Math.round(
-            (dashboardData.subscription.usedToday / dashboardData.subscription.dailyLimit) * 100
-          )
-        : 0,
-    [dashboardData]
-  );
-
-  // Use conditional rendering in JSX instead of early returns to avoid hooks ordering issues
-  if (authLoading || loading) {
-    return <DashboardPageSkeleton />;
-  }
-
-  if (error && !dashboardData) {
-    return (
-      <div className="space-y-8">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-red-400 mb-2">Erreur de chargement</h2>
-          <p className="text-gray-400 mb-4">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="px-6 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition"
-          >
-            Réessayer
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const analyzedPercent = stats.totalProducts > 0
+    ? Math.round((stats.analyzedProducts / stats.totalProducts) * 100)
+    : 0;
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <FadeIn>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-            Bienvenue sur{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-              TwinMCP
-            </span>
-          </h1>
-          <p className="text-gray-400 flex items-center gap-2">
-            <span
-              className={`px-2 py-0.5 text-xs rounded-full border ${planInfo.color} flex items-center gap-1`}
-            >
-              {planInfo.icon}
-              {planInfo.label}
-            </span>
-            {plan === 'free' && (
-              <Link
-                href="/pricing"
-                className="text-purple-400 hover:text-purple-300 text-sm underline"
-              >
-                Passer au Pro →
-              </Link>
-            )}
+          <h1 className="text-2xl font-bold sm:text-3xl">Vue d&apos;ensemble</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Suivez le référencement LLM de vos produits en temps réel
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-2.5 bg-[#1a1b2e] border border-purple-500/30 text-white rounded-xl hover:bg-purple-500/10 transition"
-          >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-pink-600 transition flex items-center gap-2 shadow-lg shadow-purple-500/30"
-          >
-            <Plus className="w-5 h-5" />
-            Nouvelle clé API
-          </button>
-        </div>
-      </div>
-
-      {/* Usage Overview */}
-      <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-2xl p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Activity className="w-5 h-5 text-purple-400" />
-              Utilisation aujourd'hui
-            </h2>
-            <p className="text-sm text-gray-400">
-              {dashboardData?.subscription.usedToday.toLocaleString()} /{' '}
-              {dashboardData?.subscription.dailyLimit.toLocaleString()} requêtes
-            </p>
-          </div>
-          <div className="text-right">
-            <span
-              className={`text-2xl font-bold ${
-                usagePercentToday < 50
-                  ? 'text-green-400'
-                  : usagePercentToday < 80
-                    ? 'text-yellow-400'
-                    : 'text-red-400'
-              }`}
-            >
-              {usagePercentToday}%
-            </span>
-            <p className="text-xs text-gray-500">utilisé</p>
-          </div>
-        </div>
-        <div className="w-full bg-gray-700/50 rounded-full h-3">
-          <div
-            className={`h-3 rounded-full transition-all duration-500 ${
-              usagePercentToday < 50
-                ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                : usagePercentToday < 80
-                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
-                  : 'bg-gradient-to-r from-red-500 to-pink-500'
-            }`}
-            style={{ width: `${Math.min(usagePercentToday, 100)}%` }}
-          />
-        </div>
-        {usagePercentToday >= 80 && (
-          <div className="mt-3 flex items-center gap-2 text-yellow-400 text-sm">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Vous approchez de votre limite quotidienne.</span>
-            {plan === 'free' && (
-              <Link href="/pricing" className="underline">
-                Passez au Pro
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <Key className="w-6 h-6 text-purple-400" />
-            <span className="text-2xl font-bold text-purple-400">
-              {dashboardData?.totalKeys || 0}
-            </span>
-          </div>
-          <p className="text-gray-400 text-sm">Clés API actives</p>
-        </div>
-
-        <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <TrendingUp className="w-6 h-6 text-green-400" />
-            <span className="text-2xl font-bold text-green-400">
-              {dashboardData?.totalRequestsToday.toLocaleString() || 0}
-            </span>
-          </div>
-          <p className="text-gray-400 text-sm">Requêtes aujourd'hui</p>
-        </div>
-
-        <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <BarChart3 className="w-6 h-6 text-blue-400" />
-            <span className="text-2xl font-bold text-blue-400">
-              {dashboardData?.totalRequestsMonth.toLocaleString() || 0}
-            </span>
-          </div>
-          <p className="text-gray-400 text-sm">Requêtes ce mois</p>
-        </div>
-
-        <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <CheckCircle className="w-6 h-6 text-yellow-400" />
-            <span className="text-2xl font-bold text-yellow-400">
-              {dashboardData?.averageSuccessRate || 100}%
-            </span>
-          </div>
-          <p className="text-gray-400 text-sm">Taux de succès</p>
-        </div>
-      </div>
-
-      {/* MCP Server Status */}
-      <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Server className="w-5 h-5 text-purple-400" />
-            Serveur MCP
-          </h2>
-          <div
-            className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-              mcpStatus.isOnline ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-            }`}
-          >
-            <div
-              className={`w-2 h-2 rounded-full ${
-                mcpStatus.isOnline ? 'bg-green-400 animate-pulse' : 'bg-red-400'
-              }`}
-            />
-            {mcpLoading ? 'Vérification...' : mcpStatus.isOnline ? 'En ligne' : 'Hors ligne'}
-          </div>
-        </div>
-
-        {mcpStatus.isOnline && (
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
-            <div className="bg-[#0f1020] rounded-lg p-2 sm:p-3">
-              <p className="text-xs text-gray-400 mb-1">Version</p>
-              <p className="font-semibold text-sm sm:text-base">{mcpStatus.serverInfo?.version}</p>
-            </div>
-            <div className="bg-[#0f1020] rounded-lg p-2 sm:p-3">
-              <p className="text-xs text-gray-400 mb-1">Outils</p>
-              <p className="font-semibold text-sm sm:text-base">{mcpStatus.tools.length}</p>
-            </div>
-            <div className="bg-[#0f1020] rounded-lg p-2 sm:p-3">
-              <p className="text-xs text-gray-400 mb-1">Latence</p>
-              <p className="font-semibold text-sm sm:text-base">{mcpStatus.responseTime}ms</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* GitHub Import */}
-      <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-          <ExternalLink className="w-5 h-5 text-purple-400" />
-          Importer depuis GitHub
-        </h2>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="url"
-            placeholder="https://github.com/owner/repo"
-            value={githubUrl}
-            onChange={e => setGithubUrl(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleImportFromGitHub()}
-            className="flex-1 px-4 py-3 sm:py-2.5 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-sm"
-          />
-          <button
-            onClick={handleImportFromGitHub}
-            disabled={importStatus === 'loading' || !githubUrl.trim()}
-            className="px-5 py-3 sm:py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm touch-target"
-          >
-            {importStatus === 'loading' ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Import...
-              </>
-            ) : (
-              <>
-                <ExternalLink className="w-4 h-4" /> Importer
-              </>
-            )}
-          </button>
-        </div>
-        {importTaskId && (
-          <div className="mt-3 flex items-center gap-2 text-green-400 text-sm">
-            <CheckCircle className="w-4 h-4" />
-            <span>
-              Tâche créée — ID :{' '}
-              <code className="bg-[#0f1020] px-1.5 py-0.5 rounded text-xs">{importTaskId}</code>
-            </span>
-          </div>
-        )}
-        {importError && (
-          <div className="mt-3 flex items-center gap-2 text-red-400 text-sm">
-            <XCircle className="w-4 h-4" />
-            <span>{importError}</span>
-          </div>
-        )}
-      </div>
-
-      {/* API Keys List */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Key className="w-5 h-5 text-purple-400" />
-            Vos clés API
-          </h2>
-          <Link
-            href="/dashboard/api-keys"
-            className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
-          >
-            Gérer les clés
-            <ArrowRight className="w-4 h-4" />
+        <div className="flex gap-3">
+          <Link href="/dashboard/analyzer">
+            <Button variant="outline" size="sm">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Analyser
+            </Button>
+          </Link>
+          <Link href="/dashboard/products">
+            <Button size="sm">
+              <Package className="mr-2 h-4 w-4" />
+              Ajouter des produits
+            </Button>
           </Link>
         </div>
+      </div>
+      </FadeIn>
 
-        {!dashboardData?.keys || dashboardData.keys.length === 0 ? (
-          <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-8 text-center">
-            <Key className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">Aucune clé API</h3>
-            <p className="text-gray-400 mb-4">Créez votre première clé API pour commencer</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-pink-600 transition inline-flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Créer une clé
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {dashboardData.keys.map(key => (
+      {/* KPI Cards */}
+      <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" staggerDelay={0.08}>
+        <StaggerItem>
+        <Card className="hover:border-white/10 transition-colors">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Produits totaux</p>
+                <p className="text-3xl font-bold mt-1"><CountUp target={stats.totalProducts} /></p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10">
+                <Package className="h-6 w-6 text-violet-400" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-2">
+              <Badge variant="success" className="text-xs">
+                <TrendingUp className="mr-1 h-3 w-3" />
+                +{stats.recentTrend}%
+              </Badge>
+              <span className="text-xs text-muted-foreground">ce mois</span>
+            </div>
+          </CardContent>
+        </Card>
+        </StaggerItem>
+
+        <StaggerItem>
+        <Card className="hover:border-white/10 transition-colors">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Produits analysés</p>
+                <p className="text-3xl font-bold mt-1"><CountUp target={stats.analyzedProducts} /></p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10">
+                <BarChart3 className="h-6 w-6 text-blue-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-muted-foreground">Couverture</span>
+                <span>{analyzedPercent}%</span>
+              </div>
+              <Progress value={analyzedPercent} />
+            </div>
+          </CardContent>
+        </Card>
+        </StaggerItem>
+
+        <StaggerItem>
+        <Card className="hover:border-white/10 transition-colors">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Score LLM moyen</p>
+                <p className={cn('text-3xl font-bold mt-1', getScoreColor(stats.averageScore))}>
+                  <CountUp target={stats.averageScore} />/100
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10">
+                <Zap className="h-6 w-6 text-emerald-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Badge variant={stats.averageScore >= 70 ? 'success' : stats.averageScore >= 50 ? 'warning' : 'destructive'}>
+                {getScoreLabel(stats.averageScore)}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+        </StaggerItem>
+
+        <StaggerItem>
+        <Card className="hover:border-white/10 transition-colors">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Contextes UCP publiés</p>
+                <p className="text-3xl font-bold mt-1"><CountUp target={stats.publishedContexts} /></p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
+                <FileJson className="h-6 w-6 text-amber-400" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {Math.round((stats.publishedContexts / (stats.analyzedProducts || 1)) * 100)}% des produits analysés
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+        </StaggerItem>
+      </StaggerContainer>
+
+      {/* Score Distribution + Recommendations */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <LayoutGrid className="h-5 w-5 text-violet-400" />
+              Distribution des scores
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { label: 'Excellent (80-100)', count: stats.scoreDistribution.excellent, color: 'bg-emerald-500', pct: Math.round((stats.scoreDistribution.excellent / stats.analyzedProducts) * 100) },
+                { label: 'Bon (60-79)', count: stats.scoreDistribution.good, color: 'bg-yellow-500', pct: Math.round((stats.scoreDistribution.good / stats.analyzedProducts) * 100) },
+                { label: 'À améliorer (40-59)', count: stats.scoreDistribution.needsWork, color: 'bg-orange-500', pct: Math.round((stats.scoreDistribution.needsWork / stats.analyzedProducts) * 100) },
+                { label: 'Critique (<40)', count: stats.scoreDistribution.critical, color: 'bg-red-500', pct: Math.round((stats.scoreDistribution.critical / stats.analyzedProducts) * 100) },
+              ].map((item) => (
+                <div key={item.label} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{item.label}</span>
+                    <span className="text-muted-foreground">{item.count} produits ({item.pct}%)</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full transition-all duration-700', item.color)}
+                      style={{ width: `${item.pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <Link href="/dashboard/analyzer">
+                <Button variant="outline" size="sm">
+                  Voir le détail
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Bot className="h-5 w-5 text-violet-400" />
+              Actions prioritaires
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {recentRecommendations.map((rec) => (
               <div
-                key={key.id}
-                className="bg-[#1a1b2e] border border-purple-500/20 rounded-xl p-4 hover:border-purple-500/40 transition"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-white">{key.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <code className="text-sm bg-[#0f1020] px-2 py-0.5 rounded text-purple-400">
-                        {key.keyPrefix}...
-                      </code>
-                      <button
-                        onClick={() => handleCopy(key.keyPrefix)}
-                        className="text-gray-400 hover:text-purple-400 transition"
-                      >
-                        {copiedKey === key.keyPrefix ? (
-                          <CheckCircle className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setConfirmRevokeKeyId(key.id)}
-                    disabled={revokingKey === key.id}
-                    className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition"
-                  >
-                    {revokingKey === key.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 sm:gap-3">
-                  <div className="bg-[#0f1020] rounded-lg p-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-400">Aujourd'hui</span>
-                      <TrendingUp className="w-3 h-3 text-green-400" />
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="font-semibold text-white">{key.usage.requestsToday}</span>
-                      <span className="text-xs text-gray-500">/ {key.quotaDaily}</span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
-                      <div
-                        className={`h-1.5 rounded-full ${
-                          key.usage.requestsToday / key.quotaDaily < 0.5
-                            ? 'bg-green-500'
-                            : key.usage.requestsToday / key.quotaDaily < 0.8
-                              ? 'bg-yellow-500'
-                              : 'bg-red-500'
-                        }`}
-                        style={{
-                          width: `${Math.min((key.usage.requestsToday / key.quotaDaily) * 100, 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0f1020] rounded-lg p-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-400">Cette heure</span>
-                      <Clock className="w-3 h-3 text-blue-400" />
-                    </div>
-                    <span className="font-semibold text-white">{key.usage.requestsThisHour}</span>
-                  </div>
-
-                  <div className="bg-[#0f1020] rounded-lg p-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-400">Succès</span>
-                      <CheckCircle className="w-3 h-3 text-green-400" />
-                    </div>
-                    <span
-                      className={`font-semibold ${
-                        key.usage.successRate >= 95
-                          ? 'text-green-400'
-                          : key.usage.successRate >= 80
-                            ? 'text-yellow-400'
-                            : 'text-red-400'
-                      }`}
-                    >
-                      {key.usage.successRate}%
-                    </span>
-                  </div>
-                </div>
-
-                {key.lastUsedAt && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Dernière utilisation : {new Date(key.lastUsedAt).toLocaleString('fr-FR')}
-                  </p>
+                key={rec.label}
+                className={cn(
+                  'flex items-start gap-3 rounded-lg border p-3',
+                  rec.type === 'critical' ? 'border-red-500/20 bg-red-500/5' :
+                  rec.type === 'warning' ? 'border-yellow-500/20 bg-yellow-500/5' :
+                  'border-blue-500/20 bg-blue-500/5'
                 )}
+              >
+                <rec.icon className={cn(
+                  'h-4 w-4 mt-0.5 flex-shrink-0',
+                  rec.type === 'critical' ? 'text-red-400' :
+                  rec.type === 'warning' ? 'text-yellow-400' :
+                  'text-blue-400'
+                )} />
+                <div>
+                  <p className="text-sm font-medium">{rec.label}</p>
+                  <p className="text-xs text-muted-foreground">{rec.count} produits concernés</p>
+                </div>
               </div>
             ))}
-          </div>
-        )}
+
+            <Link href="/dashboard/optimizer">
+              <Button className="w-full" size="sm">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Corriger automatiquement
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link
-          href="/dashboard/analytics"
-          className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
-          data-testid="quick-action-analytics"
-        >
-          <BarChart3 className="w-8 h-8 text-blue-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">Analytics</p>
-          <p className="text-xs text-gray-500 mt-1">Statistiques en temps réel</p>
-        </Link>
+      {/* Recent Products */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Package className="h-5 w-5 text-violet-400" />
+            Derniers produits analysés
+          </CardTitle>
+          <Link href="/dashboard/products">
+            <Button variant="ghost" size="sm">
+              Voir tout
+              <ArrowUpRight className="ml-1 h-4 w-4" />
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/5 text-left text-xs text-muted-foreground">
+                  <th className="pb-3 font-medium">Produit</th>
+                  <th className="pb-3 font-medium">Catégorie</th>
+                  <th className="pb-3 font-medium">Score LLM</th>
+                  <th className="pb-3 font-medium">Contexte UCP</th>
+                  <th className="pb-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {recentProducts.map((product) => (
+                  <tr key={product.id} className="border-b border-white/5 last:border-0">
+                    <td className="py-3 pr-4">
+                      <span className="font-medium">{product.name}</span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <Badge variant="outline" className="text-xs">{product.category}</Badge>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className={cn('font-bold', getScoreColor(product.score))}>
+                        {product.score}
+                      </span>
+                      <span className="text-muted-foreground">/100</span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      {product.status === 'published' ? (
+                        <Badge variant="success" className="text-xs">
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          Publié
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Brouillon</Badge>
+                      )}
+                    </td>
+                    <td className="py-3">
+                      <Link href={`/dashboard/analyzer?id=${product.id}`}>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs">
+                          Analyser
+                        </Button>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Link
-          href="/dashboard/billing"
-          className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
-          data-testid="quick-action-billing"
-        >
-          <Crown className="w-8 h-8 text-yellow-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">
-            Facturation
-          </p>
-          <p className="text-xs text-gray-500 mt-1">Abonnement & factures</p>
-        </Link>
-
-        <Link
-          href="/dashboard/api-keys"
-          className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
-          data-testid="quick-action-api-keys"
-        >
-          <Key className="w-8 h-8 text-purple-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">Clés API</p>
-          <p className="text-xs text-gray-500 mt-1">Gérer vos clés</p>
-        </Link>
-
-        <Link
-          href="/dashboard/docs"
-          className="group p-5 bg-[#1a1b2e] border border-purple-500/20 rounded-2xl hover:border-purple-500/40 transition"
-          data-testid="quick-action-docs"
-        >
-          <BookOpen className="w-8 h-8 text-green-400 mb-3" />
-          <p className="font-medium text-white group-hover:text-purple-400 transition">
-            Documentation
-          </p>
-          <p className="text-xs text-gray-500 mt-1">Guides & API</p>
-        </Link>
-      </div>
-
-      {/* Create Key Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1b2e] border border-purple-500/20 rounded-2xl p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold text-white mb-4">Nouvelle clé API</h2>
-
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">Nom de la clé</label>
-              <input
-                type="text"
-                value={newKeyName}
-                onChange={e => setNewKeyName(e.target.value)}
-                placeholder="Ex: Production, Développement..."
-                className="w-full px-4 py-3 bg-[#0f1020] border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-                autoFocus
-              />
-            </div>
-
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
-              <p className="text-sm text-blue-400">
-                <AlertTriangle className="w-4 h-4 inline mr-1" />
-                La clé complète ne sera affichée qu'une seule fois.
+      {/* Quick Start Guide */}
+      <Card className="border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-blue-500/5">
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Zap className="h-5 w-5 text-violet-400" />
+                Démarrage rapide
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground max-w-xl">
+                Importez vos produits, lancez l&apos;analyse et publiez vos contextes UCP en quelques minutes.
+                Les LLMs pourront ensuite mieux comprendre et recommander vos produits.
               </p>
             </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setNewKeyName('');
-                }}
-                className="flex-1 px-4 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleCreateKey}
-                disabled={!newKeyName.trim() || creatingKey}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {creatingKey ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Création...
-                  </>
-                ) : (
-                  'Créer'
-                )}
-              </button>
+            <div className="flex gap-3 flex-shrink-0">
+              <Link href="/dashboard/products">
+                <Button variant="outline" size="sm">
+                  Importer des produits
+                </Button>
+              </Link>
+              <Link href="/dashboard/analyzer">
+                <Button size="sm">
+                  Lancer l&apos;analyse
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* New Key Display Modal */}
-      {newApiKey && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1b2e] border border-green-500/30 rounded-2xl p-6 max-w-lg w-full">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-400" />
-              </div>
-              <h2 className="text-xl font-bold text-white mb-2">Clé créée avec succès !</h2>
-              <p className="text-gray-400 text-sm">Copiez et sauvegardez cette clé maintenant.</p>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">Votre clé API</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={newApiKey.key}
-                  readOnly
-                  className="w-full px-4 py-3 pr-12 bg-[#0f1020] border border-green-500/30 rounded-lg text-green-400 font-mono text-sm"
-                />
-                <button
-                  onClick={() => handleCopy(newApiKey.key)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-green-400 hover:text-green-300"
-                >
-                  {copiedKey === newApiKey.key ? (
-                    <CheckCircle className="w-5 h-5" />
-                  ) : (
-                    <Copy className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-              {copiedKey === newApiKey.key && (
-                <p className="text-sm text-green-400 mt-2">✓ Copiée !</p>
-              )}
-            </div>
-
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
-              <p className="text-sm text-red-400">
-                <AlertTriangle className="w-4 h-4 inline mr-1" />
-                Cette clé ne sera plus jamais affichée. Sauvegardez-la maintenant !
-              </p>
-            </div>
-
-            <button
-              onClick={() => setNewApiKey(null)}
-              className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition"
-            >
-              J'ai sauvegardé ma clé
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Revoke Confirmation Modal */}
-      {confirmRevokeKeyId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#1a1b2e] border border-red-500/30 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white">Révoquer la clé API</h3>
-                <p className="text-sm text-gray-400">Cette action est irréversible</p>
-              </div>
-            </div>
-            <p className="text-gray-300 text-sm mb-6">
-              Êtes-vous sûr de vouloir révoquer cette clé ? Toutes les applications utilisant
-              cette clé perdront immédiatement l'accès.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmRevokeKeyId(null)}
-                className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 transition font-medium"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => {
-                  const keyId = confirmRevokeKeyId;
-                  setConfirmRevokeKeyId(null);
-                  handleRevokeKey(keyId);
-                }}
-                className="flex-1 px-4 py-2.5 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl hover:bg-red-500/30 transition font-medium"
-              >
-                Révoquer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

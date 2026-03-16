@@ -110,6 +110,12 @@ export async function DELETE(request: NextRequest) {
       // 7. Delete prompt execution history
       await tx.promptExecution.deleteMany({ where: { userId } });
 
+      // 7b. Delete UCP data (analysis history, contexts, products, stores)
+      await tx.analysisHistory.deleteMany({ where: { userId } });
+      await tx.uCPContext.deleteMany({ where: { userId } });
+      await tx.product.deleteMany({ where: { userId } });
+      await tx.store.deleteMany({ where: { userId } });
+
       // 8. Delete user profile
       await tx.userProfile.deleteMany({ where: { userId } });
 

@@ -1,13 +1,7 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
 .pnp.js
-
-# node_modules (patterns étendus)
-**/node_modules/**
-node_modules/**
 
 # testing
 /coverage
@@ -28,10 +22,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# env files
+# local env files
+.env*.local
 .env
-.env.*
-!.env.example
 
 # vercel
 .vercel
@@ -40,32 +33,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# mcp server demo
-mcp-server-demo
-**/mcp-server-demo/**
-
-# local downloads cache (only root-level, not app/api/downloads/)
-/downloads/
-
-# compiled output
-/dist/
-
-# TypeScript compiled artifacts in source directories
-components/**/*.d.ts
-components/**/*.d.ts.map
-components/**/*.jsx
-components/**/*.jsx.map
-scripts/**/*.d.ts
-scripts/**/*.d.ts.map
-scripts/**/*.js.map
-examples/**/*.d.ts
-examples/**/*.d.ts.map
-examples/**/*.js.map
-prisma/seed.d.ts*
-prisma/seed.js*
-
-# log files
-/logs/
-
-# Environment files (covered by .env pattern above)
-# Keep .env.example tracked for developer onboarding
+# prisma
+/prisma/migrations/

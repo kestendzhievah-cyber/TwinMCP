@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  company       String?
+  plan          Plan      @default(FREE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  stores        Store[]
+  products      Product[]
+  ucpContexts   UCPContext[]
+  analyses      ProductAnalysis[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Store {
+  id            String    @id @default(cuid())
+  name          String
+  url           String
+  platform      Platform
+  apiKey        String?
+  isActive      Boolean   @default(true)
+  userId        String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products      Product[]
+
+  @@index([userId])
+  @@map("stores")
+}
+
+model Product {
+  id              String    @id @default(cuid())
+  externalId      String?
+  name            String
+  description     String
+  price           Float
+  currency        String    @default("EUR")
+  category        String
+  brand           String?
+  sku             String?
+  imageUrl        String?
+  attributes      Json?
+  storeId         String
+  userId          String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  store           Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ucpContexts     UCPContext[]
+  analyses        ProductAnalysis[]
+
+  @@index([storeId])
+  @@index([userId])
+  @@index([category])
+  @@map("products")
+}
+
+model UCPContext {
+  id              String        @id @default(cuid())
+  productId       String
+  userId          String
+  version         Int           @default(1)
+  status          ContextStatus @default(DRAFT)
+  contextData     Json
+  schemaVersion   String        @default("1.0")
+  llmScore        Float?
+  generatedAt     DateTime      @default(now())
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId])
+  @@index([status])
+  @@map("ucp_contexts")
+}
+
+model ProductAnalysis {
+  id              String    @id @default(cuid())
+  productId       String
+  userId          String
+  overallScore    Float
+  titleScore      Float
+  descriptionScore Float
+  attributesScore Float
+  categoryScore   Float
+  recommendations Json
+  llmReadiness    Float
+  semanticRichness Float
+  contextClarity  Float
+  competitorGap   Float?
+  analyzedAt      DateTime  @default(now())
+
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId])
+  @@index([analyzedAt])
+  @@map("product_analyses")
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String
+  action      String
+  resource    String
+  resourceId  String?
+  details     Json?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum Platform {
+  SHOPIFY
+  WOOCOMMERCE
+  PRESTASHOP
+  MAGENTO
+  CUSTOM
+}
+
+enum ContextStatus {
+  DRAFT
+  PUBLISHED
+  EXPIRED
+  ARCHIVED
+}

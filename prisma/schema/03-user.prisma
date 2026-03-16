@@ -28,6 +28,10 @@ model User {
   externalMcpServers ExternalMcpServer[] @relation("ExternalMcpServers")
   mcpToolActivations McpToolActivation[] @relation("McpToolActivations")
   mcpToolUsageLogs   McpToolUsageLog[]   @relation("McpToolUsageLogs")
+  stores             Store[]
+  products           Product[]
+  ucpContexts        UCPContext[]
+  analysisHistory    AnalysisHistory[]
 
   @@index([oauthId])
   @@map("users")

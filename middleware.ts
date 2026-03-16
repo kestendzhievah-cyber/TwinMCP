@@ -69,6 +69,10 @@ const SELF_AUTH_ROUTES = [
   '/api/voice',
   '/api/workspace',
   '/api/account',
+  '/api/ucp-context',
+  '/api/products',
+  '/api/analyze',
+  '/api/optimize',
 ];
 
 // Pre-build a Set of exact SELF_AUTH routes for O(1) exact match

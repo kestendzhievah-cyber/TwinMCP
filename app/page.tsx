@@ -1,897 +1,501 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { FadeIn, StaggerContainer, StaggerItem, CountUp } from '@/components/ui/animated';
 import {
-  MessageSquare,
-  Zap,
-  TrendingUp,
-  Shield,
-  Check,
   ArrowRight,
-  Sparkles,
-  Users,
-  Clock,
-  DollarSign,
-  Code2,
-  Library,
-  Boxes,
-  Workflow,
-  X,
-  Star,
-  Server,
-  Cpu,
-  GitBranch,
-  Rocket,
+  BarChart3,
+  Bot,
+  CheckCircle2,
   ChevronRight,
-  Play,
+  Globe,
+  Layers,
+  LineChart,
   Menu,
+  Rocket,
+  Search,
+  Shield,
+  Sparkles,
+  Star,
+  X,
+  Zap,
 } from 'lucide-react';
 
-// Hook for intersection observer animations
-function useInView(threshold = 0.1) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isInView, setIsInView] = useState(false);
+const features = [
+  {
+    icon: Bot,
+    title: 'Protocole UCP',
+    description: 'Structurez vos fiches produit avec le Unified Context Protocol pour que les LLMs comprennent et recommandent vos produits.',
+  },
+  {
+    icon: Search,
+    title: 'Score de Visibilité LLM',
+    description: 'Mesurez comment ChatGPT, Claude et Gemini perçoivent vos produits. Score de 0 à 100 avec recommandations actionnables.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Optimisation Automatique',
+    description: "Notre IA réécrit titres et descriptions pour maximiser la compréhension par les modèles de langage.",
+  },
+  {
+    icon: BarChart3,
+    title: 'Analytics LLM',
+    description: 'Suivez l\'évolution de votre référencement IA en temps réel. Benchmarkez-vous contre vos concurrents.',
+  },
+  {
+    icon: Layers,
+    title: 'Multi-plateforme',
+    description: 'Shopify, WooCommerce, PrestaShop, Magento. Connectez votre boutique en un clic.',
+  },
+  {
+    icon: Shield,
+    title: 'Contexte Vérifié',
+    description: 'Vos données produit sont validées et structurées selon le schéma UCP pour garantir la fiabilité.',
+  },
+];
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-        }
-      },
-      { threshold }
-    );
+const stats = [
+  { value: '+340%', label: 'Visibilité LLM moyenne' },
+  { value: '2.8x', label: 'Plus de recommandations IA' },
+  { value: '89%', label: 'Score UCP moyen après optimisation' },
+  { value: '<2min', label: 'Par produit à optimiser' },
+];
 
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
+const steps = [
+  {
+    step: '01',
+    title: 'Connectez votre boutique',
+    description: 'Importez vos produits depuis Shopify, WooCommerce, PrestaShop ou via CSV. Configuration en 30 secondes.',
+  },
+  {
+    step: '02',
+    title: 'Analysez vos produits',
+    description: 'Notre moteur analyse chaque fiche produit et calcule un score de visibilité LLM détaillé.',
+  },
+  {
+    step: '03',
+    title: 'Optimisez avec l\'IA',
+    description: 'Appliquez les recommandations ou laissez notre IA optimiser automatiquement titres, descriptions et attributs.',
+  },
+  {
+    step: '04',
+    title: 'Publiez le contexte UCP',
+    description: 'Générez et publiez le contexte structuré UCP pour que les LLMs référencent vos produits en priorité.',
+  },
+];
 
-    return () => observer.disconnect();
-  }, [threshold]);
+const plans = [
+  {
+    name: 'Starter',
+    price: '0',
+    period: 'Gratuit',
+    description: 'Pour découvrir le référencement LLM',
+    features: ['50 produits', 'Score de visibilité LLM', '5 optimisations/mois', 'Export UCP basique'],
+    cta: 'Commencer gratuitement',
+    popular: false,
+  },
+  {
+    name: 'Pro',
+    price: '49',
+    period: '/mois',
+    description: 'Pour les e-commerçants ambitieux',
+    features: [
+      '500 produits',
+      'Score + Recommandations détaillées',
+      'Optimisations illimitées',
+      'Export UCP avancé',
+      'Analytics LLM temps réel',
+      'Support prioritaire',
+    ],
+    cta: 'Essai gratuit 14 jours',
+    popular: true,
+  },
+  {
+    name: 'Enterprise',
+    price: '199',
+    period: '/mois',
+    description: 'Pour les grandes marques',
+    features: [
+      'Produits illimités',
+      'API dédiée',
+      'Intégrations custom',
+      'Multi-boutiques',
+      'Benchmark concurrentiel',
+      'Account manager dédié',
+      'SLA 99.9%',
+    ],
+    cta: 'Contacter l\'équipe',
+    popular: false,
+  },
+];
 
-  return { ref, isInView };
-}
+const testimonials = [
+  {
+    name: 'Marie Dupont',
+    role: 'Fondatrice, BelleMode.fr',
+    content: 'Depuis qu\'on utilise UCP Commerce, nos produits sont recommandés 3x plus souvent par ChatGPT. Le ROI est incroyable.',
+    avatar: 'MD',
+  },
+  {
+    name: 'Thomas Bernard',
+    role: 'CTO, TechShop',
+    content: 'Le score de visibilité LLM nous a ouvert les yeux. On ne savait pas que nos fiches produit étaient si mal structurées pour les IA.',
+    avatar: 'TB',
+  },
+  {
+    name: 'Sophie Martin',
+    role: 'Head of E-commerce, NatureBio',
+    content: 'L\'optimisation automatique nous fait gagner des heures. 800 produits optimisés en une journée, c\'est magique.',
+    avatar: 'SM',
+  },
+];
 
-// Animated Counter Component - displays immediately then animates on view
-function AnimatedCounter({
-  end,
-  duration = 2000,
-  suffix = '',
-}: {
-  end: number;
-  duration?: number;
-  suffix?: string;
-}) {
-  const [count, setCount] = useState(end); // Start with end value
-  const [hasAnimated, setHasAnimated] = useState(false);
-  const { ref, isInView } = useInView(0.3);
-
-  useEffect(() => {
-    if (!isInView || hasAnimated) return;
-    setHasAnimated(true);
-    setCount(0);
-
-    let startTime: number | null = null;
-    const animate = (currentTime: number) => {
-      if (!startTime) startTime = currentTime;
-      const progress = Math.min((currentTime - startTime) / duration, 1);
-      setCount(Math.floor(progress * end));
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-    requestAnimationFrame(animate);
-  }, [isInView, hasAnimated, end, duration]);
-
-  return (
-    <span ref={ref}>
-      {count.toLocaleString()}
-      {suffix}
-    </span>
-  );
-}
-
-export default function TwinMCPLanding() {
-  const router = useRouter();
-  const [selectedPlan, setSelectedPlan] = useState('professional');
-  const [isAnnual, setIsAnnual] = useState(false);
-  const [showFreeTrial, setShowFreeTrial] = useState(false);
-  const [mounted, setMounted] = useState(false);
+export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Mount check for client-side
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Show free trial popup after 2 seconds (reduced for better UX)
-  useEffect(() => {
-    if (!mounted) return;
-    const timer = setTimeout(() => setShowFreeTrial(true), 2000);
-    return () => clearTimeout(timer);
-  }, [mounted]);
-
-  const handlePlanClick = (planName: string) => {
-    const billing = isAnnual ? 'annual' : 'monthly';
-    const planMap: { [key: string]: string } = {
-      Free: `/signup?plan=free&billing=${billing}`,
-      Professional: `/signup?plan=professional&billing=${billing}`,
-      Enterprise: `/signup?plan=enterprise&billing=${billing}`,
-    };
-    router.push(planMap[planName] || '/signup');
-  };
-
-  const handleContactSales = () => router.push('/contact');
-  const handleDemo = () => router.push('/dashboard/agent-mcp-demo');
-  const handleFreeTrialOrLogin = () => router.push('/signup?plan=professional&trial=true');
-
-  const stats = [
-    { icon: Users, value: 5000, suffix: '+', label: 'Développeurs actifs' },
-    { icon: Library, value: 500, suffix: '+', label: 'Serveurs MCP créés' },
-    { icon: Code2, value: 95, suffix: '%', label: 'Temps de dev économisé' },
-    { icon: Workflow, value: 10, suffix: 'x', label: 'Plus rapide' },
-  ];
-
-  const features = [
-    {
-      icon: Server,
-      title: 'Création MCP Personnalisée',
-      description:
-        'Créez vos propres serveurs MCP sur-mesure en quelques minutes avec notre éditeur visuel avancé',
-      highlight: true,
-    },
-    {
-      icon: Library,
-      title: 'Bibliothèque Complète',
-      description: "Accédez à des centaines de serveurs MCP prêts à l'emploi et personnalisables",
-    },
-    {
-      icon: Boxes,
-      title: 'Intégration Facile',
-      description:
-        "Connectez vos serveurs MCP à n'importe quelle application en quelques lignes de code",
-    },
-    {
-      icon: Shield,
-      title: 'Sécurité & Fiabilité',
-      description: 'Infrastructure sécurisée, monitoring 24/7, conformité RGPD garantie',
-    },
-  ];
-
-  // Comparison data for conversion optimization
-  const comparisonFeatures = [
-    { feature: 'Serveurs MCP', free: '3 serveurs', pro: 'Illimités', proHighlight: true },
-    { feature: 'Requêtes/jour', free: '200', pro: '10 000', proHighlight: true },
-    { feature: 'Serveurs MCP personnalisés', free: false, pro: true, proHighlight: true },
-    { feature: 'Serveurs privés', free: false, pro: true, proHighlight: true },
-    { feature: 'Analytics avancés', free: false, pro: true },
-    { feature: 'Support prioritaire 24/7', free: false, pro: true },
-    { feature: 'API complète', free: false, pro: true },
-    { feature: 'Webhooks & intégrations', free: false, pro: true },
-    { feature: 'Bibliothèque publique', free: true, pro: true },
-    { feature: 'Documentation', free: true, pro: true },
-  ];
-
-  const plans = [
-    {
-      name: 'Free',
-      priceMonthly: '0',
-      priceAnnual: '0',
-      description: 'Parfait pour débuter',
-      features: [
-        '3 serveurs MCP',
-        '200 requêtes/jour',
-        'Accès bibliothèque publique',
-        'Support communauté',
-        'Documentation complète',
-      ],
-      cta: 'Démarrer gratuitement',
-      popular: false,
-    },
-    {
-      name: 'Professional',
-      priceMonthly: '14.99',
-      priceAnnual: '11.24',
-      description: 'Le plus populaire',
-      features: [
-        'Serveurs MCP illimités',
-        'Création MCP personnalisée',
-        '10 000 requêtes/jour',
-        'Serveurs privés',
-        'Support prioritaire 24/7',
-        'Analytics avancés',
-        'API complète',
-        'Webhooks & intégrations',
-      ],
-      cta: 'Essai gratuit 14 jours',
-      popular: true,
-      badge: 'ESSAI GRATUIT',
-    },
-    {
-      name: 'Enterprise',
-      priceMonthly: null,
-      priceAnnual: null,
-      description: 'Pour les équipes',
-      features: [
-        'Tout du plan Pro',
-        'Requêtes illimitées',
-        'Serveurs MCP sur-mesure',
-        'Account manager dédié',
-        'SLA 99.9%',
-        'Déploiement on-premise',
-        'Formation & onboarding',
-        'White-label disponible',
-      ],
-      cta: 'Contacter les ventes',
-      popular: false,
-    },
-  ];
-
-  const testimonials = [
-    {
-      company: 'DevStudio',
-      author: 'Marc Lefebvre',
-      role: 'CTO',
-      content:
-        'TwinMCP a transformé notre workflow. La création de serveurs MCP personnalisés nous a fait économiser des semaines de développement.',
-      savings: '200h/mois économisées',
-      rating: 5,
-    },
-    {
-      company: 'AI Solutions',
-      author: 'Sophie Bernard',
-      role: 'Lead Developer',
-      content:
-        "L'intégration MCP n'a jamais été aussi simple. Nos clients adorent la flexibilité et la rapidité de déploiement.",
-      savings: '10x plus rapide',
-      rating: 5,
-    },
-    {
-      company: 'TechFlow',
-      author: 'Lucas Martin',
-      role: 'Founder',
-      content:
-        "Le plan Pro avec l'essai gratuit m'a convaincu en une semaine. Les serveurs MCP personnalisés sont un game-changer.",
-      savings: '300% ROI',
-      rating: 5,
-    },
-  ];
-
-  // Sections with animations
-  const heroSection = useInView(0.1);
-  const statsSection = useInView(0.2);
-  const featuresSection = useInView(0.1);
-  const comparisonSection = useInView(0.1);
-  const pricingSection = useInView(0.1);
-  const testimonialSection = useInView(0.1);
-  const ctaSection = useInView(0.1);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-x-hidden">
-      {/* Free Trial Popup */}
-      {showFreeTrial && (
-        <div className="fixed bottom-0 inset-x-0 sm:bottom-6 sm:right-6 sm:left-auto z-50 animate-bounce-in safe-bottom">
-          <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-[1px] sm:p-1 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-purple-500/50">
-            <div className="bg-slate-900 p-4 rounded-t-xl sm:rounded-xl relative">
-              <button
-                onClick={() => setShowFreeTrial(false)}
-                className="absolute -top-2 -right-2 sm:-top-2 sm:-right-2 bg-slate-800 rounded-full p-1.5 hover:bg-slate-700 transition touch-target flex items-center justify-center"
-                data-testid="close-trial-popup"
-              >
-                <X className="w-4 h-4 text-gray-400" />
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="free-trial-badge p-2 rounded-lg">
-                  <Rocket className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="text-white font-bold">Essai Pro Gratuit</p>
-                  <p className="text-gray-400 text-sm">14 jours sans engagement</p>
-                </div>
-              </div>
-              <button
-                onClick={handleFreeTrialOrLogin}
-                className="w-full mt-3 py-3 sm:py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-600 transition btn-animated touch-target"
-                data-testid="trial-popup-cta"
-              >
-                Commencer maintenant
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+    <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-slate-900/80 backdrop-blur-lg border-b border-purple-500/20 z-40 safe-top">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-14 sm:h-16">
-            <div className="flex items-center space-x-2 animate-fade-in-up">
-              <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-purple-400 animate-float" />
-              <span className="text-xl sm:text-2xl font-bold text-white">TwinMCP</span>
+      <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-bg">
+              <Zap className="h-4 w-4 text-white" />
             </div>
-            <div className="hidden md:flex space-x-8">
-              <a href="#features" className="text-gray-300 hover:text-white transition hover-scale" data-testid="nav-features">Fonctionnalités</a>
-              <a href="#comparison" className="text-gray-300 hover:text-white transition hover-scale" data-testid="nav-comparison">Comparatif</a>
-              <a href="#pricing" className="text-gray-300 hover:text-white transition hover-scale" data-testid="nav-pricing">Tarifs</a>
-              <a href="#testimonials" className="text-gray-300 hover:text-white transition hover-scale" data-testid="nav-testimonials">Témoignages</a>
-            </div>
-            <div className="hidden sm:flex items-center space-x-3">
-              <button
-                onClick={() => router.push('/auth')}
-                className="px-4 py-2 text-white hover:text-purple-400 transition touch-target"
-                data-testid="nav-login"
-              >
-                Connexion
-              </button>
-              <button
-                onClick={handleFreeTrialOrLogin}
-                className="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-lg shadow-purple-500/50 btn-animated animate-pulse-glow touch-target"
-                data-testid="nav-free-trial"
-              >
-                Essai Gratuit
-              </button>
-            </div>
-            {/* Mobile hamburger */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="sm:hidden p-2 text-gray-300 hover:text-white transition touch-target"
-              aria-label="Menu"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            <span className="text-lg font-bold">UCP Commerce</span>
           </div>
+
+          <div className="hidden items-center gap-8 md:flex">
+            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Fonctionnalités</a>
+            <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Comment ça marche</a>
+            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Tarifs</a>
+            <Link href="/dashboard">
+              <Button variant="outline" size="sm">Dashboard</Button>
+            </Link>
+            <Link href="/dashboard">
+              <Button size="sm">
+                Commencer <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+
+          <button
+            className="md:hidden p-2 hover:bg-white/5 rounded-lg transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
 
-        {/* Mobile dropdown menu */}
         {mobileMenuOpen && (
-          <div className="sm:hidden bg-slate-900/95 backdrop-blur-lg border-t border-purple-500/20 animate-fade-in-up">
-            <div className="px-4 py-4 space-y-1">
-              <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-lg transition">Fonctionnalités</a>
-              <a href="#comparison" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-lg transition">Comparatif</a>
-              <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-lg transition">Tarifs</a>
-              <a href="#testimonials" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-purple-500/10 rounded-lg transition">Témoignages</a>
-              <div className="pt-3 border-t border-purple-500/20 space-y-2">
-                <button
-                  onClick={() => { setMobileMenuOpen(false); router.push('/auth'); }}
-                  className="w-full px-4 py-3 text-white hover:bg-purple-500/10 rounded-lg transition text-left"
-                >
-                  Connexion
-                </button>
-                <button
-                  onClick={() => { setMobileMenuOpen(false); handleFreeTrialOrLogin(); }}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg text-center"
-                >
-                  Essai Gratuit
-                </button>
-              </div>
-            </div>
+          <div className="md:hidden border-t border-white/5 bg-background/95 backdrop-blur-xl p-4 space-y-3">
+            <a href="#features" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileMenuOpen(false)}>Fonctionnalités</a>
+            <a href="#how-it-works" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileMenuOpen(false)}>Comment ça marche</a>
+            <a href="#pricing" className="block py-2 text-sm text-muted-foreground" onClick={() => setMobileMenuOpen(false)}>Tarifs</a>
+            <Link href="/dashboard" className="block">
+              <Button className="w-full" size="sm">Commencer</Button>
+            </Link>
           </div>
         )}
       </nav>
 
-      {/* Hero Section */}
-      <section ref={heroSection.ref} className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          {/* Trust Badge */}
-          <div
-            className={`inline-block mb-4 px-3 sm:px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-full ${heroSection.isInView ? 'animate-bounce-in' : 'opacity-0'}`}
-          >
-            <span className="text-purple-300 text-xs sm:text-sm font-semibold flex items-center gap-2">
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-              +5 000 développeurs nous font confiance
-            </span>
-          </div>
+      {/* Hero */}
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden pt-16">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-violet-900/20 via-background to-background" />
+        <div className="absolute top-1/4 left-1/4 h-72 w-72 rounded-full bg-violet-600/10 blur-[100px]" />
+        <div className="absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-blue-600/10 blur-[100px]" />
 
-          {/* Main Headline */}
-          <h1
-            className={`text-3xl sm:text-5xl md:text-7xl font-bold text-white mb-4 sm:mb-6 leading-tight ${heroSection.isInView ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}
-          >
-            Créez vos
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient-shift">
-              {' '}
-              Serveurs MCP{' '}
-            </span>
-            <br />
-            <span className="text-2xl sm:text-4xl md:text-5xl">Personnalisés</span> en quelques clics
-          </h1>
+        <div className="relative z-10 mx-auto max-w-5xl px-4 text-center">
+          <FadeIn delay={0.1}>
+            <Badge variant="outline" className="mb-6 px-4 py-1.5 text-sm">
+              <Sparkles className="mr-2 h-3.5 w-3.5 text-violet-400" />
+              Nouveau : Protocole UCP v1.0
+            </Badge>
+          </FadeIn>
 
-          {/* Subheadline */}
-          <p
-            className={`text-base sm:text-xl text-gray-300 mb-6 sm:mb-8 max-w-3xl mx-auto ${heroSection.isInView ? 'animate-fade-in-up delay-200' : 'opacity-0'}`}
-          >
-            La plateforme tout-en-un pour créer, gérer et déployer vos serveurs Model Context
-            Protocol.
-            <span className="text-purple-400 font-semibold">
-              {' '}
-              Création sur-mesure + Bibliothèque complète.
-            </span>
-          </p>
+          <FadeIn delay={0.25}>
+            <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl md:text-7xl">
+              Vos produits, visibles par{' '}
+              <span className="gradient-text">tous les LLMs</span>
+            </h1>
+          </FadeIn>
 
-          {/* CTA Buttons */}
-          <div
-            className={`flex flex-col sm:flex-row gap-4 justify-center mb-8 ${heroSection.isInView ? 'animate-bounce-in delay-300' : 'opacity-0'}`}
-          >
-            <button
-              onClick={handleFreeTrialOrLogin}
-              className="group px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition shadow-2xl shadow-purple-500/50 flex items-center justify-center btn-animated animate-pulse-glow"
-              data-testid="hero-free-trial"
-            >
-              <Rocket className="mr-2 w-5 h-5 group-hover:animate-bounce" />
-              Essai Gratuit 14 Jours
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button
-              onClick={handleDemo}
-              className="px-8 py-4 bg-white/10 backdrop-blur text-white text-lg font-semibold rounded-full hover:bg-white/20 transition border border-white/20 flex items-center justify-center hover-lift"
-              data-testid="hero-demo"
-            >
-              <Play className="mr-2 w-5 h-5" />
-              Voir la Démo
-            </button>
-          </div>
-
-          {/* Free Trial Benefits */}
-          <div
-            className={`flex flex-wrap justify-center gap-6 text-sm text-gray-400 ${heroSection.isInView ? 'animate-fade-in-up delay-400' : 'opacity-0'}`}
-          >
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-green-400" /> Aucune carte requise
-            </span>
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-green-400" /> Annulation à tout moment
-            </span>
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-green-400" /> Accès complet aux fonctionnalités Pro
-            </span>
-          </div>
-
-          {/* Stats */}
-          <div
-            ref={statsSection.ref}
-            className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-8 max-w-5xl mx-auto mt-12 sm:mt-20"
-          >
-            {stats.map((stat, index) => (
-              <div
-                key={index}
-                className={`text-center hover-lift p-4 rounded-xl bg-slate-800/30 border border-purple-500/10 ${statsSection.isInView ? `animate-count-up delay-${(index + 1) * 100}` : 'opacity-0'}`}
-              >
-                <stat.icon
-                  className="w-8 h-8 text-purple-400 mx-auto mb-2 animate-float"
-                  style={{ animationDelay: `${index * 0.2}s` }}
-                />
-                <div className="text-3xl font-bold text-white mb-1">
-                  <AnimatedCounter end={stat.value} suffix={stat.suffix} />
-                </div>
-                <div className="text-gray-400 text-sm">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" ref={featuresSection.ref} className="py-12 sm:py-20 px-4 bg-slate-900/50">
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-10 sm:mb-16 ${featuresSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}
-          >
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">
-              Tout pour vos serveurs MCP
-            </h2>
-            <p className="text-base sm:text-xl text-gray-400">
-              Une plateforme complète pour créer, gérer et déployer vos serveurs Model Context
-              Protocol
+          <FadeIn delay={0.4}>
+            <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
+              Optimisez le référencement de vos produits e-commerce sur ChatGPT, Claude, Gemini et
+              les moteurs de réponse IA grâce au protocole{' '}
+              <span className="text-foreground font-medium">UCP</span>.
             </p>
-          </div>
+          </FadeIn>
 
-          <div className="grid sm:grid-cols-2 gap-4 sm:gap-8">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className={`p-5 sm:p-8 bg-gradient-to-br from-slate-800/50 to-purple-900/20 rounded-2xl border ${feature.highlight ? 'border-purple-500 animate-pulse-glow' : 'border-purple-500/20'} hover-lift hover-glow ${featuresSection.isInView ? `animate-fade-in-scale delay-${(index + 1) * 100}` : 'opacity-0'}`}
-              >
-                {feature.highlight && (
-                  <div className="inline-block mb-4 px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white text-xs font-semibold">
-                    FONCTIONNALITÉ PRO
-                  </div>
-                )}
-                <feature.icon
-                  className={`w-10 h-10 sm:w-12 sm:h-12 ${feature.highlight ? 'text-pink-400' : 'text-purple-400'} mb-3 sm:mb-4`}
-                />
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">{feature.title}</h3>
-                <p className="text-gray-400">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Comparison Section - Key for Conversion */}
-      <section id="comparison" ref={comparisonSection.ref} className="py-12 sm:py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div
-            className={`text-center mb-10 sm:mb-16 ${comparisonSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}
-          >
-            <div className="inline-block mb-4 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full">
-              <span className="text-green-400 text-sm font-semibold">Comparatif détaillé</span>
+          <FadeIn delay={0.55}>
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+              <Link href="/dashboard">
+                <Button size="xl" className="group">
+                  Analyser mes produits gratuitement
+                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+              <a href="#how-it-works">
+                <Button variant="outline" size="xl">
+                  Voir la démo
+                </Button>
+              </a>
             </div>
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">
-              Free vs{' '}
-              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Professional
-              </span>
+          </FadeIn>
+
+          <StaggerContainer className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-8" staggerDelay={0.12}>
+            {stats.map((stat) => (
+              <StaggerItem key={stat.label}>
+                <div className="text-center">
+                  <div className="text-2xl font-bold gradient-text sm:text-3xl">{stat.value}</div>
+                  <div className="mt-1 text-xs text-muted-foreground sm:text-sm">{stat.label}</div>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="py-20 sm:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4">
+              <Rocket className="mr-2 h-3.5 w-3.5" />
+              Fonctionnalités
+            </Badge>
+            <h2 className="text-3xl font-bold sm:text-4xl md:text-5xl">
+              Tout ce qu&apos;il faut pour dominer le{' '}
+              <span className="gradient-text">référencement IA</span>
             </h2>
-            <p className="text-base sm:text-xl text-gray-400">
-              Découvrez tout ce que vous débloquez avec l'essai gratuit Pro
+            <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
+              Une suite complète d&apos;outils pour analyser, optimiser et publier vos fiches produit
+              selon le protocole UCP.
             </p>
           </div>
 
-          {/* Comparison Table */}
-          <div
-            className={`bg-slate-800/50 rounded-2xl border border-purple-500/20 overflow-hidden ${comparisonSection.isInView ? 'animate-fade-in-scale delay-200' : 'opacity-0'}`}
-          >
-            <div className="overflow-x-auto">
-              <div className="min-w-[480px]">
-                {/* Header */}
-                <div className="grid grid-cols-3 bg-slate-900/80 p-3 sm:p-4 border-b border-purple-500/20">
-                  <div className="text-gray-400 font-semibold text-sm sm:text-base">Fonctionnalité</div>
-                  <div className="text-center text-gray-400 font-semibold text-sm sm:text-base">Free</div>
-                  <div className="text-center">
-                    <span className="text-white font-bold text-sm sm:text-base">Professional</span>
-                    <span className="hidden xs:inline ml-2 px-2 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full animate-badge-bounce">
-                      14 JOURS GRATUITS
-                    </span>
+          <StaggerContainer className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" staggerDelay={0.08}>
+            {features.map((feature) => (
+              <StaggerItem key={feature.title}>
+                <div className="group relative rounded-2xl border border-white/5 bg-white/[0.02] p-6 hover:border-violet-500/20 hover:bg-white/[0.04] transition-all duration-300 h-full">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 border border-violet-500/20 group-hover:scale-110 transition-transform duration-300">
+                    <feature.icon className="h-6 w-6 text-violet-400" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how-it-works" className="py-20 sm:py-32 bg-white/[0.01]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4">
+              <Globe className="mr-2 h-3.5 w-3.5" />
+              Processus
+            </Badge>
+            <h2 className="text-3xl font-bold sm:text-4xl md:text-5xl">
+              4 étapes vers la{' '}
+              <span className="gradient-text">visibilité LLM</span>
+            </h2>
+          </div>
+
+          <StaggerContainer className="grid gap-8 md:grid-cols-2 lg:grid-cols-4" staggerDelay={0.15}>
+            {steps.map((step, i) => (
+              <StaggerItem key={step.step}>
+                <div className="relative">
+                  {i < steps.length - 1 && (
+                    <div className="hidden lg:block absolute top-8 left-full w-full h-px bg-gradient-to-r from-violet-500/30 to-transparent" />
+                  )}
+                  <div className="mb-4 text-4xl font-bold text-violet-500/20">{step.step}</div>
+                  <h3 className="mb-2 text-lg font-semibold">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </div>
+      </section>
+
+      {/* Social proof */}
+      <section className="py-20 sm:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4">
+              <Star className="mr-2 h-3.5 w-3.5" />
+              Témoignages
+            </Badge>
+            <h2 className="text-3xl font-bold sm:text-4xl">
+              Ils optimisent déjà leur{' '}
+              <span className="gradient-text">référencement LLM</span>
+            </h2>
+          </div>
+
+          <StaggerContainer className="grid gap-6 md:grid-cols-3" staggerDelay={0.1}>
+            {testimonials.map((t) => (
+              <StaggerItem key={t.name}>
+              <div
+                className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 hover:border-white/10 transition-colors h-full"
+              >
+                <div className="mb-4 flex gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="mb-6 text-sm text-muted-foreground leading-relaxed">&ldquo;{t.content}&rdquo;</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full gradient-bg text-sm font-bold">
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">{t.name}</div>
+                    <div className="text-xs text-muted-foreground">{t.role}</div>
                   </div>
                 </div>
-
-                {/* Rows */}
-                {comparisonFeatures.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`grid grid-cols-3 p-3 sm:p-4 border-b border-purple-500/10 hover:bg-purple-500/5 transition ${item.proHighlight ? 'bg-purple-500/5' : ''}`}
-                  >
-                    <div className="text-gray-300 flex items-center text-sm sm:text-base">
-                      {item.proHighlight && (
-                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 mr-2 flex-shrink-0" />
-                      )}
-                      {item.feature}
-                    </div>
-                    <div className="text-center flex items-center justify-center">
-                      {typeof item.free === 'boolean' ? (
-                        item.free ? (
-                          <Check className="w-5 h-5 text-gray-400" />
-                        ) : (
-                          <X className="w-5 h-5 text-gray-600" />
-                        )
-                      ) : (
-                        <span className="text-gray-400 text-sm sm:text-base">{item.free}</span>
-                      )}
-                    </div>
-                    <div className="text-center flex items-center justify-center">
-                      {typeof item.pro === 'boolean' ? (
-                        item.pro ? (
-                          <Check className="w-5 h-5 text-green-400" />
-                        ) : (
-                          <X className="w-5 h-5 text-gray-600" />
-                        )
-                      ) : (
-                        <span
-                          className={`font-semibold text-sm sm:text-base ${item.proHighlight ? 'text-purple-400' : 'text-white'}`}
-                        >
-                          {item.pro}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
               </div>
-            </div>
-
-            {/* CTA Row */}
-            <div className="p-6 bg-gradient-to-r from-purple-900/50 to-pink-900/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <p className="text-white font-bold text-lg">Prêt à essayer gratuitement ?</p>
-                <p className="text-gray-400">Aucune carte de crédit requise pour l'essai</p>
-              </div>
-              <button
-                onClick={handleFreeTrialOrLogin}
-                className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-full hover:from-green-600 hover:to-emerald-600 transition shadow-lg shadow-green-500/30 btn-animated flex items-center"
-                data-testid="comparison-cta"
-              >
-                Démarrer l'essai gratuit
-                <ChevronRight className="ml-2 w-5 h-5" />
-              </button>
-            </div>
-          </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" ref={pricingSection.ref} className="py-12 sm:py-20 px-4 bg-slate-900/50">
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-10 sm:mb-16 ${pricingSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}
-          >
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">Tarifs Transparents</h2>
-            <p className="text-base sm:text-xl text-gray-400 mb-6 sm:mb-8">
-              Choisissez le plan qui correspond à vos besoins. Changez à tout moment.
+      {/* Pricing */}
+      <section id="pricing" className="py-20 sm:py-32 bg-white/[0.01]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4">
+              <LineChart className="mr-2 h-3.5 w-3.5" />
+              Tarifs
+            </Badge>
+            <h2 className="text-3xl font-bold sm:text-4xl md:text-5xl">
+              Un plan pour chaque{' '}
+              <span className="gradient-text">ambition</span>
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+              Commencez gratuitement, montez en puissance quand vous êtes prêt.
             </p>
-
-            {/* Toggle Mensuel / Annuel */}
-            <div className="flex items-center justify-center gap-4">
-              <span
-                className={`text-lg ${!isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}
-              >
-                Mensuel
-              </span>
-              <button
-                onClick={() => setIsAnnual(!isAnnual)}
-                className={`relative w-16 h-8 rounded-full transition-colors duration-300 touch-target ${isAnnual ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-slate-600'}`}
-                data-testid="billing-toggle"
-              >
-                <div
-                  className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 ${isAnnual ? 'translate-x-9' : 'translate-x-1'}`}
-                />
-              </button>
-              <span
-                className={`text-lg ${isAnnual ? 'text-white font-semibold' : 'text-gray-400'}`}
-              >
-                Annuel
-              </span>
-              {isAnnual && (
-                <span className="ml-2 px-3 py-1 bg-green-500/20 text-green-400 text-sm font-semibold rounded-full animate-badge-bounce">
-                  -25% d'économie
-                </span>
-              )}
-            </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 items-start">
-            {plans.map((plan, index) => (
+          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+            {plans.map((plan) => (
               <div
-                key={index}
-                className={`relative p-5 sm:p-8 rounded-2xl border transition-all duration-500 ${
+                key={plan.name}
+                className={`relative rounded-2xl border p-8 transition-all duration-300 ${
                   plan.popular
-                    ? 'bg-gradient-to-br from-purple-900/50 to-pink-900/50 border-purple-500 shadow-2xl shadow-purple-500/30 md:scale-105 md:-mt-4 animate-pulse-glow z-10'
-                    : 'bg-slate-800/50 border-slate-700 hover-lift hover-glow'
+                    ? 'border-violet-500/50 bg-violet-500/5 shadow-lg shadow-violet-500/10 scale-[1.02]'
+                    : 'border-white/5 bg-white/[0.02] hover:border-white/10'
                 }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold rounded-full">
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
                     Le plus populaire
-                  </div>
+                  </Badge>
                 )}
-
-                {plan.badge && (
-                  <div className="absolute -top-3 -right-3 px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full animate-badge-bounce shadow-lg shadow-green-500/50">
-                    {plan.badge}
-                  </div>
-                )}
-
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                  <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
-                  <div className="flex items-end justify-center">
-                    {plan.priceMonthly !== null ? (
-                      <>
-                        <span className="text-4xl sm:text-5xl font-bold text-white">
-                          {isAnnual ? plan.priceAnnual : plan.priceMonthly}€
-                        </span>
-                        <span className="text-gray-400 ml-2 mb-2">/mois</span>
-                      </>
-                    ) : (
-                      <span className="text-3xl font-bold text-white">Sur devis</span>
-                    )}
-                  </div>
-                  {isAnnual && plan.priceMonthly !== null && plan.priceMonthly !== '0' && (
-                    <p className="text-green-400 text-sm mt-2">
-                      Facturé {(parseFloat(plan.priceAnnual!) * 12).toFixed(0)}€/an
-                    </p>
-                  )}
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold">{plan.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
                 </div>
-
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, fIndex) => (
-                    <li key={fIndex} className="flex items-start">
-                      <Check
-                        className={`w-5 h-5 ${plan.popular ? 'text-green-400' : 'text-purple-400'} mr-3 flex-shrink-0 mt-0.5`}
-                      />
-                      <span className="text-gray-300">{feature}</span>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold">{plan.price}&euro;</span>
+                  <span className="text-muted-foreground">{plan.period}</span>
+                </div>
+                <ul className="mb-8 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-center gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-violet-400 flex-shrink-0" />
+                      {feature}
                     </li>
                   ))}
                 </ul>
-
-                <button
-                  onClick={() => {
-                    if (plan.name === 'Enterprise') {
-                      handleContactSales();
-                    } else {
-                      handlePlanClick(plan.name);
-                    }
-                  }}
-                  className={`w-full py-3 rounded-full font-semibold transition btn-animated touch-target ${
-                    plan.popular
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/50'
-                      : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
-                  }`}
-                  data-testid={`pricing-${plan.name.toLowerCase()}-cta`}
-                >
-                  {plan.cta}
-                </button>
+                <Link href="/dashboard">
+                  <Button
+                    className="w-full"
+                    variant={plan.popular ? 'default' : 'outline'}
+                  >
+                    {plan.cta}
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section id="testimonials" ref={testimonialSection.ref} className="py-12 sm:py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div
-            className={`text-center mb-10 sm:mb-16 ${testimonialSection.isInView ? 'animate-fade-in-up' : 'opacity-0'}`}
-          >
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">
-              Ils Nous Font Confiance
+      {/* CTA */}
+      <section className="py-20 sm:py-32">
+        <div className="mx-auto max-w-4xl px-4 text-center">
+          <div className="rounded-3xl border border-violet-500/20 bg-gradient-to-b from-violet-500/10 to-transparent p-12 sm:p-16">
+            <h2 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-4">
+              Prêt à être visible par les{' '}
+              <span className="gradient-text">IA</span> ?
             </h2>
-            <p className="text-base sm:text-xl text-gray-400">
-              Découvrez pourquoi les développeurs choisissent TwinMCP
+            <p className="mx-auto mb-8 max-w-xl text-muted-foreground">
+              Rejoignez les e-commerçants qui anticipent la révolution du search.
+              Votre référencement LLM commence aujourd&apos;hui.
             </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className={`p-5 sm:p-8 bg-gradient-to-br from-slate-800/50 to-purple-900/20 rounded-2xl border border-purple-500/20 hover-lift hover-glow ${testimonialSection.isInView ? `animate-slide-in-${index % 2 === 0 ? 'left' : 'right'} delay-${(index + 1) * 100}` : 'opacity-0'}`}
-              >
-                {/* Stars */}
-                <div className="flex mb-3 sm:mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 fill-yellow-400" />
-                  ))}
-                </div>
-
-                <p className="text-gray-300 text-base sm:text-lg mb-4 sm:mb-6 italic">"{testimonial.content}"</p>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-white">{testimonial.author}</div>
-                    <div className="text-purple-400 text-sm">
-                      {testimonial.role}, {testimonial.company}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-green-400 font-bold text-sm px-3 py-1 bg-green-500/20 rounded-full">
-                      {testimonial.savings}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Final */}
-      <section
-        ref={ctaSection.ref}
-        className="py-12 sm:py-20 px-4 bg-gradient-to-r from-purple-900/50 to-pink-900/50"
-      >
-        <div
-          className={`max-w-4xl mx-auto text-center ${ctaSection.isInView ? 'animate-bounce-in' : 'opacity-0'}`}
-        >
-          <div className="inline-block mb-4 sm:mb-6 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full animate-badge-bounce">
-            <span className="text-green-400 text-sm sm:text-base font-semibold flex items-center gap-2">
-              <Rocket className="w-4 h-4" />
-              Offre limitée : Essai gratuit 14 jours
-            </span>
-          </div>
-
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-4 sm:mb-6">
-            Prêt à Créer vos{' '}
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Serveurs MCP Personnalisés
-            </span>{' '}
-            ?
-          </h2>
-          <p className="text-base sm:text-xl text-gray-300 mb-6 sm:mb-8">
-            Rejoignez les milliers de développeurs qui utilisent TwinMCP pour accélérer leur
-            workflow
-          </p>
-
-          <button
-            onClick={handleFreeTrialOrLogin}
-            className="group px-6 sm:px-10 py-4 sm:py-5 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-lg sm:text-xl font-semibold rounded-full hover:from-green-600 hover:to-emerald-600 transition shadow-2xl shadow-green-500/50 btn-animated animate-pulse-glow touch-target"
-            data-testid="final-cta"
-          >
-            <span className="flex items-center justify-center">
-              <Rocket className="mr-2 w-6 h-6 group-hover:animate-bounce" />
-              Démarrer l'Essai Gratuit - 14 Jours
-              <ArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
-            </span>
-          </button>
-
-          <div className="flex flex-wrap justify-center gap-6 mt-6 text-gray-400 text-sm">
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-green-400" /> Aucune carte de crédit requise
-            </span>
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-green-400" /> Annulation à tout moment
-            </span>
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-green-400" /> Support prioritaire inclus
-            </span>
+            <Link href="/dashboard">
+              <Button size="xl" className="group">
+                Commencer gratuitement
+                <Rocket className="ml-2 h-5 w-5 transition-transform group-hover:-translate-y-1" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 py-8 sm:py-12 px-4 bg-slate-900/80 safe-bottom">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
-            <div className="col-span-2 sm:col-span-1">
-              <div className="flex items-center space-x-2 mb-4">
-                <Sparkles className="w-6 h-6 text-purple-400" />
-                <span className="text-xl font-bold text-white">TwinMCP</span>
+      <footer className="border-t border-white/5 py-12">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-bg">
+                  <Zap className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-bold">UCP Commerce</span>
               </div>
-              <p className="text-gray-400 text-sm">
-                La plateforme de création de serveurs MCP pour les développeurs modernes.
+              <p className="text-sm text-muted-foreground">
+                Le référencement LLM pour les e-commerçants ambitieux.
               </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-3 sm:mb-4">Produit</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>
-                  <a href="#features" className="hover:text-purple-400 transition inline-block py-1">
-                    Fonctionnalités
-                  </a>
-                </li>
-                <li>
-                  <a href="#pricing" className="hover:text-purple-400 transition inline-block py-1">
-                    Tarifs
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-purple-400 transition inline-block py-1">
-                    Documentation
-                  </a>
-                </li>
+              <h4 className="mb-4 font-semibold text-sm">Produit</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#features" className="hover:text-foreground transition-colors">Fonctionnalités</a></li>
+                <li><a href="#pricing" className="hover:text-foreground transition-colors">Tarifs</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Documentation</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">API</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-3 sm:mb-4">Entreprise</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>
-                  <a href="/contact" className="hover:text-purple-400 transition inline-block py-1">
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a href="/privacy" className="hover:text-purple-400 transition inline-block py-1">
-                    Confidentialité
-                  </a>
-                </li>
-                <li>
-                  <a href="/terms" className="hover:text-purple-400 transition inline-block py-1">
-                    CGU
-                  </a>
-                </li>
+              <h4 className="mb-4 font-semibold text-sm">Ressources</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#" className="hover:text-foreground transition-colors">Blog</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Guide UCP</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Études de cas</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Webinaires</a></li>
               </ul>
             </div>
-            <div className="col-span-2 sm:col-span-1">
-              <h4 className="text-white font-semibold mb-3 sm:mb-4">Commencer</h4>
-              <button
-                onClick={handleFreeTrialOrLogin}
-                className="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full hover:from-purple-600 hover:to-pink-600 transition text-sm btn-animated touch-target"
-                data-testid="footer-cta"
-              >
-                Essai Gratuit
-              </button>
+            <div>
+              <h4 className="mb-4 font-semibold text-sm">Légal</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#" className="hover:text-foreground transition-colors">CGU</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Confidentialité</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">RGPD</a></li>
+              </ul>
             </div>
           </div>
-          <div className="border-t border-slate-800 pt-6 sm:pt-8 text-center text-gray-400 text-sm">
-            <p>© 2025 TwinMCP. Tous droits réservés.</p>
+          <div className="mt-12 border-t border-white/5 pt-8 text-center text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} UCP Commerce. Tous droits réservés.
           </div>
         </div>
       </footer>
