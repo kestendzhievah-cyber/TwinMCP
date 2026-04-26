@@ -1,0 +1,37 @@
+{
+  "name": "@twinmcp/ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest": "tsx src/cli.ts",
+    "worker": "tsx src/worker.ts",
+    "seed": "tsx src/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "test": "vitest run",
+    "clean": "rm -rf node_modules dist"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.2",
+    "bullmq": "^5.34.6",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.36.4",
+    "gpt-tokenizer": "^2.8.1",
+    "gray-matter": "^4.0.3",
+    "ioredis": "^5.4.1",
+    "nanoid": "^5.0.9",
+    "openai": "^4.77.0",
+    "postgres": "^3.4.5",
+    "tar": "^7.4.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/tar": "^6.1.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.2",
+    "vitest": "^2.1.8"
+  }
+}

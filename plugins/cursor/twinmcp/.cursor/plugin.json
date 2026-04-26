@@ -1,0 +1,13 @@
+{
+  "name": "twinmcp",
+  "version": "1.0.0",
+  "description": "Upstash TwinMCP MCP server for up-to-date documentation lookup. Pull version-specific documentation and code examples directly from source repositories into your LLM context.",
+  "author": {
+    "name": "TwinMCP",
+    "email": "twinmcp@upstash.com",
+    "url": "https://twinmcp.com"
+  },
+  "keywords": ["documentation", "mcp", "twinmcp", "libraries", "frameworks"],
+  "logo": "https://twinmcp.com/brand/twinmcp-icon-green.svg",
+  "primaryColor": "#059669"
+}

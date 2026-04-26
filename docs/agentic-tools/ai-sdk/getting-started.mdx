@@ -1,0 +1,162 @@
+---
+title: "Getting Started"
+sidebarTitle: "Getting Started"
+description: "Add TwinMCP documentation tools to your Vercel AI SDK applications"
+---
+
+`@upstash/twinmcp-tools-ai-sdk` provides [Vercel AI SDK](https://sdk.vercel.ai/) compatible tools and agents that give your AI applications access to up-to-date library documentation.
+
+When building AI-powered applications with the Vercel AI SDK, your models often need accurate information about libraries and frameworks. Instead of relying on potentially outdated training data, TwinMCP tools let your AI fetch current documentation on-demand, ensuring responses include correct API usage, current best practices, and working code examples.
+
+The package gives you two ways to integrate:
+
+1. **Individual tools** (`resolveLibraryId` and `queryDocs`) that you add to your existing `generateText` or `streamText` calls
+2. **A pre-built agent** (`TwinMCPAgent`) that handles the entire documentation lookup workflow automatically
+
+Both approaches work with any AI provider supported by the Vercel AI SDK, including OpenAI, Anthropic, Google, and others.
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @upstash/twinmcp-tools-ai-sdk
+```
+
+```bash pnpm
+pnpm add @upstash/twinmcp-tools-ai-sdk
+```
+
+```bash yarn
+yarn add @upstash/twinmcp-tools-ai-sdk
+```
+
+```bash bun
+bun add @upstash/twinmcp-tools-ai-sdk
+```
+
+</CodeGroup>
+
+## Prerequisites
+
+You'll need:
+
+1. A TwinMCP API key from the [TwinMCP Dashboard](https://twinmcp.com/dashboard)
+2. An AI provider SDK (e.g., `@ai-sdk/openai`, `@ai-sdk/anthropic`)
+
+## Configuration
+
+Set your TwinMCP API key as an environment variable:
+
+```bash
+TWINMCP_API_KEY=ctx7sk-...
+```
+
+The tools and agents will automatically use this key.
+
+## Quick Start
+
+### Using Tools with generateText
+
+The simplest way to add documentation lookup to your AI application:
+
+```typescript
+import { resolveLibraryId, queryDocs } from "@upstash/twinmcp-tools-ai-sdk";
+import { generateText, stepCountIs } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+const { text } = await generateText({
+  model: openai("gpt-5.2"),
+  prompt: "How do I create a server action in Next.js?",
+  tools: {
+    resolveLibraryId: resolveLibraryId(),
+    queryDocs: queryDocs(),
+  },
+  stopWhen: stepCountIs(5),
+});
+
+console.log(text);
+```
+
+### Using the TwinMCP Agent
+
+For a more streamlined experience, use the pre-configured agent:
+
+```typescript
+import { TwinMCPAgent } from "@upstash/twinmcp-tools-ai-sdk";
+import { anthropic } from "@ai-sdk/anthropic";
+
+const agent = new TwinMCPAgent({
+  model: anthropic("claude-sonnet-4-20250514"),
+});
+
+const { text } = await agent.generate({
+  prompt: "How do I use React Server Components?",
+});
+
+console.log(text);
+```
+
+### Using Tools with streamText
+
+For streaming responses:
+
+```typescript
+import { resolveLibraryId, queryDocs } from "@upstash/twinmcp-tools-ai-sdk";
+import { streamText, stepCountIs } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+const { textStream } = streamText({
+  model: openai("gpt-5.2"),
+  prompt: "Explain how to use Tanstack Query for data fetching",
+  tools: {
+    resolveLibraryId: resolveLibraryId(),
+    queryDocs: queryDocs(),
+  },
+  stopWhen: stepCountIs(5),
+});
+
+for await (const chunk of textStream) {
+  process.stdout.write(chunk);
+}
+```
+
+## Explicit Configuration
+
+You can also pass the API key directly if needed:
+
+```typescript
+import { resolveLibraryId, queryDocs } from "@upstash/twinmcp-tools-ai-sdk";
+
+const tools = {
+  resolveLibraryId: resolveLibraryId({ apiKey: "your-api-key" }),
+  queryDocs: queryDocs({ apiKey: "your-api-key" }),
+};
+```
+
+## How It Works
+
+The tools follow a two-step workflow:
+
+1. **`resolveLibraryId`** - Searches TwinMCP's database to find the correct library ID for a given query (e.g., "react" → `/reactjs/react.dev`)
+
+2. **`queryDocs`** - Fetches documentation for the resolved library using the user's query to retrieve relevant content
+
+The AI model orchestrates these tools automatically based on the user's prompt, fetching relevant documentation before generating a response.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="resolveLibraryId"
+    icon="magnifying-glass"
+    href="/agentic-tools/ai-sdk/tools/resolve-library-id"
+  >
+    Search for libraries and get TwinMCP-compatible IDs
+  </Card>
+  <Card title="queryDocs" icon="book" href="/agentic-tools/ai-sdk/tools/query-docs">
+    Fetch documentation for a specific library
+  </Card>
+  <Card title="TwinMCPAgent" icon="robot" href="/agentic-tools/ai-sdk/agents/twinmcp-agent">
+    Use the pre-built documentation agent
+  </Card>
+</CardGroup>

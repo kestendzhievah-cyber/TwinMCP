@@ -1,0 +1,67 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.upstash/twinmcp",
+  "title": "TwinMCP",
+  "description": "Up-to-date code docs for any prompt",
+  "repository": {
+    "url": "https://github.com/upstash/twinmcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://twinmcp.com",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/upstash/twinmcp/master/public/icon.png",
+      "mimeType": "image/png"
+    }
+  ],
+  "version": "2.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@upstash/twinmcp-mcp",
+      "version": "2.0.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "TWINMCP_API_KEY",
+          "description": "API key for authentication",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/upstash/twinmcp/releases/download/@upstash/twinmcp-mcp@2.0.2/twinmcp.mcpb",
+      "version": "2.0.2",
+      "fileSha256": "aea76f179ceb92d22c289147c9d8343fb558d6dec93b144c9794e99239bb8194",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "TWINMCP_API_KEY",
+          "description": "API key for authentication",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.twinmcp.com/mcp",
+      "headers": [
+        {
+          "name": "TWINMCP_API_KEY",
+          "description": "API key for authentication",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

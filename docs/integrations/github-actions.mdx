@@ -1,0 +1,81 @@
+---
+title: GitHub Actions
+sidebarTitle: GitHub Actions
+description: Automatically refresh your TwinMCP library when your docs change
+---
+
+Keep your TwinMCP documentation in sync by triggering a refresh whenever you push to your main branch.
+
+## Setup
+
+<Steps>
+  <Step title="Get your API key">
+    Go to your [TwinMCP dashboard](https://twinmcp.com/dashboard) and copy your API key.
+  </Step>
+  <Step title="Add the API key as a repository secret">
+    In your GitHub repository, go to **Settings** → **Secrets and variables** → **Actions** and add a new secret:
+
+    | Name | Value |
+    |------|-------|
+    | `TWINMCP_API_KEY` | Your API key from the TwinMCP dashboard |
+  </Step>
+  <Step title="Create the workflow file">
+    Add the following file to your repository at `.github/workflows/twinmcp-refresh.yml`:
+
+    ```yaml
+    name: Refresh TwinMCP Docs
+
+    on:
+      push:
+        branches:
+          - master # change to your default branch if different
+
+    jobs:
+      refresh:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Trigger TwinMCP Refresh
+            run: |
+              curl -s -X POST https://twinmcp.com/api/v1/refresh \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ secrets.TWINMCP_API_KEY }}" \
+                -d '{"libraryName": "/${{ github.repository }}"}'
+    ```
+
+    This uses `${{ github.repository }}` to automatically resolve to your repository's `owner/repo` (e.g., `vercel/next.js`). If your library identifier on TwinMCP differs from your GitHub repository name, replace it with the correct value (e.g., `/your-org/your-repo`).
+  </Step>
+</Steps>
+
+## Refreshing a Specific Branch
+
+To refresh a non-default branch, add the `branch` field to the request body. The `branch` value must match a branch name that already exists on your library in TwinMCP.
+
+```yaml
+- name: Trigger TwinMCP Refresh
+  run: |
+    curl -s -X POST https://twinmcp.com/api/v1/refresh \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${{ secrets.TWINMCP_API_KEY }}" \
+      -d '{"libraryName": "/your-org/your-repo", "branch": "v2"}'
+```
+
+<Note>
+  If the branch has not been added to your library on TwinMCP, the refresh will fail with a `branch_not_found` error.
+</Note>
+
+## Private Repositories
+
+For private repositories, include a `gitToken` so TwinMCP can access your code:
+
+```yaml
+- name: Trigger TwinMCP Refresh
+  run: |
+    curl -s -X POST https://twinmcp.com/api/v1/refresh \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${{ secrets.TWINMCP_API_KEY }}" \
+      -d '{"libraryName": "/your-org/your-repo", "gitToken": "${{ secrets.GIT_ACCESS_TOKEN }}"}'
+```
+
+<Note>
+  Private sources require a Pro or Enterprise plan. See the [Private Sources](/howto/private-sources) guide for more details.
+</Note>

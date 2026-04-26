@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "twinmcp": {
+      "url": "https://mcp.twinmcp.com/mcp",
+      "headers": {
+        "TWINMCP_API_KEY": "${TWINMCP_API_KEY}"
+      }
+    }
+  }
+}

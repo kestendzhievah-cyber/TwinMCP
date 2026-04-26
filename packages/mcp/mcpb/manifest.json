@@ -1,0 +1,49 @@
+{
+  "manifest_version": "0.3",
+  "name": "twinmcp",
+  "display_name": "TwinMCP",
+  "version": "2.1.0",
+  "description": "Up-to-date Code Docs For Any Prompt",
+  "long_description": "TwinMCP MCP pulls up-to-date, version-specific documentation and code examples straight from the source — and places them directly into your prompt.",
+  "author": {
+    "name": "Upstash",
+    "email": "twinmcp@upstash.com",
+    "url": "https://upstash.com"
+  },
+  "homepage": "https://twinmcp.com",
+  "documentation": "https://github.com/upstash/twinmcp",
+  "support": "https://github.com/upstash/twinmcp/issues",
+  "privacy_policies": ["https://upstash.com/privacy"],
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {}
+    }
+  },
+  "tools": [
+    {
+      "name": "Resolve TwinMCP Library ID",
+      "description": "Resolves a package/product name to a TwinMCP-compatible library ID and returns matching libraries."
+    },
+    {
+      "name": "Query Documentation",
+      "description": "Retrieves and queries up-to-date documentation and code examples from TwinMCP."
+    }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=v18.0.0"
+    }
+  },
+  "keywords": ["vibe-coding", "developer tools", "documentation", "context"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/upstash/twinmcp.git"
+  }
+}

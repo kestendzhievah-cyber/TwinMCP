@@ -1,0 +1,61 @@
+{
+  "name": "@upstash/twinmcp-mcp",
+  "version": "2.1.8",
+  "mcpName": "io.github.upstash/twinmcp",
+  "description": "MCP server for TwinMCP",
+  "scripts": {
+    "build": "tsc && chmod 755 dist/index.js",
+    "test": "pnpm exec vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:check": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js --transport http",
+    "pack-mcpb": "pnpm install && pnpm run build && rm -rf node_modules && pnpm install --prod && cp mcpb/manifest.json manifest.json && cp mcpb/.mcpbignore .mcpbignore && cp ../../public/icon.png icon.png && mcpb validate manifest.json && mcpb pack . mcpb/twinmcp.mcpb && rm manifest.json .mcpbignore icon.png && pnpm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/upstash/twinmcp.git",
+    "directory": "packages/mcp"
+  },
+  "keywords": [
+    "modelcontextprotocol",
+    "mcp",
+    "twinmcp",
+    "vibe-coding",
+    "developer tools",
+    "documentation",
+    "context"
+  ],
+  "author": "abdush",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "twinmcp-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "bugs": {
+    "url": "https://github.com/upstash/twinmcp/issues"
+  },
+  "homepage": "https://github.com/upstash/twinmcp#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "@types/express": "^5.0.4",
+    "commander": "^14.0.0",
+    "express": "^5.1.0",
+    "jose": "^6.1.3",
+    "undici": "^6.6.3",
+    "zod": "^4.3.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "typescript": "^5.8.2",
+    "vitest": "^4.0.13"
+  }
+}

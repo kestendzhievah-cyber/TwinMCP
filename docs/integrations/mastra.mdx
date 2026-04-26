@@ -1,0 +1,68 @@
+---
+title: Mastra
+sidebarTitle: Mastra
+description: TypeScript framework for building AI agents
+---
+
+[Mastra](https://mastra.ai) is a TypeScript framework for building AI agents. It provides first-class MCP support through its `MCPClient` class. By connecting TwinMCP as an MCP server, your Mastra agents can access up-to-date library documentation, enabling them to generate accurate code and answer technical questions with current API references.
+
+For more details on how Mastra handles MCP, see the [Mastra MCP documentation](https://mastra.ai/docs/mcp/overview).
+
+## Setup
+
+<Steps>
+  <Step title="Install the MCP Package">
+    Add the Mastra MCP package to your project:
+
+    ```bash
+    npm install @mastra/mcp@latest
+    ```
+  </Step>
+  <Step title="Create an MCP Client">
+    Configure an `MCPClient` that connects to TwinMCP:
+
+    ```typescript
+    import { MCPClient } from "@mastra/mcp";
+
+    const twinmcp = new MCPClient({
+      id: "twinmcp",
+      servers: {
+        twinmcp: {
+          url: new URL("https://mcp.twinmcp.com/mcp"),
+          requestInit: {
+            headers: {
+              TWINMCP_API_KEY: process.env.TWINMCP_API_KEY!,
+            },
+          },
+        },
+      },
+    });
+    ```
+
+    Set `TWINMCP_API_KEY` in your environment with your API key from the [TwinMCP dashboard](https://twinmcp.com/dashboard).
+  </Step>
+  <Step title="Connect to Your Agent">
+    Pass the TwinMCP tools to your Mastra agent:
+
+    ```typescript
+    import { Agent } from "@mastra/core/agent";
+
+    const agent = new Agent({
+      id: "coding-assistant",
+      name: "Coding Assistant",
+      instructions: "You are a helpful coding assistant with access to up-to-date library documentation via TwinMCP.",
+      model: "anthropic/claude-sonnet-4-6",
+      tools: await twinmcp.listTools(),
+    });
+    ```
+  </Step>
+</Steps>
+
+## How It Works
+
+Once connected, your Mastra agents will query TwinMCP for relevant library documentation. This helps agents:
+
+- Answer technical questions with accurate, up-to-date API references
+- Generate code that follows current library patterns and best practices
+- Avoid hallucinating outdated or incorrect API usage
+- Provide version-specific guidance for any supported library

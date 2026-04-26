@@ -1,0 +1,50 @@
+---
+title: Factory AI
+sidebarTitle: Factory AI
+description: AI-native software development platform with Droids
+---
+
+[Factory AI](https://factory.ai) is a coding agent platform that uses "Droids" to handle development tasks. By connecting TwinMCP as an MCP server, Factory Droids can access up-to-date library documentation during coding tasks.
+
+For more details on how Factory AI handles MCP, see the [Factory AI MCP documentation](https://docs.factory.ai/cli/configuration/mcp).
+
+## Setup
+
+There are multiple ways to add TwinMCP as an MCP server in Factory AI. Replace `YOUR_API_KEY` with your API key from the [TwinMCP dashboard](https://twinmcp.com/dashboard).
+
+### Using the CLI
+
+```bash
+droid mcp add twinmcp https://mcp.twinmcp.com/mcp --type http --header "TWINMCP_API_KEY: YOUR_API_KEY"
+```
+
+### Using the MCP Manager
+
+Run the `/mcp` command inside Factory and add TwinMCP from the interface.
+
+### Using a Configuration File
+
+Add TwinMCP directly to your `.factory/mcp.json` (project-level) or `~/.factory/mcp.json` (user-level):
+
+```json
+{
+  "mcpServers": {
+    "twinmcp": {
+      "type": "http",
+      "url": "https://mcp.twinmcp.com/mcp",
+      "headers": {
+        "TWINMCP_API_KEY": "YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+## How It Works
+
+Once connected, Factory Droids will query TwinMCP for relevant library documentation during coding tasks. This helps Droids:
+
+- Use correct API signatures and patterns from the latest documentation
+- Avoid deprecated methods or outdated usage patterns
+- Generate implementations aligned with library best practices
+- Produce higher-quality code with fewer revision cycles

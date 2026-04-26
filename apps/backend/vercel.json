@@ -1,0 +1,6 @@
+{
+  "buildCommand": "pnpm --filter @twinmcp/backend build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": "apps/backend/.next"
+}

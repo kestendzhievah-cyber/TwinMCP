@@ -1,0 +1,56 @@
+{
+  "name": "@upstash/twinmcp-sdk",
+  "version": "0.3.0",
+  "description": "JavaScript/TypeScript SDK for TwinMCP",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint .",
+    "lint:check": "eslint ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/upstash/twinmcp.git",
+    "directory": "packages/sdk"
+  },
+  "keywords": [
+    "twinmcp",
+    "sdk",
+    "documentation",
+    "ai",
+    "upstash"
+  ],
+  "author": "Upstash",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/client.js",
+      "require": "./dist/client.cjs"
+    }
+  },
+  "main": "./dist/client.cjs",
+  "module": "./dist/client.js",
+  "types": "./dist/client.d.ts",
+  "files": [
+    "dist"
+  ],
+  "bugs": {
+    "url": "https://github.com/upstash/twinmcp/issues"
+  },
+  "homepage": "https://github.com/upstash/twinmcp#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "dotenv": "^17.2.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.8.2",
+    "vitest": "^4.0.13"
+  }
+}
