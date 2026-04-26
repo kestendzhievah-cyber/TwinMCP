@@ -36,7 +36,7 @@
   "devDependencies": {
     "@upstash/twinmcp-sdk": "workspace:*",
     "ai": "^6.0.5",
-    "zod": "^4.3.4",
+    "zod": "^4.3.6",
     "@ai-sdk/amazon-bedrock": "^4.0.9",
     "@types/node": "^25.0.3",
     "dotenv": "^17.2.3",
