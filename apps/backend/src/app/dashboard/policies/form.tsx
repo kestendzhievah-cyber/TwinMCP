@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function PoliciesForm({
   teamspaceId,
@@ -16,12 +20,10 @@ export function PoliciesForm({
   const [trust, setTrust] = useState(minTrustScore);
   const [blocked, setBlocked] = useState(blockedLibraryIds.join(", "));
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
-    setMsg("");
     const res = await fetch("/api/v2/policies", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -35,74 +37,43 @@ export function PoliciesForm({
       }),
     });
     setSaving(false);
-    setMsg(res.ok ? "Saved" : "Error saving");
-    router.refresh();
+    if (res.ok) {
+      toast.success("Policies saved");
+      router.refresh();
+    } else {
+      toast.error("Failed to save policies");
+    }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 480 }}
-    >
-      <label style={{ fontSize: "0.85rem" }}>
-        <strong>Minimum trust score</strong> (0–10)
-        <br />
-        <input
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="trust">Minimum trust score (0–10)</Label>
+        <Input
+          id="trust"
           type="number"
           min={0}
           max={10}
           step={0.5}
           value={trust}
           onChange={(e) => setTrust(Number(e.target.value))}
-          style={{
-            marginTop: 4,
-            padding: "8px 10px",
-            border: "1px solid #ddd",
-            borderRadius: 6,
-            width: 100,
-          }}
+          className="w-32"
         />
-      </label>
+      </div>
 
-      <label style={{ fontSize: "0.85rem" }}>
-        <strong>Blocked library IDs</strong> (comma-separated)
-        <br />
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="blocked">Blocked library IDs (comma-separated)</Label>
+        <Input
+          id="blocked"
           value={blocked}
           onChange={(e) => setBlocked(e.target.value)}
           placeholder="/owner/repo, /other/lib"
-          style={{
-            marginTop: 4,
-            padding: "8px 10px",
-            border: "1px solid #ddd",
-            borderRadius: 6,
-            width: "100%",
-          }}
         />
-      </label>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          type="submit"
-          disabled={saving}
-          style={{
-            padding: "8px 20px",
-            background: "#111",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontSize: "0.85rem",
-          }}
-        >
-          {saving ? "Saving…" : "Save policies"}
-        </button>
-        {msg && (
-          <span style={{ fontSize: "0.8rem", color: msg === "Saved" ? "green" : "red" }}>
-            {msg}
-          </span>
-        )}
       </div>
+
+      <Button type="submit" disabled={saving}>
+        {saving ? "Saving…" : "Save policies"}
+      </Button>
     </form>
   );
 }

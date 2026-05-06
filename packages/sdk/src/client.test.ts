@@ -2,8 +2,10 @@ import { describe, test, expect } from "vitest";
 import { TwinMCP } from "./client";
 import { TwinMCPError } from "@error";
 
-describe("TwinMCP Client", () => {
-  const apiKey = process.env.TWINMCP_API_KEY || process.env.API_KEY!;
+const realApiKey = process.env.TWINMCP_API_KEY || process.env.API_KEY;
+const apiKey = realApiKey ?? "test-skip-placeholder";
+
+describe.skipIf(!realApiKey)("TwinMCP Client", () => {
 
   describe("constructor", () => {
     test("should create client with API key", () => {

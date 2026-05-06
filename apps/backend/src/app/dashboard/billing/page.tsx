@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { BillingActions } from "./actions";
+import { Badge } from "@/components/ui/badge";
 
 export default async function BillingPage() {
   const supabase = await createClient();
@@ -20,11 +21,16 @@ export default async function BillingPage() {
   const plan = userRow?.plan ?? "free";
 
   return (
-    <div>
-      <h1 style={{ fontSize: "1.5rem", marginBottom: 4 }}>Billing</h1>
-      <p style={{ color: "#666", marginBottom: "1.5rem", fontSize: "0.875rem" }}>
-        Current plan: <strong style={{ textTransform: "capitalize" }}>{plan}</strong>
-      </p>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
+        <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+          Current plan:{" "}
+          <Badge variant={plan === "free" ? "secondary" : "success"} className="capitalize">
+            {plan}
+          </Badge>
+        </p>
+      </div>
       <BillingActions plan={plan} />
     </div>
   );

@@ -4,6 +4,8 @@ import { apiKeys, usageEvents, users } from "@/db/schema";
 import { and, count, desc, eq, gte, isNull } from "drizzle-orm";
 import { getDailyLimit } from "@/lib/rate-limit";
 import { ApiKeysPanel } from "./api-keys-panel";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -39,13 +41,42 @@ export default async function DashboardPage() {
     .from(usageEvents)
     .where(and(eq(usageEvents.userId, user.id), gte(usageEvents.timestamp, dayAgo)));
 
+  const limit = getDailyLimit(plan);
+  const used = usageCount?.n ?? 0;
+  const pct = Math.min(100, Math.round((used / limit) * 100));
+
   return (
-    <div>
-      <h1 style={{ fontSize: "1.5rem", marginBottom: 4 }}>Dashboard</h1>
-      <p style={{ color: "#666", marginBottom: "2rem", fontSize: "0.875rem" }}>
-        Plan: <strong>{plan}</strong> &middot; Usage today: {usageCount?.n ?? 0} /{" "}
-        {getDailyLimit(plan)}
-      </p>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">Manage your account and API keys.</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardDescription>Current plan</CardDescription>
+            <CardTitle className="text-2xl capitalize flex items-center gap-2">
+              {plan}
+              {plan === "pro" && <Badge variant="success">Active</Badge>}
+              {plan === "team" && <Badge variant="success">Active</Badge>}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardDescription>Usage today</CardDescription>
+            <CardTitle className="text-2xl">
+              {used.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">/ {limit.toLocaleString()}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+              <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <ApiKeysPanel
         keys={keys.map((k) => ({

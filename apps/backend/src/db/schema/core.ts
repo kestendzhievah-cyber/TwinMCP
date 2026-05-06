@@ -19,12 +19,15 @@ export type Plan = (typeof plans)[number];
 export const users = pgTable(
   "users",
   {
-    id: text("id").primaryKey(), // Clerk user_id
+    id: text("id").primaryKey(), // Supabase auth user_id
     email: text("email").notNull(),
+    name: text("name"),
+    avatarUrl: text("avatar_url"),
     plan: text("plan").$type<Plan>().notNull().default("free"),
     quotaUsed: integer("quota_used").notNull().default(0),
     quotaResetAt: timestamp("quota_reset_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("users_email_idx").on(t.email)]
 );
@@ -40,6 +43,7 @@ export const apiKeys = pgTable(
     prefix: text("prefix").notNull(), // e.g. ctx7sk_abc1
     name: text("name"),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

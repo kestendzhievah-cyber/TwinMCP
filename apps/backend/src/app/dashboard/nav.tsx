@@ -1,15 +1,35 @@
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
 import { createClient } from "@/utils/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  BookOpen,
+  Boxes,
+  Key,
+  Library,
+  LogOut,
+  Settings,
+  Shield,
+  Store,
+  Users,
+  CreditCard,
+} from "lucide-react";
 
 const links = [
-  { href: "/dashboard", label: "API Keys" },
-  { href: "/dashboard/libraries", label: "Libraries" },
-  { href: "/dashboard/policies", label: "Policies" },
-  { href: "/dashboard/team", label: "Team" },
-  { href: "/dashboard/billing", label: "Billing" },
-  { href: "/dashboard/settings", label: "Settings" },
+  { href: "/dashboard", label: "API Keys", icon: Key },
+  { href: "/dashboard/servers", label: "Servers", icon: Boxes },
+  { href: "/dashboard/marketplace", label: "Marketplace", icon: Store },
+  { href: "/dashboard/libraries", label: "Libraries", icon: Library },
+  { href: "/dashboard/policies", label: "Policies", icon: Shield },
+  { href: "/dashboard/team", label: "Team", icon: Users },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 export function DashboardNav({ email }: { email: string }) {
@@ -23,51 +43,49 @@ export function DashboardNav({ email }: { email: string }) {
   }
 
   return (
-    <nav
-      style={{
-        width: 220,
-        borderRight: "1px solid #eee",
-        padding: "1.5rem 1rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-      }}
-    >
-      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }}>TwinMCP</h2>
-      {links.map((l) => (
+    <nav className="w-60 shrink-0 border-r bg-background flex flex-col px-4 py-6">
+      <div className="flex items-center justify-between px-2 mb-6">
+        <h2 className="text-lg font-bold tracking-tight">TwinMCP</h2>
+        <ThemeToggle />
+      </div>
+      <div className="flex flex-col gap-1">
+        {links.map((l) => {
+          const Icon = l.icon;
+          const active = pathname === l.href || (l.href !== "/dashboard" && pathname?.startsWith(l.href));
+          return (
+            <Link
+              key={l.href}
+              href={l.href as Route}
+              className={cn(
+                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                active
+                  ? "bg-secondary text-foreground font-medium"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {l.label}
+            </Link>
+          );
+        })}
+      </div>
+      <div className="mt-auto pt-4">
+        <Separator className="mb-3" />
         <a
-          key={l.href}
-          href={l.href}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 6,
-            textDecoration: "none",
-            fontSize: "0.875rem",
-            color: pathname === l.href ? "#111" : "#666",
-            background: pathname === l.href ? "#f3f3f3" : "transparent",
-            fontWeight: pathname === l.href ? 600 : 400,
-          }}
+          href="/docs"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition-colors mb-2"
         >
-          {l.label}
+          <BookOpen className="h-4 w-4" />
+          API Docs
         </a>
-      ))}
-      <div style={{ marginTop: "auto", borderTop: "1px solid #eee", paddingTop: 12 }}>
-        <p style={{ fontSize: "0.75rem", color: "#999", marginBottom: 8, wordBreak: "break-all" }}>
-          {email}
-        </p>
-        <button
-          onClick={handleSignOut}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#666",
-            cursor: "pointer",
-            fontSize: "0.8rem",
-            padding: 0,
-          }}
-        >
+        <Separator className="mb-3" />
+        <p className="text-xs text-muted-foreground mb-2 break-all px-2">{email}</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
+          <LogOut className="h-4 w-4" />
           Sign out
-        </button>
+        </Button>
       </div>
     </nav>
   );

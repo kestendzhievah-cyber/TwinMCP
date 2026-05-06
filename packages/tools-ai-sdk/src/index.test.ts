@@ -11,9 +11,11 @@ import {
   RESOLVE_LIBRARY_ID_DESCRIPTION,
 } from "./index";
 
+const hasAwsCreds = !!(process.env.AWS_REGION && process.env.AWS_BEARER_TOKEN_BEDROCK);
+
 const bedrock = createAmazonBedrock({
-  region: process.env.AWS_REGION,
-  apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK,
+  region: process.env.AWS_REGION ?? "us-east-1",
+  apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK ?? "test-skip-placeholder",
 });
 
 describe("@upstash/twinmcp-tools-ai-sdk", () => {
@@ -52,7 +54,7 @@ describe("@upstash/twinmcp-tools-ai-sdk", () => {
     });
   });
 
-  describe("Tool usage with generateText", () => {
+  describe.skipIf(!hasAwsCreds)("Tool usage with generateText", () => {
     test("resolveLibraryId tool should be called when searching for a library", async () => {
       const result = await generateText({
         model: bedrock("anthropic.claude-3-haiku-20240307-v1:0"),
@@ -167,7 +169,7 @@ describe("@upstash/twinmcp-tools-ai-sdk", () => {
       expect(agent).toBeDefined();
     });
 
-    test("should generate response using agent workflow", async () => {
+    test.skipIf(!hasAwsCreds)("should generate response using agent workflow", async () => {
       const agent = new TwinMCPAgent({
         model: bedrock("anthropic.claude-3-haiku-20240307-v1:0"),
         stopWhen: stepCountIs(5),
@@ -185,7 +187,7 @@ describe("@upstash/twinmcp-tools-ai-sdk", () => {
       expect(toolNames).toContain("resolveLibraryId");
     }, 60000);
 
-    test("should include TwinMCP tools in generate result", async () => {
+    test.skipIf(!hasAwsCreds)("should include TwinMCP tools in generate result", async () => {
       const agent = new TwinMCPAgent({
         model: bedrock("anthropic.claude-3-haiku-20240307-v1:0"),
         stopWhen: stepCountIs(5),

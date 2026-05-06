@@ -1,6 +1,22 @@
 import { getDb } from "@/db";
 import { libraries } from "@/db/schema";
 import { desc } from "drizzle-orm";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+
+const statusVariant = {
+  ready: "success",
+  failed: "destructive",
+  pending: "warning",
+  indexing: "secondary",
+} as const;
 
 export default async function LibrariesPage() {
   const db = getDb();
@@ -19,74 +35,60 @@ export default async function LibrariesPage() {
     .limit(100);
 
   return (
-    <div>
-      <h1 style={{ fontSize: "1.5rem", marginBottom: 4 }}>Libraries</h1>
-      <p style={{ color: "#666", marginBottom: "1.5rem", fontSize: "0.875rem" }}>
-        {libs.length} indexed libraries
-      </p>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Libraries</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {libs.length} indexed libraries available for retrieval
+        </p>
+      </div>
 
       {libs.length === 0 ? (
-        <p style={{ color: "#999" }}>
+        <p className="text-sm text-muted-foreground">
           No libraries indexed yet. Run the ingestion pipeline to populate.
         </p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid #eee", textAlign: "left" }}>
-              <th style={th}>Library</th>
-              <th style={th}>Trust</th>
-              <th style={th}>Snippets</th>
-              <th style={th}>Status</th>
-              <th style={th}>Last indexed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {libs.map((l) => (
-              <tr key={l.id} style={{ borderBottom: "1px solid #f5f5f5" }}>
-                <td style={td}>
-                  <strong>{l.title}</strong>
-                  <br />
-                  <span style={{ color: "#999", fontSize: "0.75rem" }}>{l.id}</span>
-                  {l.description && (
-                    <>
-                      <br />
-                      <span style={{ color: "#888", fontSize: "0.8rem" }}>
-                        {l.description.slice(0, 80)}
-                      </span>
-                    </>
-                  )}
-                </td>
-                <td style={td}>{l.trustScore.toFixed(1)}</td>
-                <td style={td}>{l.totalSnippets}</td>
-                <td style={td}>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "2px 8px",
-                      borderRadius: 4,
-                      fontSize: "0.75rem",
-                      background:
-                        l.status === "ready"
-                          ? "#e6ffe6"
-                          : l.status === "failed"
-                            ? "#ffe6e6"
-                            : "#fff3e0",
-                      color:
-                        l.status === "ready" ? "#060" : l.status === "failed" ? "#600" : "#960",
-                    }}
-                  >
-                    {l.status}
-                  </span>
-                </td>
-                <td style={td}>{l.lastIndexedAt ? l.lastIndexedAt.toLocaleDateString() : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Library</TableHead>
+                <TableHead className="w-20 text-right">Trust</TableHead>
+                <TableHead className="w-24 text-right">Snippets</TableHead>
+                <TableHead className="w-24">Status</TableHead>
+                <TableHead className="w-32">Last indexed</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {libs.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell>
+                    <div className="font-medium">{l.title}</div>
+                    <div className="text-xs text-muted-foreground font-mono mt-0.5">{l.id}</div>
+                    {l.description && (
+                      <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                        {l.description.slice(0, 100)}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {l.trustScore.toFixed(1)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{l.totalSnippets}</TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant[l.status as keyof typeof statusVariant] ?? "outline"}>
+                      {l.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {l.lastIndexedAt ? l.lastIndexedAt.toLocaleDateString() : "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );
 }
-
-const th: React.CSSProperties = { padding: "6px 8px", fontWeight: 500, color: "#666" };
-const td: React.CSSProperties = { padding: "8px", verticalAlign: "top" };

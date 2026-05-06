@@ -11,9 +11,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect("/sign-in?returnTo=/dashboard");
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "system-ui, sans-serif" }}>
+    <div className="flex min-h-screen bg-background">
       <DashboardNav email={user.email ?? ""} />
-      <main style={{ flex: 1, padding: "2rem", maxWidth: 960 }}>{children}</main>
+      <main className="flex-1 px-8 py-8 max-w-5xl">{children}</main>
     </div>
   );
 }

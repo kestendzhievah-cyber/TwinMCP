@@ -17,5 +17,6 @@ export const rateLimited = (apiKey: boolean) =>
   );
 
 export const badRequest = (msg: string) => jsonError(400, msg);
+export const forbidden = (msg = "Forbidden") => jsonError(403, msg);
 export const notFound = (msg = "Not found") => jsonError(404, msg);
 export const serverError = (msg = "Internal server error") => jsonError(500, msg);

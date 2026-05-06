@@ -1,12 +1,16 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, beforeAll } from "vitest";
 import { GetContextCommand } from "./index";
 import { newHttpClient } from "../../utils/test-utils";
 import { TwinMCP } from "../../client";
 import type { Documentation } from "@commands/types";
 
-const httpClient = newHttpClient();
+const hasApiKey = !!(process.env.TWINMCP_API_KEY || process.env.API_KEY);
 
-describe("GetContextCommand", () => {
+describe.skipIf(!hasApiKey)("GetContextCommand", () => {
+  let httpClient: ReturnType<typeof newHttpClient>;
+  beforeAll(() => {
+    httpClient = newHttpClient();
+  });
   test("should get library context as JSON (default)", async () => {
     const command = new GetContextCommand("How to use hooks", "/facebook/react");
     const result = await command.exec(httpClient);

@@ -14,7 +14,7 @@
 - [ ] `CORS_ORIGIN` set to `https://twinmcp.com` (not `*`)
 
 ### Billing
-- [ ] Stripe products created: Pro ($20/mo), Team ($50/mo)
+- [ ] Stripe products created: Pro ($15/mo), Team ($contact/mo)
 - [ ] Stripe webhook endpoint: `https://twinmcp.com/api/webhooks/stripe`
 - [ ] Stripe events listened: `checkout.session.completed`, `customer.subscription.deleted`, `customer.subscription.updated`
 - [ ] Stripe Billing Portal configured (branding, cancellation flows)

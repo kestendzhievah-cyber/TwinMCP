@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import * as crypto from "crypto";
+import * as path from "path";
 
 vi.mock("os", () => ({ homedir: () => "/fake-home", default: { homedir: () => "/fake-home" } }));
 
@@ -33,8 +34,8 @@ import {
 } from "../utils/auth.js";
 
 const mfs = vi.mocked(fs);
-const CREDENTIALS_PATH = "/fake-home/.twinmcp/credentials.json";
-const CONFIG_DIR_PATH = "/fake-home/.twinmcp";
+const CONFIG_DIR_PATH = path.join("/fake-home", ".twinmcp");
+const CREDENTIALS_PATH = path.join(CONFIG_DIR_PATH, "credentials.json");
 
 beforeEach(() => {
   vi.clearAllMocks();

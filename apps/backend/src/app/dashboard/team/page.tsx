@@ -48,8 +48,10 @@ export default async function TeamPage() {
   }
 
   return (
-    <div>
-      <h1 style={{ fontSize: "1.5rem", marginBottom: 4 }}>Team</h1>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+      </div>
       <TeamPanel
         userId={user.id}
         teamspace={

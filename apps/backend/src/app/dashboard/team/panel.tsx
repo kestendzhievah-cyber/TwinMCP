@@ -2,6 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
 
 interface Props {
   userId: string;
@@ -18,86 +31,91 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
     e.preventDefault();
     if (!name.trim()) return;
     setCreating(true);
-    await fetch("/api/v2/team", {
+    const res = await fetch("/api/v2/team", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name }),
     });
     setCreating(false);
-    setName("");
-    router.refresh();
+    if (res.ok) {
+      toast.success("Teamspace created");
+      setName("");
+      router.refresh();
+    } else {
+      toast.error("Failed to create teamspace");
+    }
   }
 
   if (!teamspace) {
     return (
-      <div style={{ marginTop: 16 }}>
-        <p style={{ color: "#666", fontSize: "0.875rem", marginBottom: 16 }}>
-          You don't belong to a teamspace yet. Create one to manage members and policies.
-        </p>
-        <form onSubmit={createTeam} style={{ display: "flex", gap: 8 }}>
-          <input
-            placeholder="Teamspace name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            style={{
-              padding: "8px 10px",
-              border: "1px solid #ddd",
-              borderRadius: 6,
-              flex: 1,
-              fontSize: "0.85rem",
-            }}
-          />
-          <button
-            type="submit"
-            disabled={creating}
-            style={{
-              padding: "8px 16px",
-              background: "#111",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontSize: "0.85rem",
-            }}
-          >
-            {creating ? "Creating…" : "Create teamspace"}
-          </button>
-        </form>
-      </div>
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>No teamspace yet</CardTitle>
+          <CardDescription>Create one to manage members and policies.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={createTeam} className="flex gap-2">
+            <Input
+              placeholder="Teamspace name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <Button type="submit" disabled={creating}>
+              {creating ? "Creating…" : "Create"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div style={{ marginTop: 8 }}>
-      <p style={{ color: "#666", marginBottom: "1.5rem", fontSize: "0.875rem" }}>
-        <strong>{teamspace.name}</strong> &middot; Plan: {teamspace.plan}
-      </p>
-
-      <h2 style={{ fontSize: "1rem", marginBottom: 12 }}>Members</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-        <thead>
-          <tr style={{ borderBottom: "1px solid #eee", textAlign: "left" }}>
-            <th style={th}>Email</th>
-            <th style={th}>Role</th>
-            <th style={th}>Joined</th>
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((m) => (
-            <tr key={m.userId} style={{ borderBottom: "1px solid #f5f5f5" }}>
-              <td style={td}>
-                {m.email} {m.userId === userId && <em>(you)</em>}
-              </td>
-              <td style={td}>{m.role}</td>
-              <td style={td}>{new Date(m.joinedAt).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{teamspace.name}</CardTitle>
+            <CardDescription className="mt-1">
+              <Badge variant="secondary" className="capitalize">
+                {teamspace.plan}
+              </Badge>
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <h3 className="text-sm font-medium mb-3">Members</h3>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Email</TableHead>
+                <TableHead className="w-24">Role</TableHead>
+                <TableHead className="w-32">Joined</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map((m) => (
+                <TableRow key={m.userId}>
+                  <TableCell>
+                    {m.email}
+                    {m.userId === userId && (
+                      <span className="text-xs text-muted-foreground ml-2">(you)</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={m.role === "owner" ? "default" : "secondary"}>{m.role}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {new Date(m.joinedAt).toLocaleDateString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
-
-const th: React.CSSProperties = { padding: "6px 8px", fontWeight: 500, color: "#666" };
-const td: React.CSSProperties = { padding: "8px" };

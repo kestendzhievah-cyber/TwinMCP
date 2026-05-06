@@ -2,15 +2,15 @@
 
 ## En attente (bloquant pour le lancement)
 
-- [ ] **Activer les providers Supabase Auth** : Dashboard → Authentication → Providers → activer Email, GitHub, Google
+- [x] **Activer les providers Supabase Auth** : Dashboard → Authentication → Providers → activer Email, GitHub, Google
 - [x] **Générer les clés JWT OAuth** ✅ (RSA 2048 générées et ajoutées à `.env.local` — testées avec succès via jose)
-- [ ] **Configurer Stripe** (mode test) → `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_TEAM`
-- [ ] **Récupérer une clé OpenAI** → `OPENAI_API_KEY` (pour ingestion)
-- [ ] **Créer un GitHub PAT** → `GITHUB_TOKEN` (pour ingestion)
-- [ ] **Configurer domaine + DNS** (voir `PROVISIONING.md` §1)
-- [ ] **Configurer Vercel** : importer repo, ajouter env vars, lier domaine
-- [ ] **Configurer GitHub secrets** : `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `DATABASE_URL_UNPOOLED`
-- [ ] **Suivre `PRODUCTION.md`** — checklist complète avant lancement
+- [x] **Configurer Stripe** (mode test) → `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_TEAM`
+- [x] **Récupérer une clé OpenAI** → `OPENAI_API_KEY` (pour ingestion)
+- [x] **Créer un GitHub PAT** → `GITHUB_TOKEN` (pour ingestion)
+- [x] **Configurer domaine + DNS** (voir `PROVISIONING.md` §1)
+- [x] **Configurer Vercel** : importer repo, ajouter env vars, lier domaine
+- [x] **Configurer GitHub secrets** : `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `DATABASE_URL_UNPOOLED`
+- [x] **Suivre `PRODUCTION.md`** — checklist complète avant lancement
 
 ## Optionnel
 

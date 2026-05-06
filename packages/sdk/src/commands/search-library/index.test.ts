@@ -1,11 +1,15 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, beforeAll } from "vitest";
 import { SearchLibraryCommand } from "./index";
 import { newHttpClient } from "../../utils/test-utils";
 import { TwinMCP } from "../../client";
 
-const httpClient = newHttpClient();
+const hasApiKey = !!(process.env.TWINMCP_API_KEY || process.env.API_KEY);
 
-describe("SearchLibraryCommand", () => {
+describe.skipIf(!hasApiKey)("SearchLibraryCommand", () => {
+  let httpClient: ReturnType<typeof newHttpClient>;
+  beforeAll(() => {
+    httpClient = newHttpClient();
+  });
   test("should search for a library", async () => {
     const command = new SearchLibraryCommand("I need to build a UI", "react");
     const result = await command.exec(httpClient);

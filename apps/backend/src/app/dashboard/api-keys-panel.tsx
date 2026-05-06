@@ -2,6 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import { Copy, Trash2 } from "lucide-react";
 
 interface Key {
   id: string;
@@ -29,117 +42,110 @@ export function ApiKeysPanel({ keys }: { keys: Key[] }) {
       setRevealedKey(data.key);
       setNewKeyName("");
       router.refresh();
+      toast.success("API key created");
+    } else {
+      toast.error("Failed to create key");
     }
     setCreating(false);
   }
 
   async function revokeKey(id: string) {
-    await fetch(`/api/v2/auth/keys/${id}`, { method: "DELETE" });
-    router.refresh();
+    const res = await fetch(`/api/v2/auth/keys/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      router.refresh();
+      toast.success("Key revoked");
+    } else {
+      toast.error("Failed to revoke key");
+    }
+  }
+
+  async function copyKey() {
+    if (!revealedKey) return;
+    await navigator.clipboard.writeText(revealedKey);
+    toast.success("Copied to clipboard");
   }
 
   return (
-    <section>
-      <h2 style={{ fontSize: "1.1rem", marginBottom: 12 }}>API Keys</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>API Keys</CardTitle>
+        <CardDescription>
+          Use these to authenticate the TwinMCP server in your IDE or scripts.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {revealedKey && (
+          <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
+            <p className="font-medium text-green-900 mb-2">
+              New key — copy now, it won&apos;t be shown again
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 break-all rounded bg-white px-2 py-1 text-xs font-mono">
+                {revealedKey}
+              </code>
+              <Button size="sm" variant="outline" onClick={copyKey}>
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setRevealedKey(null)}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        )}
 
-      {revealedKey && (
-        <div
-          style={{
-            padding: 12,
-            background: "#f0fff0",
-            border: "1px solid #afa",
-            borderRadius: 6,
-            marginBottom: 16,
-            fontSize: "0.85rem",
-            wordBreak: "break-all",
-          }}
-        >
-          <strong>New key (copy now — won't be shown again):</strong>
-          <br />
-          <code>{revealedKey}</code>
-          <br />
-          <button onClick={() => setRevealedKey(null)} style={{ marginTop: 8, fontSize: "0.8rem" }}>
-            Dismiss
-          </button>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Key name (optional)"
+            value={newKeyName}
+            onChange={(e) => setNewKeyName(e.target.value)}
+          />
+          <Button onClick={createKey} disabled={creating}>
+            {creating ? "Creating…" : "Create key"}
+          </Button>
         </div>
-      )}
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <input
-          placeholder="Key name (optional)"
-          value={newKeyName}
-          onChange={(e) => setNewKeyName(e.target.value)}
-          style={{
-            padding: "8px 10px",
-            border: "1px solid #ddd",
-            borderRadius: 6,
-            flex: 1,
-            fontSize: "0.85rem",
-          }}
-        />
-        <button
-          onClick={createKey}
-          disabled={creating}
-          style={{
-            padding: "8px 16px",
-            background: "#111",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontSize: "0.85rem",
-          }}
-        >
-          {creating ? "Creating…" : "Create key"}
-        </button>
-      </div>
-
-      {keys.length === 0 ? (
-        <p style={{ color: "#999", fontSize: "0.85rem" }}>No API keys yet.</p>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid #eee", textAlign: "left" }}>
-              <th style={th}>Prefix</th>
-              <th style={th}>Name</th>
-              <th style={th}>Last used</th>
-              <th style={th}>Created</th>
-              <th style={th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {keys.map((k) => (
-              <tr key={k.id} style={{ borderBottom: "1px solid #f5f5f5" }}>
-                <td style={td}>
-                  <code>{k.prefix}…</code>
-                </td>
-                <td style={td}>{k.name ?? "—"}</td>
-                <td style={td}>
-                  {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : "never"}
-                </td>
-                <td style={td}>{new Date(k.createdAt).toLocaleDateString()}</td>
-                <td style={td}>
-                  <button
-                    onClick={() => revokeKey(k.id)}
-                    style={{
-                      color: "red",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Revoke
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
+        {keys.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">No API keys yet.</p>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Prefix</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Last used</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {keys.map((k) => (
+                  <TableRow key={k.id}>
+                    <TableCell className="font-mono text-xs">{k.prefix}…</TableCell>
+                    <TableCell>{k.name ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : "never"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(k.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => revokeKey(k.id)}
+                        aria-label="Revoke"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
-
-const th: React.CSSProperties = { padding: "6px 8px", fontWeight: 500, color: "#666" };
-const td: React.CSSProperties = { padding: "8px" };
