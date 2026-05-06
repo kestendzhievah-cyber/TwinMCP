@@ -14,7 +14,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, Key, Trash2 } from "lucide-react";
 
 interface Key {
   id: string;
@@ -105,7 +105,18 @@ export function ApiKeysPanel({ keys }: { keys: Key[] }) {
         </div>
 
         {keys.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No API keys yet.</p>
+          <div className="flex flex-col items-center gap-2 rounded-md border border-dashed py-10 text-center">
+            <div
+              aria-hidden
+              className="grid h-10 w-10 place-items-center rounded-full bg-secondary text-muted-foreground"
+            >
+              <Key className="h-4 w-4" />
+            </div>
+            <p className="text-sm font-medium">No API keys yet</p>
+            <p className="max-w-sm text-xs text-muted-foreground">
+              Generate one above to authenticate the TwinMCP runtime in your IDE or scripts.
+            </p>
+          </div>
         ) : (
           <div className="rounded-md border">
             <Table>

@@ -3,8 +3,9 @@ import { getDb } from "@/db";
 import { mcpServers, servers } from "@/db/schema";
 import { desc, eq, or } from "drizzle-orm";
 import { McpCatalogGrid } from "./grid";
-import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { RefreshCatalogButton } from "./refresh-button";
 
 export default async function MarketplacePage() {
   const supabase = await createClient();
@@ -46,17 +47,20 @@ export default async function MarketplacePage() {
       </div>
 
       {catalog.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center text-center gap-3">
-            <Store className="h-10 w-10 text-muted-foreground" />
-            <div>
-              <p className="font-medium">Catalog is empty</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Run <code className="font-mono text-xs bg-secondary px-1 py-0.5 rounded">pnpm seed:mcps</code> to load official MCPs.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Store}
+          title="Catalog is empty"
+          description={
+            <>
+              No MCPs are available yet. Ask an admin to run{" "}
+              <code className="font-mono text-xs bg-secondary px-1 py-0.5 rounded">
+                pnpm seed:mcps
+              </code>
+              , then refresh.
+            </>
+          }
+          primaryAction={<RefreshCatalogButton />}
+        />
       ) : (
         <McpCatalogGrid catalog={catalog} userServers={userServers} />
       )}

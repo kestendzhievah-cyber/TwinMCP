@@ -25,7 +25,12 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 
-export function CreateServerDialog({ disabled }: { disabled?: boolean }) {
+interface CreateServerDialogProps {
+  disabled?: boolean;
+  trigger?: React.ReactNode;
+}
+
+export function CreateServerDialog({ disabled, trigger }: CreateServerDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -62,9 +67,11 @@ export function CreateServerDialog({ disabled }: { disabled?: boolean }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={disabled}>
-          <Plus className="h-4 w-4" /> New server
-        </Button>
+        {trigger ?? (
+          <Button disabled={disabled}>
+            <Plus className="h-4 w-4" /> New server
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

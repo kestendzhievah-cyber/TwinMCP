@@ -1,6 +1,7 @@
 import { getDb } from "@/db";
 import { libraries } from "@/db/schema";
 import { desc } from "drizzle-orm";
+import { Library } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -10,6 +11,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
+import { EmptyState } from "@/components/dashboard/empty-state";
 
 const statusVariant = {
   ready: "success",
@@ -44,9 +46,11 @@ export default async function LibrariesPage() {
       </div>
 
       {libs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No libraries indexed yet. Run the ingestion pipeline to populate.
-        </p>
+        <EmptyState
+          icon={Library}
+          title="No libraries indexed yet"
+          description="Libraries are surfaced once the ingestion pipeline has run. Pull a few popular repos to populate this catalog."
+        />
       ) : (
         <div className="rounded-md border">
           <Table>

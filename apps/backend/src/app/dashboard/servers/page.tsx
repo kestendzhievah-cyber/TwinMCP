@@ -6,8 +6,8 @@ import { servers, users } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { SERVER_QUOTAS } from "@/lib/quota";
 import { CreateServerDialog } from "./create-dialog";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableHeader,
@@ -16,8 +16,9 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import { ArrowRight, Boxes } from "lucide-react";
+import { ArrowRight, Boxes, Plus } from "lucide-react";
 import type { ServerStatus } from "@/db/schema/platform";
+import { EmptyState } from "@/components/dashboard/empty-state";
 
 const statusVariant: Record<ServerStatus, "success" | "secondary" | "warning" | "destructive"> = {
   running: "success",
@@ -73,17 +74,22 @@ export default async function ServersPage() {
       </div>
 
       {rows.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center text-center gap-3">
-            <Boxes className="h-10 w-10 text-muted-foreground" />
-            <div>
-              <p className="font-medium">No servers yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Create your first MCP server to get started.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Boxes}
+          title="No servers yet"
+          description="A server is an isolated runtime where your MCPs live. The first one is free."
+          primaryAction={
+            <CreateServerDialog
+              disabled={remaining === 0}
+              trigger={
+                <Button size="lg" disabled={remaining === 0}>
+                  <Plus className="h-4 w-4" />
+                  Create your first server
+                </Button>
+              }
+            />
+          }
+        />
       ) : (
         <div className="rounded-md border">
           <Table>

@@ -2,8 +2,13 @@ import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { teamspaceFilters, teamspaceMembers, teamspaces } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import Link from "next/link";
+import { type Route } from "next";
+import { Shield } from "lucide-react";
 import { PoliciesForm } from "./form";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/dashboard/empty-state";
 
 export default async function PoliciesPage() {
   const supabase = await createClient();
@@ -25,12 +30,16 @@ export default async function PoliciesPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Policies</h1>
         </div>
-        <Card>
-          <CardContent className="py-8 text-sm text-muted-foreground text-center">
-            You are not a member of any teamspace. Create one in the{" "}
-            <strong className="text-foreground">Team</strong> tab to configure library filters.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Shield}
+          title="No teamspace yet"
+          description="Policies apply per-teamspace — library filters, trust thresholds, member access. Create or join a teamspace to start configuring them."
+          primaryAction={
+            <Button asChild>
+              <Link href={"/dashboard/team" as Route}>Go to Team</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
