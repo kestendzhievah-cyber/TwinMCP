@@ -18,7 +18,8 @@ export type AuditAction =
   | "mcp_server.delete"
   | "api_key.create"
   | "api_key.revoke"
-  | "user.delete";
+  | "user.delete"
+  | "user.onboarding.complete";
 
 export type AuditTargetType = "server" | "user_server" | "mcp_server" | "api_key" | "user";
 

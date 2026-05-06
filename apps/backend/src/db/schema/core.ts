@@ -26,6 +26,8 @@ export const users = pgTable(
     plan: text("plan").$type<Plan>().notNull().default("free"),
     quotaUsed: integer("quota_used").notNull().default(0),
     quotaResetAt: timestamp("quota_reset_at", { withTimezone: true }).notNull().defaultNow(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
