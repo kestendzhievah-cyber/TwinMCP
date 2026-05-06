@@ -19,6 +19,9 @@ export async function requireSessionUser(req: Request): Promise<SessionUser | nu
   // Dev header (non-production only)
   const devId = req.headers.get("x-twinmcp-user-id");
   if (devId && process.env.NODE_ENV !== "production") {
+    // Ensure the row exists so endpoints that UPDATE the user actually
+    // persist instead of silently no-op'ing on a missing primary key.
+    await ensureUserRow(devId, undefined);
     return { userId: devId };
   }
 
