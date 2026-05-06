@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 import { createClient } from "@/utils/supabase/client";
+import { track } from "@/lib/analytics/funnel";
 
 const SELECTED_PLAN_KEY = "tmcp_signup_plan";
 const allowedPlans = new Set(["free", "pro", "team"]);
@@ -41,6 +42,11 @@ export function SignUpForm() {
     }
   }, [selectedPlan]);
 
+  // Fire signup_started once when the form mounts.
+  useEffect(() => {
+    track({ name: "signup_started" });
+  }, []);
+
   // Resend cooldown ticker.
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -70,6 +76,7 @@ export function SignUpForm() {
       setLoading(false);
       return;
     }
+    track({ name: "signup_completed", properties: { method: "password", via: "client" } });
     setDone(true);
     setResendCooldown(60);
     setLoading(false);

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PLANS, formatPrice, type BillingCadence } from "./pricing-data";
+import { track } from "@/lib/analytics/funnel";
 
 interface PricingCardsProps {
   cadence: BillingCadence;
@@ -72,7 +73,19 @@ export function PricingCards({ cadence }: PricingCardsProps) {
               variant={plan.highlighted ? "default" : "outline"}
               className="mt-6 w-full"
             >
-              <Link href={plan.cta.href as Route}>{plan.cta.label}</Link>
+              <Link
+                href={plan.cta.href as Route}
+                onClick={() => {
+                  if (plan.id !== "enterprise") {
+                    track({
+                      name: "checkout_started",
+                      properties: { plan: plan.id },
+                    });
+                  }
+                }}
+              >
+                {plan.cta.label}
+              </Link>
             </Button>
           </article>
         );

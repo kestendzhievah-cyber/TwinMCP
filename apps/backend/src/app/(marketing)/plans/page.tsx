@@ -7,6 +7,7 @@ import { Faq, type FaqItem } from "@/components/marketing/faq";
 import { PricingExperience } from "@/components/pricing/pricing-experience";
 import { TrustSignals } from "@/components/pricing/trust-signals";
 import { ComparisonTable } from "@/components/pricing/comparison-table";
+import { TrackOnMount } from "@/components/analytics/track-event";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -51,6 +52,7 @@ const pricingFaq: FaqItem[] = [
 export default function PlansPage() {
   return (
     <>
+      <TrackOnMount name="pricing_view" />
       {/* Hero + cards + toggle */}
       <Section
         eyebrow="Pricing"

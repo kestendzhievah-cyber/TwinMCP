@@ -3,11 +3,21 @@ import { eq } from "drizzle-orm";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
+import { trackServer } from "@/lib/analytics/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_RETURN_TO = "/dashboard";
+
+// Tolerance to treat created_at ≈ last_sign_in_at as "first authenticated
+// session" (Supabase sets both during the same exchange).
+const FRESH_SIGNUP_WINDOW_MS = 30_000;
+
+function inferMethod(provider: string | undefined): "oauth" | "password" | "magic-link" {
+  if (!provider || provider === "email") return "password";
+  return "oauth";
+}
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -18,7 +28,28 @@ export async function GET(req: NextRequest) {
   if (code) {
     const supabase = await createClient();
     const { data } = await supabase.auth.exchangeCodeForSession(code);
-    userId = data?.user?.id;
+    const u = data?.user;
+    userId = u?.id;
+
+    // Fire signup_completed once per user, server-side. Client-side signup
+    // form fires its own copy with via:"client" — we tag this one with
+    // via:"server" so PostHog can dedupe in the funnel.
+    if (u?.id && u.created_at && u.last_sign_in_at) {
+      const created = Date.parse(u.created_at);
+      const lastSignIn = Date.parse(u.last_sign_in_at);
+      if (
+        Number.isFinite(created) &&
+        Number.isFinite(lastSignIn) &&
+        Math.abs(lastSignIn - created) < FRESH_SIGNUP_WINDOW_MS
+      ) {
+        const method = inferMethod(u.app_metadata?.provider);
+        trackServer({
+          event: "signup_completed",
+          distinctId: u.id,
+          properties: { method, via: "server", provider: u.app_metadata?.provider ?? null },
+        });
+      }
+    }
   }
 
   // Send unfinished users through onboarding the first time they hit the

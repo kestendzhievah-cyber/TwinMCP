@@ -7,6 +7,7 @@ import { MarketplacePreview } from "@/components/marketing/marketplace-preview";
 import { PricingTeaser } from "@/components/marketing/pricing-teaser";
 import { SocialProof } from "@/components/marketing/social-proof";
 import { Faq } from "@/components/marketing/faq";
+import { TrackOnMount } from "@/components/analytics/track-event";
 
 export const metadata: Metadata = {
   title: "TwinMCP — Run your MCP servers without managing infra",
@@ -42,6 +43,7 @@ export default function HomePage() {
         // JSON.stringify is safe here — content is fully static and trusted.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
       />
+      <TrackOnMount name="landing_view" />
       <Hero />
       <IdeLogosBar />
       <ProblemSolution />

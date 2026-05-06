@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
+import { track } from "@/lib/analytics/funnel";
 
 interface OAuthButtonsProps {
   returnTo: string;
@@ -13,6 +14,7 @@ export function OAuthButtons({ returnTo }: OAuthButtonsProps) {
   const [pending, setPending] = useState<"github" | "google" | null>(null);
 
   async function handleOAuth(provider: "github" | "google") {
+    track({ name: "oauth_clicked", properties: { provider } });
     setPending(provider);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({

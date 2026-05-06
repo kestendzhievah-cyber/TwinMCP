@@ -133,6 +133,12 @@ const GROUPS: Group[] = [
     optional: ["SENTRY_DSN", "AXIOM_TOKEN", "AXIOM_DATASET"],
     breaks: ["error tracking, structured logging (silent fallback)"],
   },
+  {
+    name: "Funnel analytics (PostHog Cloud EU) — optional",
+    required: [],
+    optional: ["NEXT_PUBLIC_POSTHOG_KEY", "NEXT_PUBLIC_POSTHOG_HOST"],
+    breaks: ["funnel events (landing → signup → first server) silent no-op"],
+  },
 ];
 
 const env = { ...loadEnvFile(ENV_FILE), ...process.env };

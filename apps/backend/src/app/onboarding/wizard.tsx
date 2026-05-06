@@ -9,6 +9,7 @@ import { StepWelcome, type IdePreference } from "@/components/onboarding/step-we
 import { StepServer } from "@/components/onboarding/step-server";
 import { StepMcp, type CatalogMcp } from "@/components/onboarding/step-mcp";
 import { StepConnect } from "@/components/onboarding/step-connect";
+import { track } from "@/lib/analytics/funnel";
 
 const STEPS = ["IDE", "Server", "MCP", "Connect"] as const;
 const SELECTED_PLAN_KEY = "tmcp_signup_plan";
@@ -54,7 +55,15 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
 
   const handleServerReady = useCallback(
     (s: { id: string; name: string; endpointUrl: string | null }) => {
-      setServer(s);
+      setServer((prev) => {
+        if (!prev) {
+          // First time we're seeing this server in the wizard — fire the
+          // funnel event. Skipped if the user already had a server (existing).
+          track({ name: "first_server_created", properties: { serverId: s.id } });
+        }
+        return s;
+      });
+      track({ name: "onboarding_step_completed", properties: { step: "server" } });
       setStep(2);
     },
     []
@@ -62,6 +71,7 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
 
   async function handleSkip() {
     setSkipping(true);
+    track({ name: "onboarding_skipped", properties: { atStep: step } });
     try {
       await fetch("/api/v2/users/me/onboarding", {
         method: "POST",
@@ -80,6 +90,7 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
   }
 
   function handleFinish() {
+    track({ name: "onboarding_step_completed", properties: { step: "connect" } });
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(SELECTED_PLAN_KEY);
     }
@@ -106,7 +117,10 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
           <StepWelcome
             selected={ide}
             onSelect={handleSelectIde}
-            onContinue={() => setStep(1)}
+            onContinue={() => {
+              track({ name: "onboarding_step_completed", properties: { step: "welcome" } });
+              setStep(1);
+            }}
             selectedPlan={selectedPlan}
           />
         )}
@@ -121,8 +135,15 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
           <StepMcp
             catalog={catalog}
             serverId={server.id}
-            onInstalled={() => setStep(3)}
-            onSkip={() => setStep(3)}
+            onInstalled={(mcpSlug) => {
+              track({ name: "first_mcp_installed", properties: { mcpSlug } });
+              track({ name: "onboarding_step_completed", properties: { step: "mcp" } });
+              setStep(3);
+            }}
+            onSkip={() => {
+              track({ name: "onboarding_step_completed", properties: { step: "mcp" } });
+              setStep(3);
+            }}
             onBack={() => setStep(1)}
           />
         )}

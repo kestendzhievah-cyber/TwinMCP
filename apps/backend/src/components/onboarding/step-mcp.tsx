@@ -31,7 +31,7 @@ export interface CatalogMcp {
 interface StepMcpProps {
   catalog: CatalogMcp[];
   serverId: string;
-  onInstalled: () => void;
+  onInstalled: (mcpSlug: string) => void;
   onSkip: () => void;
   onBack: () => void;
 }
@@ -92,7 +92,7 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
         setInstalling(false);
         return;
       }
-      onInstalled();
+      onInstalled(current.slug);
     } catch (err) {
       console.error("[onboarding install mcp]", err);
       setError("Network error — try again.");
