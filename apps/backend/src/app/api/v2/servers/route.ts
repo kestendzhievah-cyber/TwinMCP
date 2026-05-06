@@ -81,24 +81,33 @@ export async function POST(req: NextRequest) {
       status: "provisioning",
     });
 
-    // Auto-install TwinMCP Docs (handled by control-plane proxy, no exec in box)
+    // Auto-install TwinMCP Docs (handled by control-plane proxy, no exec in box).
+    // Best-effort: a missing CONFIG_ENCRYPTION_KEY or transient DB error must
+    // not block server creation — the user can install MCPs manually later.
     const [docsMcp] = await db
       .select({ id: mcpServers.id })
       .from(mcpServers)
       .where(eq(mcpServers.slug, TWINMCP_DOCS_SLUG))
       .limit(1);
     if (docsMcp) {
-      const empty = encryptConfig({});
-      await db.insert(userServers).values({
-        id: randomUUID(),
-        userId: session.userId,
-        serverId: id,
-        mcpServerId: docsMcp.id,
-        configCiphertext: empty.ciphertext,
-        configIv: empty.iv,
-        configTag: empty.tag,
-        enabled: true,
-      });
+      try {
+        const empty = encryptConfig({});
+        await db.insert(userServers).values({
+          id: randomUUID(),
+          userId: session.userId,
+          serverId: id,
+          mcpServerId: docsMcp.id,
+          configCiphertext: empty.ciphertext,
+          configIv: empty.iv,
+          configTag: empty.tag,
+          enabled: true,
+        });
+      } catch (autoInstallErr) {
+        console.warn(
+          `[servers POST] auto-install of ${TWINMCP_DOCS_SLUG} skipped:`,
+          autoInstallErr instanceof Error ? autoInstallErr.message : autoInstallErr
+        );
+      }
     } else {
       console.warn(`[servers POST] ${TWINMCP_DOCS_SLUG} not in catalog — run pnpm seed:mcps`);
     }
