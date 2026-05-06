@@ -12,8 +12,8 @@ export const rateLimited = (apiKey: boolean) =>
   jsonError(
     429,
     apiKey
-      ? "Rate limited or quota exceeded. Upgrade your plan at https://twinmcp.com/plans for higher limits."
-      : "Rate limited or quota exceeded. Create a free API key at https://twinmcp.com/dashboard for higher limits."
+      ? "Rate limited or quota exceeded. Upgrade your plan at https://twinmcp.dev/plans for higher limits."
+      : "Rate limited or quota exceeded. Create a free API key at https://twinmcp.dev/dashboard for higher limits."
   );
 
 export const badRequest = (msg: string) => jsonError(400, msg);

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Route } from "next";
+import type { Metadata, Route } from "next";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/marketing/section";
@@ -7,6 +7,19 @@ import { Faq, type FaqItem } from "@/components/marketing/faq";
 import { PricingExperience } from "@/components/pricing/pricing-experience";
 import { TrustSignals } from "@/components/pricing/trust-signals";
 import { ComparisonTable } from "@/components/pricing/comparison-table";
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "Free forever (1 server, 5 official MCPs). Pro $20/mo, Team $50/mo, Enterprise on request. No credit card on the free tier.",
+  alternates: { canonical: "/plans" },
+  openGraph: {
+    title: "TwinMCP Pricing — start free, upgrade only when you outgrow it",
+    description:
+      "Compare Free, Pro, Team, and Enterprise tiers — runtime, MCPs, audit logs, support SLA.",
+    url: "/plans",
+  },
+};
 
 const pricingFaq: FaqItem[] = [
   {
