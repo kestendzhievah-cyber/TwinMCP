@@ -6,7 +6,12 @@ import {
 } from "@/components/ui/accordion";
 import { Section } from "./section";
 
-const items = [
+export interface FaqItem {
+  q: string;
+  a: React.ReactNode;
+}
+
+const defaultItems: FaqItem[] = [
   {
     q: "What is MCP, exactly?",
     a: "Model Context Protocol — an open spec from Anthropic that lets AI agents talk to external tools and data through a standard interface. An MCP server exposes capabilities (filesystem access, GitHub queries, SQL, anything you can wrap in JSON-RPC); your IDE-side client (Cursor, Claude Code, Windsurf) calls them. TwinMCP is the runtime where those servers actually live.",
@@ -33,20 +38,29 @@ const items = [
   },
 ];
 
-export function Faq() {
+interface FaqProps {
+  items?: FaqItem[];
+  eyebrow?: string;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  id?: string;
+}
+
+export function Faq({
+  items = defaultItems,
+  eyebrow = "FAQ",
+  title = "Questions that come up before signing up",
+  description = "If something's missing, send it to hello@twinmcp.dev — answers feed back into this list.",
+  id = "faq",
+}: FaqProps = {}) {
   return (
-    <Section
-      id="faq"
-      eyebrow="FAQ"
-      title="Questions that come up before signing up"
-      description="If something's missing, send it to hello@twinmcp.dev — answers feed back into this list."
-    >
+    <Section id={id} eyebrow={eyebrow} title={title} description={description}>
       <div className="mx-auto max-w-3xl">
         <Accordion type="single" collapsible className="w-full">
           {items.map((item, i) => (
-            <AccordionItem key={item.q} value={`item-${i}`}>
+            <AccordionItem key={i} value={`item-${i}`}>
               <AccordionTrigger>{item.q}</AccordionTrigger>
-              <AccordionContent className="text-muted-foreground leading-relaxed">
+              <AccordionContent className="leading-relaxed text-muted-foreground">
                 {item.a}
               </AccordionContent>
             </AccordionItem>
