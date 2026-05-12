@@ -8,6 +8,13 @@ import { PricingExperience } from "@/components/pricing/pricing-experience";
 import { TrustSignals } from "@/components/pricing/trust-signals";
 import { ComparisonTable } from "@/components/pricing/comparison-table";
 import { TrackOnMount } from "@/components/analytics/track-event";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  productPricingSchema,
+  faqPageSchema,
+  breadcrumbListSchema,
+} from "@/lib/seo/schema";
+import { PLANS } from "@/components/pricing/pricing-data";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -52,6 +59,28 @@ const pricingFaq: FaqItem[] = [
 export default function PlansPage() {
   return (
     <>
+      <JsonLd
+        data={[
+          breadcrumbListSchema([
+            { name: "Home", url: "/" },
+            { name: "Pricing", url: "/plans" },
+          ]),
+          productPricingSchema({
+            name: "TwinMCP",
+            description:
+              "Hosted Model Context Protocol runtimes for AI coding agents — Free, Pro, Team, and Enterprise tiers.",
+            tiers: PLANS.map((p) => ({
+              id: p.id,
+              name: p.name,
+              description: p.blurb,
+              priceMonthlyUsd: p.monthlyUsd,
+              priceAnnualMonthlyUsd: p.annualMonthlyUsd,
+              url: `/plans#${p.id}`,
+            })),
+          }),
+          faqPageSchema(pricingFaq.map((f) => ({ q: f.q, a: f.a as string }))),
+        ]}
+      />
       <TrackOnMount name="pricing_view" />
       {/* Hero + cards + toggle */}
       <Section

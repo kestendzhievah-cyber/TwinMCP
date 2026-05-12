@@ -11,7 +11,8 @@ export interface FaqItem {
   a: React.ReactNode;
 }
 
-const defaultItems: FaqItem[] = [
+// Plain-text variant exported for JSON-LD FAQPage schema reuse.
+export const defaultFaqItems: { q: string; a: string }[] = [
   {
     q: "What is MCP, exactly?",
     a: "Model Context Protocol — an open spec from Anthropic that lets AI agents talk to external tools and data through a standard interface. An MCP server exposes capabilities (filesystem access, GitHub queries, SQL, anything you can wrap in JSON-RPC); your IDE-side client (Cursor, Claude Code, Windsurf) calls them. TwinMCP is the runtime where those servers actually live.",
@@ -47,7 +48,7 @@ interface FaqProps {
 }
 
 export function Faq({
-  items = defaultItems,
+  items = defaultFaqItems,
   eyebrow = "FAQ",
   title = "Questions that come up before signing up",
   description = "If something's missing, send it to hello@twinmcp.dev — answers feed back into this list.",

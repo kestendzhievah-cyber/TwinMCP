@@ -6,8 +6,14 @@ import { HowItWorks } from "@/components/marketing/how-it-works";
 import { MarketplacePreview } from "@/components/marketing/marketplace-preview";
 import { PricingTeaser } from "@/components/marketing/pricing-teaser";
 import { SocialProof } from "@/components/marketing/social-proof";
-import { Faq } from "@/components/marketing/faq";
+import { Faq, defaultFaqItems } from "@/components/marketing/faq";
 import { TrackOnMount } from "@/components/analytics/track-event";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  softwareApplicationSchema,
+  faqPageSchema,
+  howToSchema,
+} from "@/lib/seo/schema";
 
 export const metadata: Metadata = {
   title: "TwinMCP — Run your MCP servers without managing infra",
@@ -16,32 +22,48 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
-
-const softwareSchema = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "TwinMCP",
-  applicationCategory: "DeveloperApplication",
-  operatingSystem: "Web",
-  url: SITE_URL,
+const homeHowTo = howToSchema({
+  name: "How to run an MCP server with TwinMCP",
   description:
-    "TwinMCP runs Model Context Protocol servers in isolated runtimes for AI coding agents (Cursor, Claude Code, Windsurf, Cline).",
-  offers: [
-    { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
-    { "@type": "Offer", name: "Pro", price: "20", priceCurrency: "USD" },
-    { "@type": "Offer", name: "Team", price: "50", priceCurrency: "USD" },
+    "Provision a Model Context Protocol server in an isolated runtime and connect it to Cursor, Claude Code, Windsurf, or Cline.",
+  totalTime: "PT2M",
+  steps: [
+    {
+      name: "Create a TwinMCP account",
+      text: "Sign up for free — no credit card required. You get one server and access to the official MCP catalog.",
+      url: "/sign-up",
+    },
+    {
+      name: "Provision a server",
+      text: "Pick a runtime (Node.js, Python, Go, Ruby, or Rust). TwinMCP spins up an isolated Upstash Box sandbox in seconds.",
+    },
+    {
+      name: "Install MCPs from the marketplace",
+      text: "One-click install GitHub, Notion, Linear, Postgres, Slack, and dozens more curated MCPs into your server.",
+    },
+    {
+      name: "Connect your AI coding agent",
+      text: "Copy the server endpoint and API key, then paste them into Cursor, Claude Code, Windsurf, or Cline.",
+      url: "/docs",
+    },
   ],
-  publisher: { "@type": "Organization", name: "TwinMCP", url: SITE_URL },
-};
+});
 
 export default function HomePage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        // JSON.stringify is safe here — content is fully static and trusted.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+      <JsonLd
+        data={[
+          softwareApplicationSchema({
+            offers: [
+              { name: "Free", price: "0", url: "/plans" },
+              { name: "Pro", price: "20", url: "/plans" },
+              { name: "Team", price: "50", url: "/plans" },
+            ],
+          }),
+          faqPageSchema(defaultFaqItems),
+          homeHowTo,
+        ]}
       />
       <TrackOnMount name="landing_view" />
       <Hero />

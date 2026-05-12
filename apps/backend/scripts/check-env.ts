@@ -139,6 +139,22 @@ const GROUPS: Group[] = [
     optional: ["NEXT_PUBLIC_POSTHOG_KEY", "NEXT_PUBLIC_POSTHOG_HOST"],
     breaks: ["funnel events (landing → signup → first server) silent no-op"],
   },
+  {
+    name: "SEO verification (Search Console / Bing / Yandex) — optional",
+    required: [],
+    optional: [
+      "NEXT_PUBLIC_GSC_VERIFICATION",
+      "NEXT_PUBLIC_BING_VERIFICATION",
+      "NEXT_PUBLIC_YANDEX_VERIFICATION",
+    ],
+    breaks: ["search-engine ownership verification (verification meta tags silently omitted)"],
+  },
+  {
+    name: "IndexNow (instant indexing for Bing/Yandex) — optional",
+    required: [],
+    optional: ["INDEXNOW_KEY"],
+    breaks: ["/indexnow.txt returns 404, submitUrls() no-ops with a warning"],
+  },
 ];
 
 const env = { ...loadEnvFile(ENV_FILE), ...process.env };

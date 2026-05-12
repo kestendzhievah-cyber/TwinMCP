@@ -1,6 +1,7 @@
 import { Github, Twitter, ActivitySquare } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 const columns: Array<{
   label: string;
@@ -12,6 +13,8 @@ const columns: Array<{
       { href: "/#features", label: "Features" },
       { href: "/#how-it-works", label: "How it works" },
       { href: "/#marketplace", label: "Marketplace" },
+      { href: "/servers", label: "MCP catalog" },
+      { href: "/use-cases", label: "Use cases" },
       { href: "/plans", label: "Pricing" },
     ],
   },
@@ -28,7 +31,7 @@ const columns: Array<{
     label: "Company",
     links: [
       { href: "/#", label: "About" },
-      { href: "/#", label: "Blog" },
+      { href: "/blog", label: "Blog" },
       { href: "/#", label: "Changelog" },
       { href: "mailto:hello@twinmcp.dev", label: "Contact" },
     ],
@@ -111,6 +114,8 @@ export function MarketingFooter() {
               <span className="hidden sm:inline">All systems operational</span>
             </a>
             <ThemeToggle />
+            <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+            <LanguageSwitcher />
           </div>
         </div>
       </div>
