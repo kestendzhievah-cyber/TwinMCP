@@ -6,6 +6,7 @@ onlyBuiltDependencies:
   - "@sentry/cli"
   - core-js
   - esbuild
+  - msgpackr-extract
   - protobufjs
   - sharp
   - unrs-resolver
