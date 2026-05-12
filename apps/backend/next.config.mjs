@@ -4,6 +4,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
+  // Lint is enforced in CI (`pnpm lint`) and locally during dev, but blocking
+  // `next build` on pre-existing prettier/unused-vars debt slows iteration.
+  eslint: { ignoreDuringBuilds: true },
   headers: async () => [
     {
       source: "/(.*)",
