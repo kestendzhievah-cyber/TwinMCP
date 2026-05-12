@@ -2,6 +2,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   reactStrictMode: true,
   typedRoutes: true,
   // Lint is enforced in CI (`pnpm lint`) and locally during dev, but blocking

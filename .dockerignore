@@ -1,0 +1,29 @@
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/build
+**/coverage
+**/.cache
+
+# Local env — runtime env is injected by Dokploy
+**/.env
+**/.env.local
+**/.env.development
+**/.env.production
+**/.env.*.local
+
+# VCS & editor
+.git
+.gitignore
+.github
+.vscode
+.idea
+*.log
+
+# Tests & docs not needed at runtime
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+docs
