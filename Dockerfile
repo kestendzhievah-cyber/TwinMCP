@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json apps/backend/
 COPY packages/ packages/
-RUN pnpm install --frozen-lockfile --filter @twinmcp/backend
+RUN pnpm install --frozen-lockfile --filter @twinmcp/backend --config.dangerously-allow-all-builds=true
 
 FROM base AS builder
 WORKDIR /app
