@@ -91,27 +91,40 @@ jobs:
     steps:
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_TAG: ${{ inputs.sha && format('sha-{0}', inputs.sha) || 'latest' }}
+          ROLLBACK_TAG: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:previous
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script_stop: true
-          envs: IMAGE_TAG
+          envs: IMAGE_TAG,ROLLBACK_TAG
           script: |
             set -euo pipefail
             cd /opt/twinmcp
 
+            # Snapshot the currently-running image as "previous" so the
+            # rollback job can restore it if the smoke test fails.
+            CURRENT_ID=$(docker compose images app --format json 2>/dev/null \
+              | sed -n 's/.*"ID":"\([^"]*\)".*/\1/p' \
+              | head -1 || true)
+            if [ -n "$CURRENT_ID" ]; then
+              docker tag "$CURRENT_ID" "$ROLLBACK_TAG"
+              echo "Snapshotted current image as $ROLLBACK_TAG"
+            else
+              echo "No running container found — first deploy, skipping snapshot"
+            fi
+
             # IMAGE_TAG is "latest" for normal main pushes, "sha-<full>" for
-            # manual workflow_dispatch (rollback path).
+            # manual workflow_dispatch.
             echo "Deploying tag: $IMAGE_TAG"
             docker compose pull app
             docker compose up -d --no-deps app
 
             # Cleanup dangling images older than 7 days.
             docker image prune -f --filter "until=168h" || true
-        env:
-          IMAGE_TAG: ${{ inputs.sha && format('sha-{0}', inputs.sha) || 'latest' }}
 
   migrate:
     needs: deploy
@@ -140,3 +153,45 @@ jobs:
         run: sleep 30
       - name: Run SEO smoke test
         run: bash scripts/smoke-seo.sh "$BASE_URL"
+
+  rollback:
+    # Auto-rollback only on normal pushes — manual workflow_dispatch with a
+    # `sha` input is explicit recovery; we don't want to undo that.
+    needs: [deploy, migrate, smoke]
+    if: failure() && inputs.sha == ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH rollback to previous image
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          ROLLBACK_TAG: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:previous
+          LATEST_TAG: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script_stop: true
+          envs: ROLLBACK_TAG,LATEST_TAG
+          script: |
+            set -euo pipefail
+            cd /opt/twinmcp
+
+            # Refuse to roll back if no previous image was snapshotted
+            # (first deploy, manual deploy, or VPS image cache pruned).
+            if ! docker image inspect "$ROLLBACK_TAG" >/dev/null 2>&1; then
+              echo "❌ No previous image available to roll back to — manual recovery needed"
+              exit 1
+            fi
+
+            # Re-point :latest at the snapshotted previous image and recreate.
+            docker tag "$ROLLBACK_TAG" "$LATEST_TAG"
+            docker compose up -d --no-deps --force-recreate app
+            echo "✅ Rolled back to previous image ($ROLLBACK_TAG)"
+
+      - name: Verify rollback with smoke test
+        run: |
+          sleep 20
+          bash scripts/smoke-seo.sh "$BASE_URL"
+        # If post-rollback smoke also fails, the whole workflow stays red and
+        # the on-call engineer must intervene.
