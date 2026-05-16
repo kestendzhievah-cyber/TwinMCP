@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 import { createClient } from "@/utils/supabase/client";
+import { friendlyAuthError } from "@/lib/auth/errors";
 
 type Mode = "password" | "magic-link";
 
@@ -19,7 +20,7 @@ export function SignInForm() {
   const returnTo = searchParams.get("returnTo") ?? "/dashboard";
 
   const [mode, setMode] = useState<Mode>("password");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,28 +36,47 @@ export function SignInForm() {
     if (mode === "password") {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password });
       if (err) {
-        setError(err.message);
+        setError(friendlyAuthError(err));
         setLoading(false);
         return;
       }
       router.push(returnTo as Route);
+      router.refresh();
       return;
     }
 
-    // Magic link
+    // Magic link — let Supabase create a user if needed so the message
+    // "no account exists" doesn't trip up first-time visitors who happened
+    // to click "magic link" instead of "create account".
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`,
-        shouldCreateUser: false,
+        shouldCreateUser: true,
       },
     });
     if (err) {
-      setError(err.message);
+      setError(friendlyAuthError(err));
       setLoading(false);
       return;
     }
     setMagicLinkSent(true);
+    setLoading(false);
+  }
+
+  async function handleResendMagicLink() {
+    if (loading) return;
+    setError("");
+    setLoading(true);
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`,
+        shouldCreateUser: true,
+      },
+    });
+    if (err) setError(friendlyAuthError(err));
     setLoading(false);
   }
 
@@ -66,20 +86,36 @@ export function SignInForm() {
         <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
           <Mail className="h-5 w-5 text-muted-foreground" />
         </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Check your inbox</h1>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Vérifie ta boîte mail</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          We sent a one-time sign-in link to <span className="font-medium text-foreground">{email}</span>.
+          Un lien de connexion a été envoyé à{" "}
+          <span className="font-medium text-foreground">{email}</span>.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            setMagicLinkSent(false);
-            setMode("password");
-          }}
-          className="mt-6 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-4 min-h-[1.5rem] text-xs text-destructive"
         >
-          Use a different method
-        </button>
+          {error}
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2 self-stretch">
+          <Button type="button" variant="outline" onClick={handleResendMagicLink} disabled={loading}>
+            {loading ? "Envoi…" : "Renvoyer le lien"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => {
+              setMagicLinkSent(false);
+              setMode("password");
+              setError("");
+            }}
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Utiliser une autre méthode
+          </button>
+        </div>
       </div>
     );
   }
@@ -87,16 +123,16 @@ export function SignInForm() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in to TwinMCP</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Connexion à TwinMCP</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Welcome back. Pick the method you prefer.
+          Choisis la méthode qui te convient.
         </p>
       </div>
 
       <OAuthButtons returnTo={returnTo} />
-      <OAuthDivider>or with email</OAuthDivider>
+      <OAuthDivider>ou par email</OAuthDivider>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -107,18 +143,19 @@ export function SignInForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoFocus={!email}
           />
         </div>
 
         {mode === "password" && (
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Mot de passe</Label>
               <Link
                 href={"/forgot-password" as Route}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                Forgot password?
+                Oublié ?
               </Link>
             </div>
             <Input
@@ -130,23 +167,26 @@ export function SignInForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              autoFocus={Boolean(email) && !password}
             />
           </div>
         )}
 
-        {error && (
-          <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            {error}
-          </p>
-        )}
+        <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
+          {error && (
+            <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
+        </div>
 
-        <Button type="submit" disabled={loading} className="h-10">
+        <Button type="submit" disabled={loading || !email || (mode === "password" && !password)} className="h-10">
           {loading
-            ? "Signing in…"
+            ? "Connexion…"
             : mode === "password"
-              ? "Sign in"
-              : "Email me a magic link"}
+              ? "Se connecter"
+              : "Recevoir un lien magique"}
         </Button>
 
         <button
@@ -158,18 +198,20 @@ export function SignInForm() {
           className="text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           {mode === "password"
-            ? "Use a magic link instead"
-            : "Use a password instead"}
+            ? "Utiliser un lien magique à la place"
+            : "Utiliser un mot de passe à la place"}
         </button>
       </form>
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        New to TwinMCP?{" "}
+        Pas encore de compte ?{" "}
         <Link
-          href={`/sign-up?returnTo=${encodeURIComponent(returnTo)}` as Route}
+          href={
+            `/sign-up?returnTo=${encodeURIComponent(returnTo)}${email ? `&email=${encodeURIComponent(email)}` : ""}` as Route
+          }
           className="font-medium text-foreground hover:underline"
         >
-          Create an account
+          Créer un compte
         </Link>
       </p>
     </div>

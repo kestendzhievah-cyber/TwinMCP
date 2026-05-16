@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 import { createClient } from "@/utils/supabase/client";
 import { track } from "@/lib/analytics/funnel";
+import { friendlyAuthError } from "@/lib/auth/errors";
 
 const SELECTED_PLAN_KEY = "tmcp_signup_plan";
 const allowedPlans = new Set(["free", "pro", "team"]);
@@ -27,7 +28,7 @@ export function SignUpForm() {
   const planParam = searchParams.get("plan");
   const selectedPlan = planParam && allowedPlans.has(planParam) ? planParam : null;
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,19 +43,33 @@ export function SignUpForm() {
     }
   }, [selectedPlan]);
 
-  // Fire signup_started once when the form mounts.
   useEffect(() => {
     track({ name: "signup_started" });
   }, []);
 
-  // Resend cooldown ticker.
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const id = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
   }, [resendCooldown]);
 
-  async function submitSignUp(): Promise<{ error?: string }> {
+  // Auto-detect when the user clicks the confirmation link in another tab —
+  // Supabase fires onAuthStateChange in this tab too, so we can redirect.
+  useEffect(() => {
+    if (!done) return;
+    const supabase = createClient();
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        window.location.assign(returnTo);
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, [done, returnTo]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
     const supabase = createClient();
     const { error: err } = await supabase.auth.signUp({
       email,
@@ -63,16 +78,8 @@ export function SignUpForm() {
         emailRedirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`,
       },
     });
-    return err ? { error: err.message } : {};
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    const result = await submitSignUp();
-    if (result.error) {
-      setError(result.error);
+    if (err) {
+      setError(friendlyAuthError(err));
       setLoading(false);
       return;
     }
@@ -85,9 +92,16 @@ export function SignUpForm() {
   async function handleResend() {
     if (resendCooldown > 0) return;
     setError("");
-    const result = await submitSignUp();
-    if (result.error) {
-      setError(result.error);
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`,
+      },
+    });
+    if (err) {
+      setError(friendlyAuthError(err));
       return;
     }
     setResendCooldown(60);
@@ -99,21 +113,23 @@ export function SignUpForm() {
         <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
           <Mail className="h-5 w-5 text-muted-foreground" />
         </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Check your email</h1>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Vérifie tes emails</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          We sent a confirmation link to{" "}
-          <span className="font-medium text-foreground">{email}</span>. Click it to activate your
-          account.
+          Un lien de confirmation a été envoyé à{" "}
+          <span className="font-medium text-foreground">{email}</span>. Clique dessus pour activer
+          ton compte.
         </p>
 
-        {error && (
-          <p className="mt-4 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            {error}
-          </p>
-        )}
+        <div role="alert" aria-live="assertive" className="mt-4 min-h-[2.5rem]">
+          {error && (
+            <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
+        </div>
 
-        <div className="mt-8 flex flex-col gap-2 self-stretch">
+        <div className="mt-6 flex flex-col gap-2 self-stretch">
           <Button
             type="button"
             variant="outline"
@@ -121,7 +137,7 @@ export function SignUpForm() {
             disabled={resendCooldown > 0}
             className="h-10"
           >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend confirmation email"}
+            {resendCooldown > 0 ? `Renvoyer dans ${resendCooldown}s` : "Renvoyer le lien"}
           </Button>
           <button
             type="button"
@@ -133,7 +149,7 @@ export function SignUpForm() {
             }}
             className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            Wrong email? Try again
+            Mauvaise adresse ? Recommencer
           </button>
         </div>
       </div>
@@ -143,22 +159,22 @@ export function SignUpForm() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your TwinMCP account</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Crée ton compte TwinMCP</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Free forever, no credit card. Set up your first server in under 2 minutes.
+          Gratuit à vie, sans carte bancaire. Premier serveur en moins de 2 minutes.
         </p>
         {selectedPlan && (
           <Badge variant="secondary" className="mt-4 inline-flex items-center gap-1.5">
             <Sparkles className="h-3 w-3" />
-            <span>Signing up for {planLabels[selectedPlan]}</span>
+            <span>Inscription pour {planLabels[selectedPlan]}</span>
           </Badge>
         )}
       </div>
 
       <OAuthButtons returnTo={returnTo} />
-      <OAuthDivider>or with email</OAuthDivider>
+      <OAuthDivider>ou par email</OAuthDivider>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -169,16 +185,17 @@ export function SignUpForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoFocus={!email}
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">Mot de passe</Label>
           <Input
             id="password"
             type="password"
             autoComplete="new-password"
-            placeholder="At least 8 characters"
+            placeholder="Au moins 8 caractères"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -186,37 +203,41 @@ export function SignUpForm() {
           />
         </div>
 
-        {error && (
-          <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            {error}
-          </p>
-        )}
+        <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
+          {error && (
+            <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
+        </div>
 
-        <Button type="submit" disabled={loading} className="h-10">
-          {loading ? "Creating account…" : "Create account"}
+        <Button type="submit" disabled={loading || !email || password.length < 8} className="h-10">
+          {loading ? "Création…" : "Créer mon compte"}
         </Button>
       </form>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        By creating an account you agree to our{" "}
-        <a href="/#" className="underline-offset-4 hover:underline">
-          Terms
-        </a>{" "}
-        and{" "}
-        <a href="/#" className="underline-offset-4 hover:underline">
-          Privacy Policy
-        </a>
+        En créant un compte tu acceptes nos{" "}
+        <Link href={"/legal/terms" as Route} className="underline-offset-4 hover:underline">
+          Conditions
+        </Link>{" "}
+        et notre{" "}
+        <Link href={"/legal/privacy" as Route} className="underline-offset-4 hover:underline">
+          Politique de confidentialité
+        </Link>
         .
       </p>
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+        Déjà un compte ?{" "}
         <Link
-          href={`/sign-in?returnTo=${encodeURIComponent(returnTo)}` as Route}
+          href={
+            `/sign-in?returnTo=${encodeURIComponent(returnTo)}${email ? `&email=${encodeURIComponent(email)}` : ""}` as Route
+          }
           className="font-medium text-foreground hover:underline"
         >
-          Sign in
+          Se connecter
         </Link>
       </p>
     </div>
