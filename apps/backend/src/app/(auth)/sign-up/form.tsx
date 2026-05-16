@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
+import { PasswordStrength, passwordScore } from "@/components/auth/password-strength";
 import { createClient } from "@/utils/supabase/client";
 import { track } from "@/lib/analytics/funnel";
 import { friendlyAuthError } from "@/lib/auth/errors";
@@ -200,7 +201,11 @@ export function SignUpForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
+            aria-describedby="password-strength"
           />
+          <div id="password-strength">
+            <PasswordStrength password={password} />
+          </div>
         </div>
 
         <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
@@ -212,7 +217,11 @@ export function SignUpForm() {
           )}
         </div>
 
-        <Button type="submit" disabled={loading || !email || password.length < 8} className="h-10">
+        <Button
+          type="submit"
+          disabled={loading || !email || passwordScore(password) < 2}
+          className="h-10"
+        >
           {loading ? "Création…" : "Créer mon compte"}
         </Button>
       </form>

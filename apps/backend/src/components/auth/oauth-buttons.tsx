@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Github, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
@@ -13,6 +13,20 @@ interface OAuthButtonsProps {
 export function OAuthButtons({ returnTo }: OAuthButtonsProps) {
   const [pending, setPending] = useState<"github" | "google" | null>(null);
 
+  // If the user dismisses the OAuth popup or hits "back", the spinner used
+  // to stay on forever — we never get a callback. Reset on tab refocus and
+  // after a hard timeout so the buttons recover.
+  useEffect(() => {
+    if (!pending) return;
+    const onFocus = () => setPending(null);
+    window.addEventListener("focus", onFocus);
+    const timeout = window.setTimeout(() => setPending(null), 30_000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearTimeout(timeout);
+    };
+  }, [pending]);
+
   async function handleOAuth(provider: "github" | "google") {
     track({ name: "oauth_clicked", properties: { provider } });
     setPending(provider);
@@ -24,7 +38,6 @@ export function OAuthButtons({ returnTo }: OAuthButtonsProps) {
       },
     });
     if (error) setPending(null);
-    // Otherwise the browser is redirecting — leave the spinner on.
   }
 
   return (
