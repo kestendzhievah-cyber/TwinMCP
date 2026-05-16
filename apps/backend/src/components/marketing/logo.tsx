@@ -1,15 +1,27 @@
 import { cn } from "@/lib/utils";
 
-export function Logo({ className }: { className?: string }) {
+interface LogoProps {
+  className?: string;
+  showWordmark?: boolean;
+  size?: number;
+}
+
+export function Logo({ className, showWordmark = true, size = 28 }: LogoProps) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <span
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/twinmcp-logo.svg"
+        alt=""
         aria-hidden
-        className="grid h-7 w-7 place-items-center rounded-md bg-foreground text-[10px] font-bold tracking-tight text-background"
-      >
-        T
-      </span>
-      <span className="text-base font-semibold tracking-tight">TwinMCP</span>
+        width={size}
+        height={size}
+        className="rounded-md object-contain"
+        style={{ height: size, width: size }}
+      />
+      {showWordmark && (
+        <span className="text-base font-semibold tracking-tight">TwinMCP</span>
+      )}
     </div>
   );
 }
