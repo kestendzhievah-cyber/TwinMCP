@@ -142,7 +142,10 @@ export function PricingCards({ cadence }: PricingCardsProps) {
                 <Link
                   href={plan.cta.href as Route}
                   onClick={() => {
-                    if (!isCustom) {
+                    // Only the free CTA fires the funnel event here; the
+                    // billable plans run through handleUpgrade(), and
+                    // enterprise is a mailto (no checkout to track).
+                    if (plan.id === "free") {
                       track({
                         name: "checkout_started",
                         properties: { plan: plan.id, cadence },
