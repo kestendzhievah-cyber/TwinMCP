@@ -12,7 +12,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function periodEnd(sub: Stripe.Subscription): Date | null {
-  const ts = sub.current_period_end;
+  // Stripe 2026-03 dahlia moved current_period_end from the Subscription
+  // to its items (subs can now have items on different billing schedules).
+  // For our single-item subs, read from the first item.
+  const ts = sub.items.data[0]?.current_period_end;
   return typeof ts === "number" ? new Date(ts * 1000) : null;
 }
 
