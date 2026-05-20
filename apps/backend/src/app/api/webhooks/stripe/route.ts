@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
 import { sendUpgradeConfirmationEmail } from "@/lib/email";
+import { audit } from "@/lib/audit";
 import type { Plan } from "@/db/schema";
 
 export const runtime = "nodejs";
@@ -35,14 +36,22 @@ export async function POST(req: NextRequest) {
       const userId = session.metadata?.userId;
       const plan = session.metadata?.plan as Plan | undefined;
       if (userId && plan) {
-        await db.update(users).set({ plan }).where(eq(users.id, userId));
-        const [u] = await db
-          .select({ email: users.email })
+        const [previous] = await db
+          .select({ plan: users.plan, email: users.email })
           .from(users)
           .where(eq(users.id, userId))
           .limit(1);
-        if (u?.email) {
-          sendUpgradeConfirmationEmail(u.email, plan).catch(() => {});
+        await db.update(users).set({ plan }).where(eq(users.id, userId));
+
+        audit({
+          userId,
+          action: "plan.upgrade",
+          target: session.subscription as string | null,
+          metadata: { from: previous?.plan ?? null, to: plan, stripeEvent: event.id },
+        });
+
+        if (previous?.email) {
+          sendUpgradeConfirmationEmail(previous.email, plan).catch(() => {});
         }
 
         if (session.customer && typeof session.customer === "string") {
@@ -61,6 +70,12 @@ export async function POST(req: NextRequest) {
       const userId = customer.metadata?.userId;
       if (userId) {
         await db.update(users).set({ plan: "free" }).where(eq(users.id, userId));
+        audit({
+          userId,
+          action: "plan.cancel",
+          target: sub.id,
+          metadata: { reason: "subscription_deleted", stripeEvent: event.id },
+        });
       }
       break;
     }
@@ -74,6 +89,12 @@ export async function POST(req: NextRequest) {
         const userId = customer.metadata?.userId;
         if (userId) {
           await db.update(users).set({ plan: "free" }).where(eq(users.id, userId));
+          audit({
+            userId,
+            action: "plan.downgrade",
+            target: sub.id,
+            metadata: { reason: sub.status, stripeEvent: event.id },
+          });
         }
       }
       break;

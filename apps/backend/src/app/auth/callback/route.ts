@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { trackServer } from "@/lib/analytics/server";
+import { audit, auditCtxFromRequest } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,16 +38,35 @@ export async function GET(req: NextRequest) {
     if (u?.id && u.created_at && u.last_sign_in_at) {
       const created = Date.parse(u.created_at);
       const lastSignIn = Date.parse(u.last_sign_in_at);
-      if (
+      const ctx = auditCtxFromRequest(req);
+      const provider = u.app_metadata?.provider ?? null;
+      const method = inferMethod(u.app_metadata?.provider);
+
+      const isFreshSignup =
         Number.isFinite(created) &&
         Number.isFinite(lastSignIn) &&
-        Math.abs(lastSignIn - created) < FRESH_SIGNUP_WINDOW_MS
-      ) {
-        const method = inferMethod(u.app_metadata?.provider);
+        Math.abs(lastSignIn - created) < FRESH_SIGNUP_WINDOW_MS;
+
+      if (isFreshSignup) {
         trackServer({
           event: "signup_completed",
           distinctId: u.id,
-          properties: { method, via: "server", provider: u.app_metadata?.provider ?? null },
+          properties: { method, via: "server", provider },
+        });
+        audit({
+          userId: u.id,
+          action: "session.signup",
+          target: provider,
+          ...ctx,
+          metadata: { method },
+        });
+      } else {
+        audit({
+          userId: u.id,
+          action: "session.signin",
+          target: provider,
+          ...ctx,
+          metadata: { method },
         });
       }
     }

@@ -5,8 +5,10 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { apiKeys } from "@/db/schema";
 import { generateApiKey } from "@/lib/auth";
-import { badRequest, serverError, unauthorized } from "@/lib/errors";
+import { badRequest, jsonError, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
+import { checkAuthWriteLimit } from "@/lib/auth/rate-limit";
+import { audit, auditCtxFromRequest } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +16,15 @@ export const dynamic = "force-dynamic";
 const createSchema = z.object({
   name: z.string().min(1).max(80).optional(),
 });
+
+function rateLimited(reset: number) {
+  const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
+  return jsonError(
+    429,
+    "Trop d'opérations sur tes clés API. Patiente un instant avant de réessayer.",
+    { retryAfter }
+  );
+}
 
 export async function GET(req: NextRequest) {
   const session = await requireSessionUser(req);
@@ -42,6 +53,16 @@ export async function POST(req: NextRequest) {
   const session = await requireSessionUser(req);
   if (!session) return unauthorized("Sign in required");
 
+  const rl = await checkAuthWriteLimit(session.userId, "key_create");
+  if (!rl.ok) {
+    const response = rateLimited(rl.reset);
+    response.headers.set(
+      "Retry-After",
+      String(Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000)))
+    );
+    return response;
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -63,6 +84,13 @@ export async function POST(req: NextRequest) {
         prefix,
         name: parsed.data.name ?? null,
       });
+    audit({
+      userId: session.userId,
+      action: "api_key.create",
+      target: id,
+      ...auditCtxFromRequest(req),
+      metadata: { prefix, name: parsed.data.name ?? null },
+    });
     return NextResponse.json({ id, key: raw, prefix }, { status: 201 });
   } catch (err) {
     console.error("[auth/keys POST]", err);

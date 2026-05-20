@@ -16,9 +16,11 @@ async function ensureUserRow(userId: string, email: string | undefined) {
 }
 
 export async function requireSessionUser(req: Request): Promise<SessionUser | null> {
-  // Dev header (non-production only)
+  // Dev header — requires an explicit opt-in env var. Relying on NODE_ENV
+  // was risky: a staging deploy mislabeled as "development" would silently
+  // accept any user id from a request header.
   const devId = req.headers.get("x-twinmcp-user-id");
-  if (devId && process.env.NODE_ENV !== "production") {
+  if (devId && process.env.TWINMCP_ALLOW_DEV_AUTH === "1") {
     // Ensure the row exists so endpoints that UPDATE the user actually
     // persist instead of silently no-op'ing on a missing primary key.
     await ensureUserRow(devId, undefined);
