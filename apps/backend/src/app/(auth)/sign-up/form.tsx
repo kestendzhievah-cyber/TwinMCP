@@ -16,7 +16,9 @@ import { track } from "@/lib/analytics/funnel";
 import { friendlyAuthError } from "@/lib/auth/errors";
 
 const SELECTED_PLAN_KEY = "tmcp_signup_plan";
+const SELECTED_CADENCE_KEY = "tmcp_signup_cadence";
 const allowedPlans = new Set(["free", "pro", "team"]);
+const allowedCadences = new Set(["monthly", "yearly"]);
 const planLabels: Record<string, string> = {
   free: "Free",
   pro: "Pro",
@@ -28,6 +30,9 @@ export function SignUpForm() {
   const returnTo = searchParams.get("returnTo") ?? "/dashboard";
   const planParam = searchParams.get("plan");
   const selectedPlan = planParam && allowedPlans.has(planParam) ? planParam : null;
+  const cadenceParam = searchParams.get("cadence");
+  const selectedCadence =
+    cadenceParam && allowedCadences.has(cadenceParam) ? cadenceParam : null;
 
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
@@ -36,13 +41,18 @@ export function SignUpForm() {
   const [done, setDone] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Persist selected plan for the post-signup onboarding flow.
+  // Persist selected plan + cadence so the post-confirm redirect (in
+  // /auth/callback or in the onAuthStateChange handler below) can jump
+  // straight to Stripe Checkout without re-asking what the user picked.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (selectedPlan) {
       window.localStorage.setItem(SELECTED_PLAN_KEY, selectedPlan);
     }
-  }, [selectedPlan]);
+    if (selectedCadence) {
+      window.localStorage.setItem(SELECTED_CADENCE_KEY, selectedCadence);
+    }
+  }, [selectedPlan, selectedCadence]);
 
   useEffect(() => {
     track({ name: "signup_started" });
@@ -55,14 +65,33 @@ export function SignUpForm() {
   }, [resendCooldown]);
 
   // Auto-detect when the user clicks the confirmation link in another tab —
-  // Supabase fires onAuthStateChange in this tab too, so we can redirect.
+  // Supabase fires onAuthStateChange in this tab too. If a paid plan was
+  // pre-selected, jump straight to the Stripe Checkout instead of the
+  // dashboard so the buying intent isn't lost.
   useEffect(() => {
     if (!done) return;
     const supabase = createClient();
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
-        window.location.assign(returnTo);
+    const { data } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event !== "SIGNED_IN") return;
+      const plan = window.localStorage.getItem(SELECTED_PLAN_KEY);
+      const cadence = window.localStorage.getItem(SELECTED_CADENCE_KEY) ?? "monthly";
+      if (plan === "pro" || plan === "team") {
+        try {
+          const res = await fetch("/api/v2/billing/checkout", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ plan, cadence }),
+          });
+          const body = await res.json();
+          if (body.url) {
+            window.location.assign(body.url);
+            return;
+          }
+        } catch {
+          // fall through to default redirect on any failure
+        }
       }
+      window.location.assign(returnTo);
     });
     return () => data.subscription.unsubscribe();
   }, [done, returnTo]);

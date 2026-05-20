@@ -2,24 +2,73 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PLANS, formatPrice, type BillingCadence } from "./pricing-data";
 import { track } from "@/lib/analytics/funnel";
+import { createClient } from "@/utils/supabase/client";
 
 interface PricingCardsProps {
   cadence: BillingCadence;
 }
 
+// Map UI cadence ("monthly"/"annual") to API cadence ("monthly"/"yearly").
+const apiCadence = (c: BillingCadence) => (c === "annual" ? "yearly" : "monthly");
+
 export function PricingCards({ cadence }: PricingCardsProps) {
+  const router = useRouter();
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+
+  // Detect session client-side so the CTAs can short-circuit to checkout
+  // for already-authenticated visitors. Middleware would otherwise redirect
+  // them to /dashboard mid-flow, which costs a round-trip and ditches the
+  // selected plan.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
+  }, []);
+
+  async function handleUpgrade(planId: "pro" | "team") {
+    setPending(planId);
+    track({ name: "checkout_started", properties: { plan: planId, cadence } });
+
+    if (signedIn) {
+      try {
+        const res = await fetch("/api/v2/billing/checkout", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ plan: planId, cadence: apiCadence(cadence) }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+      } catch {
+        // Fall through to the sign-up route as a safety net.
+      }
+      setPending(null);
+      return;
+    }
+
+    // Not signed in — bounce through sign-up, but carry plan + cadence so
+    // the sign-up form can resume checkout right after email confirm.
+    const params = new URLSearchParams({ plan: planId, cadence: apiCadence(cadence) });
+    router.push(`/sign-up?${params.toString()}` as Route);
+  }
+
   return (
     <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
       {PLANS.map((plan) => {
         const price = formatPrice(plan, cadence);
         const isFree = plan.id === "free";
         const isCustom = plan.monthlyUsd === null;
+        const isBillable = plan.id === "pro" || plan.id === "team";
         const cadenceSuffix = isFree
           ? "forever"
           : isCustom
@@ -68,25 +117,43 @@ export function PricingCards({ cadence }: PricingCardsProps) {
               ))}
             </ul>
 
-            <Button
-              asChild
-              variant={plan.highlighted ? "default" : "outline"}
-              className="mt-6 w-full"
-            >
-              <Link
-                href={plan.cta.href as Route}
-                onClick={() => {
-                  if (plan.id !== "enterprise") {
-                    track({
-                      name: "checkout_started",
-                      properties: { plan: plan.id },
-                    });
-                  }
-                }}
+            {isBillable ? (
+              <Button
+                variant={plan.highlighted ? "default" : "outline"}
+                className="mt-6 w-full"
+                onClick={() => handleUpgrade(plan.id as "pro" | "team")}
+                disabled={pending !== null || signedIn === null}
               >
-                {plan.cta.label}
-              </Link>
-            </Button>
+                {pending === plan.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Redirection…
+                  </>
+                ) : (
+                  plan.cta.label
+                )}
+              </Button>
+            ) : (
+              <Button
+                asChild
+                variant={plan.highlighted ? "default" : "outline"}
+                className="mt-6 w-full"
+              >
+                <Link
+                  href={plan.cta.href as Route}
+                  onClick={() => {
+                    if (!isCustom) {
+                      track({
+                        name: "checkout_started",
+                        properties: { plan: plan.id, cadence },
+                      });
+                    }
+                  }}
+                >
+                  {plan.cta.label}
+                </Link>
+              </Button>
+            )}
           </article>
         );
       })}
