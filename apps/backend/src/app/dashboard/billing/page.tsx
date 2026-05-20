@@ -14,10 +14,17 @@ export default async function BillingPage() {
 
   const db = getDb();
   const [userRow] = await db
-    .select({ plan: users.plan })
+    .select({
+      plan: users.plan,
+      subscriptionStatus: users.subscriptionStatus,
+      currentPeriodEnd: users.currentPeriodEnd,
+      cancelAtPeriodEnd: users.cancelAtPeriodEnd,
+      stripeCustomerId: users.stripeCustomerId,
+    })
     .from(users)
     .where(eq(users.id, user.id))
     .limit(1);
+
   const plan = userRow?.plan ?? "free";
 
   return (
@@ -31,7 +38,13 @@ export default async function BillingPage() {
           </Badge>
         </p>
       </div>
-      <BillingActions plan={plan} />
+      <BillingActions
+        plan={plan}
+        currentPeriodEnd={userRow?.currentPeriodEnd?.toISOString() ?? null}
+        cancelAtPeriodEnd={userRow?.cancelAtPeriodEnd ?? false}
+        subscriptionStatus={userRow?.subscriptionStatus ?? null}
+        hasStripeCustomer={Boolean(userRow?.stripeCustomerId)}
+      />
     </div>
   );
 }

@@ -1,21 +1,88 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { CheckCircle2, XCircle } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-export function BillingActions({ plan }: { plan: string }) {
+interface Props {
+  plan: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  subscriptionStatus: string | null;
+  hasStripeCustomer: boolean;
+}
+
+type Cadence = "monthly" | "yearly";
+
+const PRICE_LABEL: Record<string, Record<Cadence, string>> = {
+  pro: { monthly: "$20/mo", yearly: "$16/mo billed yearly" },
+  team: { monthly: "$50/mo", yearly: "$40/mo billed yearly" },
+};
+
+function formatPeriodEnd(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function BillingActions({
+  plan,
+  currentPeriodEnd,
+  cancelAtPeriodEnd,
+  subscriptionStatus,
+  hasStripeCustomer,
+}: Props) {
+  const router = useRouter();
+  const params = useSearchParams();
   const [loading, setLoading] = useState("");
+  const [cadence, setCadence] = useState<Cadence>("monthly");
+  const [banner, setBanner] = useState<
+    { type: "success" | "info"; message: string } | null
+  >(null);
 
-  async function checkout(target: string) {
+  // Surface checkout outcome from Stripe redirect, then strip the query
+  // so a refresh doesn't re-trigger the toast.
+  useEffect(() => {
+    const status = params.get("status");
+    if (status === "success") {
+      setBanner({
+        type: "success",
+        message:
+          "Paiement confirmé ! Ton plan est en cours d'activation. Recharge la page dans quelques secondes si rien ne s'affiche.",
+      });
+      router.replace("/dashboard/billing");
+    } else if (status === "canceled") {
+      setBanner({ type: "info", message: "Paiement annulé. Aucun montant n'a été débité." });
+      router.replace("/dashboard/billing");
+    }
+  }, [params, router]);
+
+  async function checkout(target: "pro" | "team") {
     setLoading(target);
     const res = await fetch("/api/v2/billing/checkout", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ plan: target }),
+      body: JSON.stringify({ plan: target, cadence }),
     });
     const data = await res.json();
-    if (data.url) window.location.href = data.url;
+    if (data.url) {
+      window.location.href = data.url;
+      return;
+    }
     setLoading("");
   }
 
@@ -23,67 +90,180 @@ export function BillingActions({ plan }: { plan: string }) {
     setLoading("portal");
     const res = await fetch("/api/v2/billing/portal", { method: "POST" });
     const data = await res.json();
-    if (data.url) window.location.href = data.url;
+    if (data.url) {
+      window.location.href = data.url;
+      return;
+    }
     setLoading("");
   }
 
-  if (plan === "free") {
-    return (
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pro</CardTitle>
-            <CardDescription>$20/month — 1,000 requests/day, priority support</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => checkout("pro")} disabled={!!loading}>
-              {loading === "pro" ? "Redirecting…" : "Upgrade to Pro"}
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Team</CardTitle>
-            <CardDescription>$50/month — 5,000 requests/day, teamspace, policies</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => checkout("team")} disabled={!!loading}>
-              {loading === "team" ? "Redirecting…" : "Upgrade to Team"}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const periodLabel = formatPeriodEnd(currentPeriodEnd);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {plan === "pro" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Upgrade to Team</CardTitle>
-            <CardDescription>5,000 requests/day + teamspace management.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => checkout("team")} disabled={!!loading}>
-              {loading === "team" ? "Redirecting…" : "Upgrade"}
-            </Button>
-          </CardContent>
-        </Card>
+    <div className="space-y-6">
+      {banner && (
+        <div
+          role="status"
+          className={`flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${
+            banner.type === "success"
+              ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+              : "border-border bg-muted/50 text-foreground"
+          }`}
+        >
+          {banner.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+          ) : (
+            <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          )}
+          <span>{banner.message}</span>
+        </div>
       )}
-      <Card>
-        <CardHeader>
-          <CardTitle>Manage subscription</CardTitle>
-          <CardDescription>
-            Update payment method, view invoices, or cancel.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="secondary" onClick={openPortal} disabled={!!loading}>
-            {loading === "portal" ? "Redirecting…" : "Billing portal"}
-          </Button>
-        </CardContent>
-      </Card>
+
+      {plan !== "free" && periodLabel && (
+        <div className="rounded-md border border-border/60 bg-card p-4 text-sm">
+          {cancelAtPeriodEnd ? (
+            <>
+              Ton abonnement <Badge variant="secondary">sera annulé</Badge> le{" "}
+              <span className="font-medium">{periodLabel}</span>. Tu gardes l'accès jusqu'à
+              cette date.
+            </>
+          ) : subscriptionStatus === "past_due" || subscriptionStatus === "unpaid" ? (
+            <>
+              <Badge variant="destructive">Paiement en attente</Badge> Le dernier renouvellement
+              n'a pas pu être prélevé. Mets à jour ton moyen de paiement depuis le portail.
+            </>
+          ) : (
+            <>
+              Prochain prélèvement le <span className="font-medium">{periodLabel}</span>.
+            </>
+          )}
+        </div>
+      )}
+
+      {plan === "free" && (
+        <>
+          <CadenceToggle cadence={cadence} onChange={setCadence} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <PlanCard
+              title="Pro"
+              description={`${PRICE_LABEL.pro[cadence]} — 1,000 requests/day, priority support`}
+              onClick={() => checkout("pro")}
+              loading={loading === "pro"}
+              disabled={!!loading}
+              cta="Upgrade to Pro"
+            />
+            <PlanCard
+              title="Team"
+              description={`${PRICE_LABEL.team[cadence]} — 5,000 requests/day, teamspace, policies`}
+              onClick={() => checkout("team")}
+              loading={loading === "team"}
+              disabled={!!loading}
+              cta="Upgrade to Team"
+            />
+          </div>
+        </>
+      )}
+
+      {plan !== "free" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {plan === "pro" && (
+            <>
+              <CadenceToggle cadence={cadence} onChange={setCadence} />
+              <PlanCard
+                title="Upgrade to Team"
+                description={`${PRICE_LABEL.team[cadence]} — 5,000 requests/day + teamspace management.`}
+                onClick={() => checkout("team")}
+                loading={loading === "team"}
+                disabled={!!loading}
+                cta="Upgrade"
+              />
+            </>
+          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Manage subscription</CardTitle>
+              <CardDescription>
+                Update payment method, view invoices, or cancel anytime.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="secondary"
+                onClick={openPortal}
+                disabled={!!loading || !hasStripeCustomer}
+              >
+                {loading === "portal" ? "Redirecting…" : "Billing portal"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlanCard({
+  title,
+  description,
+  onClick,
+  loading,
+  disabled,
+  cta,
+}: {
+  title: string;
+  description: string;
+  onClick: () => void;
+  loading: boolean;
+  disabled: boolean;
+  cta: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button onClick={onClick} disabled={disabled}>
+          {loading ? "Redirecting…" : cta}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CadenceToggle({
+  cadence,
+  onChange,
+}: {
+  cadence: Cadence;
+  onChange: (c: Cadence) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-full border border-border/80 bg-card p-1 text-sm">
+      <button
+        type="button"
+        onClick={() => onChange("monthly")}
+        className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
+          cadence === "monthly"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Mensuel
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("yearly")}
+        className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
+          cadence === "yearly"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Annuel{" "}
+        <span className="text-xs font-normal text-muted-foreground">−20%</span>
+      </button>
     </div>
   );
 }

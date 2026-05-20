@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { getDb } from "@/db";
-import { users } from "@/db/schema";
+import { users, processedStripeEvents } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
 import { sendUpgradeConfirmationEmail } from "@/lib/email";
 import { audit } from "@/lib/audit";
@@ -16,11 +16,30 @@ function periodEnd(sub: Stripe.Subscription): Date | null {
   return typeof ts === "number" ? new Date(ts * 1000) : null;
 }
 
-async function findUserIdByCustomer(
-  customerId: string
-): Promise<string | undefined> {
+async function findUserIdByCustomer(customerId: string): Promise<string | undefined> {
   const customer = (await getStripe().customers.retrieve(customerId)) as Stripe.Customer;
   return customer.metadata?.userId;
+}
+
+/**
+ * Idempotency guard. Returns true if the event has not been seen before
+ * (and inserts it into processed_stripe_events). Returns false if Stripe
+ * is retrying an event we already handled.
+ */
+async function shouldProcess(eventId: string, type: string): Promise<boolean> {
+  try {
+    const inserted = await getDb()
+      .insert(processedStripeEvents)
+      .values({ eventId, type })
+      .onConflictDoNothing({ target: processedStripeEvents.eventId })
+      .returning({ eventId: processedStripeEvents.eventId });
+    return inserted.length > 0;
+  } catch (err) {
+    // Fail open: if the idempotency table breaks, we'd rather double-bill
+    // an audit log than refuse to handle the event.
+    console.error("[stripe webhook] idempotency check failed:", err);
+    return true;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -38,6 +57,11 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("[stripe webhook] signature verification failed:", err);
     return NextResponse.json({ error: "invalid signature" }, { status: 400 });
+  }
+
+  if (!(await shouldProcess(event.id, event.type))) {
+    // Already handled — respond 200 so Stripe stops retrying.
+    return NextResponse.json({ received: true, deduped: true });
   }
 
   const db = getDb();
@@ -67,6 +91,7 @@ export async function POST(req: NextRequest) {
             plan,
             stripeCustomerId: customerId,
             stripeSubscriptionId: subscriptionId,
+            subscriptionStatus: "active",
           })
           .where(eq(users.id, userId));
 
@@ -82,8 +107,6 @@ export async function POST(req: NextRequest) {
           sendUpgradeConfirmationEmail(previous.email, plan).catch(() => {});
         }
 
-        // Make sure the customer carries metadata.userId for future
-        // reverse-lookups (e.g. legacy portal queries).
         if (customerId) {
           await getStripe().customers.update(customerId, { metadata: { userId } });
         }
@@ -105,8 +128,6 @@ export async function POST(req: NextRequest) {
         stripeSubscriptionId: sub.id,
       };
 
-      // Downgrade to free if Stripe says the subscription has stopped
-      // paying. Don't touch plan on healthy renewals.
       if (sub.status === "past_due" || sub.status === "unpaid") {
         update.plan = "free";
         await db.update(users).set(update).where(eq(users.id, userId));
@@ -146,6 +167,37 @@ export async function POST(req: NextRequest) {
         targetType: "subscription",
         targetId: sub.id,
         metadata: { reason: "subscription_deleted", stripeEvent: event.id },
+      });
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const customerId =
+        typeof invoice.customer === "string"
+          ? invoice.customer
+          : invoice.customer?.toString() ?? null;
+      if (!customerId) break;
+      const userId = await findUserIdByCustomer(customerId);
+      if (!userId) break;
+
+      // Don't downgrade yet — Stripe will keep retrying and emit
+      // subscription.updated with past_due/unpaid status when it gives
+      // up. Just record the failed attempt so we can surface a banner.
+      audit({
+        userId,
+        action: "plan.downgrade",
+        targetType: "subscription",
+        targetId:
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : invoice.subscription?.toString() ?? null,
+        metadata: {
+          reason: "invoice_payment_failed",
+          amountDue: invoice.amount_due,
+          attempt: invoice.attempt_count,
+          stripeEvent: event.id,
+        },
       });
       break;
     }

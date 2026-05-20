@@ -167,6 +167,15 @@ export const chunks = pgTable(
   ]
 );
 
+// Idempotency log for Stripe webhooks. Stripe retries on non-2xx and can
+// also re-deliver after long outages — we insert event.id on first
+// handling and look it up before re-applying side effects.
+export const processedStripeEvents = pgTable("processed_stripe_events", {
+  eventId: text("event_id").primaryKey(),
+  type: text("type").notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const usageEvents = pgTable(
   "usage_events",
   {
