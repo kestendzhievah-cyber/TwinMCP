@@ -26,7 +26,13 @@ export type FunnelEvent =
   | { name: "onboarding_skipped"; properties: { atStep: number } }
   | { name: "first_server_created"; properties: { serverId: string } }
   | { name: "first_mcp_installed"; properties: { mcpSlug: string } }
-  | { name: "checkout_started"; properties: { plan: "free" | "pro" | "team" } };
+  | {
+      name: "checkout_started";
+      properties: {
+        plan: "free" | "pro" | "team";
+        cadence?: "monthly" | "annual";
+      };
+    };
 
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com";
 
