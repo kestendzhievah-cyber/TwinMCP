@@ -35,12 +35,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, session.userId)))
       .returning({ id: apiKeys.id });
     if (result.length === 0) return notFound("Key not found");
-    audit({
-      userId: session.userId,
-      action: "api_key.revoke",
-      target: id,
-      ...auditCtxFromRequest(req),
-    });
+    {
+      const ctx = auditCtxFromRequest(req);
+      audit({
+        userId: session.userId,
+        action: "api_key.revoke",
+        targetType: "api_key",
+        targetId: id,
+        ip: ctx.ip,
+        metadata: { userAgent: ctx.userAgent },
+      });
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[auth/keys DELETE]", err);

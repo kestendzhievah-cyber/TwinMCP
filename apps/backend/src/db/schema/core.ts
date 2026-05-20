@@ -156,33 +156,6 @@ export const chunks = pgTable(
   ]
 );
 
-// Append-only log of security-sensitive actions. Never UPDATE/DELETE rows;
-// retention is handled by a DB cron (see migrations).
-export const auditLog = pgTable(
-  "audit_log",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
-    // e.g. "api_key.create", "api_key.revoke", "plan.upgrade", "plan.downgrade",
-    // "session.signin", "session.signup", "user.password_reset".
-    action: text("action").notNull(),
-    // Free-form resource pointer for the action, e.g. an api_key id, a
-    // Stripe subscription id, an oauth provider name. Optional.
-    target: text("target"),
-    // Best-effort client IP (hashed via CLIENT_IP_ENCRYPTION_KEY upstream
-    // when stored from request context). Optional.
-    ip: text("ip"),
-    userAgent: text("user_agent"),
-    // Arbitrary structured context, e.g. { from: "free", to: "pro" }.
-    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("audit_log_user_time_idx").on(t.userId, t.createdAt),
-    index("audit_log_action_idx").on(t.action),
-  ]
-);
-
 export const usageEvents = pgTable(
   "usage_events",
   {
@@ -205,7 +178,6 @@ export const usageEvents = pgTable(
 
 export type User = typeof users.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
-export type AuditLog = typeof auditLog.$inferSelect;
 export type Library = typeof libraries.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type Chunk = typeof chunks.$inferSelect;

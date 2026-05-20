@@ -84,13 +84,17 @@ export async function POST(req: NextRequest) {
         prefix,
         name: parsed.data.name ?? null,
       });
-    audit({
-      userId: session.userId,
-      action: "api_key.create",
-      target: id,
-      ...auditCtxFromRequest(req),
-      metadata: { prefix, name: parsed.data.name ?? null },
-    });
+    {
+      const ctx = auditCtxFromRequest(req);
+      audit({
+        userId: session.userId,
+        action: "api_key.create",
+        targetType: "api_key",
+        targetId: id,
+        ip: ctx.ip,
+        metadata: { prefix, name: parsed.data.name ?? null, userAgent: ctx.userAgent },
+      });
+    }
     return NextResponse.json({ id, key: raw, prefix }, { status: 201 });
   } catch (err) {
     console.error("[auth/keys POST]", err);

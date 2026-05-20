@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
         audit({
           userId,
           action: "plan.upgrade",
-          target: session.subscription as string | null,
+          targetType: "subscription",
+          targetId: typeof session.subscription === "string" ? session.subscription : null,
           metadata: { from: previous?.plan ?? null, to: plan, stripeEvent: event.id },
         });
 
@@ -73,7 +74,8 @@ export async function POST(req: NextRequest) {
         audit({
           userId,
           action: "plan.cancel",
-          target: sub.id,
+          targetType: "subscription",
+          targetId: sub.id,
           metadata: { reason: "subscription_deleted", stripeEvent: event.id },
         });
       }
@@ -92,7 +94,8 @@ export async function POST(req: NextRequest) {
           audit({
             userId,
             action: "plan.downgrade",
-            target: sub.id,
+            targetType: "subscription",
+            targetId: sub.id,
             metadata: { reason: sub.status, stripeEvent: event.id },
           });
         }

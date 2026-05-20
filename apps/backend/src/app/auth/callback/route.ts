@@ -56,17 +56,19 @@ export async function GET(req: NextRequest) {
         audit({
           userId: u.id,
           action: "session.signup",
-          target: provider,
-          ...ctx,
-          metadata: { method },
+          targetType: provider ? "oauth_provider" : "none",
+          targetId: provider,
+          ip: ctx.ip,
+          metadata: { method, userAgent: ctx.userAgent },
         });
       } else {
         audit({
           userId: u.id,
           action: "session.signin",
-          target: provider,
-          ...ctx,
-          metadata: { method },
+          targetType: provider ? "oauth_provider" : "none",
+          targetId: provider,
+          ip: ctx.ip,
+          metadata: { method, userAgent: ctx.userAgent },
         });
       }
     }
