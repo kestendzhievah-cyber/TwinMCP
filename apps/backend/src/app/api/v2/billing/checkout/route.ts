@@ -3,14 +3,17 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { getStripe, PRICES } from "@/lib/stripe";
+import { getStripe, getPriceId, TRIAL_DAYS } from "@/lib/stripe";
 import { badRequest, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const schema = z.object({ plan: z.enum(["pro", "team"]) });
+const schema = z.object({
+  plan: z.enum(["pro", "team"]),
+  cadence: z.enum(["monthly", "yearly"]).default("monthly"),
+});
 
 export async function POST(req: NextRequest) {
   const session = await requireSessionUser(req);
@@ -25,13 +28,13 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return badRequest(parsed.error.message);
 
-  const price = PRICES[parsed.data.plan];
-  if (!price.priceId) return badRequest("Stripe price not configured for this plan");
+  const priceId = getPriceId(parsed.data.plan, parsed.data.cadence);
+  if (!priceId) return badRequest("Stripe price not configured for this plan/cadence");
 
   try {
     const db = getDb();
     const [userRow] = await db
-      .select({ email: users.email })
+      .select({ email: users.email, stripeCustomerId: users.stripeCustomerId })
       .from(users)
       .where(eq(users.id, session.userId))
       .limit(1);
@@ -39,13 +42,36 @@ export async function POST(req: NextRequest) {
     const origin = req.headers.get("origin") ?? "https://twinmcp.com";
     const stripe = getStripe();
 
+    // Reuse an existing Stripe customer if we already linked one — avoids
+    // duplicate customers across upgrades and keeps Customer Portal happy.
+    // customer + customer_email are mutually exclusive; we pick one.
+    const customerArgs = userRow?.stripeCustomerId
+      ? { customer: userRow.stripeCustomerId }
+      : { customer_email: userRow?.email };
+
     const checkout = await stripe.checkout.sessions.create({
       mode: "subscription",
-      customer_email: userRow?.email,
-      line_items: [{ price: price.priceId, quantity: 1 }],
-      metadata: { userId: session.userId, plan: parsed.data.plan },
-      success_url: `${origin}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/plans`,
+      ...customerArgs,
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: {
+        userId: session.userId,
+        plan: parsed.data.plan,
+        cadence: parsed.data.cadence,
+      },
+      subscription_data: {
+        metadata: {
+          userId: session.userId,
+          plan: parsed.data.plan,
+          cadence: parsed.data.cadence,
+        },
+        ...(TRIAL_DAYS > 0 ? { trial_period_days: TRIAL_DAYS } : {}),
+      },
+      allow_promotion_codes: true,
+      automatic_tax: { enabled: true },
+      tax_id_collection: { enabled: true },
+      billing_address_collection: "auto",
+      success_url: `${origin}/dashboard/billing?status=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/plans?status=canceled`,
     });
 
     return NextResponse.json({ url: checkout.url });

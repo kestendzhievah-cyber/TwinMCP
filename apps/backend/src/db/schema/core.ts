@@ -26,12 +26,23 @@ export const users = pgTable(
     plan: text("plan").$type<Plan>().notNull().default("free"),
     quotaUsed: integer("quota_used").notNull().default(0),
     quotaResetAt: timestamp("quota_reset_at", { withTimezone: true }).notNull().defaultNow(),
+    // Stripe linkage. Populated on first checkout success. Reused across
+    // sessions so we never create duplicate customers.
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    // Last known subscription state — mirrored from webhooks for cheap UI reads.
+    subscriptionStatus: text("subscription_status"),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("users_email_idx").on(t.email)]
+  (t) => [
+    uniqueIndex("users_email_idx").on(t.email),
+    uniqueIndex("users_stripe_customer_idx").on(t.stripeCustomerId),
+  ]
 );
 
 export const apiKeys = pgTable(
