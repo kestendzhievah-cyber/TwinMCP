@@ -187,14 +187,24 @@ export async function POST(req: NextRequest) {
       // Don't downgrade yet — Stripe will keep retrying and emit
       // subscription.updated with past_due/unpaid status when it gives
       // up. Just record the failed attempt so we can surface a banner.
+      //
+      // In Stripe API 2026-03 dahlia, invoice.subscription was removed in
+      // favour of invoice.parent.subscription_details.subscription. We
+      // best-effort extract the subscription id for the audit row and
+      // accept null if the shape changes again.
+      let subscriptionId: string | null = null;
+      const parent = (invoice as unknown as { parent?: { subscription_details?: { subscription?: string | { id?: string } } } }).parent;
+      const raw = parent?.subscription_details?.subscription;
+      if (typeof raw === "string") subscriptionId = raw;
+      else if (raw && typeof raw === "object" && "id" in raw && typeof raw.id === "string") {
+        subscriptionId = raw.id;
+      }
+
       audit({
         userId,
         action: "plan.downgrade",
         targetType: "subscription",
-        targetId:
-          typeof invoice.subscription === "string"
-            ? invoice.subscription
-            : invoice.subscription?.toString() ?? null,
+        targetId: subscriptionId,
         metadata: {
           reason: "invoice_payment_failed",
           amountDue: invoice.amount_due,
