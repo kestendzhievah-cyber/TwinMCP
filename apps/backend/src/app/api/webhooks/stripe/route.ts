@@ -6,6 +6,7 @@ import { users, processedStripeEvents } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
 import { sendUpgradeConfirmationEmail } from "@/lib/email";
 import { audit } from "@/lib/audit";
+import { trackServer } from "@/lib/analytics/server";
 import type { Plan } from "@/db/schema";
 
 export const runtime = "nodejs";
@@ -81,12 +82,30 @@ export async function POST(req: NextRequest) {
           ? session.subscription
           : session.subscription?.id ?? null;
 
+      const creatorSlug = session.metadata?.creatorSlug ?? null;
+      const promotionCodeId = session.metadata?.promotionCodeId ?? null;
+
       if (userId && plan) {
         const [previous] = await db
-          .select({ plan: users.plan, email: users.email })
+          .select({ plan: users.plan, email: users.email, metadata: users.metadata })
           .from(users)
           .where(eq(users.id, userId))
           .limit(1);
+
+        // Merge promo attribution into the existing metadata blob so we don't
+        // clobber comp flags or any other fields callers stash there.
+        const nextMetadata =
+          creatorSlug || promotionCodeId
+            ? {
+                ...((previous?.metadata ?? {}) as Record<string, unknown>),
+                signupPromo: {
+                  creatorSlug,
+                  promotionCodeId,
+                  redeemedAt: new Date().toISOString(),
+                  stripeSessionId: session.id,
+                },
+              }
+            : undefined;
 
         await db
           .update(users)
@@ -95,6 +114,7 @@ export async function POST(req: NextRequest) {
             stripeCustomerId: customerId,
             stripeSubscriptionId: subscriptionId,
             subscriptionStatus: "active",
+            ...(nextMetadata ? { metadata: nextMetadata } : {}),
           })
           .where(eq(users.id, userId));
 
@@ -103,8 +123,22 @@ export async function POST(req: NextRequest) {
           action: "plan.upgrade",
           targetType: "subscription",
           targetId: subscriptionId,
-          metadata: { from: previous?.plan ?? null, to: plan, stripeEvent: event.id },
+          metadata: {
+            from: previous?.plan ?? null,
+            to: plan,
+            stripeEvent: event.id,
+            ...(creatorSlug ? { creatorSlug } : {}),
+            ...(promotionCodeId ? { promotionCodeId } : {}),
+          },
         });
+
+        if (creatorSlug) {
+          trackServer({
+            event: "promo_redeemed",
+            distinctId: userId,
+            properties: { creatorSlug, promotionCodeId, plan },
+          });
+        }
 
         if (previous?.email) {
           sendUpgradeConfirmationEmail(previous.email, plan).catch(() => {});

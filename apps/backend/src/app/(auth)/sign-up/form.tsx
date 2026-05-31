@@ -17,6 +17,7 @@ import { friendlyAuthError } from "@/lib/auth/errors";
 
 const SELECTED_PLAN_KEY = "tmcp_signup_plan";
 const SELECTED_CADENCE_KEY = "tmcp_signup_cadence";
+const SELECTED_PROMO_KEY = "tmcp_signup_promo";
 const allowedPlans = new Set(["free", "pro", "team"]);
 const allowedCadences = new Set(["monthly", "yearly"]);
 const planLabels: Record<string, string> = {
@@ -33,6 +34,10 @@ export function SignUpForm() {
   const cadenceParam = searchParams.get("cadence");
   const selectedCadence =
     cadenceParam && allowedCadences.has(cadenceParam) ? cadenceParam : null;
+  // Creator landing → carry the slug through the email-confirm round trip
+  // so the post-signup checkout can pre-apply the discount.
+  const promoParam = searchParams.get("promo");
+  const selectedPromo = promoParam && /^[a-z0-9-]{1,64}$/.test(promoParam) ? promoParam : null;
 
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
@@ -52,7 +57,10 @@ export function SignUpForm() {
     if (selectedCadence) {
       window.localStorage.setItem(SELECTED_CADENCE_KEY, selectedCadence);
     }
-  }, [selectedPlan, selectedCadence]);
+    if (selectedPromo) {
+      window.localStorage.setItem(SELECTED_PROMO_KEY, selectedPromo);
+    }
+  }, [selectedPlan, selectedCadence, selectedPromo]);
 
   useEffect(() => {
     track({ name: "signup_started" });
@@ -75,15 +83,23 @@ export function SignUpForm() {
       if (event !== "SIGNED_IN") return;
       const plan = window.localStorage.getItem(SELECTED_PLAN_KEY);
       const cadence = window.localStorage.getItem(SELECTED_CADENCE_KEY) ?? "monthly";
+      const promo = window.localStorage.getItem(SELECTED_PROMO_KEY);
       if (plan === "pro" || plan === "team") {
         try {
           const res = await fetch("/api/v2/billing/checkout", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ plan, cadence }),
+            body: JSON.stringify({
+              plan,
+              cadence,
+              ...(promo ? { creatorSlug: promo } : {}),
+            }),
           });
           const body = await res.json();
           if (body.url) {
+            // Clear the promo flag so a stale slug can't haunt the next signup
+            // attempt from the same browser.
+            window.localStorage.removeItem(SELECTED_PROMO_KEY);
             window.location.assign(body.url);
             return;
           }

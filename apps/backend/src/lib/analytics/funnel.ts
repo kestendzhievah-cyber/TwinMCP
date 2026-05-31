@@ -31,7 +31,13 @@ export type FunnelEvent =
       properties: {
         plan: "free" | "pro" | "team";
         cadence?: "monthly" | "annual";
+        /** Set when the checkout was initiated from a /p/[slug] creator landing. */
+        creatorSlug?: string;
       };
+    }
+  | {
+      name: "promo_viewed";
+      properties: { creatorSlug: string; humanCode: string };
     };
 
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com";

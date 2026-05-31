@@ -6,6 +6,7 @@ import { users } from "@/db/schema";
 import { getStripe, getPriceId, TRIAL_DAYS } from "@/lib/stripe";
 import { badRequest, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
+import { getCreator } from "@/lib/promos/creators";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,12 @@ export const dynamic = "force-dynamic";
 const schema = z.object({
   plan: z.enum(["pro", "team"]),
   cadence: z.enum(["monthly", "yearly"]).default("monthly"),
+  // Stripe promotion_code id (promo_xxx). When provided, pre-applies the
+  // discount in checkout so the user doesn't have to type the code.
+  promotionCodeId: z.string().regex(/^promo_[A-Za-z0-9]+$/).optional(),
+  // Free-form attribution slug from the creator landing page (e.g. "youtuber").
+  // Surfaces in subscription metadata for ROI tracking.
+  creatorSlug: z.string().min(1).max(64).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -30,6 +37,18 @@ export async function POST(req: NextRequest) {
 
   const priceId = getPriceId(parsed.data.plan, parsed.data.cadence);
   if (!priceId) return badRequest("Stripe price not configured for this plan/cadence");
+
+  // If only a creatorSlug was provided, resolve to its promotion_code id.
+  // This keeps the client API tiny — sign-up just persists the slug.
+  let resolvedPromoId = parsed.data.promotionCodeId;
+  if (!resolvedPromoId && parsed.data.creatorSlug) {
+    const creator = getCreator(parsed.data.creatorSlug);
+    if (creator && creator.plan === parsed.data.plan && creator.cadence === parsed.data.cadence) {
+      resolvedPromoId = creator.promotionCodeId;
+    }
+    // If the creator exists but the plan/cadence don't match, drop the promo
+    // silently — the user still gets to check out, just at full price.
+  }
 
   try {
     const db = getDb();
@@ -49,6 +68,15 @@ export async function POST(req: NextRequest) {
       ? { customer: userRow.stripeCustomerId }
       : { customer_email: userRow?.email };
 
+    // Pre-applying a discount and allowing the promo input are mutually
+    // exclusive in Stripe — pick one based on whether we have a code to apply.
+    const hasPreApplied = !!resolvedPromoId;
+    const promoMetadata: Record<string, string> = {};
+    if (parsed.data.creatorSlug) {
+      promoMetadata.creatorSlug = parsed.data.creatorSlug;
+      promoMetadata.promotionCodeId = resolvedPromoId ?? "";
+    }
+
     const checkout = await stripe.checkout.sessions.create({
       mode: "subscription",
       ...customerArgs,
@@ -57,16 +85,20 @@ export async function POST(req: NextRequest) {
         userId: session.userId,
         plan: parsed.data.plan,
         cadence: parsed.data.cadence,
+        ...promoMetadata,
       },
       subscription_data: {
         metadata: {
           userId: session.userId,
           plan: parsed.data.plan,
           cadence: parsed.data.cadence,
+          ...promoMetadata,
         },
         ...(TRIAL_DAYS > 0 ? { trial_period_days: TRIAL_DAYS } : {}),
       },
-      allow_promotion_codes: true,
+      ...(hasPreApplied
+        ? { discounts: [{ promotion_code: resolvedPromoId! }] }
+        : { allow_promotion_codes: true }),
       automatic_tax: { enabled: true },
       tax_id_collection: { enabled: true },
       billing_address_collection: "auto",

@@ -12,14 +12,28 @@ import { PLANS, formatPrice, type BillingCadence } from "./pricing-data";
 import { track } from "@/lib/analytics/funnel";
 import { createClient } from "@/utils/supabase/client";
 
+export interface PromoOffer {
+  /** Stripe promotion_code id (promo_xxx) — pre-applied in checkout. */
+  promotionCodeId: string;
+  /** Creator slug for attribution. */
+  creatorSlug: string;
+  /** Which plan the promo applies to — others render unchanged. */
+  appliesTo: "pro" | "team";
+  /** Cadence the promo is scoped to (Stripe coupons are price-scoped). */
+  cadence: BillingCadence;
+  /** Marketing copy shown on the discounted card. */
+  badge: string;
+}
+
 interface PricingCardsProps {
   cadence: BillingCadence;
+  promo?: PromoOffer;
 }
 
 // Map UI cadence ("monthly"/"annual") to API cadence ("monthly"/"yearly").
 const apiCadence = (c: BillingCadence) => (c === "annual" ? "yearly" : "monthly");
 
-export function PricingCards({ cadence }: PricingCardsProps) {
+export function PricingCards({ cadence, promo }: PricingCardsProps) {
   const router = useRouter();
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -33,16 +47,42 @@ export function PricingCards({ cadence }: PricingCardsProps) {
     supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
   }, []);
 
+  // A promo only applies to its configured plan + cadence pair (Stripe coupons
+  // are price-scoped). Switching the toggle to annual hides a monthly promo.
+  function promoFor(planId: "pro" | "team"): PromoOffer | undefined {
+    if (!promo) return undefined;
+    if (promo.appliesTo !== planId) return undefined;
+    if (promo.cadence !== cadence) return undefined;
+    return promo;
+  }
+
   async function handleUpgrade(planId: "pro" | "team") {
     setPending(planId);
-    track({ name: "checkout_started", properties: { plan: planId, cadence } });
+    const activePromo = promoFor(planId);
+    track({
+      name: "checkout_started",
+      properties: {
+        plan: planId,
+        cadence,
+        ...(activePromo ? { creatorSlug: activePromo.creatorSlug } : {}),
+      },
+    });
 
     if (signedIn) {
       try {
         const res = await fetch("/api/v2/billing/checkout", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ plan: planId, cadence: apiCadence(cadence) }),
+          body: JSON.stringify({
+            plan: planId,
+            cadence: apiCadence(cadence),
+            ...(activePromo
+              ? {
+                  promotionCodeId: activePromo.promotionCodeId,
+                  creatorSlug: activePromo.creatorSlug,
+                }
+              : {}),
+          }),
         });
         const data = await res.json();
         if (data.url) {
@@ -56,9 +96,11 @@ export function PricingCards({ cadence }: PricingCardsProps) {
       return;
     }
 
-    // Not signed in — bounce through sign-up, but carry plan + cadence so
-    // the sign-up form can resume checkout right after email confirm.
+    // Not signed in — bounce through sign-up, but carry plan + cadence (and
+    // the promo slug if any) so the sign-up form can resume checkout right
+    // after email confirm.
     const params = new URLSearchParams({ plan: planId, cadence: apiCadence(cadence) });
+    if (activePromo) params.set("promo", activePromo.creatorSlug);
     router.push(`/sign-up?${params.toString()}` as Route);
   }
 
@@ -69,6 +111,7 @@ export function PricingCards({ cadence }: PricingCardsProps) {
         const isFree = plan.id === "free";
         const isCustom = plan.monthlyUsd === null;
         const isBillable = plan.id === "pro" || plan.id === "team";
+        const activePromo = isBillable ? promoFor(plan.id as "pro" | "team") : undefined;
         const cadenceSuffix = isFree
           ? "forever"
           : isCustom
@@ -82,15 +125,21 @@ export function PricingCards({ cadence }: PricingCardsProps) {
             key={plan.id}
             className={cn(
               "relative flex flex-col rounded-xl border bg-card p-6 transition-colors",
-              plan.highlighted
-                ? "border-foreground/40 shadow-md shadow-foreground/[0.04]"
-                : "border-border/80"
+              activePromo
+                ? "border-emerald-500/60 shadow-md shadow-emerald-500/[0.08]"
+                : plan.highlighted
+                  ? "border-foreground/40 shadow-md shadow-foreground/[0.04]"
+                  : "border-border/80"
             )}
             aria-label={`${plan.name} plan`}
           >
-            {plan.highlighted && (
+            {activePromo ? (
+              <Badge className="absolute -top-2.5 left-6 bg-emerald-500 text-white hover:bg-emerald-500">
+                {activePromo.badge}
+              </Badge>
+            ) : plan.highlighted ? (
               <Badge className="absolute -top-2.5 left-6">Most popular</Badge>
-            )}
+            ) : null}
 
             <header>
               <h3 className="font-semibold tracking-tight">{plan.name}</h3>
