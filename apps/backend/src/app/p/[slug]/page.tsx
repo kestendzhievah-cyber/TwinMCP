@@ -4,18 +4,19 @@ import { Section } from "@/components/marketing/section";
 import { PricingExperience } from "@/components/pricing/pricing-experience";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { TrustSignals } from "@/components/pricing/trust-signals";
-import { getCreator, listCreatorSlugs } from "@/lib/promos/creators";
+import { getCreator } from "@/lib/promos/creators";
 import { Check } from "lucide-react";
 
 interface Params {
   params: Promise<{ slug: string }>;
 }
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return listCreatorSlugs().map((slug) => ({ slug }));
-}
+// Resolve creators at request time, not build time. Build-time SSG would
+// freeze the creator list into the image — adding a creator (or setting
+// STRIPE_PROMO_*_ID) would require a full rebuild before the landing would
+// 404 → 200. getCreator() already returns undefined for unconfigured stubs,
+// so notFound() handles the gating defensively.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
