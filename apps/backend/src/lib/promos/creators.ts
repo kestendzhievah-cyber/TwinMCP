@@ -1,10 +1,19 @@
 // Registry of creator/influencer collaborations.
 //
-// Each entry powers a landing page at /p/[slug] and pre-applies its Stripe
-// promotion code in the checkout. Adding a new partner is a one-file change:
-// run scripts/create-promo-code.ts, then append an entry here.
+// Each entry powers a landing page at /p/[slug] (EN) and /fr/p/[slug] (FR),
+// and pre-applies its Stripe promotion code in the checkout. Adding a new
+// partner is a one-file change: run scripts/create-promo-code.ts, then
+// append an entry here.
 
 import type { BillablePlan, Cadence } from "@/lib/stripe";
+import type { Locale } from "@/lib/i18n/locales";
+
+export interface HeroContent {
+  eyebrow: string;
+  title: string;
+  description: string;
+  bullets: string[];
+}
 
 export interface CreatorCampaign {
   slug: string;
@@ -17,13 +26,9 @@ export interface CreatorCampaign {
   humanCode: string;
   plan: BillablePlan;
   cadence: Cadence;
-  /** Marketing copy for the landing page. */
-  hero: {
-    eyebrow: string;
-    title: string;
-    description: string;
-    bullets: string[];
-  };
+  /** Per-locale marketing copy. Both locales are required so the language
+   *  switcher always has somewhere to go. */
+  hero: Record<Locale, HeroContent>;
   /** Free months unlocked by the code, used for copy ("1 month free"). */
   freeMonths: number;
   /** Optional expiry shown on the landing page. */
@@ -44,16 +49,30 @@ export const CREATORS: CreatorCampaign[] = [
     cadence: "monthly",
     freeMonths: 1,
     hero: {
-      eyebrow: "Partner offer",
-      title: "1 month of TwinMCP Pro, on us.",
-      description:
-        "Spin up to 25 MCP servers, publish your own MCPs, and ship with your AI agent in production — first month free, cancel anytime.",
-      bullets: [
-        "25 hosted MCP servers",
-        "Publish private MCPs",
-        "Audit logs · 30 days",
-        "Priority email support",
-      ],
+      en: {
+        eyebrow: "Partner offer",
+        title: "1 month of TwinMCP Pro, on us.",
+        description:
+          "Spin up to 25 MCP servers, publish your own MCPs, and ship with your AI agent in production — first month free, cancel anytime.",
+        bullets: [
+          "25 hosted MCP servers",
+          "Publish private MCPs",
+          "Audit logs · 30 days",
+          "Priority email support",
+        ],
+      },
+      fr: {
+        eyebrow: "Offre partenaire",
+        title: "1 mois de TwinMCP Pro offert.",
+        description:
+          "Provisionne jusqu'à 25 serveurs MCP, publie tes propres MCPs et passe en prod avec ton agent IA — premier mois gratuit, sans engagement.",
+        bullets: [
+          "25 serveurs MCP hébergés",
+          "Publie tes propres MCPs",
+          "Audit logs · 30 jours",
+          "Support email prioritaire",
+        ],
+      },
     },
   },
 ];

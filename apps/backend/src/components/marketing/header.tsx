@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "./logo";
+import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
 
 type NavLink =
@@ -69,6 +70,7 @@ export function MarketingHeader() {
           <Button asChild size="sm">
             <Link href={"/sign-up" as Route}>Get started</Link>
           </Button>
+          <LanguageSwitcher className="ml-1" />
         </div>
 
         <button
@@ -140,6 +142,9 @@ export function MarketingHeader() {
                 Get started
               </Link>
             </Button>
+            <div className="flex justify-center pt-1">
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
       </div>
