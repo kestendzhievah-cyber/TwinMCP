@@ -18,11 +18,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # NEXT_PUBLIC_* are inlined into the client bundle AT BUILD TIME, not read at
 # runtime. Dokploy only injects env at runtime, so without these build args the
-# browser Supabase client ends up with undefined URL/key and every auth method
-# (password, magic-link, OAuth) silently fails. Pass these as build args.
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-ARG NEXT_PUBLIC_SITE_URL
+# browser Supabase client ends up with empty URL/key and every auth method
+# (password, magic-link, OAuth) silently fails. These three are public values
+# (shipped to the browser anyway), so we default them to the real prod values:
+# the build then works even when no build arg is wired, and they can still be
+# overridden with --build-arg. An empty NEXT_PUBLIC_SITE_URL also crashes the
+# build (new URL("") in layout metadataBase), so a valid default is required.
+ARG NEXT_PUBLIC_SUPABASE_URL=https://dzaktzfmhcfqbothsvlh.supabase.co
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_L_BEyVEx3dmjNSr25T40Ng_snbswlXy
+ARG NEXT_PUBLIC_SITE_URL=https://twinmcp.fr
 ARG NEXT_PUBLIC_POSTHOG_KEY
 ARG NEXT_PUBLIC_POSTHOG_HOST
 ARG NEXT_PUBLIC_SENTRY_DSN

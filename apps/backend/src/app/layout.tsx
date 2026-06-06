@@ -8,7 +8,9 @@ import { PostHogProvider } from "@/components/analytics/posthog-provider";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationSchema, websiteSchema } from "@/lib/seo/schema";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+// `||` not `??`: an empty-string env var (Docker ARG with no value) must also
+// fall back, otherwise new URL("") below crashes the build.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://twinmcp.dev";
 const GSC_VERIFICATION = process.env.NEXT_PUBLIC_GSC_VERIFICATION;
 const BING_VERIFICATION = process.env.NEXT_PUBLIC_BING_VERIFICATION;
 const YANDEX_VERIFICATION = process.env.NEXT_PUBLIC_YANDEX_VERIFICATION;
