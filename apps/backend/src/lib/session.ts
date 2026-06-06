@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { authenticateRequest } from "./auth";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
@@ -12,7 +13,20 @@ async function ensureUserRow(userId: string, email: string | undefined) {
   await getDb()
     .insert(users)
     .values({ id: userId, email: email ?? `${userId}@placeholder.twinmcp.com` })
-    .onConflictDoNothing({ target: users.id });
+    .onConflictDoUpdate({
+      target: users.id,
+      // Backfill the email if an earlier insert (e.g. the OAuth callback) left it
+      // empty. Only write a real address — never overwrite an existing email and
+      // never replace it with the synthetic placeholder.
+      set: {
+        email: sql`CASE
+          WHEN (${users.email} = '' OR ${users.email} IS NULL)
+            AND excluded.email NOT LIKE '%@placeholder.twinmcp.com'
+          THEN excluded.email
+          ELSE ${users.email}
+        END`,
+      },
+    });
 }
 
 export async function requireSessionUser(req: Request): Promise<SessionUser | null> {
