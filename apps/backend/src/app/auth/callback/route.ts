@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
@@ -26,11 +26,13 @@ export async function GET(req: NextRequest) {
   const returnTo = url.searchParams.get("returnTo") ?? DEFAULT_RETURN_TO;
 
   let userId: string | undefined;
+  let userEmail: string | undefined;
   if (code) {
     const supabase = await createClient();
     const { data } = await supabase.auth.exchangeCodeForSession(code);
     const u = data?.user;
     userId = u?.id;
+    userEmail = u?.email;
 
     // Fire signup_completed once per user, server-side. Client-side signup
     // form fires its own copy with via:"client" — we tag this one with
@@ -81,8 +83,15 @@ export async function GET(req: NextRequest) {
     try {
       await getDb()
         .insert(users)
-        .values({ id: userId, email: "" })
-        .onConflictDoNothing({ target: users.id });
+        .values({ id: userId, email: userEmail ?? "" })
+        .onConflictDoUpdate({
+          target: users.id,
+          // Backfill the email if an earlier insert left it empty (OAuth signups
+          // used to land here with email=""). Never overwrite a real address.
+          set: {
+            email: sql`CASE WHEN ${users.email} = '' OR ${users.email} IS NULL THEN excluded.email ELSE ${users.email} END`,
+          },
+        });
 
       const [row] = await getDb()
         .select({ completedAt: users.onboardingCompletedAt })
