@@ -24,13 +24,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import type { Plan } from "@/db/schema/core";
+import { allowedBoxSizes, minPlanForBoxSize, PLAN_LABELS } from "@/lib/plan-features";
+
+const BOX_SIZES = [
+  { value: "small", label: "Small — 2 vCPU / 4 GB RAM" },
+  { value: "medium", label: "Medium — 4 vCPU / 8 GB RAM" },
+  { value: "large", label: "Large — 8 vCPU / 16 GB RAM" },
+] as const;
 
 interface CreateServerDialogProps {
+  plan: Plan;
   disabled?: boolean;
   trigger?: React.ReactNode;
 }
 
-export function CreateServerDialog({ disabled, trigger }: CreateServerDialogProps) {
+export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -100,11 +109,27 @@ export function CreateServerDialog({ disabled, trigger }: CreateServerDialogProp
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="small">Small — 2 vCPU / 4 GB RAM</SelectItem>
-                <SelectItem value="medium">Medium — 4 vCPU / 8 GB RAM</SelectItem>
-                <SelectItem value="large">Large — 8 vCPU / 16 GB RAM</SelectItem>
+                {BOX_SIZES.map((s) => {
+                  const allowed = allowedBoxSizes(plan).includes(s.value);
+                  const required = minPlanForBoxSize(s.value);
+                  return (
+                    <SelectItem key={s.value} value={s.value} disabled={!allowed}>
+                      {s.label}
+                      {!allowed && required ? ` · ${PLAN_LABELS[required]}` : ""}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
+            {allowedBoxSizes(plan).length < BOX_SIZES.length && (
+              <p className="text-xs text-muted-foreground">
+                Larger boxes are available on higher plans.{" "}
+                <a href="/dashboard/billing" className="underline underline-offset-2">
+                  Upgrade
+                </a>
+                .
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="region">Region (optional)</Label>

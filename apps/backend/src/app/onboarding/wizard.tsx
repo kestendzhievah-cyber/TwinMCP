@@ -5,13 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { OnboardingProgress } from "@/components/onboarding/progress";
+import { StepPlan, type SelectablePlan } from "@/components/onboarding/step-plan";
 import { StepWelcome, type IdePreference } from "@/components/onboarding/step-welcome";
 import { StepServer } from "@/components/onboarding/step-server";
 import { StepMcp, type CatalogMcp } from "@/components/onboarding/step-mcp";
 import { StepConnect } from "@/components/onboarding/step-connect";
 import { track } from "@/lib/analytics/funnel";
 
-const STEPS = ["IDE", "Server", "MCP", "Connect"] as const;
+const STEPS = ["Plan", "IDE", "Server", "MCP", "Connect"] as const;
 const SELECTED_PLAN_KEY = "tmcp_signup_plan";
 
 interface WizardProps {
@@ -35,6 +36,45 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem(SELECTED_PLAN_KEY);
     if (stored) setSelectedPlan(stored);
+  }, []);
+
+  const handleSelectPlan = useCallback(async (plan: SelectablePlan) => {
+    setSelectedPlan(plan);
+    track({ name: "plan_selected", properties: { plan, step: "onboarding" } });
+    // Persist the choice (best-effort) so it survives a checkout round-trip.
+    void fetch("/api/v2/users/me/onboarding", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ selectedPlan: plan }),
+    }).catch(() => {});
+
+    if (plan === "free") {
+      setStep(1);
+      return;
+    }
+
+    // Paid plan → straight to Stripe checkout for max conversion.
+    track({ name: "checkout_started", properties: { plan, cadence: "monthly" } });
+    try {
+      const res = await fetch("/api/v2/billing/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ plan, cadence: "monthly" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+      }
+      toast.error("Could not start checkout — you can upgrade later from Billing.");
+      setStep(1);
+    } catch (err) {
+      console.error("[onboarding checkout]", err);
+      toast.error("Could not start checkout — you can upgrade later from Billing.");
+      setStep(1);
+    }
   }, []);
 
   const handleSelectIde = useCallback(
@@ -64,7 +104,7 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
         return s;
       });
       track({ name: "onboarding_step_completed", properties: { step: "server" } });
-      setStep(2);
+      setStep(3);
     },
     []
   );
@@ -114,47 +154,50 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
 
       <div className="rounded-2xl border border-border/80 bg-card p-6 md:p-8">
         {step === 0 && (
+          <StepPlan initialPlan={selectedPlan} onSelectPlan={handleSelectPlan} />
+        )}
+        {step === 1 && (
           <StepWelcome
             selected={ide}
             onSelect={handleSelectIde}
             onContinue={() => {
-              track({ name: "onboarding_step_completed", properties: { step: "welcome" } });
-              setStep(1);
+              track({ name: "onboarding_step_completed", properties: { step: "ide" } });
+              setStep(2);
             }}
             selectedPlan={selectedPlan}
           />
         )}
-        {step === 1 && (
+        {step === 2 && (
           <StepServer
             existingServer={existingServer}
             onReady={handleServerReady}
-            onBack={() => setStep(0)}
+            onBack={() => setStep(1)}
           />
         )}
-        {step === 2 && server && (
+        {step === 3 && server && (
           <StepMcp
             catalog={catalog}
             serverId={server.id}
             onInstalled={(mcpSlug) => {
               track({ name: "first_mcp_installed", properties: { mcpSlug } });
               track({ name: "onboarding_step_completed", properties: { step: "mcp" } });
-              setStep(3);
+              setStep(4);
             }}
             onSkip={() => {
               track({ name: "onboarding_step_completed", properties: { step: "mcp" } });
-              setStep(3);
+              setStep(4);
             }}
-            onBack={() => setStep(1)}
+            onBack={() => setStep(2)}
           />
         )}
-        {step === 3 && server && (
+        {step === 4 && server && (
           <StepConnect
             serverId={server.id}
             serverName={server.name}
             endpointUrl={server.endpointUrl}
             ide={ide ?? "other"}
             onFinish={handleFinish}
-            onBack={() => setStep(2)}
+            onBack={() => setStep(3)}
           />
         )}
       </div>

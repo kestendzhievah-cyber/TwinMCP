@@ -2,6 +2,8 @@ import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { teamspaceMembers, teamspaces, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { meetsPlan } from "@/lib/plan-features";
+import { UpgradeCard } from "@/components/billing/upgrade-card";
 import { TeamPanel } from "./panel";
 
 export default async function TeamPage() {
@@ -12,6 +14,13 @@ export default async function TeamPage() {
   if (!user) return null;
 
   const db = getDb();
+
+  const [meRow] = await db
+    .select({ plan: users.plan })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+  const plan = meRow?.plan ?? "free";
 
   const memberships = await db
     .select({
@@ -47,24 +56,36 @@ export default async function TeamPage() {
     }));
   }
 
+  // Team collaboration is a Team-plan feature. Users who already belong to a
+  // teamspace (e.g. granted earlier) keep access even if their plan changed.
+  const locked = !meetsPlan(plan, "team") && memberships.length === 0;
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
       </div>
-      <TeamPanel
-        userId={user.id}
-        teamspace={
-          memberships[0]
-            ? {
-                id: memberships[0].teamspaceId,
-                name: memberships[0].name,
-                plan: memberships[0].plan,
-              }
-            : null
-        }
-        members={members}
-      />
+      {locked ? (
+        <UpgradeCard
+          title="Team collaboration"
+          description="Invite teammates and share servers, policies and context across your squad."
+          requiredPlan="team"
+        />
+      ) : (
+        <TeamPanel
+          userId={user.id}
+          teamspace={
+            memberships[0]
+              ? {
+                  id: memberships[0].teamspaceId,
+                  name: memberships[0].name,
+                  plan: memberships[0].plan,
+                }
+              : null
+          }
+          members={members}
+        />
+      )}
     </div>
   );
 }

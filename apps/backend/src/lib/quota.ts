@@ -2,11 +2,14 @@ import { eq, and, ne } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servers } from "@/db/schema/platform";
 import type { Plan } from "@/db/schema/core";
+import { PLAN_CAPABILITIES } from "./plan-features";
 
+// Derived from the central capability table so the server limit lives in one
+// place (see lib/plan-features.ts). Kept as a named export for existing callers.
 export const SERVER_QUOTAS: Record<Plan, number> = {
-  free: 1,
-  pro: 25,
-  team: Number.POSITIVE_INFINITY,
+  free: PLAN_CAPABILITIES.free.servers,
+  pro: PLAN_CAPABILITIES.pro.servers,
+  team: PLAN_CAPABILITIES.team.servers,
 };
 
 export class QuotaExceededError extends Error {

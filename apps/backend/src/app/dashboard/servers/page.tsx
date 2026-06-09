@@ -70,7 +70,7 @@ export default async function ServersPage() {
             <span className="capitalize font-medium text-foreground">{plan}</span> plan
           </p>
         </div>
-        <CreateServerDialog disabled={remaining === 0} />
+        <CreateServerDialog plan={plan} disabled={remaining === 0} />
       </div>
 
       {rows.length === 0 ? (
@@ -80,6 +80,7 @@ export default async function ServersPage() {
           description="A server is an isolated runtime where your MCPs live. The first one is free."
           primaryAction={
             <CreateServerDialog
+              plan={plan}
               disabled={remaining === 0}
               trigger={
                 <Button size="lg" disabled={remaining === 0}>

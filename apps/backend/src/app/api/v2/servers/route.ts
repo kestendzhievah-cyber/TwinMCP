@@ -7,6 +7,12 @@ import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 import { createServerSchema, slugify } from "@/lib/validation/platform";
 import { assertServerQuota, QuotaExceededError } from "@/lib/quota";
+import {
+  isBoxSizeAllowed,
+  minPlanForBoxSize,
+  PlanRestrictionError,
+  PLAN_LABELS,
+} from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { encryptConfig } from "@/lib/crypto/config-encryption";
@@ -67,6 +73,19 @@ export async function POST(req: NextRequest) {
 
     await assertServerQuota(session.userId, me.plan);
 
+    // Box size is plan-gated (free: small, pro: +medium, team: all). Enforce
+    // here — the Zod schema accepts any valid enum value, so without this a
+    // free user could POST boxSize:"large" and provision an oversized box.
+    const boxSize = parsed.data.boxSize ?? "small";
+    if (!isBoxSizeAllowed(me.plan, boxSize)) {
+      const required = minPlanForBoxSize(boxSize) ?? "team";
+      throw new PlanRestrictionError(
+        "box-size",
+        required,
+        `The ${boxSize} box size requires the ${PLAN_LABELS[required]} plan.`,
+      );
+    }
+
     const slug = parsed.data.slug ?? slugify(parsed.data.name);
     if (!slug) return badRequest("Could not derive a slug from the name");
 
@@ -76,7 +95,7 @@ export async function POST(req: NextRequest) {
       userId: session.userId,
       name: parsed.data.name,
       slug,
-      boxSize: parsed.data.boxSize ?? "small",
+      boxSize,
       region: parsed.data.region ?? null,
       status: "provisioning",
     });
@@ -117,7 +136,7 @@ export async function POST(req: NextRequest) {
       action: "server.create",
       targetType: "server",
       targetId: id,
-      metadata: { slug, boxSize: parsed.data.boxSize ?? "small" },
+      metadata: { slug, boxSize },
       ip: clientIp(req),
     });
 
@@ -128,7 +147,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ id, slug, status: "provisioning" }, { status: 201 });
   } catch (err) {
-    if (err instanceof QuotaExceededError) {
+    if (err instanceof QuotaExceededError || err instanceof PlanRestrictionError) {
       return forbidden(err.message);
     }
     if (err instanceof Error && /unique/i.test(err.message)) {

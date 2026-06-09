@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { createClient } from "@/utils/supabase/server";
+import { getDb } from "@/db";
+import { users } from "@/db/schema";
 import { DashboardNav } from "./nav";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +15,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect("/sign-in?returnTo=/dashboard");
 
+  const [row] = await getDb()
+    .select({ plan: users.plan })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+  const plan = row?.plan ?? "free";
+
   return (
-    <div className="flex min-h-screen bg-background">
-      <DashboardNav email={user.email ?? ""} />
-      <main className="flex-1 px-8 py-8 max-w-5xl">{children}</main>
+    <div className="flex min-h-screen flex-col bg-background md:flex-row">
+      <DashboardNav email={user.email ?? ""} plan={plan} />
+      <main className="w-full max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
     </div>
   );
 }

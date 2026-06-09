@@ -97,9 +97,12 @@ export function SignUpForm() {
           });
           const body = await res.json();
           if (body.url) {
-            // Clear the promo flag so a stale slug can't haunt the next signup
-            // attempt from the same browser.
+            // Clear all signup-intent flags so a stale plan/cadence/slug can't
+            // haunt the next signup — or trigger a second checkout in the
+            // onboarding wizard after this one already redirected to Stripe.
             window.localStorage.removeItem(SELECTED_PROMO_KEY);
+            window.localStorage.removeItem(SELECTED_PLAN_KEY);
+            window.localStorage.removeItem(SELECTED_CADENCE_KEY);
             window.location.assign(body.url);
             return;
           }

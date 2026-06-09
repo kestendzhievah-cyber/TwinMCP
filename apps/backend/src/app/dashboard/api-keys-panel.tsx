@@ -15,6 +15,8 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Copy, Key, Trash2 } from "lucide-react";
+import type { Plan } from "@/db/schema/core";
+import { limitFor, minPlanForLimit, PLAN_LABELS } from "@/lib/plan-features";
 
 interface Key {
   id: string;
@@ -24,13 +26,18 @@ interface Key {
   createdAt: string;
 }
 
-export function ApiKeysPanel({ keys }: { keys: Key[] }) {
+export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
+  const limit = limitFor(plan, "apiKeys");
+  const atLimit = keys.length >= limit;
+  const upgradeTo = minPlanForLimit("apiKeys", keys.length + 1);
+
   async function createKey() {
+    if (atLimit) return;
     setCreating(true);
     const res = await fetch("/api/v2/auth/keys", {
       method: "POST",
@@ -70,7 +77,11 @@ export function ApiKeysPanel({ keys }: { keys: Key[] }) {
       <CardHeader>
         <CardTitle>API Keys</CardTitle>
         <CardDescription>
-          Use these to authenticate the TwinMCP server in your IDE or scripts.
+          Use these to authenticate the TwinMCP server in your IDE or scripts.{" "}
+          <span className="font-medium text-foreground">
+            {keys.length}/{limit}
+          </span>{" "}
+          used on the {PLAN_LABELS[plan]} plan.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -98,11 +109,23 @@ export function ApiKeysPanel({ keys }: { keys: Key[] }) {
             placeholder="Key name (optional)"
             value={newKeyName}
             onChange={(e) => setNewKeyName(e.target.value)}
+            disabled={atLimit}
           />
-          <Button onClick={createKey} disabled={creating}>
+          <Button onClick={createKey} disabled={creating || atLimit}>
             {creating ? "Creating…" : "Create key"}
           </Button>
         </div>
+        {atLimit && (
+          <p className="text-xs text-muted-foreground">
+            You&apos;ve reached your plan&apos;s limit of {limit} key{limit > 1 ? "s" : ""}.{" "}
+            {upgradeTo && (
+              <a href="/dashboard/billing" className="underline underline-offset-2">
+                Upgrade to {PLAN_LABELS[upgradeTo]}
+              </a>
+            )}
+            {upgradeTo ? " for more." : ""}
+          </p>
+        )}
 
         {keys.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-md border border-dashed py-10 text-center">

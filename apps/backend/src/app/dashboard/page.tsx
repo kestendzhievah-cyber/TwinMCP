@@ -15,35 +15,34 @@ export default async function DashboardPage() {
   if (!user) return null;
 
   const db = getDb();
-
-  const [userRow] = await db
-    .select({ plan: users.plan })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-  const plan = userRow?.plan ?? "free";
-
-  const keys = await db
-    .select({
-      id: apiKeys.id,
-      prefix: apiKeys.prefix,
-      name: apiKeys.name,
-      lastUsedAt: apiKeys.lastUsedAt,
-      createdAt: apiKeys.createdAt,
-    })
-    .from(apiKeys)
-    .where(and(eq(apiKeys.userId, user.id), isNull(apiKeys.revokedAt)))
-    .orderBy(desc(apiKeys.createdAt));
-
   const dayAgo = new Date(Date.now() - 86_400_000);
-  const [usageCount] = await db
-    .select({ n: count() })
-    .from(usageEvents)
-    .where(and(eq(usageEvents.userId, user.id), gte(usageEvents.timestamp, dayAgo)));
+
+  // Independent queries — run them concurrently instead of in a waterfall.
+  const [userRows, keys, usageRows] = await Promise.all([
+    db.select({ plan: users.plan }).from(users).where(eq(users.id, user.id)).limit(1),
+    db
+      .select({
+        id: apiKeys.id,
+        prefix: apiKeys.prefix,
+        name: apiKeys.name,
+        lastUsedAt: apiKeys.lastUsedAt,
+        createdAt: apiKeys.createdAt,
+      })
+      .from(apiKeys)
+      .where(and(eq(apiKeys.userId, user.id), isNull(apiKeys.revokedAt)))
+      .orderBy(desc(apiKeys.createdAt)),
+    db
+      .select({ n: count() })
+      .from(usageEvents)
+      .where(and(eq(usageEvents.userId, user.id), gte(usageEvents.timestamp, dayAgo))),
+  ]);
+
+  const plan = userRows[0]?.plan ?? "free";
+  const usageCount = usageRows[0];
 
   const limit = getDailyLimit(plan);
   const used = usageCount?.n ?? 0;
-  const pct = Math.min(100, Math.round((used / limit) * 100));
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
 
   return (
     <div className="space-y-8">
@@ -79,6 +78,7 @@ export default async function DashboardPage() {
       </div>
 
       <ApiKeysPanel
+        plan={plan}
         keys={keys.map((k) => ({
           ...k,
           lastUsedAt: k.lastUsedAt?.toISOString() ?? null,

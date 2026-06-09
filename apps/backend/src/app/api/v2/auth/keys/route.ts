@@ -3,10 +3,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { apiKeys } from "@/db/schema";
+import { apiKeys, users } from "@/db/schema";
 import { generateApiKey } from "@/lib/auth";
-import { badRequest, jsonError, serverError, unauthorized } from "@/lib/errors";
+import { badRequest, forbidden, jsonError, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
+import { limitFor, minPlanForLimit, PLAN_LABELS } from "@/lib/plan-features";
 import { checkAuthWriteLimit } from "@/lib/auth/rate-limit";
 import { audit, auditCtxFromRequest } from "@/lib/audit";
 
@@ -73,9 +74,33 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return badRequest(parsed.error.message);
 
   try {
+    const db = getDb();
+
+    // Enforce the per-plan API key allowance. Keys are account-level, so we
+    // count the user's active (non-revoked) keys against their plan limit.
+    const [me] = await db
+      .select({ plan: users.plan })
+      .from(users)
+      .where(eq(users.id, session.userId))
+      .limit(1);
+    if (!me) return unauthorized("User not found");
+
+    const limit = limitFor(me.plan, "apiKeys");
+    const active = await db
+      .select({ id: apiKeys.id })
+      .from(apiKeys)
+      .where(and(eq(apiKeys.userId, session.userId), isNull(apiKeys.revokedAt)));
+    if (active.length >= limit) {
+      const required = minPlanForLimit("apiKeys", active.length + 1);
+      const upsell = required ? ` Upgrade to ${PLAN_LABELS[required]} for more.` : "";
+      return forbidden(
+        `You've reached your plan's limit of ${limit} API key${limit > 1 ? "s" : ""}.${upsell}`,
+      );
+    }
+
     const { raw, prefix, hash } = generateApiKey();
     const id = randomUUID();
-    await getDb()
+    await db
       .insert(apiKeys)
       .values({
         id,

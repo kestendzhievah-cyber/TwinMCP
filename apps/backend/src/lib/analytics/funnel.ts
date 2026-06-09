@@ -2,7 +2,8 @@
 //
 // Expected funnel in PostHog:
 //   landing_view → pricing_view → signup_started → signup_completed
-//                → onboarding_step_completed{step:welcome|server|mcp|connect}
+//                → plan_selected{plan,step} (onboarding step 0)
+//                → onboarding_step_completed{step:ide|server|mcp|connect}
 //                → first_server_created → first_mcp_installed → checkout_started
 //
 // Discriminated union ensures the call site cannot use the wrong properties
@@ -21,9 +22,18 @@ export type FunnelEvent =
     }
   | {
       name: "onboarding_step_completed";
-      properties: { step: "welcome" | "server" | "mcp" | "connect" };
+      // "welcome" kept for backward-compat; "ide" is the current label of that step.
+      properties: { step: "welcome" | "ide" | "server" | "mcp" | "connect" };
     }
   | { name: "onboarding_skipped"; properties: { atStep: number } }
+  | {
+      name: "plan_selected";
+      properties: {
+        plan: "free" | "pro" | "team";
+        step: "onboarding" | "signup";
+        cadence?: "monthly" | "annual";
+      };
+    }
   | { name: "first_server_created"; properties: { serverId: string } }
   | { name: "first_mcp_installed"; properties: { mcpSlug: string } }
   | {

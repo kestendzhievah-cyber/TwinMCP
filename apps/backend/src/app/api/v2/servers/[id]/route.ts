@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { servers } from "@/db/schema";
+import { servers, users } from "@/db/schema";
 import { badRequest, forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 import { updateServerSchema } from "@/lib/validation/platform";
@@ -10,6 +10,12 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "@/lib/auth/rbac";
+import {
+  isBoxSizeAllowed,
+  minPlanForBoxSize,
+  PlanRestrictionError,
+  PLAN_LABELS,
+} from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { destroyServerRuntime } from "@/lib/provisioning";
 
@@ -53,13 +59,35 @@ export async function PATCH(
   if (!parsed.success) return badRequest(parsed.error.message);
 
   try {
-    await assertServerOwnership(session.userId, id);
+    const db = getDb();
+    const current = await assertServerOwnership(session.userId, id);
+
+    // Same box-size plan gate as POST /servers — a resize must not let a
+    // free/pro user escalate to a box their plan forbids. Only enforced on an
+    // actual change, so unrelated edits (e.g. rename) by a downgraded user who
+    // still owns a larger box keep working.
+    if (parsed.data.boxSize !== undefined && parsed.data.boxSize !== current.boxSize) {
+      const [me] = await db
+        .select({ plan: users.plan })
+        .from(users)
+        .where(eq(users.id, session.userId))
+        .limit(1);
+      const plan = me?.plan ?? "free";
+      if (!isBoxSizeAllowed(plan, parsed.data.boxSize)) {
+        const required = minPlanForBoxSize(parsed.data.boxSize) ?? "team";
+        throw new PlanRestrictionError(
+          "box-size",
+          required,
+          `The ${parsed.data.boxSize} box size requires the ${PLAN_LABELS[required]} plan.`,
+        );
+      }
+    }
 
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     if (parsed.data.name !== undefined) patch.name = parsed.data.name;
     if (parsed.data.boxSize !== undefined) patch.boxSize = parsed.data.boxSize;
 
-    await getDb().update(servers).set(patch).where(eq(servers.id, id));
+    await db.update(servers).set(patch).where(eq(servers.id, id));
 
     logAudit({
       userId: session.userId,
@@ -74,6 +102,7 @@ export async function PATCH(
   } catch (err) {
     if (err instanceof NotFoundError) return notFound(err.message);
     if (err instanceof ForbiddenError) return forbidden(err.message);
+    if (err instanceof PlanRestrictionError) return forbidden(err.message);
     console.error("[servers/:id PATCH]", err);
     return serverError();
   }

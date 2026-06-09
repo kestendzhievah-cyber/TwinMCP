@@ -122,7 +122,7 @@ export const FEATURES: FeatureRow[] = [
   // Access & keys
   {
     group: "Access",
-    label: "API keys per server",
+    label: "API keys",
     values: { free: "1", pro: "5", team: "20", enterprise: "Unlimited" },
   },
   {
