@@ -5,26 +5,14 @@ import { servers, userServers, mcpServers } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ServerControls } from "./controls";
 import { InstalledMcps } from "./installed-mcps";
+import { ConnectPanel } from "./connect-panel";
+import { ServerStatusBadge } from "./server-status-badge";
 import { LogsViewer } from "./logs-viewer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
-import type { ServerStatus } from "@/db/schema/platform";
 
-const statusVariant: Record<ServerStatus, "success" | "secondary" | "warning" | "destructive"> = {
-  running: "success",
-  provisioning: "warning",
-  stopped: "secondary",
-  error: "destructive",
-  destroyed: "secondary",
-};
-
-export default async function ServerDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ServerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -71,7 +59,7 @@ export default async function ServerDetailPage({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{srv.name}</h1>
-            <Badge variant={statusVariant[srv.status]}>{srv.status}</Badge>
+            <ServerStatusBadge serverId={srv.id} initialStatus={srv.status} />
           </div>
           <p className="text-sm text-muted-foreground mt-1 font-mono">{srv.slug}</p>
         </div>
@@ -129,6 +117,15 @@ export default async function ServerDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          <ConnectPanel
+            serverSlug={srv.slug}
+            mcps={installations.map((i) => ({
+              slug: i.mcpSlug,
+              name: i.mcpName,
+              enabled: i.enabled,
+            }))}
+          />
 
           <InstalledMcps
             serverId={srv.id}

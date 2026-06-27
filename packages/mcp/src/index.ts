@@ -6,7 +6,6 @@ import { z } from "zod";
 import { searchLibraries, fetchLibraryContext } from "./lib/api.js";
 import { ClientContext } from "./lib/encryption.js";
 import { formatSearchResults, extractClientInfoFromUserAgent } from "./lib/utils.js";
-import { isJWT, validateJWT } from "./lib/jwt.js";
 import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Command } from "commander";
@@ -366,20 +365,8 @@ async function main() {
               id: null,
             });
           }
-
-          if (isJWT(apiKey)) {
-            const validationResult = await validateJWT(apiKey);
-            if (!validationResult.valid) {
-              return res.status(401).json({
-                jsonrpc: "2.0",
-                error: {
-                  code: -32001,
-                  message: validationResult.error || "Invalid token. Please re-authenticate.",
-                },
-                id: null,
-              });
-            }
-          }
+          // Auth authority = the TwinMCP API (ctx7sk_ key). The credential is
+          // forwarded in ClientContext.apiKey and validated upstream.
         }
 
         const context: ClientContext = {

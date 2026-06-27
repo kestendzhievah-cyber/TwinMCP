@@ -13,13 +13,7 @@ import { users } from "./core";
 export const hostTypes = ["upstash_box", "external_url"] as const;
 export type HostType = (typeof hostTypes)[number];
 
-export const serverStatuses = [
-  "provisioning",
-  "running",
-  "stopped",
-  "error",
-  "destroyed",
-] as const;
+export const serverStatuses = ["provisioning", "running", "stopped", "error", "destroyed"] as const;
 export type ServerStatus = (typeof serverStatuses)[number];
 
 export const boxSizes = ["small", "medium", "large"] as const;
@@ -107,6 +101,13 @@ export const userServers = pgTable(
     configIv: text("config_iv").notNull().default(""),
     configTag: text("config_tag").notNull().default(""),
     enabled: boolean("enabled").notNull().default(true),
+    // Per-MCP HTTP bridge: the box's public URL for this MCP, the in-box port it
+    // listens on, and the box bearer token (AES-256-GCM, never returned by the API).
+    endpointUrl: text("endpoint_url"),
+    bridgePort: integer("bridge_port"),
+    endpointTokenCiphertext: text("endpoint_token_ciphertext").notNull().default(""),
+    endpointTokenIv: text("endpoint_token_iv").notNull().default(""),
+    endpointTokenTag: text("endpoint_token_tag").notNull().default(""),
     installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -144,7 +145,10 @@ export const usageMetrics = pgTable(
     tokensUsed: integer("tokens_used").notNull().default(0),
     errorsCount: integer("errors_count").notNull().default(0),
   },
-  (t) => [index("usage_metrics_us_period_idx").on(t.userServerId, t.periodStart)]
+  (t) => [
+    index("usage_metrics_us_period_idx").on(t.userServerId, t.periodStart),
+    uniqueIndex("usage_metrics_us_period_unique").on(t.userServerId, t.periodStart),
+  ]
 );
 
 export type Server = typeof servers.$inferSelect;

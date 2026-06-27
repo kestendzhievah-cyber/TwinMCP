@@ -17,7 +17,6 @@ function loadEnvFile(file: string): Record<string, string> {
   const env: Record<string, string> = {};
   let key: string | null = null;
   let buf: string[] = [];
-  let quoted = false;
   for (const line of raw.split(/\r?\n/)) {
     if (key) {
       buf.push(line);
@@ -25,7 +24,6 @@ function loadEnvFile(file: string): Record<string, string> {
         env[key] = buf.join("\n").replace(/^"|"$/g, "");
         key = null;
         buf = [];
-        quoted = false;
       }
       continue;
     }
@@ -35,7 +33,6 @@ function loadEnvFile(file: string): Record<string, string> {
     if (v.startsWith('"') && !v.endsWith('"')) {
       key = k;
       buf = [v];
-      quoted = true;
     } else {
       env[k] = v.replace(/^"|"$/g, "");
     }
@@ -65,10 +62,12 @@ const GROUPS: Group[] = [
     required_for_boot: true,
   },
   {
-    name: "OAuth 2.1 JWT (MCP HTTP transport)",
-    required: ["OAUTH_JWT_PRIVATE_KEY", "OAUTH_JWT_PUBLIC_KEY"],
-    optional: ["OAUTH_ISSUER"],
-    breaks: ["/oauth/token, /oauth/authorize (MCP clients can't authenticate)"],
+    // OAuth is opt-in (OAUTH_ENABLED=1). Default MCP auth is the ctx7sk_ API key,
+    // so these are not required for launch.
+    name: "OAuth 2.1 (optional — only if OAUTH_ENABLED=1)",
+    required: [],
+    optional: ["OAUTH_ENABLED", "OAUTH_JWT_PRIVATE_KEY", "OAUTH_JWT_PUBLIC_KEY", "OAUTH_ISSUER"],
+    breaks: ["OAuth MCP transport (disabled by default — clients use the ctx7sk_ Bearer key)"],
   },
   {
     name: "Security",
@@ -76,9 +75,16 @@ const GROUPS: Group[] = [
     breaks: ["IP encryption (GDPR audit trail)"],
   },
   {
+    // Names MUST match lib/stripe.ts (getPriceId). Pro monthly is the minimum
+    // for a working checkout; the rest are opt-in cadences/plans.
     name: "Billing (Stripe)",
-    required: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_PRO"],
-    optional: ["STRIPE_PRICE_TEAM"],
+    required: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRO_MONTHLY_PRICE_ID"],
+    optional: [
+      "STRIPE_PRO_YEARLY_PRICE_ID",
+      "STRIPE_TEAM_MONTHLY_PRICE_ID",
+      "STRIPE_TEAM_YEARLY_PRICE_ID",
+      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+    ],
     breaks: ["/api/v2/billing/checkout, /api/v2/billing/portal, /api/webhooks/stripe"],
   },
   {
@@ -99,10 +105,17 @@ const GROUPS: Group[] = [
     breaks: ["durable provisioning on serverless (silent fallback to inline fire-and-forget)"],
   },
   {
-    name: "MCP runtime (Upstash Box) — optional",
+    name: "Public URLs / CORS — optional",
     required: [],
-    optional: ["UPSTASH_BOX_API_KEY"],
-    breaks: ["real Box provisioning (silent fallback to stub mode)"],
+    optional: ["NEXT_PUBLIC_SITE_URL", "CORS_ORIGIN"],
+    breaks: ["absolute links + CORS origin lock (next.config falls back to '*')"],
+  },
+  {
+    name: "MCP runtime (Upstash Box)",
+    required: ["UPSTASH_BOX_API_KEY"],
+    breaks: [
+      "per-user MCP runtimes (core feature) — provisioning refuses to run in stub mode in production",
+    ],
   },
   {
     name: "Config encryption",
@@ -118,7 +131,13 @@ const GROUPS: Group[] = [
   {
     name: "Object storage (Cloudflare R2) — optional",
     required: [],
-    optional: ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_PUBLIC_URL"],
+    optional: [
+      "R2_ACCOUNT_ID",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "R2_BUCKET",
+      "R2_PUBLIC_URL",
+    ],
     breaks: ["raw doc storage (silent fallback)"],
   },
   {
@@ -180,7 +199,8 @@ for (const g of GROUPS) {
   totalFeatures++;
   if (missing.length === 0) {
     bootedFeatures++;
-    const optNote = optTotal > 0 ? ` ${DIM}(opt: ${optTotal - optMissing.length}/${optTotal})${RESET}` : "";
+    const optNote =
+      optTotal > 0 ? ` ${DIM}(opt: ${optTotal - optMissing.length}/${optTotal})${RESET}` : "";
     console.log(`  ${GREEN}OK${RESET}    ${g.name}${optNote}`);
   } else {
     if (g.required_for_boot) bootOk = false;
@@ -198,7 +218,9 @@ if (!bootOk) {
   process.exit(1);
 }
 
-console.log(`  ${GREEN}Server can boot${RESET} (${bootedFeatures}/${totalFeatures} feature groups configured)`);
+console.log(
+  `  ${GREEN}Server can boot${RESET} (${bootedFeatures}/${totalFeatures} feature groups configured)`
+);
 if (blockers.length > 0) {
   console.log(`  ${YELLOW}${blockers.length} feature(s) degraded:${RESET} ${blockers.join(", ")}`);
 }

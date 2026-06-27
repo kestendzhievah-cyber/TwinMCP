@@ -4,7 +4,8 @@ import Stripe from "stripe";
 import { getDb } from "@/db";
 import { users, processedStripeEvents } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
-import { sendUpgradeConfirmationEmail } from "@/lib/email";
+import { sendUpgradeConfirmationEmail, sendPlanDowngradeEmail } from "@/lib/email";
+import { reconcileServersForPlan } from "@/lib/billing/reconcile";
 import { audit } from "@/lib/audit";
 import { trackServer } from "@/lib/analytics/server";
 import type { Plan } from "@/db/schema";
@@ -23,6 +24,22 @@ function periodEnd(sub: Stripe.Subscription): Date | null {
 async function findUserIdByCustomer(customerId: string): Promise<string | undefined> {
   const customer = (await getStripe().customers.retrieve(customerId)) as Stripe.Customer;
   return customer.metadata?.userId;
+}
+
+/** Best-effort downgrade notification to the user's real email. */
+async function notifyDowngrade(userId: string, reason: string): Promise<void> {
+  try {
+    const [u] = await getDb()
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (u?.email && !u.email.endsWith("@placeholder.twinmcp.fr")) {
+      await sendPlanDowngradeEmail(u.email, reason);
+    }
+  } catch (err) {
+    console.error("[stripe webhook] downgrade notify failed:", err);
+  }
 }
 
 /**
@@ -76,11 +93,11 @@ export async function POST(req: NextRequest) {
       const userId = session.metadata?.userId;
       const plan = session.metadata?.plan as Plan | undefined;
       const customerId =
-        typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
+        typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
       const subscriptionId =
         typeof session.subscription === "string"
           ? session.subscription
-          : session.subscription?.id ?? null;
+          : (session.subscription?.id ?? null);
 
       const creatorSlug = session.metadata?.creatorSlug ?? null;
       const promotionCodeId = session.metadata?.promotionCodeId ?? null;
@@ -107,6 +124,20 @@ export async function POST(req: NextRequest) {
               }
             : undefined;
 
+        // Period fields aren't on the checkout session — pull them from the
+        // subscription so the billing UI is correct immediately after purchase.
+        let currentPeriodEnd: Date | null = null;
+        let cancelAtPeriodEnd = false;
+        if (subscriptionId) {
+          try {
+            const sub = await getStripe().subscriptions.retrieve(subscriptionId);
+            currentPeriodEnd = periodEnd(sub);
+            cancelAtPeriodEnd = sub.cancel_at_period_end;
+          } catch (err) {
+            console.error("[stripe webhook] retrieve subscription failed:", err);
+          }
+        }
+
         await db
           .update(users)
           .set({
@@ -114,6 +145,8 @@ export async function POST(req: NextRequest) {
             stripeCustomerId: customerId,
             stripeSubscriptionId: subscriptionId,
             subscriptionStatus: "active",
+            currentPeriodEnd,
+            cancelAtPeriodEnd,
             ...(nextMetadata ? { metadata: nextMetadata } : {}),
           })
           .where(eq(users.id, userId));
@@ -153,8 +186,7 @@ export async function POST(req: NextRequest) {
 
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof sub.customer === "string" ? sub.customer : sub.customer.toString();
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.toString();
       const userId = await findUserIdByCustomer(customerId);
       if (!userId) break;
 
@@ -168,13 +200,15 @@ export async function POST(req: NextRequest) {
       if (sub.status === "past_due" || sub.status === "unpaid") {
         update.plan = "free";
         await db.update(users).set(update).where(eq(users.id, userId));
+        const { stopped } = await reconcileServersForPlan(userId, "free");
         audit({
           userId,
           action: "plan.downgrade",
           targetType: "subscription",
           targetId: sub.id,
-          metadata: { reason: sub.status, stripeEvent: event.id },
+          metadata: { reason: sub.status, stripeEvent: event.id, serversStopped: stopped.length },
         });
+        notifyDowngrade(userId, sub.status).catch(() => {});
       } else {
         await db.update(users).set(update).where(eq(users.id, userId));
       }
@@ -183,8 +217,7 @@ export async function POST(req: NextRequest) {
 
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof sub.customer === "string" ? sub.customer : sub.customer.toString();
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.toString();
       const userId = await findUserIdByCustomer(customerId);
       if (!userId) break;
 
@@ -198,13 +231,20 @@ export async function POST(req: NextRequest) {
         })
         .where(eq(users.id, userId));
 
+      const { stopped } = await reconcileServersForPlan(userId, "free");
+
       audit({
         userId,
         action: "plan.cancel",
         targetType: "subscription",
         targetId: sub.id,
-        metadata: { reason: "subscription_deleted", stripeEvent: event.id },
+        metadata: {
+          reason: "subscription_deleted",
+          stripeEvent: event.id,
+          serversStopped: stopped.length,
+        },
       });
+      notifyDowngrade(userId, "canceled").catch(() => {});
       break;
     }
 
@@ -213,7 +253,7 @@ export async function POST(req: NextRequest) {
       const customerId =
         typeof invoice.customer === "string"
           ? invoice.customer
-          : invoice.customer?.toString() ?? null;
+          : (invoice.customer?.toString() ?? null);
       if (!customerId) break;
       const userId = await findUserIdByCustomer(customerId);
       if (!userId) break;
@@ -227,7 +267,11 @@ export async function POST(req: NextRequest) {
       // best-effort extract the subscription id for the audit row and
       // accept null if the shape changes again.
       let subscriptionId: string | null = null;
-      const parent = (invoice as unknown as { parent?: { subscription_details?: { subscription?: string | { id?: string } } } }).parent;
+      const parent = (
+        invoice as unknown as {
+          parent?: { subscription_details?: { subscription?: string | { id?: string } } };
+        }
+      ).parent;
       const raw = parent?.subscription_details?.subscription;
       if (typeof raw === "string") subscriptionId = raw;
       else if (raw && typeof raw === "object" && "id" in raw && typeof raw.id === "string") {

@@ -30,14 +30,14 @@ export default function PrivacyPage() {
           <p>
             Cette politique explique quelles données TwinMCP collecte, pourquoi, avec qui elles
             sont partagées, et comment exercer tes droits. Elle s&apos;applique au site
-            twinmcp.com, aux API associées, et au service hébergé d&apos;exécution de serveurs MCP.
+            twinmcp.fr, aux API associées, et au service hébergé d&apos;exécution de serveurs MCP.
           </p>
         </section>
 
         <h2>1. Responsable du traitement</h2>
         <p>
           Le responsable du traitement est l&apos;équipe TwinMCP, joignable à{" "}
-          <a href="mailto:hello@twinmcp.dev">hello@twinmcp.dev</a>.
+          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>.
         </p>
 
         <h2>2. Données collectées</h2>
@@ -244,7 +244,7 @@ export default function PrivacyPage() {
         </ul>
         <p>
           Pour exercer ces droits, écris à{" "}
-          <a href="mailto:hello@twinmcp.dev">hello@twinmcp.dev</a>. Nous répondons sous 30 jours.
+          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>. Nous répondons sous 30 jours.
         </p>
 
         <h2>8. Sécurité</h2>
@@ -276,7 +276,7 @@ export default function PrivacyPage() {
         <h2>11. Contact</h2>
         <p>
           Toute question concernant cette politique :{" "}
-          <a href="mailto:hello@twinmcp.dev">hello@twinmcp.dev</a>.
+          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>.
         </p>
       </div>
 

@@ -6,6 +6,7 @@ import { mcpServers, users } from "@/db/schema";
 import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 import { createMcpServerSchema } from "@/lib/validation/platform";
+import { can, minPlanFor, PLAN_LABELS } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
 
 export const runtime = "nodejs";
@@ -35,9 +36,7 @@ export async function GET(req: NextRequest) {
     );
     const filters = [visibility];
     if (q) {
-      filters.push(
-        or(ilike(mcpServers.name, `%${q}%`), ilike(mcpServers.slug, `%${q}%`))!
-      );
+      filters.push(or(ilike(mcpServers.name, `%${q}%`), ilike(mcpServers.slug, `%${q}%`))!);
     }
     if (runtimeFilter) filters.push(eq(mcpServers.runtime, runtimeFilter as never));
     if (isOfficial === "true") filters.push(eq(mcpServers.isOfficial, true));
@@ -94,8 +93,9 @@ export async function POST(req: NextRequest) {
       .where(eq(users.id, session.userId))
       .limit(1);
     if (!me) return unauthorized("User not found");
-    if (me.plan !== "pro" && me.plan !== "team") {
-      return forbidden("Publishing MCPs requires a Pro or Team plan");
+    if (!can(me.plan, "publishMcp")) {
+      const required = minPlanFor("publishMcp");
+      return forbidden(`Publishing MCPs requires the ${PLAN_LABELS[required]} plan.`);
     }
 
     const id = randomUUID();

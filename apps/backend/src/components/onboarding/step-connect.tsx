@@ -1,95 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Check, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CodeSnippet } from "@/components/marketing/code-snippet";
+import {
+  API_KEY_PLACEHOLDER,
+  buildClientConfig,
+  proxyUrl,
+  testMcpConnection,
+} from "@/lib/mcp/client-config";
 import type { IdePreference } from "./step-welcome";
 
 interface StepConnectProps {
   serverId: string;
   serverName: string;
-  endpointUrl: string | null;
+  serverSlug: string;
+  mcpSlug: string;
   ide: IdePreference;
   onFinish: () => void;
   onBack: () => void;
 }
 
-interface IdeConfig {
-  filename: string;
-  language: string;
-  build: (url: string, key: string, name: string) => string;
-}
-
-const ideConfigs: Record<IdePreference, IdeConfig> = {
-  cursor: {
-    filename: "~/.cursor/mcp.json",
-    language: "json",
-    build: (url, key, name) =>
-      JSON.stringify(
-        { mcpServers: { [name]: { url, headers: { Authorization: `Bearer ${key}` } } } },
-        null,
-        2
-      ),
-  },
-  "claude-code": {
-    filename: "~/.claude/settings.json",
-    language: "json",
-    build: (url, key, name) =>
-      JSON.stringify(
-        { mcpServers: { [name]: { url, headers: { Authorization: `Bearer ${key}` } } } },
-        null,
-        2
-      ),
-  },
-  windsurf: {
-    filename: "~/.codeium/windsurf/mcp_config.json",
-    language: "json",
-    build: (url, key, name) =>
-      JSON.stringify(
-        { mcpServers: { [name]: { serverUrl: url, apiKey: key } } },
-        null,
-        2
-      ),
-  },
-  cline: {
-    filename: "Cline → MCP Servers (VS Code)",
-    language: "json",
-    build: (url, key, name) =>
-      JSON.stringify(
-        { mcpServers: { [name]: { url, headers: { Authorization: `Bearer ${key}` } } } },
-        null,
-        2
-      ),
-  },
-  zed: {
-    filename: "~/.config/zed/settings.json",
-    language: "json",
-    build: (url, key, name) =>
-      JSON.stringify(
-        {
-          context_servers: {
-            [name]: { command: "npx", args: ["-y", "@twinmcp/proxy", url, key] },
-          },
-        },
-        null,
-        2
-      ),
-  },
-  other: {
-    filename: "Generic JSON-RPC client",
-    language: "shell",
-    build: (url, key) =>
-      `# TwinMCP server endpoint\nURL: ${url}\n# Bearer token (use as Authorization header)\nKEY: ${key}\n\n# Quick test:\ncurl -H "Authorization: Bearer ${key}" ${url}/health`,
-  },
-};
-
 type TestState = "idle" | "running" | "success" | "error";
 
 export function StepConnect({
-  serverId,
   serverName,
-  endpointUrl,
+  serverSlug,
+  mcpSlug,
   ide,
   onFinish,
   onBack,
@@ -99,6 +37,12 @@ export function StepConnect({
   const [test, setTest] = useState<TestState>("idle");
   const [testMsg, setTestMsg] = useState("");
   const [finishing, setFinishing] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") setOrigin(window.location.origin);
+  }, []);
 
   // Auto-mint an API key on mount, once.
   useEffect(() => {
@@ -115,7 +59,9 @@ export function StepConnect({
         if (!cancelled) setApiKey(data.key);
       } catch (err) {
         console.error("[onboarding mint key]", err);
-        if (!cancelled) setKeyError("Could not auto-create an API key. Generate one from /dashboard.");
+        if (!cancelled) {
+          setKeyError("Could not auto-create an API key. Generate one from /dashboard.");
+        }
       }
     }
     void mint();
@@ -124,39 +70,29 @@ export function StepConnect({
     };
   }, [serverName]);
 
-  const url = endpointUrl ?? `https://${serverName}.mcp.twinmcp.dev`;
-  const cfg = ideConfigs[ide];
-  const snippet = apiKey
-    ? cfg.build(url, apiKey, serverName)
-    : cfg.build(url, "tmcp_••••••••••••••••", serverName);
+  const url = origin ? proxyUrl(origin, serverSlug, mcpSlug) : "";
+  const cfg = useMemo(
+    () => buildClientConfig(ide, { url, apiKey: apiKey ?? API_KEY_PLACEHOLDER, label: mcpSlug }),
+    [ide, url, apiKey, mcpSlug]
+  );
+
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function runTest() {
+    if (!apiKey || !url) return;
     setTest("running");
     setTestMsg("");
-    try {
-      const res = await fetch(`/api/v2/servers/${serverId}/health`);
-      if (!res.ok) {
-        setTest("error");
-        setTestMsg("Health endpoint returned an error.");
-        return;
-      }
-      const data = (await res.json()) as { status: string; live: boolean | null };
-      if (data.status === "running" && data.live !== false) {
-        setTest("success");
-        setTestMsg("Server is live and reachable.");
-      } else {
-        setTest("error");
-        setTestMsg(
-          data.status === "running"
-            ? "Server is running but the runtime ping didn't respond yet — give it a few more seconds."
-            : `Server status: ${data.status}.`
-        );
-      }
-    } catch (err) {
-      console.error("[onboarding test]", err);
-      setTest("error");
-      setTestMsg("Network error — try again.");
-    }
+    const result = await testMcpConnection(url, apiKey);
+    setTest(result.ok ? "success" : "error");
+    setTestMsg(result.message);
   }
 
   async function finish() {
@@ -176,9 +112,9 @@ export function StepConnect({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Connect your IDE.</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Connect your LLM.</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Drop this block into your config. Your API key is shown once — copy it now, you can
+          Drop this block into your client config. Your API key is shown once — copy it now, you can
           rotate it later from <code className="font-mono">/dashboard</code>.
         </p>
       </div>
@@ -190,23 +126,44 @@ export function StepConnect({
         </p>
       )}
 
-      <CodeSnippet code={snippet} language={cfg.language} filename={cfg.filename} />
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Connection URL
+        </p>
+        <div className="flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2">
+          <code className="flex-1 truncate font-mono text-xs">{url || "…"}</code>
+          <button
+            type="button"
+            onClick={copyUrl}
+            aria-label="Copy URL"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border/80 bg-background/95 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      <CodeSnippet code={cfg.code} language={cfg.language} filename={cfg.filename} />
 
       <div className="rounded-lg border border-border/80 bg-muted/30 p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium">Test connection</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Pings your server runtime to confirm it&apos;s reachable.
+              Performs a real MCP <code className="font-mono">initialize</code> handshake.
             </p>
           </div>
-          <Button variant="outline" onClick={runTest} disabled={test === "running"}>
+          <Button variant="outline" onClick={runTest} disabled={test === "running" || !apiKey}>
             {test === "running" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <RefreshCw className="h-3.5 w-3.5" />
             )}
-            {test === "running" ? "Pinging…" : "Test"}
+            {test === "running" ? "Testing…" : "Test"}
           </Button>
         </div>
 
@@ -228,7 +185,7 @@ export function StepConnect({
             ) : (
               <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
             )}
-            <span>{testMsg || (test === "running" ? "Pinging server…" : "")}</span>
+            <span>{testMsg || (test === "running" ? "Running initialize…" : "")}</span>
           </div>
         )}
       </div>

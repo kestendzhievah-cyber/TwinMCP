@@ -36,6 +36,20 @@
       "when": 1779840000000,
       "tag": "0004_stripe_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780444800000,
+      "tag": "0005_mcp_endpoints",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781049600000,
+      "tag": "0006_usage_metrics_unique",
+      "breakpoints": true
     }
   ]
 }

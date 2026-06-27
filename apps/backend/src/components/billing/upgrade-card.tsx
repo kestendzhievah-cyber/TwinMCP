@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { Lock, ArrowUpRight } from "lucide-react";
 import type { Plan } from "@/db/schema/core";
 import { PLAN_LABELS } from "@/lib/plan-features";
@@ -47,7 +48,7 @@ export function UpgradeCard({
           </p>
         </div>
         <Button asChild className="mt-1">
-          <Link href={href}>
+          <Link href={href as Route}>
             {ctaLabel ?? `Upgrade to ${PLAN_LABELS[requiredPlan]}`}
             <ArrowUpRight className="ml-1 h-4 w-4" />
           </Link>

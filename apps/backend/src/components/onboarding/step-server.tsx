@@ -12,8 +12,8 @@ const POLL_INTERVAL_MS = 1_500;
 type Phase = "form" | "provisioning" | "ready" | "stuck";
 
 interface StepServerProps {
-  existingServer: { id: string; name: string; endpointUrl: string | null } | null;
-  onReady: (server: { id: string; name: string; endpointUrl: string | null }) => void;
+  existingServer: { id: string; name: string; slug: string; endpointUrl: string | null } | null;
+  onReady: (server: { id: string; name: string; slug: string; endpointUrl: string | null }) => void;
   onBack: () => void;
 }
 
@@ -22,6 +22,7 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
   const [phase, setPhase] = useState<Phase>(existingServer ? "ready" : "form");
   const [error, setError] = useState("");
   const [serverId, setServerId] = useState<string | null>(existingServer?.id ?? null);
+  const [serverSlug, setServerSlug] = useState<string | null>(existingServer?.slug ?? null);
 
   // Polling for provisioning status.
   useEffect(() => {
@@ -39,7 +40,7 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
 
         if (data.status === "running") {
           setPhase("ready");
-          onReady({ id: serverId!, name, endpointUrl: data.endpointUrl });
+          onReady({ id: serverId!, name, slug: serverSlug ?? "", endpointUrl: data.endpointUrl });
           return;
         }
         if (data.status === "error") {
@@ -70,7 +71,7 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
     return () => {
       cancelled = true;
     };
-  }, [phase, serverId, name, onReady]);
+  }, [phase, serverId, serverSlug, name, onReady]);
 
   async function handleCreate() {
     setError("");
@@ -89,6 +90,7 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
       }
       const data = (await res.json()) as { id: string; slug: string };
       setServerId(data.id);
+      setServerSlug(data.slug);
     } catch (err) {
       console.error("[onboarding create server]", err);
       setError("Network error — check your connection and retry.");
@@ -161,7 +163,9 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
           <div className="flex justify-end">
             <Button
               size="lg"
-              onClick={() => onReady({ id: serverId, name, endpointUrl: null })}
+              onClick={() =>
+                onReady({ id: serverId, name, slug: serverSlug ?? "", endpointUrl: null })
+              }
             >
               Continue anyway
             </Button>

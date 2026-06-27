@@ -2,7 +2,7 @@
 // Each helper returns a plain object ready to be stringified inside a
 // <script type="application/ld+json"> tag (use the JsonLd component).
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 const ORG_NAME = "TwinMCP";
 const ORG_LOGO = `${SITE_URL}/icon-512.png`;
@@ -30,13 +30,13 @@ export function organizationSchema() {
       {
         "@type": "ContactPoint",
         contactType: "customer support",
-        email: "hello@twinmcp.dev",
+        email: "hello@twinmcp.fr",
         availableLanguage: ["English"],
       },
       {
         "@type": "ContactPoint",
         contactType: "sales",
-        email: "sales@twinmcp.dev",
+        email: "sales@twinmcp.fr",
         availableLanguage: ["English"],
       },
     ],

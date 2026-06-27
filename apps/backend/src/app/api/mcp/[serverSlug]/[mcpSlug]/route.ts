@@ -3,8 +3,12 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
 import { authenticateRequest } from "@/lib/auth";
-import { jsonError, unauthorized } from "@/lib/errors";
+import { jsonError, rateLimited } from "@/lib/errors";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
+import { decryptConfig } from "@/lib/crypto/config-encryption";
+import { MCP_STREAM_PATH } from "@/lib/upstash/mcp-bridge";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { recordMcpUsage } from "@/lib/usage-metrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +19,8 @@ interface JsonRpcRequest {
   method?: string;
   params?: Record<string, unknown>;
 }
+
+type Method = "GET" | "POST" | "DELETE";
 
 function jsonRpcError(id: unknown, code: number, message: string, status = 200) {
   return NextResponse.json(
@@ -27,22 +33,46 @@ function jsonRpcResult(id: unknown, result: unknown) {
   return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, result });
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ serverSlug: string; mcpSlug: string }> }
-) {
+/** 401 with WWW-Authenticate so MCP clients can bootstrap auth discovery. */
+function unauthorizedMcp() {
+  return NextResponse.json(
+    {
+      message: "Invalid API key. Provide your TwinMCP key as 'Authorization: Bearer ctx7sk_...'.",
+    },
+    {
+      status: 401,
+      headers: { "WWW-Authenticate": 'Bearer realm="twinmcp", error="invalid_token"' },
+    }
+  );
+}
+
+export async function GET(req: NextRequest, ctx: RouteCtx) {
+  return handleProxy(req, ctx, "GET");
+}
+export async function POST(req: NextRequest, ctx: RouteCtx) {
+  return handleProxy(req, ctx, "POST");
+}
+export async function DELETE(req: NextRequest, ctx: RouteCtx) {
+  return handleProxy(req, ctx, "DELETE");
+}
+
+type RouteCtx = { params: Promise<{ serverSlug: string; mcpSlug: string }> };
+
+async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Method) {
   const auth = await authenticateRequest(req);
-  if (!auth) return unauthorized();
+  if (!auth) return unauthorizedMcp();
   const { serverSlug, mcpSlug } = await params;
 
   const db = getDb();
   const [row] = await db
     .select({
-      serverId: servers.id,
       serverStatus: servers.status,
-      serverEndpoint: servers.endpointUrl,
-      userServerId: userServers.id,
       enabled: userServers.enabled,
+      userServerId: userServers.id,
+      mcpEndpoint: userServers.endpointUrl,
+      tokenCiphertext: userServers.endpointTokenCiphertext,
+      tokenIv: userServers.endpointTokenIv,
+      tokenTag: userServers.endpointTokenTag,
     })
     .from(servers)
     .innerJoin(userServers, eq(userServers.serverId, servers.id))
@@ -59,44 +89,125 @@ export async function POST(
   if (!row) return jsonError(404, `Server '${serverSlug}' or MCP '${mcpSlug}' not found`);
   if (!row.enabled) return jsonError(409, "MCP is disabled");
 
-  let rpc: JsonRpcRequest;
-  try {
-    rpc = await req.json();
-  } catch {
-    return jsonError(400, "Invalid JSON-RPC body");
-  }
+  // Per-MCP usage metering (fire-and-forget; never blocks the request).
+  const meter = (ok: boolean) => void recordMcpUsage(row.userServerId, ok).catch(() => {});
 
-  // Special case: TwinMCP Docs is served by the control plane, not by the box.
+  // TwinMCP Docs is served by the control plane (no box). It is stateless and
+  // offers no server→client SSE stream, so only POST is meaningful. Its rate
+  // limit is enforced by its backing /api/v2/context (not double-counted here).
   if (mcpSlug === TWINMCP_DOCS_SLUG) {
+    if (method !== "POST") {
+      return new NextResponse(null, { status: 405, headers: { Allow: "POST" } });
+    }
+    let rpc: JsonRpcRequest;
+    try {
+      rpc = (await req.json()) as JsonRpcRequest;
+    } catch {
+      return jsonError(400, "Invalid JSON-RPC body");
+    }
+    meter(true);
     return handleTwinMcpDocs(req, rpc);
   }
 
-  // Regular case: server must be running, box must have an endpoint.
-  if (row.serverStatus !== "running") {
-    return jsonError(503, `Server is ${row.serverStatus}; start it before sending MCP requests`);
-  }
-  if (!row.serverEndpoint) {
-    return jsonError(503, "Server endpoint not yet provisioned");
+  // Rate-limit real (box) MCP traffic at the proxy — the shared daily quota
+  // (free/pro/team) applies to MCP requests, not just /v2/context + /v2/libs.
+  const rl = await checkRateLimit(auth.userId, auth.plan);
+  if (!rl.ok) {
+    meter(false);
+    return rateLimited(true);
   }
 
-  // Forward to the box. The exact URL pattern Upstash uses is not yet wired —
-  // this hits the box's public URL with the MCP slug as the path segment.
-  const targetUrl = `${row.serverEndpoint.replace(/\/$/, "")}/${mcpSlug}`;
+  // Real MCP: server must be running and the bridge must be provisioned.
+  if (row.serverStatus !== "running") {
+    meter(false);
+    return jsonError(503, `Server is ${row.serverStatus}; start it before sending MCP requests`);
+  }
+  if (!row.mcpEndpoint) {
+    meter(false);
+    return jsonError(503, "MCP endpoint not yet provisioned; restart the server");
+  }
+
+  // The box public URL is bearer-protected; decrypt the token so it never
+  // leaves the control plane.
+  let boxToken: string | null = null;
+  if (row.tokenCiphertext) {
+    try {
+      boxToken = decryptConfig<string>({
+        ciphertext: row.tokenCiphertext,
+        iv: row.tokenIv,
+        tag: row.tokenTag,
+      });
+    } catch (err) {
+      console.error("[mcp proxy] token decrypt failed:", err);
+      meter(false);
+      return jsonError(502, "MCP endpoint credentials unavailable");
+    }
+  }
+
+  return forwardToBridge(req, row.mcpEndpoint, boxToken, method, meter);
+}
+
+// ---------------------------------------------------------------------------
+// Streamable HTTP relay to the in-box supergateway bridge.
+// Faithfully forwards method, MCP session/protocol headers, and request/response
+// bodies (JSON or SSE), so standard MCP clients negotiate transport end-to-end.
+// ---------------------------------------------------------------------------
+async function forwardToBridge(
+  req: NextRequest,
+  endpoint: string,
+  boxToken: string | null,
+  method: Method,
+  meter: (ok: boolean) => void
+) {
+  const targetUrl = `${endpoint.replace(/\/$/, "")}${MCP_STREAM_PATH}`;
+
+  const headers: Record<string, string> = {
+    accept:
+      req.headers.get("accept") ??
+      (method === "GET" ? "text/event-stream" : "application/json, text/event-stream"),
+  };
+  passHeader(req, headers, "mcp-session-id");
+  passHeader(req, headers, "mcp-protocol-version");
+  passHeader(req, headers, "last-event-id");
+  if (boxToken) headers.authorization = `Bearer ${boxToken}`;
+
+  const init: RequestInit = { method, headers };
+  if (method === "POST") {
+    headers["content-type"] = req.headers.get("content-type") ?? "application/json";
+    init.body = await req.text();
+  }
+
+  let upstream: Response;
   try {
-    const upstream = await fetch(targetUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(rpc),
-    });
-    const text = await upstream.text();
-    return new NextResponse(text, {
-      status: upstream.status,
-      headers: { "content-type": upstream.headers.get("content-type") ?? "application/json" },
-    });
+    upstream = await fetch(targetUrl, init);
   } catch (err) {
     console.error("[mcp proxy] upstream error:", err);
-    return jsonRpcError(rpc.id, -32000, "Upstream MCP unreachable");
+    meter(false);
+    return jsonRpcError(null, -32000, "Upstream MCP unreachable");
   }
+  meter(upstream.status < 400);
+
+  // Relay the upstream response (status, content-type, MCP/SSE headers) and
+  // stream the body through unchanged.
+  const out = new Headers();
+  copyHeader(upstream.headers, out, "content-type", "application/json");
+  copyHeader(upstream.headers, out, "mcp-session-id");
+  copyHeader(upstream.headers, out, "mcp-protocol-version");
+  if ((out.get("content-type") ?? "").includes("text/event-stream")) {
+    out.set("cache-control", "no-cache, no-transform");
+    out.set("connection", "keep-alive");
+  }
+  return new NextResponse(upstream.body, { status: upstream.status, headers: out });
+}
+
+function passHeader(req: NextRequest, out: Record<string, string>, name: string) {
+  const v = req.headers.get(name);
+  if (v) out[name] = v;
+}
+
+function copyHeader(src: Headers, dst: Headers, name: string, fallback?: string) {
+  const v = src.get(name) ?? fallback;
+  if (v) dst.set(name, v);
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +267,11 @@ async function handleTwinMcpDocs(req: Request, rpc: JsonRpcRequest): Promise<Nex
       });
       const text = await inner.text();
       if (!inner.ok) {
-        return jsonRpcError(rpc.id, -32000, `Upstream error: ${inner.status} ${text.slice(0, 200)}`);
+        return jsonRpcError(
+          rpc.id,
+          -32000,
+          `Upstream error: ${inner.status} ${text.slice(0, 200)}`
+        );
       }
       return jsonRpcResult(rpc.id, {
         content: [{ type: "text", text }],

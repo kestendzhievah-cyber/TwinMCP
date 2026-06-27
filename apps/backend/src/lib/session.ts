@@ -12,7 +12,7 @@ export interface SessionUser {
 async function ensureUserRow(userId: string, email: string | undefined) {
   await getDb()
     .insert(users)
-    .values({ id: userId, email: email ?? `${userId}@placeholder.twinmcp.com` })
+    .values({ id: userId, email: email ?? `${userId}@placeholder.twinmcp.fr` })
     .onConflictDoUpdate({
       target: users.id,
       // Backfill the email if an earlier insert (e.g. the OAuth callback) left it
@@ -21,7 +21,7 @@ async function ensureUserRow(userId: string, email: string | undefined) {
       set: {
         email: sql`CASE
           WHEN (${users.email} = '' OR ${users.email} IS NULL)
-            AND excluded.email NOT LIKE '%@placeholder.twinmcp.com'
+            AND excluded.email NOT LIKE '%@placeholder.twinmcp.fr'
           THEN excluded.email
           ELSE ${users.email}
         END`,
@@ -34,7 +34,11 @@ export async function requireSessionUser(req: Request): Promise<SessionUser | nu
   // was risky: a staging deploy mislabeled as "development" would silently
   // accept any user id from a request header.
   const devId = req.headers.get("x-twinmcp-user-id");
-  if (devId && process.env.TWINMCP_ALLOW_DEV_AUTH === "1") {
+  if (
+    devId &&
+    process.env.TWINMCP_ALLOW_DEV_AUTH === "1" &&
+    process.env.NODE_ENV !== "production"
+  ) {
     // Ensure the row exists so endpoints that UPDATE the user actually
     // persist instead of silently no-op'ing on a missing primary key.
     await ensureUserRow(devId, undefined);

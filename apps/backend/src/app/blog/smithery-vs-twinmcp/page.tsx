@@ -6,7 +6,7 @@ import { getPostBySlug } from "@/lib/blog/posts";
 
 const SLUG = "smithery-vs-twinmcp";
 const post = getPostBySlug(SLUG)!;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: post.title,

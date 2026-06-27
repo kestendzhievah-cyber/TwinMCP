@@ -4,7 +4,7 @@ import { CodeSnippet } from "./code-snippet";
 const mcpJsonExample = `{
   "mcpServers": {
     "twinmcp": {
-      "url": "https://prod-cluster.mcp.twinmcp.dev",
+      "url": "https://prod-cluster.mcp.twinmcp.fr",
       "apiKey": "tmcp_live_••••••••"
     }
   }

@@ -59,7 +59,7 @@ export const PLANS: PlanTier[] = [
     blurb: "Self-host, SSO, audit, dedicated.",
     monthlyUsd: null,
     annualMonthlyUsd: null,
-    cta: { label: "Talk to sales", href: "mailto:sales@twinmcp.dev?subject=Enterprise%20inquiry" },
+    cta: { label: "Talk to sales", href: "mailto:sales@twinmcp.fr?subject=Enterprise%20inquiry" },
     bullets: [
       "Unlimited everything",
       "SSO / SAML / SCIM",

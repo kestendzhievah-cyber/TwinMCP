@@ -4,6 +4,7 @@ loadEnv();
 
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { and, eq, inArray } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import * as schema from "../src/db/schema";
 
@@ -24,9 +25,25 @@ type SeedEntry = {
   runtime: (typeof schema.mcpRuntimes)[number];
   installCmd: string;
   startCmd: string;
-  configSchema: { properties: Record<string, { type: "string" | "number" | "boolean"; required?: boolean; description?: string; secret?: boolean }> };
+  version: string;
+  configSchema: {
+    properties: Record<
+      string,
+      {
+        type: "string" | "number" | "boolean";
+        required?: boolean;
+        description?: string;
+        secret?: boolean;
+      }
+    >;
+  };
 };
 
+// Only first-party, actively-maintained, npx-runnable servers — the box runs each
+// stdio MCP via `npx` inside a Node Upstash Box. Versions are PINNED (not "latest")
+// so a regressed/compromised publish can't auto-roll-in. Deprecated/archived
+// reference servers (github→Go, postgres→Python, fetch→Python) have no safe
+// Node/npx equivalent and are unpublished below rather than shipped.
 const OFFICIAL_MCPS: SeedEntry[] = [
   {
     slug: "twinmcp-docs",
@@ -37,16 +54,18 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     runtime: "node",
     installCmd: "true",
     startCmd: "twinmcp-docs-proxy",
+    version: "1.0.0",
     configSchema: { properties: {} },
   },
   {
     slug: "filesystem",
     name: "Filesystem",
     description: "Read/write access to a sandboxed directory inside the box.",
-    repoUrl: "https://github.com/modelcontextprotocol/servers",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
     runtime: "node",
-    installCmd: "npm install -g @modelcontextprotocol/server-filesystem",
+    installCmd: "npm install -g @modelcontextprotocol/server-filesystem@2026.1.14",
     startCmd: "mcp-server-filesystem $FILESYSTEM_PATH",
+    version: "2026.1.14",
     configSchema: {
       properties: {
         FILESYSTEM_PATH: {
@@ -58,54 +77,32 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     },
   },
   {
-    slug: "github",
-    name: "GitHub",
-    description: "Read repos, issues, and PRs from GitHub.",
-    repoUrl: "https://github.com/modelcontextprotocol/servers",
+    slug: "memory",
+    name: "Memory",
+    description: "Persistent knowledge-graph memory the model can read and write across turns.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
     runtime: "node",
-    installCmd: "npm install -g @modelcontextprotocol/server-github",
-    startCmd: "mcp-server-github",
-    configSchema: {
-      properties: {
-        GITHUB_PERSONAL_ACCESS_TOKEN: {
-          type: "string",
-          required: true,
-          secret: true,
-          description: "GitHub PAT with repo scope",
-        },
-      },
-    },
-  },
-  {
-    slug: "fetch",
-    name: "Fetch",
-    description: "HTTP fetch tool for arbitrary URLs.",
-    repoUrl: "https://github.com/modelcontextprotocol/servers",
-    runtime: "node",
-    installCmd: "npm install -g @modelcontextprotocol/server-fetch",
-    startCmd: "mcp-server-fetch",
+    installCmd: "npm install -g @modelcontextprotocol/server-memory@2026.1.26",
+    startCmd: "mcp-server-memory",
+    version: "2026.1.26",
     configSchema: { properties: {} },
   },
   {
-    slug: "postgres-readonly",
-    name: "Postgres (read-only)",
-    description: "Run read-only SQL against a Postgres database.",
-    repoUrl: "https://github.com/modelcontextprotocol/servers",
+    slug: "sequential-thinking",
+    name: "Sequential Thinking",
+    description: "Structured step-by-step reasoning tool for breaking down complex problems.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
     runtime: "node",
-    installCmd: "npm install -g @modelcontextprotocol/server-postgres",
-    startCmd: "mcp-server-postgres $POSTGRES_URL",
-    configSchema: {
-      properties: {
-        POSTGRES_URL: {
-          type: "string",
-          required: true,
-          secret: true,
-          description: "Connection string (e.g. postgresql://user:pass@host:5432/db)",
-        },
-      },
-    },
+    installCmd: "npm install -g @modelcontextprotocol/server-sequential-thinking@2025.12.18",
+    startCmd: "mcp-server-sequential-thinking",
+    version: "2025.12.18",
+    configSchema: { properties: {} },
   },
 ];
+
+// Deprecated/archived reference servers that were previously seeded but cannot run
+// safely via npx in a Node box. Unpublished (not deleted — installs keep their FK).
+const RETIRED_SLUGS = ["github", "fetch", "postgres-readonly"];
 
 async function main() {
   console.log(`[seed] upserting ${OFFICIAL_MCPS.length} official MCPs…`);
@@ -121,13 +118,40 @@ async function main() {
         runtime: m.runtime,
         installCmd: m.installCmd,
         startCmd: m.startCmd,
+        version: m.version,
         configSchema: m.configSchema,
         isOfficial: true,
         isPublic: true,
       })
-      .onConflictDoNothing({ target: schema.mcpServers.slug });
-    console.log(`  ✓ ${m.slug}`);
+      // Upsert so re-seeding actually updates install/start/version on existing rows.
+      .onConflictDoUpdate({
+        target: schema.mcpServers.slug,
+        set: {
+          name: m.name,
+          description: m.description,
+          repoUrl: m.repoUrl ?? null,
+          runtime: m.runtime,
+          installCmd: m.installCmd,
+          startCmd: m.startCmd,
+          version: m.version,
+          configSchema: m.configSchema,
+          isOfficial: true,
+          isPublic: true,
+        },
+      });
+    console.log(`  ✓ ${m.slug}@${m.version}`);
   }
+
+  // Hide deprecated/archived official entries from the catalog (keep rows for FK).
+  const retired = await db
+    .update(schema.mcpServers)
+    .set({ isPublic: false })
+    .where(
+      and(inArray(schema.mcpServers.slug, RETIRED_SLUGS), eq(schema.mcpServers.isOfficial, true))
+    )
+    .returning({ slug: schema.mcpServers.slug });
+  for (const r of retired) console.log(`  ⊘ unpublished deprecated ${r.slug}`);
+
   console.log("[seed] done.");
 }
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbListSchema, articleSchema } from "@/lib/seo/schema";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: "Docs — TwinMCP",

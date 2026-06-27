@@ -34,7 +34,7 @@ export default function TermsPage() {
         <h2>1. Définitions</h2>
         <p>
           <strong>« Service »</strong> désigne la plateforme TwinMCP accessible à l&apos;adresse
-          twinmcp.com, ses API, et tous les sous-domaines associés.{" "}
+          twinmcp.fr, ses API, et tous les sous-domaines associés.{" "}
           <strong>« Compte »</strong> désigne l&apos;espace personnel créé via inscription.{" "}
           <strong>« Contenu »</strong> désigne les serveurs MCP, configurations, clés et données que
           tu fournis ou génères via le Service.
@@ -136,7 +136,7 @@ export default function TermsPage() {
         <h2>11. Contact</h2>
         <p>
           Pour toute question, écris-nous à{" "}
-          <a href="mailto:hello@twinmcp.dev">hello@twinmcp.dev</a>.
+          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>.
         </p>
       </div>
 

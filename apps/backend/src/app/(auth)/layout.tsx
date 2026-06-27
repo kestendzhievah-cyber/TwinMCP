@@ -24,7 +24,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <Link href="/plans" className="hover:text-foreground">
               Pricing
             </Link>
-            <a href="mailto:hello@twinmcp.dev" className="hover:text-foreground">
+            <a href="mailto:hello@twinmcp.fr" className="hover:text-foreground">
               Contact
             </a>
           </div>

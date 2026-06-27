@@ -2,7 +2,7 @@
 // Phase 5 is additive — we have an English site at `/` and a French
 // shadow at `/fr`. Dashboards and auth remain English-only by design.
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export type Locale = "en" | "fr";
 

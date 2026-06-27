@@ -44,7 +44,7 @@ const pricingFaq: FaqItem[] = [
   },
   {
     q: "Do you offer discounts?",
-    a: "50% off for verified non-profits, students, and active maintainers of public OSS MCPs. Email hello@twinmcp.dev with proof. Volume discounts on Team are negotiated per-account — talk to sales.",
+    a: "50% off for verified non-profits, students, and active maintainers of public OSS MCPs. Email hello@twinmcp.fr with proof. Volume discounts on Team are negotiated per-account — talk to sales.",
   },
   {
     q: "What happens to my data when I cancel?",
@@ -52,7 +52,7 @@ const pricingFaq: FaqItem[] = [
   },
   {
     q: "Need something custom?",
-    a: "Enterprise covers SSO/SAML, private deployments in your VPC, custom SLAs, and dedicated support. Email sales@twinmcp.dev — we usually reply within one business day.",
+    a: "Enterprise covers SSO/SAML, private deployments in your VPC, custom SLAs, and dedicated support. Email sales@twinmcp.fr — we usually reply within one business day.",
   },
 ];
 
@@ -109,7 +109,7 @@ export default function PlansPage() {
         items={pricingFaq}
         eyebrow="Pricing FAQ"
         title="Pricing questions, answered"
-        description="If something's not covered here, email hello@twinmcp.dev — we read everything."
+        description="If something's not covered here, email hello@twinmcp.fr — we read everything."
         id="pricing-faq"
       />
 

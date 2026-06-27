@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       .where(eq(users.id, session.userId))
       .limit(1);
 
-    const origin = req.headers.get("origin") ?? "https://twinmcp.com";
+    const origin = req.headers.get("origin") ?? "https://twinmcp.fr";
 
     // No customer yet — user has never checked out. Steer them to /plans
     // with a clear hint instead of opening an empty portal.

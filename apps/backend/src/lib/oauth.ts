@@ -2,7 +2,7 @@ import { SignJWT, importPKCS8, importSPKI, jwtVerify } from "jose";
 import { randomBytes, createHash } from "crypto";
 
 const ISSUER =
-  process.env.OAUTH_ISSUER ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://twinmcp.com";
+  process.env.OAUTH_ISSUER ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://twinmcp.fr";
 const ALG = "RS256";
 const ACCESS_TOKEN_TTL = 3600;
 const REFRESH_TOKEN_TTL = 86400 * 30;

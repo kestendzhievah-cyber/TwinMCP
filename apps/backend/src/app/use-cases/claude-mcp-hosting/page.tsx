@@ -5,7 +5,7 @@ import { getUseCaseBySlug } from "@/lib/use-cases/registry";
 
 const SLUG = "claude-mcp-hosting";
 const useCase = getUseCaseBySlug(SLUG)!;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: useCase.metaTitle,
@@ -101,7 +101,7 @@ export default function ClaudeMcpHostingPage() {
         <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-secondary/40 p-4 text-sm">
           <code>{`claude mcp add github-prod \\
   --transport http \\
-  https://github.your-team.twinmcp.dev/mcp \\
+  https://github.your-team.twinmcp.fr/mcp \\
   --header "Authorization: Bearer tw_live_..."`}</code>
         </pre>
         <p className="mt-6 text-sm text-muted-foreground">

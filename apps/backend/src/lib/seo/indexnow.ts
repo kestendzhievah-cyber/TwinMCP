@@ -3,13 +3,13 @@
 //
 // Usage:
 //   import { submitUrls } from "@/lib/seo/indexnow";
-//   await submitUrls(["https://twinmcp.dev/blog/new-post"]);
+//   await submitUrls(["https://twinmcp.fr/blog/new-post"]);
 //
 // Wire this into the publication flow when you start adding posts via a
 // CMS or API. For the current registry-driven flow, call it manually from
 // a deploy hook after merging a post.
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/IndexNow";
 
 export interface SubmitResult {

@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { mcpServers, userServers } from "@/db/schema";
+import { mcpServers, userServers, servers } from "@/db/schema";
 import { badRequest, forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
+import { enqueue } from "@/lib/queue/qstash";
 import { requireSessionUser } from "@/lib/session";
 import {
   assertServerOwnership,
@@ -22,11 +23,7 @@ import { logAudit, clientIp } from "@/lib/audit/log";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function decryptIfPresent(
-  ciphertext: string,
-  iv: string,
-  tag: string
-): Record<string, unknown> {
+function decryptIfPresent(ciphertext: string, iv: string, tag: string): Record<string, unknown> {
   if (!ciphertext) return {};
   try {
     return decryptConfig<Record<string, unknown>>({ ciphertext, iv, tag });
@@ -159,6 +156,21 @@ export async function PATCH(
 
     await getDb().update(userServers).set(patch).where(eq(userServers.id, userServerId));
 
+    // Propagate the change to the box runtime.
+    let job: Parameters<typeof enqueue>[0] | null = null;
+    if (parsed.data.enabled === false) {
+      job = { type: "disable-mcp", userServerId };
+    } else if (parsed.data.config !== undefined) {
+      job = { type: "reconfigure-mcp", userServerId };
+    } else if (parsed.data.enabled === true) {
+      job = { type: "install-mcp", userServerId };
+    }
+    if (job) {
+      await enqueue(job).catch((err) =>
+        console.error(`[mcps PATCH] enqueue ${job?.type} ${userServerId} failed:`, err)
+      );
+    }
+
     logAudit({
       userId: session.userId,
       action,
@@ -167,8 +179,7 @@ export async function PATCH(
       metadata: {
         serverId,
         fields: Object.keys(parsed.data),
-        configKeys:
-          parsed.data.config !== undefined ? Object.keys(parsed.data.config) : undefined,
+        configKeys: parsed.data.config !== undefined ? Object.keys(parsed.data.config) : undefined,
       },
       ip: clientIp(req),
     });
@@ -195,9 +206,31 @@ export async function DELETE(
     const us = await assertUserServerOwnership(session.userId, userServerId);
     if (us.serverId !== serverId) return notFound("Installation not found on this server");
 
-    await getDb()
+    const db = getDb();
+    // Capture the box teardown info before the row is gone.
+    const [meta] = await db
+      .select({ slug: mcpServers.slug, boxId: servers.boxId, port: userServers.bridgePort })
+      .from(userServers)
+      .innerJoin(mcpServers, eq(mcpServers.id, userServers.mcpServerId))
+      .innerJoin(servers, eq(servers.id, userServers.serverId))
+      .where(eq(userServers.id, userServerId))
+      .limit(1);
+
+    await db
       .delete(userServers)
       .where(and(eq(userServers.id, userServerId), eq(userServers.userId, session.userId)));
+
+    if (meta) {
+      await enqueue({
+        type: "uninstall-mcp",
+        boxId: meta.boxId,
+        serverId,
+        slug: meta.slug,
+        port: meta.port,
+      }).catch((err) =>
+        console.error(`[mcps DELETE] enqueue uninstall ${userServerId} failed:`, err)
+      );
+    }
 
     logAudit({
       userId: session.userId,

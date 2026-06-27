@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FrPostLayout } from "@/components/blog/fr-post-layout";
 import { faqPageSchema, howToSchema } from "@/lib/seo/schema";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 const post = {
   slug: "build-mcp-server",

@@ -25,7 +25,7 @@ export function HeroMockup() {
         <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
         <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
         <span className="ml-3 truncate font-mono text-[11px] text-muted-foreground">
-          twinmcp.dev/dashboard/servers
+          twinmcp.fr/dashboard/servers
         </span>
       </div>
 

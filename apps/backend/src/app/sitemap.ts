@@ -3,7 +3,7 @@ import { BLOG_POSTS } from "@/lib/blog/posts";
 import { USE_CASES } from "@/lib/use-cases/registry";
 import { SERVERS } from "@/lib/servers/catalog";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();

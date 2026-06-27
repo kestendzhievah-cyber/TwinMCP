@@ -4,7 +4,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { JsonLd } from "@/components/seo/json-ld";
 import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: "TwinMCP — Hébergement de serveurs MCP sans gérer l'infrastructure",

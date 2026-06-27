@@ -10,7 +10,7 @@ import {
   howToSchema,
 } from "@/lib/seo/schema";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export function generateStaticParams() {
   return SERVERS.map((s) => ({ slug: s.slug }));

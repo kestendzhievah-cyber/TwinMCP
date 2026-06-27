@@ -17,17 +17,18 @@ const SELECTED_PLAN_KEY = "tmcp_signup_plan";
 
 interface WizardProps {
   catalog: CatalogMcp[];
-  existingServer: { id: string; name: string; endpointUrl: string | null } | null;
+  existingServer: { id: string; name: string; slug: string; endpointUrl: string | null } | null;
 }
+
+type WizardServer = { id: string; name: string; slug: string; endpointUrl: string | null };
 
 export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
   const router = useRouter();
 
   const [step, setStep] = useState(0);
   const [ide, setIde] = useState<IdePreference | null>(null);
-  const [server, setServer] = useState<
-    { id: string; name: string; endpointUrl: string | null } | null
-  >(existingServer);
+  const [server, setServer] = useState<WizardServer | null>(existingServer);
+  const [mcpSlug, setMcpSlug] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [skipping, setSkipping] = useState(false);
 
@@ -93,21 +94,18 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
     [selectedPlan]
   );
 
-  const handleServerReady = useCallback(
-    (s: { id: string; name: string; endpointUrl: string | null }) => {
-      setServer((prev) => {
-        if (!prev) {
-          // First time we're seeing this server in the wizard — fire the
-          // funnel event. Skipped if the user already had a server (existing).
-          track({ name: "first_server_created", properties: { serverId: s.id } });
-        }
-        return s;
-      });
-      track({ name: "onboarding_step_completed", properties: { step: "server" } });
-      setStep(3);
-    },
-    []
-  );
+  const handleServerReady = useCallback((s: WizardServer) => {
+    setServer((prev) => {
+      if (!prev) {
+        // First time we're seeing this server in the wizard — fire the
+        // funnel event. Skipped if the user already had a server (existing).
+        track({ name: "first_server_created", properties: { serverId: s.id } });
+      }
+      return s;
+    });
+    track({ name: "onboarding_step_completed", properties: { step: "server" } });
+    setStep(3);
+  }, []);
 
   async function handleSkip() {
     setSkipping(true);
@@ -153,9 +151,7 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
       </header>
 
       <div className="rounded-2xl border border-border/80 bg-card p-6 md:p-8">
-        {step === 0 && (
-          <StepPlan initialPlan={selectedPlan} onSelectPlan={handleSelectPlan} />
-        )}
+        {step === 0 && <StepPlan initialPlan={selectedPlan} onSelectPlan={handleSelectPlan} />}
         {step === 1 && (
           <StepWelcome
             selected={ide}
@@ -178,8 +174,9 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
           <StepMcp
             catalog={catalog}
             serverId={server.id}
-            onInstalled={(mcpSlug) => {
-              track({ name: "first_mcp_installed", properties: { mcpSlug } });
+            onInstalled={(slug) => {
+              setMcpSlug(slug);
+              track({ name: "first_mcp_installed", properties: { mcpSlug: slug } });
               track({ name: "onboarding_step_completed", properties: { step: "mcp" } });
               setStep(4);
             }}
@@ -194,7 +191,8 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
           <StepConnect
             serverId={server.id}
             serverName={server.name}
-            endpointUrl={server.endpointUrl}
+            serverSlug={server.slug}
+            mcpSlug={mcpSlug ?? "twinmcp-docs"}
             ide={ide ?? "other"}
             onFinish={handleFinish}
             onBack={() => setStep(3)}

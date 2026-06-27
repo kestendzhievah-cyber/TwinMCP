@@ -6,7 +6,7 @@ import { getPostBySlug } from "@/lib/blog/posts";
 
 const SLUG = "cursor-mcp-setup";
 const post = getPostBySlug(SLUG)!;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: post.title,
@@ -110,7 +110,7 @@ export default function Post() {
         <code>{`{
   "mcpServers": {
     "weather-prod": {
-      "url": "https://weather.mcp.twinmcp.dev/sse",
+      "url": "https://weather.mcp.twinmcp.fr/sse",
       "headers": {
         "Authorization": "Bearer tw_live_..."
       }

@@ -5,7 +5,7 @@ import { getUseCaseBySlug } from "@/lib/use-cases/registry";
 
 const SLUG = "github-mcp";
 const useCase = getUseCaseBySlug(SLUG)!;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: useCase.metaTitle,

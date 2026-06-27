@@ -23,7 +23,9 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/twinmcp-backend
-  BASE_URL: https://twinmcp.dev
+  # Set the repository variable BASE_URL (Settings → Secrets and variables →
+  # Actions → Variables) to your production domain. Used by the smoke test.
+  BASE_URL: ${{ vars.BASE_URL || 'https://twinmcp.fr' }}
 
 jobs:
   test:

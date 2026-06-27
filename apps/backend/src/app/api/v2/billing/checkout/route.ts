@@ -16,7 +16,10 @@ const schema = z.object({
   cadence: z.enum(["monthly", "yearly"]).default("monthly"),
   // Stripe promotion_code id (promo_xxx). When provided, pre-applies the
   // discount in checkout so the user doesn't have to type the code.
-  promotionCodeId: z.string().regex(/^promo_[A-Za-z0-9]+$/).optional(),
+  promotionCodeId: z
+    .string()
+    .regex(/^promo_[A-Za-z0-9]+$/)
+    .optional(),
   // Free-form attribution slug from the creator landing page (e.g. "youtuber").
   // Surfaces in subscription metadata for ROI tracking.
   creatorSlug: z.string().min(1).max(64).optional(),
@@ -58,7 +61,7 @@ export async function POST(req: NextRequest) {
       .where(eq(users.id, session.userId))
       .limit(1);
 
-    const origin = req.headers.get("origin") ?? "https://twinmcp.com";
+    const origin = req.headers.get("origin") ?? "https://twinmcp.fr";
     const stripe = getStripe();
 
     // Reuse an existing Stripe customer if we already linked one — avoids

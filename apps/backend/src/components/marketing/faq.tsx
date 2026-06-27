@@ -51,7 +51,7 @@ export function Faq({
   items = defaultFaqItems,
   eyebrow = "FAQ",
   title = "Questions that come up before signing up",
-  description = "If something's missing, send it to hello@twinmcp.dev — answers feed back into this list.",
+  description = "If something's missing, send it to hello@twinmcp.fr — answers feed back into this list.",
   id = "faq",
 }: FaqProps = {}) {
   return (

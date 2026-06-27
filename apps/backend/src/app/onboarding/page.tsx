@@ -24,7 +24,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
   // Ensure the row exists (matches lib/session ensureUserRow behaviour).
   await db
     .insert(users)
-    .values({ id: user.id, email: user.email ?? `${user.id}@placeholder.twinmcp.com` })
+    .values({ id: user.id, email: user.email ?? `${user.id}@placeholder.twinmcp.fr` })
     .onConflictDoNothing({ target: users.id });
 
   const [me] = await db
@@ -58,16 +58,27 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
     .select({
       id: servers.id,
       name: servers.name,
+      slug: servers.slug,
       endpointUrl: servers.endpointUrl,
       status: servers.status,
     })
     .from(servers)
-    .where(and(eq(servers.userId, user.id), or(eq(servers.status, "running"), eq(servers.status, "provisioning"))))
+    .where(
+      and(
+        eq(servers.userId, user.id),
+        or(eq(servers.status, "running"), eq(servers.status, "provisioning"))
+      )
+    )
     .orderBy(desc(servers.createdAt))
     .limit(1);
 
   const existingServer = existing
-    ? { id: existing.id, name: existing.name, endpointUrl: existing.endpointUrl }
+    ? {
+        id: existing.id,
+        name: existing.name,
+        slug: existing.slug,
+        endpointUrl: existing.endpointUrl,
+      }
     : null;
 
   return (

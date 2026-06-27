@@ -4,6 +4,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export function GET(req: NextRequest) {
+  // OAuth is opt-in (Épopée 6 = API-key auth by default). Don't advertise OAuth
+  // discovery unless explicitly enabled, so MCP clients use the ctx7sk_ Bearer key.
+  if (process.env.OAUTH_ENABLED !== "1") {
+    return new NextResponse(null, { status: 404 });
+  }
   const origin = new URL(req.url).origin;
   const issuer = process.env.OAUTH_ISSUER ?? origin;
 

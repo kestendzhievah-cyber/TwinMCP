@@ -8,7 +8,9 @@ import { requireSessionUser } from "@/lib/session";
 import { createServerSchema, slugify } from "@/lib/validation/platform";
 import { assertServerQuota, QuotaExceededError } from "@/lib/quota";
 import {
+  can,
   isBoxSizeAllowed,
+  minPlanFor,
   minPlanForBoxSize,
   PlanRestrictionError,
   PLAN_LABELS,
@@ -82,7 +84,17 @@ export async function POST(req: NextRequest) {
       throw new PlanRestrictionError(
         "box-size",
         required,
-        `The ${boxSize} box size requires the ${PLAN_LABELS[required]} plan.`,
+        `The ${boxSize} box size requires the ${PLAN_LABELS[required]} plan.`
+      );
+    }
+
+    // Region selection is a Team capability — don't let lower plans pin a region.
+    if (parsed.data.region !== undefined && !can(me.plan, "regionSelection")) {
+      const required = minPlanFor("regionSelection");
+      throw new PlanRestrictionError(
+        "region-selection",
+        required,
+        `Choosing a deployment region requires the ${PLAN_LABELS[required]} plan.`
       );
     }
 

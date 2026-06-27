@@ -4,6 +4,13 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// CORS origin for /api/*. Never fall back to "*" in production — lock to the
+// configured origin (or the site URL); only allow "*" in dev.
+const CORS_ORIGIN =
+  process.env.CORS_ORIGIN ??
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.NODE_ENV === "production" ? "" : "*");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
@@ -42,7 +49,7 @@ const nextConfig = {
     {
       source: "/api/:path*",
       headers: [
-        { key: "Access-Control-Allow-Origin", value: process.env.CORS_ORIGIN ?? "*" },
+        { key: "Access-Control-Allow-Origin", value: CORS_ORIGIN },
         { key: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
         {
           key: "Access-Control-Allow-Headers",

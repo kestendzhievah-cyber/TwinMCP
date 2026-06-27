@@ -117,7 +117,7 @@ export default function OpengraphImage() {
             <span>·</span>
             <span>Cline</span>
           </span>
-          <span style={{ color: "#fafafa" }}>twinmcp.dev</span>
+          <span style={{ color: "#fafafa" }}>twinmcp.fr</span>
         </div>
       </div>
     ),

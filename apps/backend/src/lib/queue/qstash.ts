@@ -1,10 +1,28 @@
 import { Client, Receiver } from "@upstash/qstash";
-import { provisionServer, destroyServerRuntime, installMcpInBox } from "@/lib/provisioning";
+import {
+  provisionServer,
+  destroyServerRuntime,
+  installMcpInBox,
+  uninstallMcpFromBox,
+  disableMcp,
+  reconfigureMcp,
+} from "@/lib/provisioning";
+import { reconcileServerHealth } from "@/lib/health";
 
 export type Job =
   | { type: "provision-server"; serverId: string }
   | { type: "destroy-server"; serverId: string }
-  | { type: "install-mcp"; userServerId: string };
+  | { type: "install-mcp"; userServerId: string }
+  | {
+      type: "uninstall-mcp";
+      boxId: string | null;
+      serverId: string;
+      slug: string;
+      port: number | null;
+    }
+  | { type: "disable-mcp"; userServerId: string }
+  | { type: "reconfigure-mcp"; userServerId: string }
+  | { type: "reconcile-health" };
 
 const JOB_PATH = "/api/jobs/run";
 
@@ -38,7 +56,9 @@ export function isQueueEnabled(): boolean {
  *   Inline mode is fine for long-lived processes (next dev) but unsafe on serverless
  *   where the lambda may be killed before the job completes.
  */
-export async function enqueue(job: Job): Promise<{ mode: "queued" | "inline"; messageId?: string }> {
+export async function enqueue(
+  job: Job
+): Promise<{ mode: "queued" | "inline"; messageId?: string }> {
   const client = getClient();
   const appUrl = process.env.APP_URL;
 
@@ -68,6 +88,23 @@ export async function runJob(job: Job): Promise<void> {
       return;
     case "install-mcp":
       await installMcpInBox(job.userServerId);
+      return;
+    case "uninstall-mcp":
+      await uninstallMcpFromBox({
+        boxId: job.boxId,
+        serverId: job.serverId,
+        slug: job.slug,
+        port: job.port,
+      });
+      return;
+    case "disable-mcp":
+      await disableMcp(job.userServerId);
+      return;
+    case "reconfigure-mcp":
+      await reconfigureMcp(job.userServerId);
+      return;
+    case "reconcile-health":
+      await reconcileServerHealth();
       return;
     default: {
       const exhaustive: never = job;

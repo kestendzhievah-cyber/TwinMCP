@@ -5,7 +5,7 @@ import { getUseCaseBySlug } from "@/lib/use-cases/registry";
 
 const SLUG = "cursor-mcp-hosting";
 const useCase = getUseCaseBySlug(SLUG)!;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: useCase.metaTitle,
@@ -99,7 +99,7 @@ export default function CursorMcpHostingPage() {
           <code>{`{
   "mcpServers": {
     "github-prod": {
-      "url": "https://github.your-team.twinmcp.dev/sse",
+      "url": "https://github.your-team.twinmcp.fr/sse",
       "headers": {
         "Authorization": "Bearer tw_live_..."
       }

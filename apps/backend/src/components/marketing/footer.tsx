@@ -33,7 +33,7 @@ const columns: Array<{
       { href: "/#", label: "About" },
       { href: "/blog", label: "Blog" },
       { href: "/#", label: "Changelog" },
-      { href: "mailto:hello@twinmcp.dev", label: "Contact" },
+      { href: "mailto:hello@twinmcp.fr", label: "Contact" },
     ],
   },
   {
@@ -104,7 +104,7 @@ export function MarketingFooter() {
               <Twitter className="h-4 w-4" />
             </a>
             <a
-              href="https://status.twinmcp.dev"
+              href="https://status.twinmcp.fr"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Status"

@@ -4,7 +4,7 @@ import { getSortedPosts } from "@/lib/blog/posts";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbListSchema } from "@/lib/seo/schema";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: "Blog — TwinMCP",

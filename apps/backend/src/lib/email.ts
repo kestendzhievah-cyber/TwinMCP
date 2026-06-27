@@ -10,7 +10,7 @@ function getResend(): Resend {
   return _resend;
 }
 
-const FROM = process.env.EMAIL_FROM ?? "TwinMCP <noreply@twinmcp.com>";
+const FROM = process.env.EMAIL_FROM ?? "TwinMCP <noreply@twinmcp.fr>";
 
 export async function sendWelcomeEmail(to: string) {
   return getResend().emails.send({
@@ -18,7 +18,7 @@ export async function sendWelcomeEmail(to: string) {
     to,
     subject: "Welcome to TwinMCP",
     html: `<h2>Welcome to TwinMCP!</h2>
-<p>Your account is ready. Head to your <a href="https://twinmcp.com/dashboard">dashboard</a> to create an API key and start using TwinMCP.</p>`,
+<p>Your account is ready. Head to your <a href="https://twinmcp.fr/dashboard">dashboard</a> to create an API key and start using TwinMCP.</p>`,
   });
 }
 
@@ -30,7 +30,7 @@ export async function sendQuotaWarningEmail(to: string, usage: number, limit: nu
     subject: `TwinMCP: You've used ${pct}% of your daily quota`,
     html: `<h2>Quota usage: ${pct}%</h2>
 <p>You've used ${usage} of your ${limit} daily requests.</p>
-<p><a href="https://twinmcp.com/plans">Upgrade your plan</a> for higher limits.</p>`,
+<p><a href="https://twinmcp.fr/plans">Upgrade your plan</a> for higher limits.</p>`,
   });
 }
 
@@ -40,6 +40,18 @@ export async function sendUpgradeConfirmationEmail(to: string, plan: string) {
     to,
     subject: `TwinMCP: Upgraded to ${plan}`,
     html: `<h2>You're now on ${plan}!</h2>
-<p>Your new limits are active immediately. Visit your <a href="https://twinmcp.com/dashboard">dashboard</a> to see your updated quota.</p>`,
+<p>Your new limits are active immediately. Visit your <a href="https://twinmcp.fr/dashboard">dashboard</a> to see your updated quota.</p>`,
+  });
+}
+
+export async function sendPlanDowngradeEmail(to: string, reason: string) {
+  const lapsed = reason === "canceled" ? "was canceled" : `lapsed (${reason})`;
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "TwinMCP: Your plan was downgraded to Free",
+    html: `<h2>Your plan is now Free</h2>
+<p>Your subscription ${lapsed}, so your account is back on the Free plan. Servers beyond the Free limit (1 small server) have been <strong>stopped</strong> — they are not deleted.</p>
+<p><a href="https://twinmcp.fr/plans">Re-subscribe</a> to restore them, or manage them in your <a href="https://twinmcp.fr/dashboard">dashboard</a>.</p>`,
   });
 }
