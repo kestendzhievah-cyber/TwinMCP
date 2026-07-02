@@ -83,19 +83,22 @@ export function stopBridgeCommand(slug: string): string {
   return `kill "$(cat ${pid} 2>/dev/null)" 2>/dev/null; rm -f ${pid}; true`;
 }
 
+/**
+ * Command that backgrounds a single MCP launcher (used at install time and by
+ * the resume init script). `< /dev/null` fully detaches stdin and `nohup`
+ * detaches from SIGHUP, so the daemon survives after the `exec` session that
+ * launched it returns — the common reason an exec-launched process gets reaped.
+ */
+export function startBridgeCommand(slug: string): string {
+  return `nohup sh ${launcherPath(slug)} < /dev/null > ${logFileForMcp(slug)} 2>&1 &`;
+}
+
 /** Build the aggregate init script that (re)launches every MCP bridge in the background. */
 export function buildInitScript(slugs: string[]): string {
   const lines = ["#!/bin/sh"];
-  for (const slug of slugs) {
-    lines.push(`nohup sh ${launcherPath(slug)} > ${logFileForMcp(slug)} 2>&1 &`);
-  }
+  for (const slug of slugs) lines.push(startBridgeCommand(slug));
   lines.push("");
   return lines.join("\n");
-}
-
-/** Command that backgrounds a single MCP launcher (used at install time). */
-export function startBridgeCommand(slug: string): string {
-  return `nohup sh ${launcherPath(slug)} > ${logFileForMcp(slug)} 2>&1 &`;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));

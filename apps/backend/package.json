@@ -20,7 +20,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed:mcps": "tsx scripts/seed-mcps.ts"
+    "seed:mcps": "tsx scripts/seed-mcps.ts",
+    "smoke:mcp": "tsx scripts/smoke-mcp.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.3.0",
