@@ -12,8 +12,8 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@schema": ["../backend/src/db/schema.ts"]
+      "@schema": ["../backend/src/db/schema/index.ts"]
     }
   },
-  "include": ["src/**/*.ts", "../backend/src/db/schema.ts"]
+  "include": ["src/**/*.ts", "../backend/src/db/schema/**/*.ts"]
 }
