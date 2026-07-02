@@ -32,12 +32,15 @@ async function main() {
   let boxId: string | null = null;
 
   try {
-    console.log("1. createBox (node, small, keepAlive=false for free-tier probe)…");
+    // Default true = the real production model (needs a paid Upstash plan).
+    // Set PROBE_KEEP_ALIVE=false to probe on the free tier (non-persistent box).
+    const keepAlive = process.env.PROBE_KEEP_ALIVE !== "false";
+    console.log(`1. createBox (node, small, keepAlive=${keepAlive})…`);
     const box = await client.createBox({
       runtime: "node",
       size: "small",
       name: "twinmcp-probe",
-      keepAlive: false,
+      keepAlive,
     });
     boxId = box.id;
     console.log(`   ✓ box ${box.id}`);
