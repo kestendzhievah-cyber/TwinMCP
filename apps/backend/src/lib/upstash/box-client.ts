@@ -26,6 +26,8 @@ export interface BoxClient {
     size: BoxSize;
     name?: string;
     initCommand?: string;
+    /** Keep the box alive (bridge stays reachable). Requires a paid Upstash plan. Default true. */
+    keepAlive?: boolean;
   }): Promise<BoxHandle>;
   deleteBox(boxId: string): Promise<void>;
   exec(boxId: string, command: string): Promise<ExecResult>;
@@ -151,11 +153,12 @@ class UpstashBoxClient implements BoxClient {
     size: BoxSize;
     name?: string;
     initCommand?: string;
+    keepAlive?: boolean;
   }): Promise<BoxHandle> {
     const box = await Box.create({
       runtime: toSdkRuntime(opts.runtime),
       size: opts.size,
-      keepAlive: true,
+      keepAlive: opts.keepAlive ?? true,
       ...(opts.name ? { name: opts.name } : {}),
       ...(opts.initCommand ? { initCommand: opts.initCommand } : {}),
     });

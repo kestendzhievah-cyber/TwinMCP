@@ -14,13 +14,17 @@ export const BRIDGE_BASE_PORT = 8080;
 /** Path supergateway serves the Streamable HTTP MCP transport on. */
 export const MCP_STREAM_PATH = "/mcp";
 
+// The box runs as a non-root user whose home (and only writable persistent dir)
+// is /workspace/home — the workspace root /workspace is NOT user-writable.
+const BOX_WORKDIR = "/workspace/home";
+
 /** Path of the per-MCP launcher script written into the box. */
 export function launcherPath(slug: string): string {
-  return `/workspace/mcp-${safeSlug(slug)}.sh`;
+  return `${BOX_WORKDIR}/mcp-${safeSlug(slug)}.sh`;
 }
 
 /** Path of the aggregate init script replayed when a keep-alive box resumes. */
-export const INIT_SCRIPT_PATH = "/workspace/init-mcps.sh";
+export const INIT_SCRIPT_PATH = `${BOX_WORKDIR}/init-mcps.sh`;
 
 /** Log file an MCP bridge writes to inside the box. */
 export function logFileForMcp(slug: string): string {
@@ -29,7 +33,7 @@ export function logFileForMcp(slug: string): string {
 
 /** PID file an MCP bridge writes so it can be stopped by PID. */
 export function pidPath(slug: string): string {
-  return `/workspace/mcp-${safeSlug(slug)}.pid`;
+  return `${BOX_WORKDIR}/mcp-${safeSlug(slug)}.pid`;
 }
 
 function safeSlug(slug: string): string {
@@ -125,8 +129,10 @@ export async function healthcheckMcp(
   token: string | null,
   opts: { attempts?: number; delayMs?: number } = {}
 ): Promise<boolean> {
-  const attempts = opts.attempts ?? 15;
-  const delayMs = opts.delayMs ?? 2_000;
+  // Generous by default: the first bridge start cold-downloads supergateway AND
+  // the MCP package via npx (~30-60s) before it can answer.
+  const attempts = opts.attempts ?? 30;
+  const delayMs = opts.delayMs ?? 3_000;
   const target = publicUrl.replace(/\/$/, "") + MCP_STREAM_PATH;
   const body = JSON.stringify({
     jsonrpc: "2.0",
