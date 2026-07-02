@@ -67,6 +67,8 @@ export function buildLauncherScript(opts: {
   return [
     "#!/bin/sh",
     "set -e",
+    // Make uv-installed tools resolvable (Python MCP servers run via `uvx`).
+    'export PATH="$HOME/.local/bin:$PATH"',
     exports,
     // Record the PID `exec` will inherit so the process can be stopped later.
     `echo $$ > ${pidPath(opts.slug)}`,

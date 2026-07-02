@@ -39,11 +39,11 @@ type SeedEntry = {
   };
 };
 
-// Only first-party, actively-maintained, npx-runnable servers — the box runs each
-// stdio MCP via `npx` inside a Node Upstash Box. Versions are PINNED (not "latest")
-// so a regressed/compromised publish can't auto-roll-in. Deprecated/archived
-// reference servers (github→Go, postgres→Python, fetch→Python) have no safe
-// Node/npx equivalent and are unpublished below rather than shipped.
+// First-party, actively-maintained servers. Node servers run via `npx`; the
+// official Python `fetch` server runs via `uvx` — the box ships python3 and we
+// bootstrap uv with the curl installer (proven end-to-end against a real box).
+// npm versions are PINNED so a regressed/compromised publish can't auto-roll-in.
+// github (Go/Docker-only, no docker in the box) stays unpublished below.
 const OFFICIAL_MCPS: SeedEntry[] = [
   {
     slug: "twinmcp-docs",
@@ -98,11 +98,25 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "2025.12.18",
     configSchema: { properties: {} },
   },
+  {
+    // Official fetch server is Python-only; the box has python3 + we bootstrap uv
+    // (curl installer) so it runs via `uvx`. Proven end-to-end against a real box.
+    slug: "fetch",
+    name: "Fetch",
+    description: "Fetch a URL and return its content as markdown (official MCP fetch server).",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/fetch",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-fetch",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
 ];
 
-// Deprecated/archived reference servers that were previously seeded but cannot run
-// safely via npx in a Node box. Unpublished (not deleted — installs keep their FK).
-const RETIRED_SLUGS = ["github", "fetch", "postgres-readonly"];
+// Servers with no viable runtime in a Node box: github (Go/Docker-only) and the
+// old postgres server (deprecated + Docker-only successor; no docker in the box).
+// Unpublished (not deleted — installs keep their FK).
+const RETIRED_SLUGS = ["github", "postgres-readonly"];
 
 async function main() {
   console.log(`[seed] upserting ${OFFICIAL_MCPS.length} official MCPs…`);

@@ -109,3 +109,26 @@ client connecté voit **les outils de ce MCP** via `tools/list`.
   - le **nombre d'URLs publiques** autorisées par box (v1 : quelques MCP/box).
 - Coût : compute Box facturé au CPU-heure tant que la box est `keepAlive`.
   La réconciliation des box mortes/orphelines est traitée en Épopée 8.
+
+## Vérification en conditions réelles (2026-06-27)
+
+Prouvé de bout en bout contre une vraie Box (`apps/backend/scripts/probe-box.ts`,
+diagnostic toolchain `probe-tools.ts`). Résultats et corrections appliquées :
+
+- ✅ `createBox → supergateway → getPublicURL → MCP initialize` fonctionne.
+  `getPublicURL(port,{bearerToken:true})` renvoie une vraie URL
+  `https://<box>-<port>.preview.box.upstash.com` + token — **le risque n°1
+  (exposition de port) est levé**.
+- **keep-alive = plan Upstash PAYANT** (moyen de paiement requis). La prod utilise
+  `keepAlive:true` (le pont doit rester joignable) → prérequis business.
+  `createBox` a un param `keepAlive` (défaut true ; le probe free-tier met false).
+- Box **non-root** (`boxuser`), home writable `/workspace/home` ; `/workspace`
+  racine **non-inscriptible**. → scripts/PID/init dans `/workspace/home`.
+- `npm install -g` **échoue** (non-root) → MCP lancés via **`npx -y <pkg>@ver`**
+  (installCmd = no-op). Le launcher exporte `PATH=$HOME/.local/bin:$PATH`.
+- Toolchain box : node 25, npm/npx, **python3 3.11**, curl/wget ; **pas** de
+  pip/uv/pipx/**docker**/go préinstallés. **`uv` se bootstrappe** via le curl
+  installer → les **MCP Python tournent via `uvx`** (le `fetch` officiel est
+  prouvé). Conséquence catalogue : Node (npx) + Python (uvx) OK ; **github
+  (Go/Docker) impossible** sans docker dans la box.
+- Healthcheck par défaut porté à ~90s (le 1er `npx`/`uvx` télécharge à froid).

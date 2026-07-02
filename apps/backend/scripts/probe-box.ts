@@ -22,6 +22,12 @@ import {
 
 const PORT = 8080;
 const SLUG = "filesystem";
+// Override to probe any MCP, e.g. a Python server via uv:
+//   PROBE_INSTALL='curl -LsSf https://astral.sh/uv/install.sh | sh' PROBE_START='uvx mcp-server-fetch'
+const START =
+  process.env.PROBE_START ??
+  "npx -y @modelcontextprotocol/server-filesystem@2026.1.14 /workspace/home";
+const INSTALL = process.env.PROBE_INSTALL ?? "";
 
 async function main() {
   if (!process.env.UPSTASH_BOX_API_KEY) {
@@ -45,13 +51,18 @@ async function main() {
     boxId = box.id;
     console.log(`   ✓ box ${box.id}`);
 
-    console.log("2. write launcher + start supergateway (npx, no root install)…");
-    const script = buildLauncherScript({
-      slug: SLUG,
-      startCmd: "npx -y @modelcontextprotocol/server-filesystem@2026.1.14 /workspace",
-      port: PORT,
-      config: {},
-    });
+    if (INSTALL) {
+      console.log(`2. install step: ${INSTALL.slice(0, 70)}…`);
+      const inst = await client.exec(boxId, INSTALL);
+      console.log(`   status=${inst.status}`);
+      if (inst.status !== "completed") {
+        console.log(inst.result.slice(0, 800));
+        throw new Error("install step failed");
+      }
+    }
+
+    console.log(`3. write launcher + start supergateway…\n   startCmd: ${START}`);
+    const script = buildLauncherScript({ slug: SLUG, startCmd: START, port: PORT, config: {} });
     await client.writeFile(boxId, launcherPath(SLUG), script);
     const start = await client.exec(boxId, startBridgeCommand(SLUG));
     console.log(`   start status=${start.status}`);
