@@ -187,6 +187,9 @@ export async function provisionServer(serverId: string): Promise<void> {
         runtime: "node", // box runs Node; MCPs run as child processes via npx
         size: srv.boxSize,
         name: `twinmcp-${srv.slug}`,
+        // Non-keep-alive (free tier): the box pauses when idle; the proxy wakes
+        // it on demand via resumeServer. keepAlive:true would need a paid plan.
+        keepAlive: false,
       });
       boxId = handle.id;
     }
@@ -238,10 +241,11 @@ export async function provisionServer(serverId: string): Promise<void> {
       launchedSlugs.push(inst.mcpSlug);
     }
 
-    // Durable restart: replay every bridge when the keep-alive box resumes.
+    // Write the restart script that resumeServer re-runs on wake. (Non-keep-alive
+    // boxes have no initCommand, so the proxy relaunches bridges on the next
+    // request via resumeServer.)
     if (launchedSlugs.length > 0) {
       await client.writeFile(boxId, INIT_SCRIPT_PATH, buildInitScript(launchedSlugs));
-      await client.setInitCommand(boxId, `sh ${INIT_SCRIPT_PATH}`);
     }
 
     await db
@@ -438,5 +442,56 @@ async function syncInitScript(serverId: string, boxId: string): Promise<void> {
   const client = getBoxClient();
   // Always rewrite (even to empty) so a removed MCP is not relaunched on resume.
   await client.writeFile(boxId, INIT_SCRIPT_PATH, buildInitScript(slugs));
-  await client.setInitCommand(boxId, `sh ${INIT_SCRIPT_PATH}`);
+}
+
+/**
+ * Wake a paused (idle) box and restore its bridges + public URLs. Non-keep-alive
+ * boxes release their processes AND their port exposure on pause, so: resume →
+ * re-run the launcher init script → re-expose each MCP port (the URL is
+ * deterministic, so it returns the same) → refresh the stored token (it may
+ * rotate). Called by the proxy on the first request after an idle pause.
+ */
+export async function resumeServer(serverId: string): Promise<void> {
+  const db = getDb();
+  const [srv] = await db
+    .select({ boxId: servers.boxId })
+    .from(servers)
+    .where(eq(servers.id, serverId))
+    .limit(1);
+  if (!srv?.boxId) return;
+  const boxId = srv.boxId;
+  const client = getBoxClient();
+
+  await client.resume(boxId).catch(() => {});
+  for (let i = 0; i < 20; i++) {
+    const s = await client.getStatus(boxId).catch(() => "unknown");
+    if (s === "running" || s === "idle") break;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+
+  // Processes were released on pause — relaunch every enabled bridge.
+  await client
+    .exec(boxId, `sh ${INIT_SCRIPT_PATH}`)
+    .catch((err) => console.error(`[resume] init script failed for ${serverId}:`, err));
+
+  // Exposure is torn down on pause — re-expose each port and refresh its token.
+  const rows = await db
+    .select({ usId: userServers.id, port: userServers.bridgePort, slug: mcpServers.slug })
+    .from(userServers)
+    .innerJoin(mcpServers, eq(mcpServers.id, userServers.mcpServerId))
+    .where(and(eq(userServers.serverId, serverId), eq(userServers.enabled, true)));
+  for (const r of rows) {
+    if (r.slug === TWINMCP_DOCS_SLUG || r.port == null) continue;
+    try {
+      const ep = await client.exposePort(boxId, r.port);
+      await persistEndpoint(r.usId, r.port, ep.url, ep.token);
+    } catch (err) {
+      console.error(`[resume] re-expose ${r.slug}:${r.port} failed:`, err);
+    }
+  }
+
+  await db
+    .update(servers)
+    .set({ status: "running", lastHeartbeatAt: new Date(), updatedAt: new Date() })
+    .where(eq(servers.id, serverId));
 }

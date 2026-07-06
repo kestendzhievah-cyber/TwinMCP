@@ -26,7 +26,7 @@ else is runtime. Validate with `pnpm --filter @twinmcp/backend check-env`.
 ### Required for the core feature
 | Var | Why |
 |---|---|
-| `UPSTASH_BOX_API_KEY` | **Blocking** — provisioning refuses to run in prod without it (no stub mode). ⚠️ Requires a **paid Upstash plan** (payment method): production boxes use keep-alive, which is a paid feature. |
+| `UPSTASH_BOX_API_KEY` | **Blocking** — provisioning refuses to run in prod without it (no stub mode). Works on the **free tier**: boxes are non-keep-alive (pause when idle) and the proxy resumes them on demand — first request after idle has a cold-start (see `docs/adr/0003-resume-on-demand.md`). A paid plan (keep-alive) would remove the cold-start. |
 | `CONFIG_ENCRYPTION_KEY` | `openssl rand -hex 32` — AES-256-GCM for MCP secrets. |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Boot + client bundle (build args). |
 | `DATABASE_URL`, `DATABASE_URL_UNPOOLED` | Postgres (pooled runtime / direct migrations). |

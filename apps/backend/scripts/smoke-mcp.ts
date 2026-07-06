@@ -90,7 +90,7 @@ async function main() {
     const installRes = await fetch(`${BASE}/api/v2/servers/${server.id}/mcps`, {
       method: "POST",
       headers: authJson,
-      body: JSON.stringify({ mcpServerId: fs.id, config: { FILESYSTEM_PATH: "/workspace" } }),
+      body: JSON.stringify({ mcpServerId: fs.id, config: { FILESYSTEM_PATH: "/workspace/home" } }),
     });
     if (!installRes.ok) throw new Error(`install ${installRes.status}: ${await installRes.text()}`);
     console.log("  ✓ install enqueued");

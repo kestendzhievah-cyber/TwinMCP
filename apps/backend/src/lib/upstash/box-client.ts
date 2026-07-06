@@ -42,6 +42,10 @@ export interface BoxClient {
   unexposePort(boxId: string, port: number): Promise<void>;
   /** Set the startup script replayed when a keep-alive box resumes. */
   setInitCommand(boxId: string, command: string): Promise<void>;
+  /** Current box status: creating|idle|running|paused|error|deleted. */
+  getStatus(boxId: string): Promise<string>;
+  /** Resume a paused (idle-lifecycle) box. */
+  resume(boxId: string): Promise<void>;
 }
 
 /** Map our DB runtime enum onto the SDK's runtime set (no `-alpine`, `go`→`golang`). */
@@ -111,6 +115,12 @@ class StubBoxClient implements BoxClient {
   }
   async setInitCommand(boxId: string, _command: string): Promise<void> {
     console.warn(`[box stub] setInitCommand ${boxId}`);
+  }
+  async getStatus(): Promise<string> {
+    return "running";
+  }
+  async resume(boxId: string): Promise<void> {
+    console.warn(`[box stub] resume ${boxId}`);
   }
 }
 
@@ -229,6 +239,16 @@ class UpstashBoxClient implements BoxClient {
   async setInitCommand(boxId: string, command: string): Promise<void> {
     const box = await Box.get(boxId);
     await box.setInitCommand(command);
+  }
+
+  async getStatus(boxId: string): Promise<string> {
+    const box = await Box.get(boxId);
+    return (await box.getStatus()).status;
+  }
+
+  async resume(boxId: string): Promise<void> {
+    const box = await Box.get(boxId);
+    await box.resume();
   }
 }
 

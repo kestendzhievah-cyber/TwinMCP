@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
 import { authenticateRequest } from "@/lib/auth";
 import { jsonError, rateLimited } from "@/lib/errors";
-import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
+import { TWINMCP_DOCS_SLUG, resumeServer } from "@/lib/provisioning";
 import { decryptConfig } from "@/lib/crypto/config-encryption";
 import { MCP_STREAM_PATH } from "@/lib/upstash/mcp-bridge";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -66,6 +66,7 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
   const db = getDb();
   const [row] = await db
     .select({
+      serverId: servers.id,
       serverStatus: servers.status,
       enabled: userServers.enabled,
       userServerId: userServers.id,
@@ -144,23 +145,59 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
     }
   }
 
-  return forwardToBridge(req, row.mcpEndpoint, boxToken, method, meter);
+  // Read the body once so it can be replayed on a resume-and-retry.
+  const bodyText = method === "POST" ? await req.text() : undefined;
+  const contentType =
+    method === "POST" ? (req.headers.get("content-type") ?? "application/json") : undefined;
+
+  let upstream = await forwardOnce(req, row.mcpEndpoint, boxToken, method, bodyText, contentType);
+
+  // A connection error / gateway 5xx means the box is likely paused (non-keep-
+  // alive boxes pause when idle). Wake it, refresh the endpoint + token (the
+  // re-exposed URL is deterministic; the token may rotate), retry while it warms.
+  if (needsResume(upstream)) {
+    try {
+      await resumeServer(row.serverId);
+    } catch (err) {
+      console.error("[mcp proxy] resume failed:", err);
+    }
+    const fresh = await reloadEndpoint(row.userServerId);
+    // The bridge is cold-restarting (npx/uvx warm-up) — retry for ~30s.
+    for (let i = 0; fresh && i < 10 && needsResume(upstream); i++) {
+      upstream = await forwardOnce(req, fresh.endpoint, fresh.token, method, bodyText, contentType);
+      if (needsResume(upstream)) await sleep(3000);
+    }
+  }
+
+  if (needsResume(upstream)) {
+    meter(false);
+    return jsonError(503, "Server is waking up — retry in a few seconds.");
+  }
+  const finalResp = upstream as Response;
+  meter(finalResp.status < 400);
+  return relay(finalResp);
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Unreachable or gateway error → the box may be paused; try a resume. */
+function needsResume(u: Response | null): boolean {
+  return !u || u.status === 502 || u.status === 503 || u.status === 504;
 }
 
 // ---------------------------------------------------------------------------
-// Streamable HTTP relay to the in-box supergateway bridge.
-// Faithfully forwards method, MCP session/protocol headers, and request/response
-// bodies (JSON or SSE), so standard MCP clients negotiate transport end-to-end.
+// Streamable HTTP relay to the in-box supergateway bridge. One attempt; returns
+// the raw upstream Response, or null on a connection error (box likely paused).
 // ---------------------------------------------------------------------------
-async function forwardToBridge(
+async function forwardOnce(
   req: NextRequest,
   endpoint: string,
   boxToken: string | null,
   method: Method,
-  meter: (ok: boolean) => void
-) {
+  bodyText: string | undefined,
+  contentType: string | undefined
+): Promise<Response | null> {
   const targetUrl = `${endpoint.replace(/\/$/, "")}${MCP_STREAM_PATH}`;
-
   const headers: Record<string, string> = {
     accept:
       req.headers.get("accept") ??
@@ -173,22 +210,46 @@ async function forwardToBridge(
 
   const init: RequestInit = { method, headers };
   if (method === "POST") {
-    headers["content-type"] = req.headers.get("content-type") ?? "application/json";
-    init.body = await req.text();
+    headers["content-type"] = contentType ?? "application/json";
+    init.body = bodyText ?? "";
   }
 
-  let upstream: Response;
   try {
-    upstream = await fetch(targetUrl, init);
+    return await fetch(targetUrl, init);
   } catch (err) {
     console.error("[mcp proxy] upstream error:", err);
-    meter(false);
-    return jsonRpcError(null, -32000, "Upstream MCP unreachable");
+    return null;
   }
-  meter(upstream.status < 400);
+}
 
-  // Relay the upstream response (status, content-type, MCP/SSE headers) and
-  // stream the body through unchanged.
+/** Reload the (possibly resume-refreshed) endpoint + decrypted token for an MCP. */
+async function reloadEndpoint(
+  userServerId: string
+): Promise<{ endpoint: string; token: string | null } | null> {
+  const [r] = await getDb()
+    .select({
+      endpoint: userServers.endpointUrl,
+      tc: userServers.endpointTokenCiphertext,
+      iv: userServers.endpointTokenIv,
+      tag: userServers.endpointTokenTag,
+    })
+    .from(userServers)
+    .where(eq(userServers.id, userServerId))
+    .limit(1);
+  if (!r?.endpoint) return null;
+  let token: string | null = null;
+  if (r.tc) {
+    try {
+      token = decryptConfig<string>({ ciphertext: r.tc, iv: r.iv, tag: r.tag });
+    } catch {
+      return null;
+    }
+  }
+  return { endpoint: r.endpoint, token };
+}
+
+/** Build the streamed NextResponse from an upstream bridge Response. */
+function relay(upstream: Response): NextResponse {
   const out = new Headers();
   copyHeader(upstream.headers, out, "content-type", "application/json");
   copyHeader(upstream.headers, out, "mcp-session-id");
