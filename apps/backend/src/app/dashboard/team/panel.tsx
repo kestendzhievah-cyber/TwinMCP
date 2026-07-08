@@ -15,6 +15,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
+import { Trash2 } from "lucide-react";
 
 interface Props {
   userId: string;
@@ -26,6 +27,43 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [email, setEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const isOwner = members.some((m) => m.userId === userId && m.role === "owner");
+
+  async function invite(e: FormEvent) {
+    e.preventDefault();
+    if (!teamspace || !email.trim()) return;
+    setInviting(true);
+    const res = await fetch(`/api/v2/team/${teamspace.id}/members`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+    setInviting(false);
+    if (res.ok) {
+      toast.success("Member added");
+      setEmail("");
+      router.refresh();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.message ?? "Could not add member");
+    }
+  }
+
+  async function removeMember(memberUserId: string) {
+    if (!teamspace) return;
+    const res = await fetch(`/api/v2/team/${teamspace.id}/members?userId=${memberUserId}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      toast.success("Member removed");
+      router.refresh();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.message ?? "Could not remove member");
+    }
+  }
 
   async function createTeam(e: FormEvent) {
     e.preventDefault();
@@ -84,36 +122,72 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <h3 className="text-sm font-medium mb-3">Members</h3>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead className="w-24">Role</TableHead>
-                <TableHead className="w-32">Joined</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.map((m) => (
-                <TableRow key={m.userId}>
-                  <TableCell>
-                    {m.email}
-                    {m.userId === userId && (
-                      <span className="text-xs text-muted-foreground ml-2">(you)</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={m.role === "owner" ? "default" : "secondary"}>{m.role}</Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {new Date(m.joinedAt).toLocaleDateString()}
-                  </TableCell>
+      <CardContent className="space-y-4">
+        {isOwner && (
+          <form onSubmit={invite} className="flex flex-col gap-1.5">
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="teammate@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <Button type="submit" disabled={inviting}>
+                {inviting ? "Adding…" : "Add member"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              They must already have a TwinMCP account.
+            </p>
+          </form>
+        )}
+        <div>
+          <h3 className="text-sm font-medium mb-3">Members</h3>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="w-24">Role</TableHead>
+                  <TableHead className="w-32">Joined</TableHead>
+                  {isOwner && <TableHead className="w-12"></TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {members.map((m) => (
+                  <TableRow key={m.userId}>
+                    <TableCell>
+                      {m.email}
+                      {m.userId === userId && (
+                        <span className="text-xs text-muted-foreground ml-2">(you)</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={m.role === "owner" ? "default" : "secondary"}>{m.role}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {new Date(m.joinedAt).toLocaleDateString()}
+                    </TableCell>
+                    {isOwner && (
+                      <TableCell>
+                        {m.role !== "owner" && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeMember(m.userId)}
+                            aria-label="Remove member"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </CardContent>
     </Card>

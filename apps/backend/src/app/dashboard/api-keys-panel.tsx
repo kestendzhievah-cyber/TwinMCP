@@ -51,7 +51,8 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
       router.refresh();
       toast.success("API key created");
     } else {
-      toast.error("Failed to create key");
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.message ?? "Failed to create key");
     }
     setCreating(false);
   }

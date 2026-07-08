@@ -3,13 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -50,9 +44,10 @@ export function BillingActions({
   const params = useSearchParams();
   const [loading, setLoading] = useState("");
   const [cadence, setCadence] = useState<Cadence>("monthly");
-  const [banner, setBanner] = useState<
-    { type: "success" | "info"; message: string } | null
-  >(null);
+  const [banner, setBanner] = useState<{
+    type: "success" | "info" | "error";
+    message: string;
+  } | null>(null);
 
   // Surface checkout outcome from Stripe redirect, then strip the query
   // so a refresh doesn't re-trigger the toast.
@@ -62,37 +57,47 @@ export function BillingActions({
       setBanner({
         type: "success",
         message:
-          "Paiement confirmé ! Ton plan est en cours d'activation. Recharge la page dans quelques secondes si rien ne s'affiche.",
+          "Payment confirmed! Your plan is activating — refresh in a few seconds if nothing shows.",
       });
       router.replace("/dashboard/billing");
     } else if (status === "canceled") {
-      setBanner({ type: "info", message: "Paiement annulé. Aucun montant n'a été débité." });
+      setBanner({ type: "info", message: "Checkout canceled. You were not charged." });
       router.replace("/dashboard/billing");
     }
   }, [params, router]);
 
   async function checkout(target: "pro" | "team") {
     setLoading(target);
-    const res = await fetch("/api/v2/billing/checkout", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ plan: target, cadence }),
-    });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-      return;
+    try {
+      const res = await fetch("/api/v2/billing/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ plan: target, cadence }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setBanner({ type: "error", message: data.message ?? "Could not start checkout. Try again." });
+    } catch {
+      setBanner({ type: "error", message: "Network error — try again." });
     }
     setLoading("");
   }
 
   async function openPortal() {
     setLoading("portal");
-    const res = await fetch("/api/v2/billing/portal", { method: "POST" });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-      return;
+    try {
+      const res = await fetch("/api/v2/billing/portal", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setBanner({ type: "error", message: data.message ?? "Could not open the billing portal." });
+    } catch {
+      setBanner({ type: "error", message: "Network error — try again." });
     }
     setLoading("");
   }
@@ -107,7 +112,9 @@ export function BillingActions({
           className={`flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${
             banner.type === "success"
               ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
-              : "border-border bg-muted/50 text-foreground"
+              : banner.type === "error"
+                ? "border-destructive/30 bg-destructive/5 text-destructive"
+                : "border-border bg-muted/50 text-foreground"
           }`}
         >
           {banner.type === "success" ? (
@@ -123,18 +130,17 @@ export function BillingActions({
         <div className="rounded-md border border-border/60 bg-card p-4 text-sm">
           {cancelAtPeriodEnd ? (
             <>
-              Ton abonnement <Badge variant="secondary">sera annulé</Badge> le{" "}
-              <span className="font-medium">{periodLabel}</span>. Tu gardes l'accès jusqu'à
-              cette date.
+              Your subscription <Badge variant="secondary">cancels</Badge> on{" "}
+              <span className="font-medium">{periodLabel}</span>. You keep access until then.
             </>
           ) : subscriptionStatus === "past_due" || subscriptionStatus === "unpaid" ? (
             <>
-              <Badge variant="destructive">Paiement en attente</Badge> Le dernier renouvellement
-              n'a pas pu être prélevé. Mets à jour ton moyen de paiement depuis le portail.
+              <Badge variant="destructive">Payment due</Badge> The last renewal could not be
+              charged. Update your payment method from the billing portal.
             </>
           ) : (
             <>
-              Prochain prélèvement le <span className="font-medium">{periodLabel}</span>.
+              Next charge on <span className="font-medium">{periodLabel}</span>.
             </>
           )}
         </div>
@@ -250,7 +256,7 @@ function CadenceToggle({
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        Mensuel
+        Monthly
       </button>
       <button
         type="button"
@@ -261,8 +267,7 @@ function CadenceToggle({
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        Annuel{" "}
-        <span className="text-xs font-normal text-muted-foreground">−20%</span>
+        Yearly <span className="text-xs font-normal text-muted-foreground">−20%</span>
       </button>
     </div>
   );

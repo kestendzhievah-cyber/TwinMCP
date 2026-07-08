@@ -56,12 +56,16 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: `${serverSlug} · dashboard` }),
       });
-      if (!res.ok) throw new Error("key creation failed");
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        setKeyError(e.message ?? "Could not create an API key. Try from the API keys page.");
+        return;
+      }
       const data = (await res.json()) as { key: string };
       setApiKey(data.key);
     } catch (err) {
       console.error("[connect generate key]", err);
-      setKeyError("Could not create an API key. Try again from the API keys page.");
+      setKeyError("Network error — try again.");
     } finally {
       setGenerating(false);
     }
