@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import type { Plan } from "@/db/schema/core";
 import { PLAN_LABELS } from "@/lib/plan-features";
 import {
+  Activity,
   BookOpen,
   Boxes,
   Key,
@@ -36,6 +37,7 @@ const links = [
   { href: "/dashboard/libraries", label: "Libraries", icon: Library },
   { href: "/dashboard/policies", label: "Policies", icon: Shield },
   { href: "/dashboard/team", label: "Team", icon: Users },
+  { href: "/dashboard/usage", label: "Usage", icon: Activity },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
