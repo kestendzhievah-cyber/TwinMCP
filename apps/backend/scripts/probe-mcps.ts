@@ -76,6 +76,16 @@ const ALL_MCPS: ProbeMcp[] = [
     start: "uvx mcp-server-time",
     call: { name: "get_current_time", args: { timezone: "UTC" } },
   },
+  {
+    slug: "git",
+    install:
+      "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh; " +
+      "git --version && mkdir -p /workspace/home/gitrepo && cd /workspace/home/gitrepo && " +
+      "git init -q && git config user.email probe@twinmcp && git config user.name probe && " +
+      "echo hello > README.md && git add -A && git commit -q -m init",
+    start: "uvx mcp-server-git --repository /workspace/home/gitrepo",
+    call: { name: "git_status", args: { repo_path: "/workspace/home/gitrepo" } },
+  },
 ];
 
 type JsonRpc = { id?: unknown; result?: Record<string, unknown>; error?: unknown };

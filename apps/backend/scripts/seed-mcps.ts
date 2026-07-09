@@ -137,6 +137,29 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "latest",
     configSchema: { properties: {} },
   },
+  {
+    // Python server (PyPI: mcp-server-git), run via uvx. Reads a Git repo inside
+    // the box (status/log/diff/show/branch). The user points GIT_REPOSITORY at a
+    // repo they've cloned into their box.
+    slug: "git",
+    name: "Git",
+    description:
+      "Inspect a Git repository inside your box — status, log, diff, show, branches. Point it at a repo you've cloned in.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-git --repository $GIT_REPOSITORY",
+    version: "latest",
+    configSchema: {
+      properties: {
+        GIT_REPOSITORY: {
+          type: "string",
+          required: true,
+          description: "Absolute path to a Git repo inside the box, e.g. /workspace/home/myrepo",
+        },
+      },
+    },
+  },
 ];
 
 // Servers with no viable runtime in a Node box: github (Go/Docker-only) and the
