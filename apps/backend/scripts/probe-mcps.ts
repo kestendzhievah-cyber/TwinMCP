@@ -25,6 +25,7 @@ import {
   launcherPath,
   logFileForMcp,
   startBridgeCommand,
+  stopBridgeCommand,
 } from "../src/lib/upstash/mcp-bridge";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -58,10 +59,22 @@ const ALL_MCPS: ProbeMcp[] = [
     call: null, // its only tool needs a rich thought payload — list is enough proof
   },
   {
+    slug: "everything",
+    install: "",
+    start: "npx -y @modelcontextprotocol/server-everything@2026.7.4",
+    call: { name: "echo", args: { message: "twinmcp" } },
+  },
+  {
     slug: "fetch",
     install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
     start: "uvx mcp-server-fetch",
     call: { name: "fetch", args: { url: "https://example.com" } },
+  },
+  {
+    slug: "time",
+    install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    start: "uvx mcp-server-time",
+    call: { name: "get_current_time", args: { timezone: "UTC" } },
   },
 ];
 
@@ -107,20 +120,37 @@ class McpClient {
     };
   }
 
-  async request(method: string, params: Record<string, unknown> = {}): Promise<JsonRpc> {
-    const res = await fetch(this.url, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({ jsonrpc: "2.0", id: ++this.id, method, params }),
-    });
-    const sid = res.headers.get("mcp-session-id");
-    if (sid) this.sessionId = sid;
-    const text = await res.text();
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 160)}`);
-    const parsed = parseBody(text);
-    if (!parsed) throw new Error(`unparseable response: ${text.slice(0, 160)}`);
-    if (parsed.error) throw new Error(`rpc error: ${JSON.stringify(parsed.error).slice(0, 160)}`);
-    return parsed;
+  async request(
+    method: string,
+    params: Record<string, unknown> = {},
+    attempts = 3
+  ): Promise<JsonRpc> {
+    let lastErr: unknown;
+    // Streamable-HTTP bridges occasionally answer a warm request with an empty
+    // body (SSE keep-alive raced the reply). Retry a few times before failing.
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const res = await fetch(this.url, {
+          method: "POST",
+          headers: this.headers(),
+          body: JSON.stringify({ jsonrpc: "2.0", id: ++this.id, method, params }),
+        });
+        const sid = res.headers.get("mcp-session-id");
+        if (sid) this.sessionId = sid;
+        const text = await res.text();
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 160)}`);
+        const parsed = parseBody(text);
+        if (!parsed) throw new Error(`empty/unparseable response`);
+        if (parsed.error) {
+          throw new Error(`rpc error: ${JSON.stringify(parsed.error).slice(0, 160)}`);
+        }
+        return parsed;
+      } catch (e) {
+        lastErr = e;
+        if (i < attempts - 1) await sleep(800);
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error("request failed");
   }
 
   async notify(method: string, params: Record<string, unknown> = {}): Promise<void> {
@@ -136,11 +166,15 @@ class McpClient {
     let lastErr: unknown;
     for (let i = 0; i < attempts; i++) {
       try {
-        const r = await this.request("initialize", {
-          protocolVersion: "2024-11-05",
-          capabilities: {},
-          clientInfo: { name: "twinmcp-probe", version: "1.0.0" },
-        });
+        const r = await this.request(
+          "initialize",
+          {
+            protocolVersion: "2024-11-05",
+            capabilities: {},
+            clientInfo: { name: "twinmcp-probe", version: "1.0.0" },
+          },
+          1 // one shot — the outer loop already retries during cold start
+        );
         if (r.result && (r.result.serverInfo || r.result.capabilities)) {
           await this.notify("notifications/initialized");
           return r.result;
@@ -194,37 +228,37 @@ async function main() {
     boxId = box.id;
     console.log(`   ✓ box ${box.id}`);
 
-    // 2. install steps (dedup identical installs, e.g. the uv bootstrap)
-    const installs = [...new Set(mcps.map((m) => m.install).filter(Boolean))];
-    for (const cmd of installs) {
-      console.log(`2. install: ${cmd.slice(0, 70)}…`);
-      const r = await client.exec(boxId, cmd);
-      console.log(`   status=${r.status}`);
-    }
-
-    // 3. write launchers + start every bridge (concurrent cold-download)
+    // Ports are deterministic per MCP. Process each one FULLY (install → bridge →
+    // expose → handshake) before starting the next, so only ONE cold start
+    // (npx/uvx build) runs at a time. This mirrors production — MCPs install
+    // one-by-one per box — and avoids a fork/OOM storm on a small box from many
+    // simultaneous heavy cold builds (which can make a uvx server exit 127).
     const ports = new Map<string, number>();
     mcps.forEach((m, i) => ports.set(m.slug, BRIDGE_BASE_PORT + i));
+    const ranInstalls = new Set<string>();
+
     for (const m of mcps) {
       const port = ports.get(m.slug)!;
+
+      // 2. install step (deduped — e.g. the shared uv bootstrap)
+      if (m.install && !ranInstalls.has(m.install)) {
+        console.log(`2. install: ${m.install.slice(0, 66)}…`);
+        const r = await client.exec(boxId, m.install);
+        console.log(`   status=${r.status}`);
+        ranInstalls.add(m.install);
+      }
+
+      // 3. write launcher + start the bridge
       console.log(`3. [${m.slug}] launcher on :${port} → ${m.start.slice(0, 60)}`);
       const script = buildLauncherScript({ slug: m.slug, startCmd: m.start, port, config: {} });
       await client.writeFile(boxId, launcherPath(m.slug), script);
       await client.exec(boxId, startBridgeCommand(m.slug));
-    }
 
-    // 4. expose each port to a public bearer URL
-    const endpoints = new Map<string, { url: string; token: string | null }>();
-    for (const m of mcps) {
-      const port = ports.get(m.slug)!;
+      // 4. expose the port to a public bearer URL
       const ep = await client.exposePort(boxId, port);
-      endpoints.set(m.slug, { url: ep.url, token: ep.token });
       console.log(`4. [${m.slug}] ${ep.url}  token=${ep.token ? "set" : "none"}`);
-    }
 
-    // 5. drive each MCP through the full handshake
-    for (const m of mcps) {
-      const ep = endpoints.get(m.slug)!;
+      // 5. drive this MCP through the full handshake before moving on
       const target = ep.url.replace(/\/$/, "") + MCP_STREAM_PATH;
       const mcp = new McpClient(target, ep.token);
       const row: Row = {
@@ -276,6 +310,13 @@ async function main() {
         if (log) console.log(`   --- ${m.slug} log tail ---\n${log}\n   ------`);
       }
       rows.push(row);
+
+      // Tear this MCP down before the next so peak usage stays at ONE MCP.
+      // A small box can't hold 6 node/python servers + 6 supergateways at once
+      // (the last ones OOM → 502). Production sizes the box to its MCP count;
+      // here we prove each MCP in isolation, which is what we're asking.
+      await client.exec(boxId, stopBridgeCommand(m.slug)).catch(() => undefined);
+      await client.unexposePort(boxId, port).catch(() => undefined);
     }
 
     // 6. report

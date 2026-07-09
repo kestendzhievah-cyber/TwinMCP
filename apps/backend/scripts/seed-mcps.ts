@@ -99,6 +99,18 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     configSchema: { properties: {} },
   },
   {
+    slug: "everything",
+    name: "Everything",
+    description:
+      "Reference MCP server exercising the full protocol — echo, add, long-running progress, env, images. Great for testing a connection end-to-end.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @modelcontextprotocol/server-everything@2026.7.4",
+    version: "2026.7.4",
+    configSchema: { properties: {} },
+  },
+  {
     // Official fetch server is Python-only; the box has python3 + we bootstrap uv
     // (curl installer) so it runs via `uvx`. Proven end-to-end against a real box.
     slug: "fetch",
@@ -108,6 +120,20 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     runtime: "node",
     installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
     startCmd: "uvx mcp-server-fetch",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
+  {
+    // Python server (PyPI: mcp-server-time), run via uvx like fetch. Zero config;
+    // returns the current time / converts between IANA timezones.
+    slug: "time",
+    name: "Time",
+    description:
+      "Current time and timezone conversion. Ask for the time anywhere or convert between IANA timezones.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/time",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-time",
     version: "latest",
     configSchema: { properties: {} },
   },
