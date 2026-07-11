@@ -177,7 +177,7 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
 
   if (needsResume(upstream)) {
     meter(false);
-    return jsonError(503, "Server is waking up — retry in a few seconds.");
+    return wakingUp(bodyText);
   }
   const finalResp = upstream as Response;
   meter(finalResp.status < 400);
@@ -189,6 +189,34 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Unreachable or gateway error → the box may be paused; try a resume. */
 function needsResume(u: Response | null): boolean {
   return !u || u.status === 502 || u.status === 503 || u.status === 504;
+}
+
+/** Best-effort JSON-RPC request id so a wake-up error echoes the caller's id. */
+function requestId(bodyText: string | undefined): string | number | null {
+  if (!bodyText) return null;
+  try {
+    const parsed = JSON.parse(bodyText);
+    const id = Array.isArray(parsed) ? parsed[0]?.id : parsed?.id;
+    return typeof id === "string" || typeof id === "number" ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/** JSON-RPC-shaped 503 so MCP clients surface a clean, retryable error while a
+ *  paused box finishes waking, instead of a bare text body. */
+function wakingUp(bodyText: string | undefined): NextResponse {
+  return NextResponse.json(
+    {
+      jsonrpc: "2.0",
+      id: requestId(bodyText),
+      error: {
+        code: -32001,
+        message: "MCP server is waking up from idle. Retry in a few seconds.",
+      },
+    },
+    { status: 503, headers: { "retry-after": "3" } }
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -215,9 +243,16 @@ async function forwardOnce(
   if (boxToken) headers.authorization = `Bearer ${boxToken}`;
 
   const init: RequestInit = { method, headers };
+  let timer: ReturnType<typeof setTimeout> | undefined;
   if (method === "POST") {
     headers["content-type"] = contentType ?? "application/json";
     init.body = bodyText ?? "";
+    // A JSON-RPC POST returns promptly; cap it so a hung/paused box surfaces as
+    // a resume-and-retry instead of blocking the worker indefinitely. GET is the
+    // long-lived server→client SSE stream — never time that out.
+    const ac = new AbortController();
+    timer = setTimeout(() => ac.abort(), 20_000);
+    init.signal = ac.signal;
   }
 
   try {
@@ -225,6 +260,8 @@ async function forwardOnce(
   } catch (err) {
     console.error("[mcp proxy] upstream error:", err);
     return null;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

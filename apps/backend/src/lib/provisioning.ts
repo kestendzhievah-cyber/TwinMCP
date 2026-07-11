@@ -469,9 +469,12 @@ export async function resumeServer(serverId: string): Promise<void> {
     await new Promise((r) => setTimeout(r, 1500));
   }
 
-  // Processes were released on pause — relaunch every enabled bridge.
+  // Processes were released on pause — relaunch every enabled bridge. Force
+  // prefer-offline at the exec level so even boxes whose launchers predate that
+  // flag resolve packages from the (persistent) npm cache instead of the
+  // registry, keeping the wake-up to a couple of seconds.
   await client
-    .exec(boxId, `sh ${INIT_SCRIPT_PATH}`)
+    .exec(boxId, `export npm_config_prefer_offline=true; sh ${INIT_SCRIPT_PATH}`)
     .catch((err) => console.error(`[resume] init script failed for ${serverId}:`, err));
 
   // Exposure is torn down on pause — re-expose each port and refresh its token.
