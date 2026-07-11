@@ -5,6 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
+import { CookieConsent } from "@/components/analytics/cookie-consent";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationSchema, websiteSchema } from "@/lib/seo/schema";
 
@@ -105,6 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ThemeProvider>
               {children}
               <Toaster />
+              <CookieConsent />
             </ThemeProvider>
           </PostHogProvider>
         </Suspense>

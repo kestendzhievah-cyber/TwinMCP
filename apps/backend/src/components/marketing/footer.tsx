@@ -2,6 +2,7 @@ import { Github, Twitter, ActivitySquare } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { CookieSettingsLink } from "@/components/analytics/cookie-settings-link";
 
 const columns: Array<{
   label: string;
@@ -85,6 +86,8 @@ export function MarketingFooter() {
             © {new Date().getFullYear()} TwinMCP. All rights reserved.
           </p>
           <div className="flex items-center gap-2">
+            <CookieSettingsLink className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" />
+            <span className="mx-1 h-4 w-px bg-border" aria-hidden />
             <a
               href="https://github.com/twinmcp"
               target="_blank"

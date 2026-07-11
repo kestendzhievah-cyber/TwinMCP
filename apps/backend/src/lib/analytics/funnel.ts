@@ -10,6 +10,7 @@
 // for an event. New events MUST be added here, not inlined at the call site.
 
 import posthog from "posthog-js";
+import { hasAnalyticsConsent } from "./consent";
 
 export type FunnelEvent =
   | { name: "landing_view" }
@@ -57,6 +58,9 @@ let initialized = false;
 export function initAnalytics(): void {
   if (initialized) return;
   if (typeof window === "undefined") return;
+  // No analytics cookies before the user opts in (CNIL / CPDP / ePrivacy).
+  // The cookie banner calls setConsent("granted"), which re-invokes this.
+  if (!hasAnalyticsConsent()) return;
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key) {
     // No-op when the env is unset (dev without analytics, ephemeral previews).
