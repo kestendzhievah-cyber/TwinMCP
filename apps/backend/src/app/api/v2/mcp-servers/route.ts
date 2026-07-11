@@ -112,7 +112,12 @@ export async function POST(req: NextRequest) {
       configSchema: parsed.data.configSchema ?? { properties: {} },
       publishedByUserId: session.userId,
       isOfficial: false,
-      isPublic: parsed.data.isPublic ?? false,
+      // Always private. A user-published MCP runs arbitrary install/start
+      // commands inside whichever tenant's box installs it — so it must only
+      // ever run in its own author's box until a public listing is reviewed.
+      // Public marketplace listing is an admin action (flip is_public in the
+      // DB after review), never self-serve. Ignore any client-supplied value.
+      isPublic: false,
     });
 
     logAudit({

@@ -33,14 +33,30 @@ export const configSchemaShape = z.object({
 });
 export type ConfigSchemaShape = z.infer<typeof configSchemaShape>;
 
+// User-published install/start commands run inside a box via a shell. Block the
+// characters that enable command chaining / substitution / redirection so a
+// crafted command can't break out of the intended `npx`/`uvx <pkg> [args]`
+// shape. `$` and `{}` stay allowed for config-value refs ($MY_KEY / ${MY_KEY});
+// since `(` is blocked, `$(...)` command substitution can't form, and backticks
+// are blocked. Official MCPs are seeded straight to the DB and bypass this.
+const SHELL_METACHARS = /[`;|&<>()\n\r\\]/;
+const shellSafeCmd = (max: number) =>
+  z
+    .string()
+    .min(1)
+    .max(max)
+    .refine((v) => !SHELL_METACHARS.test(v), {
+      message: "Command may not contain shell metacharacters ( ` ; | & < > ( ) \\ or newlines )",
+    });
+
 export const createMcpServerSchema = z.object({
   slug: slugSchema,
   name: z.string().min(1).max(120),
   description: z.string().max(2000).optional().default(""),
   repoUrl: z.string().url().optional(),
   runtime: z.enum(mcpRuntimes),
-  installCmd: z.string().min(1).max(500),
-  startCmd: z.string().min(1).max(500),
+  installCmd: shellSafeCmd(500),
+  startCmd: shellSafeCmd(500),
   version: z.string().min(1).max(40).default("latest"),
   configSchema: configSchemaShape.optional(),
   isPublic: z.boolean().optional().default(false),

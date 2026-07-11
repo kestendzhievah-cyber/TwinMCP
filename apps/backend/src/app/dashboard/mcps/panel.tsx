@@ -92,7 +92,6 @@ export function PublishMcpPanel({
   const [startCmd, setStartCmd] = useState("");
   const [description, setDescription] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
-  const [isPublic, setIsPublic] = useState(false);
   const [fields, setFields] = useState<ConfigField[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PublishedMcp | null>(null);
@@ -126,7 +125,6 @@ export function PublishMcpPanel({
     setStartCmd("");
     setDescription("");
     setRepoUrl("");
-    setIsPublic(false);
     setFields([]);
   }
 
@@ -160,7 +158,6 @@ export function PublishMcpPanel({
       version: version.trim() || "latest",
       installCmd: installCmd.trim() || "true",
       startCmd: startCmd.trim(),
-      isPublic,
     };
     if (description.trim()) body.description = description.trim();
     if (repoUrl.trim()) body.repoUrl = repoUrl.trim();
@@ -417,14 +414,12 @@ export function PublishMcpPanel({
                 )}
               </div>
 
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={isPublic}
-                  onChange={(e) => setIsPublic(e.target.checked)}
-                />
-                List in the public marketplace (otherwise only you can install it)
-              </label>
+              <p className="rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                Published MCPs are <span className="font-medium">private to your account</span> —
+                only you can install them on your boxes. Listing an MCP in the public marketplace is
+                reviewed manually (it runs its install/start commands in other users&apos; boxes),
+                so reach out once you&apos;d like yours listed.
+              </p>
 
               <div className="flex justify-end">
                 <Button type="submit" disabled={submitting}>
