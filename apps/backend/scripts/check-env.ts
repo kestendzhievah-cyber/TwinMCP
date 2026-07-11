@@ -58,7 +58,11 @@ const GROUPS: Group[] = [
   {
     name: "Auth (Supabase client)",
     required: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"],
-    breaks: ["sign-in, sign-up, dashboard, all session-gated endpoints"],
+    optional: ["SUPABASE_SERVICE_ROLE_KEY"],
+    breaks: [
+      "sign-in, sign-up, dashboard, all session-gated endpoints",
+      "SUPABASE_SERVICE_ROLE_KEY (optional): GDPR account deletion can't erase the Supabase auth identity without it — required for full right-to-erasure",
+    ],
     required_for_boot: true,
   },
   {

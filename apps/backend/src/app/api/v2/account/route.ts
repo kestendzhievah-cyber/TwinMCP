@@ -1,10 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { users, apiKeys, usageEvents, teamspaceMembers, servers } from "@/db/schema";
 import { serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 import { createClient } from "@/utils/supabase/server";
+import { getSupabaseAdmin } from "@/utils/supabase/admin";
 import { getBoxClient } from "@/lib/upstash/box-client";
 import { getStripe } from "@/lib/stripe";
 
@@ -52,6 +54,24 @@ export async function DELETE(req: NextRequest) {
     await db.delete(apiKeys).where(eq(apiKeys.userId, session.userId));
     await db.delete(teamspaceMembers).where(eq(teamspaceMembers.userId, session.userId));
     await db.delete(users).where(eq(users.id, session.userId));
+
+    // GDPR right-to-erasure: deleting our own rows isn't enough — the Supabase
+    // Auth identity (email, hashed password, OAuth links) lives in auth.users
+    // and must be erased too, or we'd retain PII after promising full deletion.
+    // Needs the service-role key; if it's missing we alert rather than silently
+    // leaving the identity behind.
+    const admin = getSupabaseAdmin();
+    if (admin) {
+      const { error } = await admin.auth.admin.deleteUser(session.userId);
+      if (error) {
+        console.error("[account DELETE] auth identity deletion failed:", error);
+        Sentry.captureException(error, { tags: { area: "account", stage: "auth-erasure" } });
+      }
+    } else {
+      const msg = "SUPABASE_SERVICE_ROLE_KEY not set — auth identity not erased";
+      console.error(`[account DELETE] ${msg}`);
+      Sentry.captureMessage(`[account DELETE] ${msg}`, "error");
+    }
 
     const supabase = await createClient();
     await supabase.auth.signOut();
