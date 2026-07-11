@@ -39,9 +39,9 @@ const columns: Array<{
   {
     label: "Legal",
     links: [
-      { href: "/#", label: "Terms" },
-      { href: "/#", label: "Privacy" },
-      { href: "/#", label: "Security" },
+      { href: "/legal/terms", label: "Terms" },
+      { href: "/legal/privacy", label: "Privacy" },
+      { href: "mailto:security@twinmcp.fr", label: "Security" },
     ],
   },
 ];

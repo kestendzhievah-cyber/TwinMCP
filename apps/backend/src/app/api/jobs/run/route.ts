@@ -1,14 +1,29 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import * as Sentry from "@sentry/nextjs";
 import { getReceiver, runJob, type Job } from "@/lib/queue/qstash";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// MUST stay in sync with the `Job` union in lib/queue/qstash.ts. A missing
+// variant makes QStash POST a job that fails validation → 400 (terminal, no
+// retry) → the box operation silently never runs. This bites only in
+// production (QStash enabled); inline dev mode bypasses this schema.
 const jobSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("provision-server"), serverId: z.string() }),
   z.object({ type: z.literal("destroy-server"), serverId: z.string() }),
   z.object({ type: z.literal("install-mcp"), userServerId: z.string() }),
+  z.object({
+    type: z.literal("uninstall-mcp"),
+    boxId: z.string().nullable(),
+    serverId: z.string(),
+    slug: z.string(),
+    port: z.number().nullable(),
+  }),
+  z.object({ type: z.literal("disable-mcp"), userServerId: z.string() }),
+  z.object({ type: z.literal("reconfigure-mcp"), userServerId: z.string() }),
+  z.object({ type: z.literal("reconcile-health") }),
 ]);
 
 export async function POST(req: NextRequest) {
@@ -59,6 +74,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error(`[jobs/run] job ${parsed.data.type} failed:`, err);
+    Sentry.captureException(err, { tags: { area: "jobs", jobType: parsed.data.type } });
     // Return 500 so QStash retries up to its configured limit.
     return NextResponse.json(
       { message: err instanceof Error ? err.message : "Job failed" },

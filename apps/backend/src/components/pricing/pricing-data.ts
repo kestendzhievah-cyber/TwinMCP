@@ -45,7 +45,7 @@ export const PLANS: PlanTier[] = [
     blurb: "For squads sharing context across projects.",
     monthlyUsd: 50,
     annualMonthlyUsd: 40,
-    cta: { label: "Start a team trial", href: "/sign-up?plan=team" },
+    cta: { label: "Upgrade to Team", href: "/sign-up?plan=team" },
     bullets: [
       "Unlimited servers",
       "Up to 10 members",
@@ -173,6 +173,6 @@ export const FEATURES: FeatureRow[] = [
 
 export function formatPrice(plan: PlanTier, cadence: BillingCadence): string {
   if (plan.monthlyUsd === null) return "Custom";
-  const value = cadence === "annual" ? plan.annualMonthlyUsd ?? plan.monthlyUsd : plan.monthlyUsd;
+  const value = cadence === "annual" ? (plan.annualMonthlyUsd ?? plan.monthlyUsd) : plan.monthlyUsd;
   return value === 0 ? "$0" : `$${value}`;
 }

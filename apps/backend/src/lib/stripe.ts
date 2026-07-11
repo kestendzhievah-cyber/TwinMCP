@@ -36,4 +36,18 @@ export function getPriceId(plan: BillablePlan, cadence: Cadence): string {
   return PRICES[plan][cadence];
 }
 
+/**
+ * Reverse of getPriceId: map a Stripe price ID back to our plan. Used to
+ * recover the correct plan from a subscription (e.g. after dunning) when the
+ * subscription metadata is missing. Returns null for unknown/unconfigured IDs.
+ */
+export function planFromPriceId(priceId: string | null | undefined): BillablePlan | null {
+  if (!priceId) return null;
+  for (const plan of Object.keys(PRICES) as BillablePlan[]) {
+    const pair = PRICES[plan];
+    if (priceId === pair.monthly || priceId === pair.yearly) return plan;
+  }
+  return null;
+}
+
 export const TRIAL_DAYS = Number(process.env.TRIAL_DAYS ?? 0);

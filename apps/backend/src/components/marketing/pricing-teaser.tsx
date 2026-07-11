@@ -31,7 +31,7 @@ const tiers = [
     cadence: "/ month",
     blurb: "For squads sharing context across projects.",
     features: ["Unlimited servers", "Member management", "SLA · 99.9%", "Shared API keys"],
-    cta: { label: "Start a team trial", href: "/sign-up?plan=team" },
+    cta: { label: "Upgrade to Team", href: "/sign-up?plan=team" },
     highlight: false,
   },
 ];
@@ -54,9 +54,7 @@ export function PricingTeaser() {
                 : "border-border/80"
             )}
           >
-            {t.highlight && (
-              <Badge className="absolute -top-2.5 left-6">Most popular</Badge>
-            )}
+            {t.highlight && <Badge className="absolute -top-2.5 left-6">Most popular</Badge>}
             <div className="flex items-baseline justify-between">
               <h3 className="font-semibold tracking-tight">{t.name}</h3>
             </div>
@@ -73,11 +71,7 @@ export function PricingTeaser() {
                 </li>
               ))}
             </ul>
-            <Button
-              asChild
-              variant={t.highlight ? "default" : "outline"}
-              className="mt-6 w-full"
-            >
+            <Button asChild variant={t.highlight ? "default" : "outline"} className="mt-6 w-full">
               <Link href={t.cta.href as Route}>{t.cta.label}</Link>
             </Button>
           </div>

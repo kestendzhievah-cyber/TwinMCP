@@ -85,6 +85,17 @@ if [ "$ROOT_CODE" = "000" ] || [ -z "$ROOT_CODE" ]; then
   exit 2
 fi
 
+section "Core health"
+# The most important gate: is the backend actually alive? /api/health pings
+# Postgres and returns 200 ok / 503 degraded. A deploy that 500s the backend
+# must fail smoke (and trigger rollback), not just SEO regressions.
+HEALTH_CODE=$(status_of "$BASE/api/health")
+if [ "$HEALTH_CODE" = "200" ]; then
+  ok "/api/health is 200 (backend + DB reachable)"
+else
+  bad "/api/health" "HTTP $HEALTH_CODE (backend or DB down)"
+fi
+
 section "Sitemap & robots"
 check_200 "$BASE/sitemap.xml" "/sitemap.xml is 200"
 URL_COUNT=$(body_of "$BASE/sitemap.xml" | grep -c '<url>' || true)

@@ -1,9 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
+import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { users, processedStripeEvents } from "@/db/schema";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, planFromPriceId } from "@/lib/stripe";
 import { sendUpgradeConfirmationEmail, sendPlanDowngradeEmail } from "@/lib/email";
 import { reconcileServersForPlan } from "@/lib/billing/reconcile";
 import { audit } from "@/lib/audit";
@@ -57,8 +58,10 @@ async function shouldProcess(eventId: string, type: string): Promise<boolean> {
     return inserted.length > 0;
   } catch (err) {
     // Fail open: if the idempotency table breaks, we'd rather double-bill
-    // an audit log than refuse to handle the event.
+    // an audit log than refuse to handle the event. Surface it so the team
+    // learns the guard is degraded rather than discovering it via double-sends.
     console.error("[stripe webhook] idempotency check failed:", err);
+    Sentry.captureException(err, { tags: { area: "billing", stage: "idempotency" } });
     return true;
   }
 }
@@ -197,7 +200,11 @@ export async function POST(req: NextRequest) {
         stripeSubscriptionId: sub.id,
       };
 
-      if (sub.status === "past_due" || sub.status === "unpaid") {
+      if (sub.status === "unpaid" || sub.status === "canceled") {
+        // Dunning exhausted (or canceled mid-cycle) — drop to free and stop
+        // over-quota runtimes. `past_due` is intentionally NOT downgraded here:
+        // Stripe is still retrying the card, so we keep the plan and let a
+        // banner surface the payment issue (see invoice.payment_failed).
         update.plan = "free";
         await db.update(users).set(update).where(eq(users.id, userId));
         const { stopped } = await reconcileServersForPlan(userId, "free");
@@ -210,6 +217,16 @@ export async function POST(req: NextRequest) {
         });
         notifyDowngrade(userId, sub.status).catch(() => {});
       } else {
+        // Any healthy status (active/trialing, or a recovered past_due). Restore
+        // the paid plan the subscription is for, so a customer whose payment
+        // retried successfully isn't left paying while pinned to free.
+        if (sub.status === "active" || sub.status === "trialing" || sub.status === "past_due") {
+          const restored =
+            (sub.metadata?.plan as Plan | undefined) ??
+            planFromPriceId(sub.items.data[0]?.price?.id) ??
+            undefined;
+          if (restored) update.plan = restored;
+        }
         await db.update(users).set(update).where(eq(users.id, userId));
       }
       break;

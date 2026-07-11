@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
+import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
 import { authenticateRequest } from "@/lib/auth";
@@ -140,6 +141,7 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
       });
     } catch (err) {
       console.error("[mcp proxy] token decrypt failed:", err);
+      Sentry.captureException(err, { tags: { area: "mcp-proxy", stage: "token-decrypt" } });
       meter(false);
       return jsonError(502, "MCP endpoint credentials unavailable");
     }
@@ -160,6 +162,10 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
       await resumeServer(row.serverId);
     } catch (err) {
       console.error("[mcp proxy] resume failed:", err);
+      Sentry.captureException(err, {
+        tags: { area: "mcp-proxy", stage: "resume" },
+        extra: { serverId: row.serverId },
+      });
     }
     const fresh = await reloadEndpoint(row.userServerId);
     // The bridge is cold-restarting (npx/uvx warm-up) — retry for ~30s.
