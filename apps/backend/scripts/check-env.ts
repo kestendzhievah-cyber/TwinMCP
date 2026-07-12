@@ -105,8 +105,17 @@ const GROUPS: Group[] = [
   {
     name: "Job queue (Upstash QStash) — optional",
     required: [],
-    optional: ["QSTASH_TOKEN", "QSTASH_CURRENT_SIGNING_KEY", "QSTASH_NEXT_SIGNING_KEY", "APP_URL"],
-    breaks: ["durable provisioning on serverless (silent fallback to inline fire-and-forget)"],
+    optional: [
+      "QSTASH_TOKEN",
+      "QSTASH_CURRENT_SIGNING_KEY",
+      "QSTASH_NEXT_SIGNING_KEY",
+      "APP_URL",
+      "RECONCILE_HEALTH_INTERVAL_MS",
+    ],
+    breaks: [
+      "durable provisioning on serverless (silent fallback to inline fire-and-forget)",
+      "RECONCILE_HEALTH_INTERVAL_MS (optional): in-process box-health reconciliation loop; unset = rely on a QStash reconcile-health cron",
+    ],
   },
   {
     name: "Public URLs / CORS — optional",
