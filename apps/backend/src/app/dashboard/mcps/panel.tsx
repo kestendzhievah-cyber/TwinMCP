@@ -417,8 +417,15 @@ export function PublishMcpPanel({
               <p className="rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                 Published MCPs are <span className="font-medium">private to your account</span> —
                 only you can install them on your boxes. Listing an MCP in the public marketplace is
-                reviewed manually (it runs its install/start commands in other users&apos; boxes),
-                so reach out once you&apos;d like yours listed.
+                reviewed manually (it runs its install/start commands in other users&apos; boxes).
+                To request a public listing, email{" "}
+                <a
+                  href="mailto:hello@twinmcp.fr?subject=Public%20MCP%20listing%20request"
+                  className="font-medium underline hover:text-foreground"
+                >
+                  hello@twinmcp.fr
+                </a>
+                .
               </p>
 
               <div className="flex justify-end">

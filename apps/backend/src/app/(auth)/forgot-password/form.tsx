@@ -40,18 +40,17 @@ export function ForgotPasswordForm() {
         <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
           <Mail className="h-5 w-5 text-muted-foreground" />
         </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Vérifie tes emails</h1>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Check your email</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Si un compte existe pour{" "}
-          <span className="font-medium text-foreground">{email}</span>, un lien de réinitialisation
-          vient d&apos;être envoyé.
+          If an account exists for <span className="font-medium text-foreground">{email}</span>, a
+          reset link has just been sent.
         </p>
         <Link
           href={"/sign-in" as Route}
           className="mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:underline"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Retour à la connexion
+          Back to sign in
         </Link>
       </div>
     );
@@ -64,13 +63,13 @@ export function ForgotPasswordForm() {
         className="mb-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Retour à la connexion
+        Back to sign in
       </Link>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Mot de passe oublié ?</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Forgot your password?</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Entre ton email, on t&apos;envoie un lien pour en choisir un nouveau.
+          Enter your email and we&apos;ll send you a link to choose a new one.
         </p>
       </div>
 
@@ -99,7 +98,7 @@ export function ForgotPasswordForm() {
         </div>
 
         <Button type="submit" disabled={loading || !email} className="h-10">
-          {loading ? "Envoi…" : "Envoyer le lien"}
+          {loading ? "Sending…" : "Send link"}
         </Button>
       </form>
     </div>

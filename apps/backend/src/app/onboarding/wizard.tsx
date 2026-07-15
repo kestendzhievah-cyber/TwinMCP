@@ -192,7 +192,11 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
             serverId={server.id}
             serverName={server.name}
             serverSlug={server.slug}
+            // twinmcp-docs is auto-installed on every server, so it's a real,
+            // working default when the user skipped the marketplace step. Flag it
+            // so Connect labels it honestly instead of silently substituting.
             mcpSlug={mcpSlug ?? "twinmcp-docs"}
+            isDocsDefault={!mcpSlug}
             ide={ide ?? "other"}
             onFinish={handleFinish}
             onBack={() => setStep(3)}

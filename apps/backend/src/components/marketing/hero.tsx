@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DemoModal } from "./demo-modal";
 import { HeroMockup } from "./hero-mockup";
 
 export function Hero() {
@@ -42,8 +41,8 @@ export function Hero() {
             >
               MCP servers
             </a>{" "}
-            in isolated runtimes you control — provisioned, scaled, and connected to Cursor,
-            Claude Code, or Windsurf in 2 minutes. No Docker, no infra, no VPS.
+            in isolated runtimes you control — provisioned, scaled, and connected to Cursor, Claude
+            Code, or Windsurf in 2 minutes. No Docker, no infra, no VPS.
           </p>
 
           <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -53,12 +52,9 @@ export function Hero() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <DemoModal>
-              <Button size="lg" variant="outline">
-                <Play className="h-4 w-4" />
-                Watch 2-min demo
-              </Button>
-            </DemoModal>
+            <Button asChild size="lg" variant="outline">
+              <Link href={"/#how-it-works" as Route}>See how it works</Link>
+            </Button>
           </div>
 
           <p className="mt-5 text-xs text-muted-foreground">

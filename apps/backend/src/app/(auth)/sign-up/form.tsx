@@ -32,8 +32,7 @@ export function SignUpForm() {
   const planParam = searchParams.get("plan");
   const selectedPlan = planParam && allowedPlans.has(planParam) ? planParam : null;
   const cadenceParam = searchParams.get("cadence");
-  const selectedCadence =
-    cadenceParam && allowedCadences.has(cadenceParam) ? cadenceParam : null;
+  const selectedCadence = cadenceParam && allowedCadences.has(cadenceParam) ? cadenceParam : null;
   // Creator landing → carry the slug through the email-confirm round trip
   // so the post-signup checkout can pre-apply the discount.
   const promoParam = searchParams.get("promo");
@@ -162,11 +161,11 @@ export function SignUpForm() {
         <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
           <Mail className="h-5 w-5 text-muted-foreground" />
         </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Vérifie tes emails</h1>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Check your email</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Un lien de confirmation a été envoyé à{" "}
-          <span className="font-medium text-foreground">{email}</span>. Clique dessus pour activer
-          ton compte.
+          A confirmation link has been sent to{" "}
+          <span className="font-medium text-foreground">{email}</span>. Click it to activate your
+          account.
         </p>
 
         <div role="alert" aria-live="assertive" className="mt-4 min-h-[2.5rem]">
@@ -186,7 +185,7 @@ export function SignUpForm() {
             disabled={resendCooldown > 0}
             className="h-10"
           >
-            {resendCooldown > 0 ? `Renvoyer dans ${resendCooldown}s` : "Renvoyer le lien"}
+            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend link"}
           </Button>
           <button
             type="button"
@@ -198,7 +197,7 @@ export function SignUpForm() {
             }}
             className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            Mauvaise adresse ? Recommencer
+            Wrong address? Start over
           </button>
         </div>
       </div>
@@ -208,20 +207,20 @@ export function SignUpForm() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Crée ton compte TwinMCP</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Create your TwinMCP account</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Gratuit à vie, sans carte bancaire. Premier serveur en moins de 2 minutes.
+          Free forever, no credit card. Your first server in under 2 minutes.
         </p>
         {selectedPlan && (
           <Badge variant="secondary" className="mt-4 inline-flex items-center gap-1.5">
             <Sparkles className="h-3 w-3" />
-            <span>Inscription pour {planLabels[selectedPlan]}</span>
+            <span>Signing up for {planLabels[selectedPlan]}</span>
           </Badge>
         )}
       </div>
 
       <OAuthButtons returnTo={returnTo} />
-      <OAuthDivider>ou par email</OAuthDivider>
+      <OAuthDivider>or with email</OAuthDivider>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">
@@ -239,12 +238,12 @@ export function SignUpForm() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">Mot de passe</Label>
+          <Label htmlFor="password">Password</Label>
           <Input
             id="password"
             type="password"
             autoComplete="new-password"
-            placeholder="Au moins 8 caractères"
+            placeholder="At least 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -270,31 +269,31 @@ export function SignUpForm() {
           disabled={loading || !email || passwordScore(password) < 2}
           className="h-10"
         >
-          {loading ? "Création…" : "Créer mon compte"}
+          {loading ? "Creating…" : "Create my account"}
         </Button>
       </form>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        En créant un compte tu acceptes nos{" "}
+        By creating an account you agree to our{" "}
         <Link href={"/legal/terms" as Route} className="underline-offset-4 hover:underline">
-          Conditions
+          Terms
         </Link>{" "}
-        et notre{" "}
+        and our{" "}
         <Link href={"/legal/privacy" as Route} className="underline-offset-4 hover:underline">
-          Politique de confidentialité
+          Privacy Policy
         </Link>
         .
       </p>
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        Déjà un compte ?{" "}
+        Already have an account?{" "}
         <Link
           href={
             `/sign-in?returnTo=${encodeURIComponent(returnTo)}${email ? `&email=${encodeURIComponent(email)}` : ""}` as Route
           }
           className="font-medium text-foreground hover:underline"
         >
-          Se connecter
+          Sign in
         </Link>
       </p>
     </div>

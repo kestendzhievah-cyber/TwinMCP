@@ -142,7 +142,25 @@ jobs:
         with:
           version: 10
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @twinmcp/backend db:migrate
+      - name: Guard — require the DB secret
+        # Fail LOUD if the secret is missing. Without it db:migrate exits 1
+        # silently and the app boots against an old schema (this exact gap left
+        # prod stuck at an old migration once).
+        run: |
+          if [ -z "${DATABASE_URL_UNPOOLED}" ]; then
+            echo "::error::DATABASE_URL_UNPOOLED secret is not set — migrations cannot run. Add it in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      - name: Apply migrations
+        run: pnpm --filter @twinmcp/backend db:migrate
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      - name: Seed official MCP catalog (idempotent)
+        # Ensures the marketplace + auto-installed twinmcp-docs are never empty on
+        # a fresh/updated DB. Idempotent (onConflictDoUpdate in seed-mcps.ts).
+        run: pnpm --filter @twinmcp/backend seed:mcps
         env:
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
 
