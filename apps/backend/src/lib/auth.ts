@@ -35,6 +35,7 @@ export async function authenticateRequest(req: Request): Promise<AuthedContext |
       apiKeyId: apiKeys.id,
       userId: apiKeys.userId,
       revokedAt: apiKeys.revokedAt,
+      expiresAt: apiKeys.expiresAt,
       plan: users.plan,
     })
     .from(apiKeys)
@@ -43,7 +44,11 @@ export async function authenticateRequest(req: Request): Promise<AuthedContext |
     .limit(1);
 
   const row = rows[0];
-  if (!row || row.revokedAt) return null;
+  // Reject revoked keys AND expired ones (expiresAt in the past) — an expiry
+  // that isn't enforced is not an expiry.
+  if (!row || row.revokedAt || (row.expiresAt && row.expiresAt.getTime() < Date.now())) {
+    return null;
+  }
 
   void db
     .update(apiKeys)

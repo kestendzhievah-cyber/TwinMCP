@@ -1,4 +1,5 @@
 import { eq, and } from "drizzle-orm";
+import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
 import { getBoxClient } from "@/lib/upstash/box-client";
@@ -226,31 +227,59 @@ export async function provisionServer(serverId: string): Promise<void> {
       if (inst.bridgePort && inst.bridgePort >= nextPort) nextPort = inst.bridgePort + 1;
     }
 
+    // Bring up each MCP INDEPENDENTLY: one MCP with a bad install/start command
+    // must not error the whole server. Failed MCPs keep a null endpoint (the
+    // proxy then returns "not provisioned; restart the server"); the user can fix
+    // config and restart to retry just that one.
     const launchedSlugs: string[] = [];
+    const failedSlugs: string[] = [];
     for (const inst of installations) {
       if (inst.mcpSlug === TWINMCP_DOCS_SLUG) continue; // served by the control plane
       const port = inst.bridgePort ?? nextPort++;
-      const { endpointUrl, token } = await setupMcpBridge(boxId, {
-        slug: inst.mcpSlug,
-        installCmd: inst.installCmd,
-        startCmd: inst.startCmd,
-        port,
-        config: decryptMcpConfig(inst),
-      });
-      await persistEndpoint(inst.usId, port, endpointUrl, token);
-      launchedSlugs.push(inst.mcpSlug);
+      try {
+        const { endpointUrl, token } = await setupMcpBridge(boxId, {
+          slug: inst.mcpSlug,
+          installCmd: inst.installCmd,
+          startCmd: inst.startCmd,
+          port,
+          config: decryptMcpConfig(inst),
+        });
+        await persistEndpoint(inst.usId, port, endpointUrl, token);
+        launchedSlugs.push(inst.mcpSlug);
+      } catch (err) {
+        console.error(`[provision] MCP ${inst.mcpSlug} failed on server ${serverId}:`, err);
+        Sentry.captureException(err, {
+          tags: { area: "provision", mcp: inst.mcpSlug },
+          extra: { serverId },
+        });
+        failedSlugs.push(inst.mcpSlug);
+      }
     }
 
     // Write the restart script that resumeServer re-runs on wake. (Non-keep-alive
     // boxes have no initCommand, so the proxy relaunches bridges on the next
-    // request via resumeServer.)
+    // request via resumeServer.) Only the MCPs that actually came up.
     if (launchedSlugs.length > 0) {
       await client.writeFile(boxId, INIT_SCRIPT_PATH, buildInitScript(launchedSlugs));
     }
 
+    if (failedSlugs.length > 0) {
+      console.warn(
+        `[provision] server ${serverId}: ${launchedSlugs.length} MCP(s) up, failed: ${failedSlugs.join(", ")}`
+      );
+    }
+
+    // Server is usable unless EVERY box MCP failed (twinmcp-docs is always served
+    // by the control plane, so it alone doesn't count as a working box runtime).
+    const boxMcpCount = installations.filter((i) => i.mcpSlug !== TWINMCP_DOCS_SLUG).length;
+    const allBoxMcpsFailed = boxMcpCount > 0 && launchedSlugs.length === 0;
     await db
       .update(servers)
-      .set({ status: "running", lastHeartbeatAt: new Date(), updatedAt: new Date() })
+      .set({
+        status: allBoxMcpsFailed ? "error" : "running",
+        lastHeartbeatAt: new Date(),
+        updatedAt: new Date(),
+      })
       .where(eq(servers.id, serverId));
   } catch (err) {
     console.error(`[provision] failed for server ${serverId}:`, err);

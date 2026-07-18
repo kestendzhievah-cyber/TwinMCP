@@ -17,6 +17,8 @@ interface StepConnectProps {
   serverName: string;
   serverSlug: string;
   mcpSlug: string;
+  /** True when the user skipped installing an MCP and we default to twinmcp-docs. */
+  isDocsDefault?: boolean;
   ide: IdePreference;
   onFinish: () => void;
   onBack: () => void;
@@ -28,6 +30,7 @@ export function StepConnect({
   serverName,
   serverSlug,
   mcpSlug,
+  isDocsDefault = false,
   ide,
   onFinish,
   onBack,
@@ -117,6 +120,17 @@ export function StepConnect({
           Drop this block into your client config. Your API key is shown once — copy it now, you can
           rotate it later from <code className="font-mono">/dashboard</code>.
         </p>
+        <p className="mt-2 text-sm">
+          Connecting to <span className="font-medium">{serverName}</span> ·{" "}
+          <code className="font-mono text-xs">{mcpSlug}</code>
+        </p>
+        {isDocsDefault && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            You skipped installing an MCP, so this connects the built-in{" "}
+            <span className="font-medium">TwinMCP Docs</span> MCP. Add more anytime from the{" "}
+            <span className="font-medium">Marketplace</span>.
+          </p>
+        )}
       </div>
 
       {keyError && (

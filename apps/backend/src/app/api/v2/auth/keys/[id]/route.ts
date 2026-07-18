@@ -19,7 +19,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const retryAfter = Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000));
     const response = jsonError(
       429,
-      "Trop d'opérations sur tes clés API. Patiente un instant avant de réessayer.",
+      "Too many API-key operations. Please wait a moment and try again.",
       { retryAfter }
     );
     response.headers.set("Retry-After", String(retryAfter));

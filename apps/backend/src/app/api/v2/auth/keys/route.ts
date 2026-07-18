@@ -20,11 +20,9 @@ const createSchema = z.object({
 
 function rateLimited(reset: number) {
   const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
-  return jsonError(
-    429,
-    "Trop d'opérations sur tes clés API. Patiente un instant avant de réessayer.",
-    { retryAfter }
-  );
+  return jsonError(429, "Too many API-key operations. Please wait a moment and try again.", {
+    retryAfter,
+  });
 }
 
 export async function GET(req: NextRequest) {
@@ -94,21 +92,19 @@ export async function POST(req: NextRequest) {
       const required = minPlanForLimit("apiKeys", active.length + 1);
       const upsell = required ? ` Upgrade to ${PLAN_LABELS[required]} for more.` : "";
       return forbidden(
-        `You've reached your plan's limit of ${limit} API key${limit > 1 ? "s" : ""}.${upsell}`,
+        `You've reached your plan's limit of ${limit} API key${limit > 1 ? "s" : ""}.${upsell}`
       );
     }
 
     const { raw, prefix, hash } = generateApiKey();
     const id = randomUUID();
-    await db
-      .insert(apiKeys)
-      .values({
-        id,
-        userId: session.userId,
-        keyHash: hash,
-        prefix,
-        name: parsed.data.name ?? null,
-      });
+    await db.insert(apiKeys).values({
+      id,
+      userId: session.userId,
+      keyHash: hash,
+      prefix,
+      name: parsed.data.name ?? null,
+    });
     {
       const ctx = auditCtxFromRequest(req);
       audit({

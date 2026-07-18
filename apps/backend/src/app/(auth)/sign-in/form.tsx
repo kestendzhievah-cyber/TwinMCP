@@ -86,9 +86,9 @@ export function SignInForm() {
         <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
           <Mail className="h-5 w-5 text-muted-foreground" />
         </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Vérifie ta boîte mail</h1>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Check your inbox</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Un lien de connexion a été envoyé à{" "}
+          A sign-in link has been sent to{" "}
           <span className="font-medium text-foreground">{email}</span>.
         </p>
 
@@ -101,8 +101,13 @@ export function SignInForm() {
         </div>
 
         <div className="mt-6 flex flex-col gap-2 self-stretch">
-          <Button type="button" variant="outline" onClick={handleResendMagicLink} disabled={loading}>
-            {loading ? "Envoi…" : "Renvoyer le lien"}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleResendMagicLink}
+            disabled={loading}
+          >
+            {loading ? "Sending…" : "Resend link"}
           </Button>
           <button
             type="button"
@@ -113,7 +118,7 @@ export function SignInForm() {
             }}
             className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
-            Utiliser une autre méthode
+            Use a different method
           </button>
         </div>
       </div>
@@ -123,14 +128,12 @@ export function SignInForm() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Connexion à TwinMCP</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Choisis la méthode qui te convient.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">Sign in to TwinMCP</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Choose the method that works for you.</p>
       </div>
 
       <OAuthButtons returnTo={returnTo} />
-      <OAuthDivider>ou par email</OAuthDivider>
+      <OAuthDivider>or with email</OAuthDivider>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">
@@ -150,12 +153,12 @@ export function SignInForm() {
         {mode === "password" && (
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Mot de passe</Label>
+              <Label htmlFor="password">Password</Label>
               <Link
                 href={"/forgot-password" as Route}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                Oublié ?
+                Forgot?
               </Link>
             </div>
             <Input
@@ -181,12 +184,12 @@ export function SignInForm() {
           )}
         </div>
 
-        <Button type="submit" disabled={loading || !email || (mode === "password" && !password)} className="h-10">
-          {loading
-            ? "Connexion…"
-            : mode === "password"
-              ? "Se connecter"
-              : "Recevoir un lien magique"}
+        <Button
+          type="submit"
+          disabled={loading || !email || (mode === "password" && !password)}
+          className="h-10"
+        >
+          {loading ? "Signing in…" : mode === "password" ? "Sign in" : "Send me a magic link"}
         </Button>
 
         <button
@@ -197,21 +200,19 @@ export function SignInForm() {
           }}
           className="text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          {mode === "password"
-            ? "Utiliser un lien magique à la place"
-            : "Utiliser un mot de passe à la place"}
+          {mode === "password" ? "Use a magic link instead" : "Use a password instead"}
         </button>
       </form>
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        Pas encore de compte ?{" "}
+        Don&apos;t have an account yet?{" "}
         <Link
           href={
             `/sign-up?returnTo=${encodeURIComponent(returnTo)}${email ? `&email=${encodeURIComponent(email)}` : ""}` as Route
           }
           className="font-medium text-foreground hover:underline"
         >
-          Créer un compte
+          Create an account
         </Link>
       </p>
     </div>

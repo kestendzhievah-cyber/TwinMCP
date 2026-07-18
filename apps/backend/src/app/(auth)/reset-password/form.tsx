@@ -47,8 +47,8 @@ export function ResetPasswordForm() {
         <div className="grid h-12 w-12 place-items-center rounded-full bg-emerald-500/15">
           <CheckCircle2 className="h-5 w-5 text-emerald-500" />
         </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Mot de passe mis à jour</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Redirection vers ton dashboard…</p>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Password updated</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Redirecting to your dashboard…</p>
       </div>
     );
   }
@@ -56,15 +56,15 @@ export function ResetPasswordForm() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Nouveau mot de passe</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">New password</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Choisis-en un solide — au moins 8 caractères, idéalement avec chiffres et majuscules.
+          Pick a strong one — at least 8 characters, ideally with numbers and capitals.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">Nouveau mot de passe</Label>
+          <Label htmlFor="password">New password</Label>
           <Input
             id="password"
             type="password"
@@ -82,7 +82,7 @@ export function ResetPasswordForm() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="confirm">Confirmer le mot de passe</Label>
+          <Label htmlFor="confirm">Confirm password</Label>
           <Input
             id="confirm"
             type="password"
@@ -93,9 +93,7 @@ export function ResetPasswordForm() {
             minLength={8}
             aria-invalid={mismatch}
           />
-          {mismatch && (
-            <p className="text-xs text-destructive">Les mots de passe ne correspondent pas.</p>
-          )}
+          {mismatch && <p className="text-xs text-destructive">Passwords don&apos;t match.</p>}
         </div>
 
         <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
@@ -108,14 +106,14 @@ export function ResetPasswordForm() {
         </div>
 
         <Button type="submit" disabled={loading || !canSubmit} className="h-10">
-          {loading ? "Mise à jour…" : "Mettre à jour le mot de passe"}
+          {loading ? "Updating…" : "Update password"}
         </Button>
       </form>
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        Tu te souviens finalement ?{" "}
+        Remembered it after all?{" "}
         <Link href={"/sign-in" as Route} className="font-medium text-foreground hover:underline">
-          Se connecter
+          Sign in
         </Link>
       </p>
     </div>

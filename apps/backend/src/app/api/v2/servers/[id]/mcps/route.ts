@@ -1,15 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mcpServers, userServers } from "@/db/schema";
 import { badRequest, forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
-import {
-  assertServerOwnership,
-  ForbiddenError,
-  NotFoundError,
-} from "@/lib/auth/rbac";
+import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
 import {
   installMcpSchema,
   configSchemaShape,
@@ -18,14 +14,13 @@ import {
 import { encryptConfig } from "@/lib/crypto/config-encryption";
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { enqueue } from "@/lib/queue/qstash";
+import { maxMcpsForBoxSize } from "@/lib/plan-features";
+import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireSessionUser(req);
   if (!session) return unauthorized("Sign in required");
   const { id: serverId } = await params;
@@ -55,10 +50,7 @@ export async function GET(
   }
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireSessionUser(req);
   if (!session) return unauthorized("Sign in required");
   const { id: serverId } = await params;
@@ -73,7 +65,7 @@ export async function POST(
   if (!parsed.success) return badRequest(parsed.error.message);
 
   try {
-    await assertServerOwnership(session.userId, serverId);
+    const server = await assertServerOwnership(session.userId, serverId);
 
     const db = getDb();
     const [mcp] = await db
@@ -84,6 +76,29 @@ export async function POST(
     if (!mcp) return notFound("MCP server not in catalog");
     if (!mcp.isPublic && mcp.publishedByUserId !== session.userId) {
       return notFound("MCP server not in catalog");
+    }
+
+    // Capacity guard: every box-hosted MCP runs at once, so too many OOM the box
+    // (and flip the whole server to `error`). twinmcp-docs runs on the control
+    // plane, so it doesn't count against the box.
+    if (mcp.slug !== TWINMCP_DOCS_SLUG) {
+      const cap = maxMcpsForBoxSize(server.boxSize);
+      const [tally] = await db
+        .select({ n: count() })
+        .from(userServers)
+        .innerJoin(mcpServers, eq(mcpServers.id, userServers.mcpServerId))
+        .where(
+          and(
+            eq(userServers.serverId, serverId),
+            eq(userServers.enabled, true),
+            ne(mcpServers.slug, TWINMCP_DOCS_SLUG)
+          )
+        );
+      if ((tally?.n ?? 0) >= cap) {
+        return forbidden(
+          `A ${server.boxSize} box can run up to ${cap} MCPs at once. Remove one, or create a server with a larger box.`
+        );
+      }
     }
 
     const schemaParse = configSchemaShape.safeParse(mcp.configSchema);

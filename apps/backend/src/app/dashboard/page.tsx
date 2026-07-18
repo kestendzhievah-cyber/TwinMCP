@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { apiKeys, usageEvents, users, servers } from "@/db/schema";
-import { and, count, desc, eq, gte, isNull, ne } from "drizzle-orm";
+import { apiKeys, usageMetrics, userServers, users, servers } from "@/db/schema";
+import { and, count, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
 import { getDailyLimit } from "@/lib/rate-limit";
 import { SERVER_QUOTAS } from "@/lib/quota";
 import { ApiKeysPanel } from "./api-keys-panel";
@@ -16,7 +16,10 @@ export default async function DashboardPage() {
   if (!user) return null;
 
   const db = getDb();
-  const dayAgo = new Date(Date.now() - 86_400_000);
+  // Today's MCP requests are what the daily rate limit governs — count them from
+  // usage_metrics (per UTC day), matching the Usage page, not usage_events.
+  const now = new Date();
+  const utcDayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
   // Independent queries — run them concurrently instead of in a waterfall.
   const [userRows, keys, usageRows, serverRows] = await Promise.all([
@@ -33,9 +36,10 @@ export default async function DashboardPage() {
       .where(and(eq(apiKeys.userId, user.id), isNull(apiKeys.revokedAt)))
       .orderBy(desc(apiKeys.createdAt)),
     db
-      .select({ n: count() })
-      .from(usageEvents)
-      .where(and(eq(usageEvents.userId, user.id), gte(usageEvents.timestamp, dayAgo))),
+      .select({ n: sql<number>`coalesce(sum(${usageMetrics.requestCount}), 0)::int` })
+      .from(usageMetrics)
+      .innerJoin(userServers, eq(usageMetrics.userServerId, userServers.id))
+      .where(and(eq(userServers.userId, user.id), gte(usageMetrics.periodStart, utcDayStart))),
     db
       .select({ n: count() })
       .from(servers)
@@ -73,7 +77,7 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Usage today</CardDescription>
+            <CardDescription>MCP requests today</CardDescription>
             <CardTitle className="text-2xl">
               {used.toLocaleString()}{" "}
               <span className="text-sm font-normal text-muted-foreground">

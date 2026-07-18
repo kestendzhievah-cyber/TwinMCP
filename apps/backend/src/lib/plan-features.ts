@@ -120,6 +120,21 @@ export function minPlanForBoxSize(size: BoxSize): Plan | null {
   return ladder.find((p) => PLAN_CAPABILITIES[p].boxSizes.includes(size)) ?? null;
 }
 
+// Max concurrent MCP bridges a box of each size can run before it risks OOM.
+// EVERY installed MCP runs simultaneously in the box (twinmcp-docs is served by
+// the control plane and does NOT count). A small box was observed to OOM around
+// ~6 heavy MCPs, so caps are conservative. Overridable via env for tuning.
+const MCP_CAPACITY: Record<BoxSize, number> = {
+  small: Number(process.env.MAX_MCPS_SMALL ?? 4),
+  medium: Number(process.env.MAX_MCPS_MEDIUM ?? 8),
+  large: Number(process.env.MAX_MCPS_LARGE ?? 16),
+};
+
+/** How many box-hosted MCPs a given box size may run at once. */
+export function maxMcpsForBoxSize(size: BoxSize): number {
+  return MCP_CAPACITY[size] ?? 4;
+}
+
 /** Lowest plan that grants a boolean capability — used for upsell copy. */
 export function minPlanFor(capability: BooleanCapability): Plan {
   const ladder: Plan[] = ["free", "pro", "team"];
@@ -141,7 +156,7 @@ export class PlanRestrictionError extends Error {
   constructor(
     public readonly feature: string,
     public readonly requiredPlan: Plan,
-    message?: string,
+    message?: string
   ) {
     super(message ?? `This action requires the ${PLAN_LABELS[requiredPlan]} plan.`);
     this.name = "PlanRestrictionError";
