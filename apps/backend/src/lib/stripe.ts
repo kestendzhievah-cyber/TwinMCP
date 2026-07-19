@@ -50,4 +50,35 @@ export function planFromPriceId(priceId: string | null | undefined): BillablePla
   return null;
 }
 
+export type SubscriptionPlanAction =
+  | { kind: "downgrade" } // drop to free + stop over-quota runtimes
+  | { kind: "restore"; plan: BillablePlan } // (re)apply the paid plan
+  | { kind: "none" }; // leave the plan untouched, just update status fields
+
+/**
+ * Decide what to do to a user's plan from a Stripe subscription's status.
+ * Extracted as a PURE function so the money path is unit-testable.
+ *
+ * - `unpaid` / `canceled` → downgrade to free (dunning exhausted / canceled).
+ * - `active` / `trialing` / `past_due` → restore the paid plan (from the
+ *   subscription metadata, else the price id). `past_due` deliberately keeps
+ *   the plan because Stripe is still retrying the card — this is what fixes the
+ *   "customer pays but is stuck on free after a recovered payment" bug.
+ * - anything else (`incomplete`, `paused`, …) → leave the plan as-is.
+ */
+export function planActionForSubscription(opts: {
+  status: string;
+  metadataPlan?: string | null;
+  priceId?: string | null;
+}): SubscriptionPlanAction {
+  const { status, metadataPlan, priceId } = opts;
+  if (status === "unpaid" || status === "canceled") return { kind: "downgrade" };
+  if (status === "active" || status === "trialing" || status === "past_due") {
+    const plan =
+      metadataPlan === "pro" || metadataPlan === "team" ? metadataPlan : planFromPriceId(priceId);
+    return plan ? { kind: "restore", plan } : { kind: "none" };
+  }
+  return { kind: "none" };
+}
+
 export const TRIAL_DAYS = Number(process.env.TRIAL_DAYS ?? 0);
