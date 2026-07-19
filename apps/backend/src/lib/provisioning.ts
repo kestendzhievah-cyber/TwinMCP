@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
@@ -147,17 +147,27 @@ async function clearEndpoint(userServerId: string): Promise<void> {
     .where(eq(userServers.id, userServerId));
 }
 
-/** Lowest free bridge port for a server (>= BRIDGE_BASE_PORT). */
-async function nextFreePort(serverId: string): Promise<number> {
-  const existing = await getDb()
-    .select({ p: userServers.bridgePort })
-    .from(userServers)
-    .where(eq(userServers.serverId, serverId));
-  let port = BRIDGE_BASE_PORT;
-  for (const e of existing) {
-    if (e.p && e.p >= port) port = e.p + 1;
-  }
-  return port;
+/**
+ * Atomically reserve the lowest free bridge port (>= BRIDGE_BASE_PORT) for a
+ * server and write it onto the user_server row. A per-server transaction-level
+ * advisory lock serializes concurrent installs so two don't grab the SAME port
+ * (which would then fail to bind in the box). The lock only guards the quick
+ * read+reserve, not the long box work that follows.
+ */
+async function reserveBridgePort(serverId: string, userServerId: string): Promise<number> {
+  return getDb().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${serverId}))`);
+    const existing = await tx
+      .select({ p: userServers.bridgePort })
+      .from(userServers)
+      .where(eq(userServers.serverId, serverId));
+    let port = BRIDGE_BASE_PORT;
+    for (const e of existing) {
+      if (e.p && e.p >= port) port = e.p + 1;
+    }
+    await tx.update(userServers).set({ bridgePort: port }).where(eq(userServers.id, userServerId));
+    return port;
+  });
 }
 
 export async function provisionServer(serverId: string): Promise<void> {
@@ -358,7 +368,7 @@ export async function installMcpInBox(userServerId: string): Promise<void> {
   if (row.mcpSlug === TWINMCP_DOCS_SLUG) return; // proxy-handled
   if (row.serverStatus !== "running" || !row.serverBoxId) return; // deferred to next start
 
-  const port = row.bridgePort ?? (await nextFreePort(row.serverId));
+  const port = row.bridgePort ?? (await reserveBridgePort(row.serverId, row.usId));
 
   const { endpointUrl, token } = await setupMcpBridge(row.serverBoxId, {
     slug: row.mcpSlug,
@@ -444,7 +454,7 @@ export async function reconfigureMcp(userServerId: string): Promise<void> {
   if (row.mcpSlug === TWINMCP_DOCS_SLUG) return;
   if (row.serverStatus !== "running" || !row.serverBoxId) return; // deferred to next start
 
-  const port = row.bridgePort ?? (await nextFreePort(row.serverId));
+  const port = row.bridgePort ?? (await reserveBridgePort(row.serverId, row.usId));
   // Stop the old process and release its URL before relaunching on the same port.
   await stopMcpBridge(row.serverBoxId, row.mcpSlug, row.bridgePort);
 
