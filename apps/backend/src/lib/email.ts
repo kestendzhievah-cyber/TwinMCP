@@ -12,6 +12,42 @@ function getResend(): Resend {
 
 const FROM = process.env.EMAIL_FROM ?? "TwinMCP <noreply@twinmcp.fr>";
 
+/** Where Team/Enterprise sales inquiries are delivered. Set SALES_EMAIL to your
+ *  inbox (e.g. your Gmail) in the environment. */
+const SALES_TO = process.env.SALES_EMAIL ?? process.env.EMAIL_FROM ?? "hello@twinmcp.fr";
+
+/** Minimal HTML escape so form values can't inject markup into the email. */
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export async function sendSalesInquiry(data: {
+  company: string;
+  name: string;
+  email: string;
+  users: number;
+  message?: string;
+}) {
+  return getResend().emails.send({
+    from: FROM,
+    to: SALES_TO,
+    replyTo: data.email,
+    subject: `TwinMCP Team inquiry — ${data.company} (${data.users} users)`,
+    html: `<h2>New Team / Enterprise inquiry</h2>
+<ul>
+  <li><strong>Company:</strong> ${esc(data.company)}</li>
+  <li><strong>Contact:</strong> ${esc(data.name)}</li>
+  <li><strong>Email:</strong> ${esc(data.email)}</li>
+  <li><strong>Number of users:</strong> ${data.users}</li>
+</ul>
+${data.message ? `<p><strong>Message:</strong><br/>${esc(data.message).replace(/\n/g, "<br/>")}</p>` : ""}`,
+  });
+}
+
 export async function sendWelcomeEmail(to: string) {
   return getResend().emails.send({
     from: FROM,

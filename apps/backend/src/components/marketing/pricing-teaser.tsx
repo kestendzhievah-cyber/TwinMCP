@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const tiers = [
   {
     name: "Free",
-    price: "$0",
+    price: "€0",
     cadence: "forever",
     blurb: "Everything to evaluate the platform.",
     features: ["1 server", "5 official MCPs", "Community support"],
@@ -18,7 +18,7 @@ const tiers = [
   },
   {
     name: "Pro",
-    price: "$20",
+    price: "€14.99",
     cadence: "/ month",
     blurb: "For developers shipping with AI every day.",
     features: ["25 servers", "Publish your own MCPs", "Audit logs · 30 days", "Priority email"],
@@ -27,11 +27,11 @@ const tiers = [
   },
   {
     name: "Team",
-    price: "$50",
-    cadence: "/ month",
-    blurb: "For squads sharing context across projects.",
-    features: ["Unlimited servers", "Member management", "SLA · 99.9%", "Shared API keys"],
-    cta: { label: "Upgrade to Team", href: "/sign-up?plan=team" },
+    price: "Custom",
+    cadence: "pricing",
+    blurb: "For companies — priced for your team size.",
+    features: ["Unlimited servers", "Member management", "SLA · 99.9%", "Priority support"],
+    cta: { label: "Contact us", href: "/enterprise" },
     highlight: false,
   },
 ];

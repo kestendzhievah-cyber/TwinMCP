@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,9 +19,11 @@ interface Props {
 
 type Cadence = "monthly" | "yearly";
 
-const PRICE_LABEL: Record<string, Record<Cadence, string>> = {
-  pro: { monthly: "$20/mo", yearly: "$16/mo billed yearly" },
-  team: { monthly: "$50/mo", yearly: "$40/mo billed yearly" },
+// Team is now contact-based (see ContactCard), so only Pro is self-serve.
+// NOTE: these are display strings — the actual charge is the Stripe price the
+// STRIPE_PRO_*_PRICE_ID points to. Keep them in sync (€14.99/mo, €135/yr).
+const PRICE_LABEL: Record<"pro", Record<Cadence, string>> = {
+  pro: { monthly: "€14.99/mo", yearly: "€135/yr" },
 };
 
 function formatPeriodEnd(iso: string | null): string | null {
@@ -66,7 +70,7 @@ export function BillingActions({
     }
   }, [params, router]);
 
-  async function checkout(target: "pro" | "team") {
+  async function checkout(target: "pro") {
     setLoading(target);
     try {
       const res = await fetch("/api/v2/billing/checkout", {
@@ -158,33 +162,14 @@ export function BillingActions({
               disabled={!!loading}
               cta="Upgrade to Pro"
             />
-            <PlanCard
-              title="Team"
-              description={`${PRICE_LABEL.team[cadence]} — 5,000 requests/day, teamspace, policies`}
-              onClick={() => checkout("team")}
-              loading={loading === "team"}
-              disabled={!!loading}
-              cta="Upgrade to Team"
-            />
+            <ContactCard />
           </div>
         </>
       )}
 
       {plan !== "free" && (
         <div className="grid gap-4 md:grid-cols-2">
-          {plan === "pro" && (
-            <>
-              <CadenceToggle cadence={cadence} onChange={setCadence} />
-              <PlanCard
-                title="Upgrade to Team"
-                description={`${PRICE_LABEL.team[cadence]} — 5,000 requests/day + teamspace management.`}
-                onClick={() => checkout("team")}
-                loading={loading === "team"}
-                disabled={!!loading}
-                cta="Upgrade"
-              />
-            </>
-          )}
+          {plan === "pro" && <ContactCard />}
           <Card>
             <CardHeader>
               <CardTitle>Manage subscription</CardTitle>
@@ -238,6 +223,25 @@ function PlanCard({
   );
 }
 
+function ContactCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Team</CardTitle>
+        <CardDescription>
+          For companies — unlimited servers, member management, and priority support. Custom pricing
+          based on your team size.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button asChild variant="secondary">
+          <Link href={"/enterprise" as Route}>Contact us</Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function CadenceToggle({
   cadence,
   onChange,
@@ -267,7 +271,7 @@ function CadenceToggle({
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        Yearly <span className="text-xs font-normal text-muted-foreground">−20%</span>
+        Yearly <span className="text-xs font-normal text-muted-foreground">−25%</span>
       </button>
     </div>
   );
