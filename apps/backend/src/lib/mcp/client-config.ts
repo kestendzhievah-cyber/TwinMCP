@@ -1,7 +1,15 @@
 // Shared MCP client-config generation — used by onboarding (StepConnect) and the
 // dashboard Connect panel. Keep this pure/client-safe (no server-only imports).
 
-export type IdeKey = "cursor" | "claude-code" | "windsurf" | "cline" | "zed" | "other";
+export type IdeKey =
+  | "cursor"
+  | "claude-desktop"
+  | "claude-code"
+  | "vscode"
+  | "windsurf"
+  | "cline"
+  | "zed"
+  | "other";
 
 export interface ClientConfig {
   filename: string;
@@ -22,7 +30,9 @@ export function proxyUrl(origin: string, serverSlug: string, mcpSlug: string): s
 
 export const IDE_LABELS: Record<IdeKey, string> = {
   cursor: "Cursor",
+  "claude-desktop": "Claude Desktop",
   "claude-code": "Claude Code",
+  vscode: "VS Code (Copilot)",
   windsurf: "Windsurf",
   cline: "Cline",
   zed: "Zed",
@@ -35,35 +45,79 @@ export function buildClientConfig(
   opts: { url: string; apiKey: string; label: string }
 ): ClientConfig {
   const { url, apiKey, label } = opts;
-  const httpEntry = { url, headers: { Authorization: `Bearer ${apiKey}` } };
+  const authHeader = `Bearer ${apiKey}`;
+  // Native Streamable-HTTP entry: a URL plus the bearer Authorization header.
+  const httpEntry = { url, headers: { Authorization: authHeader } };
+  // stdio→remote bridge for clients that only load local (stdio) servers.
+  const remoteArgs = ["-y", "mcp-remote", url, "--header", `Authorization: ${authHeader}`];
 
   switch (ide) {
     case "cursor":
+      // Cursor speaks Streamable HTTP natively (url + headers).
       return {
-        filename: "~/.cursor/mcp.json",
+        filename: "~/.cursor/mcp.json  (or project .cursor/mcp.json)",
         language: "json",
         code: JSON.stringify({ mcpServers: { [label]: httpEntry } }, null, 2),
+      };
+    case "claude-desktop":
+      // Claude Desktop loads stdio servers only — bridge the remote URL with
+      // mcp-remote (requires Node/npx on the machine).
+      return {
+        filename:
+          "claude_desktop_config.json  ·  macOS: ~/Library/Application Support/Claude/  ·  Windows: %APPDATA%\\Claude\\",
+        language: "json",
+        code: JSON.stringify(
+          { mcpServers: { [label]: { command: "npx", args: remoteArgs } } },
+          null,
+          2
+        ),
       };
     case "claude-code":
+      // Canonical path: the CLI registers an HTTP transport with the auth header.
       return {
-        filename: "project .mcp.json (or ~/.claude.json)",
-        language: "json",
-        code: JSON.stringify({ mcpServers: { [label]: httpEntry } }, null, 2),
+        filename: "Claude Code — run in your terminal",
+        language: "bash",
+        code: `claude mcp add --transport http ${label} ${url} \\\n  --header "Authorization: ${authHeader}"`,
       };
-    case "cline":
+    case "vscode":
+      // VS Code MCP: .vscode/mcp.json uses "servers" with an explicit "http" type.
       return {
-        filename: "Cline → MCP Servers (VS Code)",
+        filename: ".vscode/mcp.json",
         language: "json",
-        code: JSON.stringify({ mcpServers: { [label]: httpEntry } }, null, 2),
+        code: JSON.stringify(
+          {
+            servers: {
+              [label]: { type: "http", url, headers: { Authorization: authHeader } },
+            },
+          },
+          null,
+          2
+        ),
       };
     case "windsurf":
+      // Windsurf references a remote MCP server by `serverUrl`.
       return {
         filename: "~/.codeium/windsurf/mcp_config.json",
         language: "json",
         code: JSON.stringify(
           {
             mcpServers: {
-              [label]: { serverUrl: url, headers: { Authorization: `Bearer ${apiKey}` } },
+              [label]: { serverUrl: url, headers: { Authorization: authHeader } },
+            },
+          },
+          null,
+          2
+        ),
+      };
+    case "cline":
+      // Cline (VS Code) — Streamable HTTP remote server; type made explicit.
+      return {
+        filename: "Cline → MCP Servers → Configure  (cline_mcp_settings.json)",
+        language: "json",
+        code: JSON.stringify(
+          {
+            mcpServers: {
+              [label]: { type: "streamableHttp", url, headers: { Authorization: authHeader } },
             },
           },
           null,
@@ -76,14 +130,7 @@ export function buildClientConfig(
         filename: "~/.config/zed/settings.json",
         language: "json",
         code: JSON.stringify(
-          {
-            context_servers: {
-              [label]: {
-                command: "npx",
-                args: ["-y", "mcp-remote", url, "--header", `Authorization: Bearer ${apiKey}`],
-              },
-            },
-          },
+          { context_servers: { [label]: { command: "npx", args: remoteArgs } } },
           null,
           2
         ),
