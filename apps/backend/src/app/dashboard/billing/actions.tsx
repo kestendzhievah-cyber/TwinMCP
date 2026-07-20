@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface Props {
   plan: string;
@@ -18,13 +19,6 @@ interface Props {
 }
 
 type Cadence = "monthly" | "yearly";
-
-// Team is now contact-based (see ContactCard), so only Pro is self-serve.
-// NOTE: these are display strings — the actual charge is the Stripe price the
-// STRIPE_PRO_*_PRICE_ID points to. Keep them in sync (€14.99/mo, €135/yr).
-const PRICE_LABEL: Record<"pro", Record<Cadence, string>> = {
-  pro: { monthly: "€14.99/mo", yearly: "€135/yr" },
-};
 
 function formatPeriodEnd(iso: string | null): string | null {
   if (!iso) return null;
@@ -47,7 +41,8 @@ export function BillingActions({
   const router = useRouter();
   const params = useSearchParams();
   const [loading, setLoading] = useState("");
-  const [cadence, setCadence] = useState<Cadence>("monthly");
+  // Default to yearly so the best-value plan is what visitors see first.
+  const [cadence, setCadence] = useState<Cadence>("yearly");
   const [banner, setBanner] = useState<{
     type: "success" | "info" | "error";
     message: string;
@@ -151,20 +146,18 @@ export function BillingActions({
       )}
 
       {plan === "free" && (
-        <>
+        <div className="space-y-6">
           <CadenceToggle cadence={cadence} onChange={setCadence} />
           <div className="grid gap-4 md:grid-cols-2">
-            <PlanCard
-              title="Pro"
-              description={`${PRICE_LABEL.pro[cadence]} — 1,000 requests/day, priority support`}
-              onClick={() => checkout("pro")}
+            <ProUpgradeCard
+              cadence={cadence}
+              onCheckout={() => checkout("pro")}
               loading={loading === "pro"}
               disabled={!!loading}
-              cta="Upgrade to Pro"
             />
             <ContactCard />
           </div>
-        </>
+        </div>
       )}
 
       {plan !== "free" && (
@@ -193,30 +186,74 @@ export function BillingActions({
   );
 }
 
-function PlanCard({
-  title,
-  description,
-  onClick,
+// Pro upgrade card. The annual view is deliberately loud (bigger price, emerald
+// accent, savings called out) to steer toward the yearly plan.
+// NOTE: €14.99/mo and €135/yr are display strings — the actual charge is the
+// Stripe price STRIPE_PRO_*_PRICE_ID points to. Keep them in sync.
+function ProUpgradeCard({
+  cadence,
+  onCheckout,
   loading,
   disabled,
-  cta,
 }: {
-  title: string;
-  description: string;
-  onClick: () => void;
+  cadence: Cadence;
+  onCheckout: () => void;
   loading: boolean;
   disabled: boolean;
-  cta: string;
 }) {
+  const yearly = cadence === "yearly";
   return (
-    <Card>
+    <Card
+      className={cn(
+        "relative overflow-hidden transition-colors",
+        yearly && "border-emerald-500/50 shadow-md shadow-emerald-500/10"
+      )}
+    >
+      {yearly && (
+        <div className="absolute right-0 top-0 flex items-center gap-1 rounded-bl-xl bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
+          <Sparkles className="h-3.5 w-3.5" />
+          Best value
+        </div>
+      )}
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle>Pro</CardTitle>
+        <CardDescription>
+          1,000 requests/day, publish your own MCPs, priority support.
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Button onClick={onClick} disabled={disabled}>
-          {loading ? "Redirecting…" : cta}
+      <CardContent className="space-y-4">
+        {yearly ? (
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+                €135
+              </span>
+              <span className="text-sm text-muted-foreground">/ year</span>
+            </div>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              <span className="line-through">€179.88</span> · €11.25/mo billed annually ·{" "}
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                save €45/yr
+              </span>
+            </p>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold tracking-tight">€14.99</span>
+              <span className="text-sm text-muted-foreground">/ month</span>
+            </div>
+            <p className="mt-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+              Switch to yearly and save 25% (€45/yr)
+            </p>
+          </div>
+        )}
+        <Button
+          onClick={onCheckout}
+          disabled={disabled}
+          className={cn("w-full", yearly && "bg-emerald-600 text-white hover:bg-emerald-700")}
+        >
+          {loading ? "Redirecting…" : yearly ? "Get Pro — yearly" : "Upgrade to Pro"}
         </Button>
       </CardContent>
     </Card>
@@ -250,29 +287,47 @@ function CadenceToggle({
   onChange: (c: Cadence) => void;
 }) {
   return (
-    <div className="inline-flex rounded-full border border-border/80 bg-card p-1 text-sm">
-      <button
-        type="button"
-        onClick={() => onChange("monthly")}
-        className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
-          cadence === "monthly"
-            ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        Monthly
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("yearly")}
-        className={`rounded-full px-4 py-1.5 font-medium transition-colors ${
-          cadence === "yearly"
-            ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        Yearly <span className="text-xs font-normal text-muted-foreground">−25%</span>
-      </button>
+    <div className="flex flex-col items-center gap-2">
+      <div className="inline-flex rounded-full border border-border/80 bg-card p-1.5 text-base shadow-sm">
+        <button
+          type="button"
+          onClick={() => onChange("monthly")}
+          className={cn(
+            "rounded-full px-6 py-2.5 font-medium transition-colors",
+            cadence === "monthly"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Monthly
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange("yearly")}
+          className={cn(
+            "flex items-center gap-2 rounded-full px-6 py-2.5 font-medium transition-colors",
+            cadence === "yearly"
+              ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Yearly
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-xs font-semibold",
+              cadence === "yearly"
+                ? "bg-white/25 text-white"
+                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            )}
+          >
+            Save 25%
+          </span>
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Pay yearly — like getting{" "}
+        <span className="font-semibold text-emerald-600 dark:text-emerald-400">3 months free</span>
+      </p>
     </div>
   );
 }
