@@ -110,7 +110,9 @@ export function PricingCards({ cadence, promo }: PricingCardsProps) {
         const price = formatPrice(plan, cadence);
         const isFree = plan.id === "free";
         const isCustom = plan.monthlyUsd === null;
-        const isBillable = plan.id === "pro" || plan.id === "team";
+        // Team is now contact-based (custom price), so only Pro is self-serve
+        // checkout; everyone else (free, team, enterprise) is a plain link.
+        const isBillable = plan.id === "pro";
         const activePromo = isBillable ? promoFor(plan.id as "pro" | "team") : undefined;
         const cadenceSuffix = isFree
           ? "forever"
@@ -151,11 +153,14 @@ export function PricingCards({ cadence, promo }: PricingCardsProps) {
               <span className="text-sm text-muted-foreground">{cadenceSuffix}</span>
             </div>
 
-            {!isCustom && cadence === "annual" && plan.monthlyUsd !== null && plan.monthlyUsd > 0 && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                <span className="line-through">${plan.monthlyUsd}</span> monthly
-              </p>
-            )}
+            {!isCustom &&
+              cadence === "annual" &&
+              plan.monthlyUsd !== null &&
+              plan.monthlyUsd > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  <span className="line-through">€{plan.monthlyUsd}</span> monthly
+                </p>
+              )}
 
             <ul className="mt-5 flex-1 space-y-2 text-sm">
               {plan.bullets.map((bullet) => (

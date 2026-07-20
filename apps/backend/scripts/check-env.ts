@@ -156,8 +156,11 @@ const GROUPS: Group[] = [
   {
     name: "Email (Resend) — optional",
     required: [],
-    optional: ["RESEND_API_KEY", "EMAIL_FROM"],
-    breaks: ["upgrade-confirmation emails (silent fallback)"],
+    optional: ["RESEND_API_KEY", "EMAIL_FROM", "SALES_EMAIL"],
+    breaks: [
+      "upgrade-confirmation emails (silent fallback)",
+      "SALES_EMAIL: where Team/Enterprise contact-form inquiries are delivered (set to your inbox); needs RESEND_API_KEY to actually send",
+    ],
   },
   {
     name: "Observability — optional",

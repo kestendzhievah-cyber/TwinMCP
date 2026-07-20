@@ -28,8 +28,8 @@ export const PLANS: PlanTier[] = [
     id: "pro",
     name: "Pro",
     blurb: "For developers shipping with AI every day.",
-    monthlyUsd: 20,
-    annualMonthlyUsd: 16,
+    monthlyUsd: 14.99,
+    annualMonthlyUsd: 11.25, // €135/yr
     highlighted: true,
     cta: { label: "Upgrade to Pro", href: "/sign-up?plan=pro" },
     bullets: [
@@ -42,13 +42,13 @@ export const PLANS: PlanTier[] = [
   {
     id: "team",
     name: "Team",
-    blurb: "For squads sharing context across projects.",
-    monthlyUsd: 50,
-    annualMonthlyUsd: 40,
-    cta: { label: "Upgrade to Team", href: "/sign-up?plan=team" },
+    blurb: "For companies — priced for your team size.",
+    monthlyUsd: null, // contact-based
+    annualMonthlyUsd: null,
+    cta: { label: "Contact us", href: "/enterprise" },
     bullets: [
       "Unlimited servers",
-      "Up to 10 members",
+      "Member management",
       "Audit logs · 90 days",
       "SLA · 99.9% uptime",
     ],
@@ -174,5 +174,5 @@ export const FEATURES: FeatureRow[] = [
 export function formatPrice(plan: PlanTier, cadence: BillingCadence): string {
   if (plan.monthlyUsd === null) return "Custom";
   const value = cadence === "annual" ? (plan.annualMonthlyUsd ?? plan.monthlyUsd) : plan.monthlyUsd;
-  return value === 0 ? "$0" : `$${value}`;
+  return value === 0 ? "€0" : `€${value}`;
 }
