@@ -160,6 +160,85 @@ const OFFICIAL_MCPS: SeedEntry[] = [
       },
     },
   },
+  {
+    // Python server (PyPI: mcp-server-sqlite), run via uvx. Zero-config: the DB
+    // file is created on first use. SQLITE_DB_PATH overrides the default via a
+    // shell default in the launcher (${VAR:-default}); proven end-to-end.
+    slug: "sqlite",
+    name: "SQLite",
+    description:
+      "Query and manage a SQLite database inside your box — run SQL, create tables, read and write rows. A database file is created automatically; no setup required.",
+    repoUrl: "https://pypi.org/project/mcp-server-sqlite/",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-sqlite --db-path ${SQLITE_DB_PATH:-/workspace/home/twinmcp.db}",
+    version: "latest",
+    configSchema: {
+      properties: {
+        SQLITE_DB_PATH: {
+          type: "string",
+          description:
+            "Optional. Absolute path to the SQLite file inside your box. Defaults to /workspace/home/twinmcp.db.",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: duckduckgo-mcp-server), run via uvx. Web search with
+    // NO API key — DuckDuckGo. Proven end-to-end (returned live results).
+    slug: "duckduckgo",
+    name: "DuckDuckGo Search",
+    description:
+      "Search the web via DuckDuckGo and fetch page content as clean text. No API key — works out of the box.",
+    repoUrl: "https://github.com/nickclyde/duckduckgo-mcp-server",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx duckduckgo-mcp-server",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
+  {
+    // Python server (PyPI: wikipedia-mcp), run via uvx. Public Wikipedia API, no
+    // key. Proven end-to-end (search returned live results).
+    slug: "wikipedia",
+    name: "Wikipedia",
+    description:
+      "Search Wikipedia and pull article summaries, sections, and links for grounded facts. No API key required.",
+    repoUrl: "https://pypi.org/project/wikipedia-mcp/",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx wikipedia-mcp",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
+  {
+    // Python server (PyPI: mcp-server-calculator), run via uvx. Precise math the
+    // model can trust. Zero config. Proven end-to-end (6*7 → 42).
+    slug: "calculator",
+    name: "Calculator",
+    description:
+      "Evaluate precise mathematical expressions — arithmetic the model can rely on instead of guessing.",
+    repoUrl: "https://pypi.org/project/mcp-server-calculator/",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-calculator",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
+  {
+    // Python server (PyPI: markitdown-mcp, Microsoft), run via uvx. Converts a
+    // URL / PDF / Office doc / data URI to Markdown. Proven end-to-end.
+    slug: "markitdown",
+    name: "MarkItDown",
+    description:
+      "Convert a URL, PDF, Office document, or data URI to clean Markdown (Microsoft MarkItDown). Great for feeding documents to the model.",
+    repoUrl: "https://github.com/microsoft/markitdown/tree/main/packages/markitdown-mcp",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx markitdown-mcp",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
 ];
 
 // Servers with no viable runtime in a Node box: github (Go/Docker-only) and the

@@ -86,6 +86,37 @@ const ALL_MCPS: ProbeMcp[] = [
     start: "uvx mcp-server-git --repository /workspace/home/gitrepo",
     call: { name: "git_status", args: { repo_path: "/workspace/home/gitrepo" } },
   },
+  // ---- candidates for the marketplace expansion (prove before publishing) ----
+  {
+    slug: "sqlite",
+    install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    start: "uvx mcp-server-sqlite --db-path ${SQLITE_DB_PATH:-/workspace/home/twinmcp.db}",
+    call: { name: "list_tables", args: {} },
+  },
+  {
+    slug: "duckduckgo",
+    install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    start: "uvx duckduckgo-mcp-server",
+    call: { name: "search", args: { query: "model context protocol", max_results: 3 } },
+  },
+  {
+    slug: "wikipedia",
+    install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    start: "uvx wikipedia-mcp",
+    call: { name: "search_wikipedia", args: { query: "Model Context Protocol", limit: 3 } },
+  },
+  {
+    slug: "markitdown",
+    install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    start: "uvx markitdown-mcp",
+    call: { name: "convert_to_markdown", args: { uri: "https://example.com" } },
+  },
+  {
+    slug: "calculator",
+    install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    start: "uvx mcp-server-calculator",
+    call: { name: "calculate", args: { expression: "6 * 7" } },
+  },
 ];
 
 type JsonRpc = { id?: unknown; result?: Record<string, unknown>; error?: unknown };
@@ -296,6 +327,10 @@ async function main() {
             .map((t) => t.name)
             .join(", ") || "—";
         console.log(`   ✓ initialized · ${tools.length} tools`);
+        if (process.env.PROBE_DEBUG === "1") {
+          console.log(`   --- ${m.slug} tool schemas ---`);
+          console.log(JSON.stringify(tools, null, 1).slice(0, 1600));
+        }
 
         if (m.call) {
           try {
@@ -311,6 +346,9 @@ async function main() {
           } catch (e) {
             row.call = "fail";
             row.note = e instanceof Error ? e.message.slice(0, 48) : "call failed";
+            if (process.env.PROBE_DEBUG === "1") {
+              console.log(`   ⚠ full call error: ${e instanceof Error ? e.message : e}`);
+            }
           }
         }
       } catch (e) {
