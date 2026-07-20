@@ -112,7 +112,7 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
             <select
               value={mcpSlug}
               onChange={(e) => setMcpSlug(e.target.value)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground [&>option]:bg-background [&>option]:text-foreground"
             >
               {mcps.map((m) => (
                 <option key={m.slug} value={m.slug}>
@@ -129,7 +129,7 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
             <select
               value={ide}
               onChange={(e) => setIde(e.target.value as IdeKey)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground [&>option]:bg-background [&>option]:text-foreground"
             >
               {IDE_KEYS.map((k) => (
                 <option key={k} value={k}>
