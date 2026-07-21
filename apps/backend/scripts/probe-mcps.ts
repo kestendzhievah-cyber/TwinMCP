@@ -117,6 +117,46 @@ const ALL_MCPS: ProbeMcp[] = [
     start: "uvx mcp-server-calculator",
     call: { name: "calculate", args: { expression: "6 * 7" } },
   },
+  // ---- round 2: proven marketplace additions (exact published commands) ----
+  {
+    slug: "shell",
+    install: "",
+    start: "npx -y mcp-server-commands@0.8.2",
+    call: { name: "run_process", args: { command_line: "echo twinmcp" } },
+  },
+  {
+    slug: "duckdb",
+    install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    start: "uvx mcp-server-duckdb --db-path ${DUCKDB_DB_PATH:-/workspace/home/twin.duckdb}",
+    call: { name: "query", args: { query: "SELECT 42 AS answer" } },
+  },
+  {
+    slug: "arxiv",
+    install: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    start: "uvx arxiv-mcp-server --storage-path ${ARXIV_STORAGE_PATH:-/workspace/home/arxiv}",
+    call: { name: "search_papers", args: { query: "large language models", max_results: 3 } },
+  },
+  {
+    slug: "youtube",
+    install: "",
+    start: "npx -y @sinco-lab/mcp-youtube-transcript@0.0.12",
+    call: { name: "get_transcript", args: { url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" } },
+  },
+  {
+    slug: "chart",
+    install: "",
+    start: "npx -y @antv/mcp-server-chart@0.9.10",
+    call: {
+      name: "generate_line_chart",
+      args: {
+        data: [
+          { time: "2020", value: 10 },
+          { time: "2021", value: 25 },
+          { time: "2022", value: 18 },
+        ],
+      },
+    },
+  },
 ];
 
 type JsonRpc = { id?: unknown; result?: Record<string, unknown>; error?: unknown };

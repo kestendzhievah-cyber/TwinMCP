@@ -239,6 +239,93 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "latest",
     configSchema: { properties: {} },
   },
+  {
+    // Node server (npm: mcp-server-commands). Runs shell commands / scripts inside
+    // the user's OWN isolated box (their sandbox). npm version PINNED. Proven E2E.
+    slug: "shell",
+    name: "Shell Commands",
+    description:
+      "Run shell commands and scripts inside your own isolated box — the model can execute code, inspect files, and use the CLI. Runs only in your sandboxed runtime, nowhere else.",
+    repoUrl: "https://github.com/g0t4/mcp-server-commands",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y mcp-server-commands@0.8.2",
+    version: "0.8.2",
+    configSchema: { properties: {} },
+  },
+  {
+    // Python server (PyPI: mcp-server-duckdb), run via uvx. Analytical SQL over a
+    // fast in-box DuckDB; db file auto-created. DUCKDB_DB_PATH overrides via a
+    // shell default in the launcher. Proven end-to-end.
+    slug: "duckdb",
+    name: "DuckDB",
+    description:
+      "Run analytical SQL over a fast in-box DuckDB database — query CSV/Parquet/JSON files directly, aggregate, and analyze. A database file is created automatically.",
+    repoUrl: "https://pypi.org/project/mcp-server-duckdb/",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-duckdb --db-path ${DUCKDB_DB_PATH:-/workspace/home/twin.duckdb}",
+    version: "latest",
+    configSchema: {
+      properties: {
+        DUCKDB_DB_PATH: {
+          type: "string",
+          description:
+            "Optional. Absolute path to the DuckDB file inside your box. Defaults to /workspace/home/twin.duckdb.",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: arxiv-mcp-server), run via uvx. Search + read arXiv
+    // papers; downloads land in ARXIV_STORAGE_PATH (shell default). Proven E2E.
+    slug: "arxiv",
+    name: "arXiv",
+    description:
+      "Search and read arXiv research papers — full-text search with filters, fetch abstracts, and download papers as Markdown for the model to read. No API key.",
+    repoUrl: "https://pypi.org/project/arxiv-mcp-server/",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx arxiv-mcp-server --storage-path ${ARXIV_STORAGE_PATH:-/workspace/home/arxiv}",
+    version: "latest",
+    configSchema: {
+      properties: {
+        ARXIV_STORAGE_PATH: {
+          type: "string",
+          description:
+            "Optional. Absolute path where downloaded papers are stored in your box. Defaults to /workspace/home/arxiv.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @sinco-lab/mcp-youtube-transcript). Fetches YouTube
+    // transcripts by URL — no API key. npm version PINNED. Proven end-to-end.
+    slug: "youtube",
+    name: "YouTube Transcript",
+    description:
+      "Fetch the transcript/subtitles of any YouTube video by URL — perfect for summarizing or searching video content. No API key required.",
+    repoUrl: "https://github.com/sinco-lab/mcp-youtube-transcript",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @sinco-lab/mcp-youtube-transcript@0.0.12",
+    version: "0.0.12",
+    configSchema: { properties: {} },
+  },
+  {
+    // Node server (npm: @antv/mcp-server-chart, AntV). Generates chart images
+    // from data and returns a URL. npm version PINNED. Proven end-to-end.
+    slug: "chart",
+    name: "Charts",
+    description:
+      "Generate 25+ chart types (line, bar, pie, area, scatter, maps, and more) from your data and get a rendered image URL — data visualization for the model (AntV).",
+    repoUrl: "https://github.com/antvis/mcp-server-chart",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @antv/mcp-server-chart@0.9.10",
+    version: "0.9.10",
+    configSchema: { properties: {} },
+  },
 ];
 
 // Servers with no viable runtime in a Node box: github (Go/Docker-only) and the
