@@ -163,8 +163,25 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
 
         <CodeSnippet code={cfg.code} language={cfg.language} filename={cfg.filename} />
 
+        {!apiKey && (
+          <p className="flex items-start gap-2 rounded-md border border-sky-500/30 bg-sky-500/5 px-3 py-2 text-xs text-sky-700 dark:text-sky-400">
+            <KeyRound className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              The <code className="font-mono">ctx7sk_…</code> in the snippet is a{" "}
+              <strong>placeholder</strong>, not your key. Click <strong>Generate API key</strong>{" "}
+              below and your real key drops into the snippet — it&apos;s shown{" "}
+              <strong>only once</strong>, so copy it right away.
+            </span>
+          </p>
+        )}
+
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={generateKey} disabled={generating}>
+          <Button
+            variant={apiKey ? "outline" : "default"}
+            size="sm"
+            onClick={generateKey}
+            disabled={generating}
+          >
             {generating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
@@ -185,11 +202,6 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
             )}
             {test === "running" ? "Testing…" : "Test connection"}
           </Button>
-          {!apiKey && (
-            <span className="text-xs text-muted-foreground">
-              Generate a key to fill the snippet and enable testing.
-            </span>
-          )}
         </div>
 
         {apiKey && (

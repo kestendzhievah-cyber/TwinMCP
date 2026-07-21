@@ -17,8 +17,9 @@ export interface ClientConfig {
   code: string;
 }
 
-/** Placeholder shown before a real ctx7sk_ key is minted. */
-export const API_KEY_PLACEHOLDER = "ctx7sk_xxxxxxxxxxxxxxxxxxxxxxxx";
+/** Placeholder shown before a real ctx7sk_ key is minted. Worded so it reads as
+ *  "replace me", not a censored real key. */
+export const API_KEY_PLACEHOLDER = "ctx7sk_YOUR_KEY_HERE";
 
 /**
  * The single source of truth for a connection URL: the authenticated control-plane
