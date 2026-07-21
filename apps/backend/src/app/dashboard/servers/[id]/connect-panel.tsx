@@ -34,6 +34,7 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
   const [generating, setGenerating] = useState(false);
   const [keyError, setKeyError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [keyCopied, setKeyCopied] = useState(false);
   const [test, setTest] = useState<TestState>("idle");
   const [testMsg, setTestMsg] = useState("");
 
@@ -76,6 +77,17 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function copyKey() {
+    if (!apiKey) return;
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setKeyCopied(true);
+      setTimeout(() => setKeyCopied(false), 1800);
     } catch {
       /* ignore */
     }
@@ -205,10 +217,27 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
         </div>
 
         {apiKey && (
-          <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-            Copy your key now — it&apos;s shown only once. It&apos;s already embedded in the snippet
-            above.
-          </p>
+          <div className="space-y-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              Your API key — copy it now, it&apos;s shown only once (also embedded in the snippet
+              above).
+            </p>
+            <div className="flex items-center gap-2 rounded-md border border-border/80 bg-background px-3 py-2">
+              <code className="flex-1 truncate font-mono text-xs">{apiKey}</code>
+              <button
+                type="button"
+                onClick={copyKey}
+                aria-label="Copy API key"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border/80 bg-background/95 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {keyCopied ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
         )}
 
         {keyError && (

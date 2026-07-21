@@ -87,12 +87,12 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {revealedKey && (
-          <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm">
-            <p className="font-medium text-green-900 mb-2">
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
+            <p className="mb-2 font-medium text-emerald-700 dark:text-emerald-400">
               New key — copy now, it won&apos;t be shown again
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 break-all rounded bg-white px-2 py-1 text-xs font-mono">
+              <code className="flex-1 break-all rounded border border-border/80 bg-background px-2 py-1 font-mono text-xs">
                 {revealedKey}
               </code>
               <Button size="sm" variant="outline" onClick={copyKey}>
