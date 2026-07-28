@@ -14,6 +14,7 @@ import type { Plan } from "@/db/schema/core";
 import { PLAN_LABELS } from "@/lib/plan-features";
 import {
   Activity,
+  BarChart3,
   BookOpen,
   Boxes,
   Key,
@@ -40,8 +41,21 @@ const links = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export function DashboardNav({ email, plan }: { email: string; plan: Plan }) {
+export function DashboardNav({
+  email,
+  plan,
+  isAdmin = false,
+}: {
+  email: string;
+  plan: Plan;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
+  // The Admin analytics link is only shown to allowlisted admins. This is a UI
+  // convenience only — the page and its API are gated server-side regardless.
+  const navLinks = isAdmin
+    ? [...links, { href: "/dashboard/admin", label: "Admin", icon: BarChart3 }]
+    : links;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -81,7 +95,7 @@ export function DashboardNav({ email, plan }: { email: string; plan: Plan }) {
   function NavLinks() {
     return (
       <div className="flex flex-col gap-1">
-        {links.map((l) => {
+        {navLinks.map((l) => {
           const Icon = l.icon;
           const active =
             pathname === l.href || (l.href !== "/dashboard" && pathname?.startsWith(l.href));
