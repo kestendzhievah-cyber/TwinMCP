@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import type { Route } from "next";
+import { Zap } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { servers, userServers, mcpServers } from "@/db/schema";
+import { servers, userServers, mcpServers, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { keepWarm } from "@/lib/plan-features";
 import { ServerControls } from "./controls";
 import { InstalledMcps } from "./installed-mcps";
 import { ConnectPanel } from "./connect-panel";
@@ -27,6 +31,17 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
     .where(and(eq(servers.id, id), eq(servers.userId, user.id)))
     .limit(1);
   if (!srv) notFound();
+
+  // Runtime mode: warm (always-on, no cold start) vs pause-when-idle. Gated by
+  // plan + the WARM_BOXES_ENABLED ops switch — same decision as provisioning.
+  const [me] = await db
+    .select({ plan: users.plan })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1);
+  const plan = me?.plan ?? "free";
+  const warmEnabled = process.env.WARM_BOXES_ENABLED === "true";
+  const warm = keepWarm(plan, warmEnabled);
 
   const installations = await db
     .select({
@@ -115,6 +130,34 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
                 </div>
                 <div>{srv.createdAt.toLocaleString()}</div>
               </div>
+              <div>
+                <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
+                  Mode
+                </div>
+                {warm ? (
+                  <div className="flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Always-on</span>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground">Sleeps when idle</div>
+                )}
+              </div>
+
+              {/* Upsell only when the feature is live (flag on) but this plan
+                  doesn't have it — never advertise warm boxes before they work. */}
+              {warmEnabled && !warm && (
+                <Link
+                  href={"/dashboard/billing" as Route}
+                  className="md:col-span-2 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 transition-colors hover:bg-amber-500/10 dark:text-amber-400"
+                >
+                  <Zap className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <span className="font-medium">Upgrade to Pro</span> for always-on servers — no
+                    cold start on the first request.
+                  </span>
+                </Link>
+              )}
             </CardContent>
           </Card>
 

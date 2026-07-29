@@ -2,7 +2,9 @@ import { eq, and, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
+import { users } from "@/db/schema/core";
 import { getBoxClient } from "@/lib/upstash/box-client";
+import { keepWarm } from "@/lib/plan-features";
 import {
   BRIDGE_BASE_PORT,
   INIT_SCRIPT_PATH,
@@ -186,6 +188,16 @@ export async function provisionServer(serverId: string): Promise<void> {
 
     const client = getBoxClient();
 
+    // Warm ("always-on") boxes are a Pro+ perk, gated additionally by the
+    // WARM_BOXES_ENABLED ops switch — keep-alive boxes require a paid Upstash
+    // plan, so warm stays OFF (pause-when-idle for everyone) until it's on.
+    const [owner] = await db
+      .select({ plan: users.plan })
+      .from(users)
+      .where(eq(users.id, srv.userId))
+      .limit(1);
+    const wantWarm = keepWarm(owner?.plan ?? "free", process.env.WARM_BOXES_ENABLED === "true");
+
     // Idempotent on QStash retry: reuse an existing live box rather than create a
     // duplicate. Only (re)create when there is no box or the existing one is dead.
     let boxId = srv.boxId;
@@ -194,15 +206,33 @@ export async function provisionServer(serverId: string): Promise<void> {
       if (!alive) boxId = null;
     }
     if (!boxId) {
-      const handle = await client.createBox({
-        runtime: "node", // box runs Node; MCPs run as child processes via npx
-        size: srv.boxSize,
-        name: `twinmcp-${srv.slug}`,
-        // Non-keep-alive (free tier): the box pauses when idle; the proxy wakes
-        // it on demand via resumeServer. keepAlive:true would need a paid plan.
-        keepAlive: false,
-      });
-      boxId = handle.id;
+      const create = (keepAlive: boolean) =>
+        client.createBox({
+          runtime: "node", // box runs Node; MCPs run as child processes via npx
+          size: srv.boxSize,
+          name: `twinmcp-${srv.slug}`,
+          // keepAlive:true = always warm (no cold start) but needs a paid Upstash
+          // plan; keepAlive:false = pause-when-idle, woken on demand by resumeServer.
+          keepAlive,
+        });
+      try {
+        const handle = await create(wantWarm);
+        boxId = handle.id;
+      } catch (err) {
+        // If Upstash rejects a warm box (paid plan not active yet), don't fail
+        // provisioning — fall back to the free pause-when-idle model.
+        const msg = err instanceof Error ? err.message : String(err);
+        if (wantWarm && /paid plan/i.test(msg)) {
+          console.warn(
+            `[provision] warm box rejected for ${serverId} (Upstash paid plan?); using sleep-when-idle`
+          );
+          Sentry.captureMessage("warm-box fallback: Upstash rejected keepAlive:true", "warning");
+          const handle = await create(false);
+          boxId = handle.id;
+        } else {
+          throw err;
+        }
+      }
     }
 
     // Record the box id but stay in `provisioning` — we only go `running`

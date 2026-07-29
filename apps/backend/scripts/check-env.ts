@@ -134,8 +134,10 @@ const GROUPS: Group[] = [
   {
     name: "MCP runtime (Upstash Box)",
     required: ["UPSTASH_BOX_API_KEY"],
+    optional: ["WARM_BOXES_ENABLED", "MAX_MCPS_SMALL", "MAX_MCPS_MEDIUM", "MAX_MCPS_LARGE"],
     breaks: [
       "per-user MCP runtimes (core feature) — provisioning refuses to run in stub mode in production",
+      "WARM_BOXES_ENABLED=true (optional): Pro/Team servers run always-on (no cold start). Keep-alive boxes require a PAID Upstash plan — leave unset until that's active, or provisioning falls back to pause-when-idle.",
     ],
   },
   {
