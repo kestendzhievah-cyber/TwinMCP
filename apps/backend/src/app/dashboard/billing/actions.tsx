@@ -65,7 +65,7 @@ export function BillingActions({
     }
   }, [params, router]);
 
-  async function checkout(target: "pro") {
+  async function checkout(target: "pro" | "team") {
     setLoading(target);
     try {
       const res = await fetch("/api/v2/billing/checkout", {
@@ -149,25 +149,40 @@ export function BillingActions({
         <div className="space-y-6">
           <CadenceToggle cadence={cadence} onChange={setCadence} />
           <div className="grid gap-4 md:grid-cols-2">
-            <ProUpgradeCard
+            <PlanUpgradeCard
+              name="Pro"
+              description="1,000 requests/day, publish your own MCPs, priority support."
+              monthly={14.99}
+              yearly={135}
+              highlighted
               cadence={cadence}
               onCheckout={() => checkout("pro")}
               loading={loading === "pro"}
               disabled={!!loading}
             />
-            <ContactCard />
+            <PlanUpgradeCard
+              name="Team"
+              description="Unlimited servers, member management, audit logs · 90 days, 99.9% SLA."
+              monthly={99}
+              yearly={990}
+              cadence={cadence}
+              onCheckout={() => checkout("team")}
+              loading={loading === "team"}
+              disabled={!!loading}
+            />
           </div>
+          <EnterpriseCard />
         </div>
       )}
 
       {plan !== "free" && (
         <div className="grid gap-4 md:grid-cols-2">
-          {plan === "pro" && <ContactCard />}
           <Card>
             <CardHeader>
               <CardTitle>Manage subscription</CardTitle>
               <CardDescription>
-                Update payment method, view invoices, or cancel anytime.
+                Update payment method, switch between Pro and Team, view invoices, or cancel — all
+                from the billing portal.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -180,99 +195,120 @@ export function BillingActions({
               </Button>
             </CardContent>
           </Card>
+          <EnterpriseCard />
         </div>
       )}
     </div>
   );
 }
 
-// Pro upgrade card. The annual view is deliberately loud (bigger price, emerald
-// accent, savings called out) to steer toward the yearly plan.
-// NOTE: €14.99/mo and €135/yr are display strings — the actual charge is the
-// Stripe price STRIPE_PRO_*_PRICE_ID points to. Keep them in sync.
-function ProUpgradeCard({
+// Self-serve plan card (Pro or Team). The annual view is deliberately loud on
+// the `highlighted` plan (bigger price, emerald accent, savings called out) to
+// steer toward the yearly commitment. Prices are display strings — the actual
+// charge is the Stripe price STRIPE_<PLAN>_*_PRICE_ID points to. Keep in sync.
+function PlanUpgradeCard({
+  name,
+  description,
+  monthly,
+  yearly,
+  highlighted = false,
   cadence,
   onCheckout,
   loading,
   disabled,
 }: {
+  name: string;
+  description: string;
+  monthly: number;
+  yearly: number;
+  highlighted?: boolean;
   cadence: Cadence;
   onCheckout: () => void;
   loading: boolean;
   disabled: boolean;
 }) {
-  const yearly = cadence === "yearly";
+  const isYearly = cadence === "yearly";
+  const fullYear = monthly * 12;
+  const savings = Math.round(fullYear - yearly);
+  const effMonthly = yearly / 12;
+  const savingsPct = Math.round((1 - yearly / fullYear) * 100);
+  const loud = highlighted && isYearly;
+  const eur = (n: number) => `€${Number.isInteger(n) ? n : n.toFixed(2)}`;
   return (
     <Card
       className={cn(
         "relative overflow-hidden transition-colors",
-        yearly && "border-emerald-500/50 shadow-md shadow-emerald-500/10"
+        loud && "border-emerald-500/50 shadow-md shadow-emerald-500/10"
       )}
     >
-      {yearly && (
+      {loud && (
         <div className="absolute right-0 top-0 flex items-center gap-1 rounded-bl-xl bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
           <Sparkles className="h-3.5 w-3.5" />
           Best value
         </div>
       )}
       <CardHeader>
-        <CardTitle>Pro</CardTitle>
-        <CardDescription>
-          1,000 requests/day, publish your own MCPs, priority support.
-        </CardDescription>
+        <CardTitle>{name}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {yearly ? (
+        {isYearly ? (
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-                €135
+              <span
+                className={cn(
+                  "text-4xl font-bold tracking-tight",
+                  highlighted && "text-emerald-600 dark:text-emerald-400"
+                )}
+              >
+                {eur(yearly)}
               </span>
               <span className="text-sm text-muted-foreground">/ year</span>
             </div>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              <span className="line-through">€179.88</span> · €11.25/mo billed annually ·{" "}
+              <span className="line-through">{eur(fullYear)}</span> · {eur(effMonthly)}/mo billed
+              annually ·{" "}
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                save €45/yr
+                save €{savings}/yr
               </span>
             </p>
           </div>
         ) : (
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold tracking-tight">€14.99</span>
+              <span className="text-4xl font-bold tracking-tight">{eur(monthly)}</span>
               <span className="text-sm text-muted-foreground">/ month</span>
             </div>
             <p className="mt-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              Switch to yearly and save 25% (€45/yr)
+              Switch to yearly and save {savingsPct}% (€{savings}/yr)
             </p>
           </div>
         )}
         <Button
           onClick={onCheckout}
           disabled={disabled}
-          className={cn("w-full", yearly && "bg-emerald-600 text-white hover:bg-emerald-700")}
+          className={cn("w-full", loud && "bg-emerald-600 text-white hover:bg-emerald-700")}
         >
-          {loading ? "Redirecting…" : yearly ? "Get Pro — yearly" : "Upgrade to Pro"}
+          {loading ? "Redirecting…" : isYearly ? `Get ${name} — yearly` : `Upgrade to ${name}`}
         </Button>
       </CardContent>
     </Card>
   );
 }
 
-function ContactCard() {
+function EnterpriseCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Team</CardTitle>
+        <CardTitle>Enterprise</CardTitle>
         <CardDescription>
-          For companies — unlimited servers, member management, and priority support. Custom pricing
-          based on your team size.
+          SSO/SAML, private deployment, custom audit retention, and a dedicated Slack channel.
+          Custom pricing for your organization.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Button asChild variant="secondary">
-          <Link href={"/enterprise" as Route}>Contact us</Link>
+          <Link href={"/enterprise" as Route}>Talk to sales</Link>
         </Button>
       </CardContent>
     </Card>
