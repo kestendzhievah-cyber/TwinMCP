@@ -38,6 +38,10 @@ export interface PlanCapabilities {
   auditRetentionDays: number;
   /** May export usage metrics. */
   usageExport: boolean;
+  /** May run always-on ("warm") servers that never pause — no cold start on the
+   *  first request after idle. Gated additionally by the WARM_BOXES_ENABLED ops
+   *  switch, since keep-alive boxes require a paid Upstash plan. */
+  warmServers: boolean;
 }
 
 export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
@@ -50,6 +54,7 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
     regionSelection: false,
     auditRetentionDays: 0,
     usageExport: false,
+    warmServers: false,
   },
   pro: {
     servers: 25,
@@ -60,6 +65,7 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
     regionSelection: false,
     auditRetentionDays: 30,
     usageExport: true,
+    warmServers: true,
   },
   team: {
     servers: UNLIMITED,
@@ -70,6 +76,7 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
     regionSelection: true,
     auditRetentionDays: 90,
     usageExport: true,
+    warmServers: true,
   },
 };
 
@@ -107,6 +114,19 @@ export function limitFor(plan: Plan, capability: NumericCapability): number {
 /** Box sizes a plan may provision. */
 export function allowedBoxSizes(plan: Plan): readonly BoxSize[] {
   return PLAN_CAPABILITIES[plan].boxSizes;
+}
+
+/**
+ * Whether a server on this plan should run always-on ("warm") — never pausing,
+ * so there's no cold start on the first request after idle.
+ *
+ * Pure so provisioning (the money path) and the dashboard UI make the SAME
+ * decision. `enabled` is the WARM_BOXES_ENABLED ops switch: keep-alive boxes
+ * require a paid Upstash plan, so warm boxes stay OFF until that's turned on —
+ * even for Pro/Team. Read the switch with `process.env.WARM_BOXES_ENABLED === "true"`.
+ */
+export function keepWarm(plan: Plan, enabled: boolean): boolean {
+  return enabled && can(plan, "warmServers");
 }
 
 /** Whether a plan may provision a given box size. */
