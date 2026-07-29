@@ -21,6 +21,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed:mcps": "tsx scripts/seed-mcps.ts",
+    "setup:prices": "tsx scripts/setup-prices.ts",
     "smoke:mcp": "tsx scripts/smoke-mcp.ts"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { mcpServers, servers } from "@/db/schema";
 import { desc, eq, or } from "drizzle-orm";
 import { McpCatalogGrid } from "./grid";
+import { McpBundles } from "./bundles";
 import { Store } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { RefreshCatalogButton } from "./refresh-button";
@@ -62,7 +63,13 @@ export default async function MarketplacePage() {
           primaryAction={<RefreshCatalogButton />}
         />
       ) : (
-        <McpCatalogGrid catalog={catalog} userServers={userServers} />
+        <div className="space-y-10">
+          <McpBundles catalog={catalog} userServers={userServers} />
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold tracking-tight">All MCPs</h2>
+            <McpCatalogGrid catalog={catalog} userServers={userServers} />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -92,6 +92,14 @@ const GROUPS: Group[] = [
     breaks: ["/api/v2/billing/checkout, /api/v2/billing/portal, /api/webhooks/stripe"],
   },
   {
+    // Comma-separated admin allowlist for /dashboard/admin analytics. Falls back
+    // to a built-in founder email when unset, so this is optional but recommended.
+    name: "Admin analytics — optional",
+    required: [],
+    optional: ["ADMIN_EMAILS"],
+    breaks: ["/dashboard/admin locks to the built-in founder email until set"],
+  },
+  {
     name: "AI (OpenAI embeddings)",
     required: ["OPENAI_API_KEY"],
     optional: ["OPENAI_EMBEDDING_MODEL"],
