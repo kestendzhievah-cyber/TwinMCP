@@ -27,11 +27,11 @@ const tiers = [
   },
   {
     name: "Team",
-    price: "Custom",
-    cadence: "pricing",
-    blurb: "For companies — priced for your team size.",
+    price: "€99",
+    cadence: "/ month",
+    blurb: "For growing teams shipping together.",
     features: ["Unlimited servers", "Member management", "SLA · 99.9%", "Priority support"],
-    cta: { label: "Contact us", href: "/enterprise" },
+    cta: { label: "Choose Team", href: "/sign-up?plan=team" },
     highlight: false,
   },
 ];

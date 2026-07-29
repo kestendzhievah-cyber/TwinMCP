@@ -110,9 +110,9 @@ export function PricingCards({ cadence, promo }: PricingCardsProps) {
         const price = formatPrice(plan, cadence);
         const isFree = plan.id === "free";
         const isCustom = plan.monthlyUsd === null;
-        // Team is now contact-based (custom price), so only Pro is self-serve
-        // checkout; everyone else (free, team, enterprise) is a plain link.
-        const isBillable = plan.id === "pro";
+        // Pro and Team are self-serve checkout; free + enterprise are plain links
+        // (enterprise is contact-based, free just routes to sign-up).
+        const isBillable = plan.id === "pro" || plan.id === "team";
         const activePromo = isBillable ? promoFor(plan.id as "pro" | "team") : undefined;
         const cadenceSuffix = isFree
           ? "forever"

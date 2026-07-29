@@ -42,10 +42,10 @@ export const PLANS: PlanTier[] = [
   {
     id: "team",
     name: "Team",
-    blurb: "For companies — priced for your team size.",
-    monthlyUsd: null, // contact-based
-    annualMonthlyUsd: null,
-    cta: { label: "Contact us", href: "/enterprise" },
+    blurb: "For growing teams shipping together.",
+    monthlyUsd: 99,
+    annualMonthlyUsd: 82.5, // €990/yr
+    cta: { label: "Upgrade to Team", href: "/sign-up?plan=team" },
     bullets: [
       "Unlimited servers",
       "Member management",
@@ -57,9 +57,9 @@ export const PLANS: PlanTier[] = [
     id: "enterprise",
     name: "Enterprise",
     blurb: "Self-host, SSO, audit, dedicated.",
-    monthlyUsd: null,
+    monthlyUsd: null, // contact-based
     annualMonthlyUsd: null,
-    cta: { label: "Talk to sales", href: "mailto:sales@twinmcp.fr?subject=Enterprise%20inquiry" },
+    cta: { label: "Talk to sales", href: "/enterprise" },
     bullets: [
       "Unlimited everything",
       "SSO / SAML / SCIM",
