@@ -2,6 +2,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SERVERS, getServerBySlug } from "@/lib/servers/catalog";
+import { MATRIX_CLIENTS, IDE_LABELS } from "@/lib/mcp/client-config";
 import { JsonLd } from "@/components/seo/json-ld";
 import {
   breadcrumbListSchema,
@@ -213,6 +214,29 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
               </li>
             ))}
           </ol>
+        </section>
+
+        {/* Connect to your AI client — internal links into the per-client matrix */}
+        <section className="mb-12">
+          <h2 className="mb-5 text-2xl font-semibold tracking-tight">
+            Connect {server.name} to your AI client
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {MATRIX_CLIENTS.map((c) => (
+              <Link
+                key={c}
+                href={`/servers/${server.slug}/${c}` as Route}
+                className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-sm transition-colors hover:border-foreground/40"
+              >
+                <span className="text-foreground/90">
+                  {server.name} with {IDE_LABELS[c]}
+                </span>
+                <span aria-hidden className="text-muted-foreground">
+                  →
+                </span>
+              </Link>
+            ))}
+          </div>
         </section>
 
         {/* Use cases */}

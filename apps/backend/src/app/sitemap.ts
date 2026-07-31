@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { BLOG_POSTS } from "@/lib/blog/posts";
 import { USE_CASES } from "@/lib/use-cases/registry";
 import { SERVERS } from "@/lib/servers/catalog";
+import { MATRIX_CLIENTS } from "@/lib/mcp/client-config";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -86,6 +87,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.75,
   }));
 
+  // Programmatic "use <MCP> with <client>" matrix (SERVERS × named clients).
+  const serverClientPages: MetadataRoute.Sitemap = SERVERS.flatMap((s) =>
+    MATRIX_CLIENTS.map((client) => ({
+      url: `${SITE_URL}/servers/${s.slug}/${client}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    }))
+  );
+
   // French pages (Phase 5 — additive shadow of EN marketing + 3 pillars).
   const FR_PILLARS = ["what-is-mcp", "mcp-server-hosting", "build-mcp-server"];
   const frPages: MetadataRoute.Sitemap = [
@@ -109,5 +120,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
   ];
 
-  return [...staticPages, ...blogPosts, ...useCases, ...serverPages, ...frPages];
+  return [
+    ...staticPages,
+    ...blogPosts,
+    ...useCases,
+    ...serverPages,
+    ...serverClientPages,
+    ...frPages,
+  ];
 }
