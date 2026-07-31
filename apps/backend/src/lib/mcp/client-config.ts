@@ -40,6 +40,11 @@ export const IDE_LABELS: Record<IdeKey, string> = {
   other: "Other / generic",
 };
 
+/** Named clients for the /servers/<mcp>/<client> SEO matrix (excludes the
+ *  generic "other" catch-all). Used by the page's generateStaticParams and the
+ *  sitemap so both stay in sync. */
+export const MATRIX_CLIENTS = (Object.keys(IDE_LABELS) as IdeKey[]).filter((k) => k !== "other");
+
 /** Build a copy-paste config block for the given IDE. */
 export function buildClientConfig(
   ide: IdeKey,
