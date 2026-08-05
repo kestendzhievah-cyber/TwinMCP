@@ -13,15 +13,11 @@ export type EncryptedPayload = {
 function getKey(): Buffer {
   const hex = process.env.CONFIG_ENCRYPTION_KEY;
   if (!hex) {
-    throw new Error(
-      "CONFIG_ENCRYPTION_KEY env var is required (32 bytes hex, 64 chars)"
-    );
+    throw new Error("CONFIG_ENCRYPTION_KEY env var is required (32 bytes hex, 64 chars)");
   }
   const key = Buffer.from(hex, "hex");
   if (key.length !== KEY_LENGTH) {
-    throw new Error(
-      `CONFIG_ENCRYPTION_KEY must decode to ${KEY_LENGTH} bytes, got ${key.length}`
-    );
+    throw new Error(`CONFIG_ENCRYPTION_KEY must decode to ${KEY_LENGTH} bytes, got ${key.length}`);
   }
   return key;
 }
@@ -49,4 +45,20 @@ export function decryptConfig<T = unknown>(payload: EncryptedPayload): T {
   decipher.setAuthTag(tag);
   const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   return JSON.parse(decrypted.toString("utf8")) as T;
+}
+
+/**
+ * Non-throwing readiness probe: true when CONFIG_ENCRYPTION_KEY is set AND
+ * decodes to a valid 32-byte key. Lets /api/health report the crypto blocker
+ * (a missing/malformed key makes every MCP config + box-token en/decrypt throw)
+ * without itself throwing.
+ */
+export function isConfigEncryptionReady(): boolean {
+  const hex = process.env.CONFIG_ENCRYPTION_KEY;
+  if (!hex) return false;
+  try {
+    return Buffer.from(hex, "hex").length === KEY_LENGTH;
+  } catch {
+    return false;
+  }
 }
