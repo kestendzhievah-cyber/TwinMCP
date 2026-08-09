@@ -2,7 +2,10 @@
 
 # Logs
 
-logs
+# Anchored to the repo root on purpose: an unanchored `logs` also matches source
+# directories literally named `logs` (e.g. the app/api/.../[id]/logs route),
+# which silently kept a real route out of every commit and deploy.
+/logs
 _.log
 npm-debug.log_
 yarn-debug.log*
