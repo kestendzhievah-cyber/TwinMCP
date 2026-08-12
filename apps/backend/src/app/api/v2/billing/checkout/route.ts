@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { getStripe, getPriceId, TRIAL_DAYS } from "@/lib/stripe";
+import { getStripe, getPriceId, TRIAL_DAYS, TAX_ENABLED } from "@/lib/stripe";
 import { badRequest, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 import { getCreator } from "@/lib/promos/creators";
@@ -102,8 +102,17 @@ export async function POST(req: NextRequest) {
       ...(hasPreApplied
         ? { discounts: [{ promotion_code: resolvedPromoId! }] }
         : { allow_promotion_codes: true }),
-      automatic_tax: { enabled: true },
-      tax_id_collection: { enabled: true },
+      ...(TAX_ENABLED
+        ? {
+            automatic_tax: { enabled: true },
+            tax_id_collection: { enabled: true },
+            // Stripe requires an address on file to compute tax for a *provided*
+            // customer; customer_update (valid only with `customer`, not
+            // `customer_email`) lets Checkout capture + persist it. Without this,
+            // automatic_tax rejects the session for every returning customer.
+            ...(userRow?.stripeCustomerId ? { customer_update: { address: "auto" as const } } : {}),
+          }
+        : {}),
       billing_address_collection: "auto",
       success_url: `${origin}/dashboard/billing?status=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/plans?status=canceled`,

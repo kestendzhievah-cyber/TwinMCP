@@ -82,3 +82,11 @@ export function planActionForSubscription(opts: {
 }
 
 export const TRIAL_DAYS = Number(process.env.TRIAL_DAYS ?? 0);
+
+/**
+ * Stripe Tax is opt-in. Automatic tax + tax-ID collection are only enabled when
+ * the account is actually configured for it (registrations/nexus); forcing it
+ * on for an unconfigured account breaks Checkout at the address/tax step. Kept
+ * here so all Stripe config lives in one module.
+ */
+export const TAX_ENABLED = process.env.STRIPE_TAX_ENABLED === "true";
