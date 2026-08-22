@@ -32,12 +32,14 @@ export interface CatalogEntry {
   version: string;
   isOfficial: boolean;
   configSchema: unknown;
+  hostMode: string;
 }
 
 export interface ServerOption {
   id: string;
   name: string;
   status: string;
+  hostType: string;
 }
 
 interface SchemaField {
@@ -72,15 +74,20 @@ export function InstallDialog({
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (mcp && userServers.length > 0) {
-      setServerId(userServers[0].id);
-      setConfig({});
-    }
+    if (!mcp) return;
+    const localTool = mcp.hostMode === "local";
+    const compat = userServers.filter((s) => (s.hostType === "local_agent") === localTool);
+    setServerId(compat[0]?.id ?? "");
+    setConfig({});
   }, [mcp, userServers]);
 
   if (!mcp) return null;
   const schema = parseSchema(mcp.configSchema);
   const fields = Object.entries(schema.properties);
+  // A tool's host mode must match the server: local tools only fit local-agent
+  // servers; box tools only fit box servers (the API enforces this too).
+  const isLocalTool = mcp.hostMode === "local";
+  const compatible = userServers.filter((s) => (s.hostType === "local_agent") === isLocalTool);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -122,18 +129,32 @@ export function InstallDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="server">Target server</Label>
-            <Select value={serverId} onValueChange={setServerId}>
-              <SelectTrigger id="server">
-                <SelectValue placeholder="Pick a server" />
-              </SelectTrigger>
-              <SelectContent>
-                {userServers.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} <span className="text-muted-foreground text-xs ml-2">{s.status}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {compatible.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {isLocalTool
+                  ? "This tool runs locally — create a Local (agent) server first, then install it here."
+                  : "Create a cloud-box server first to install this tool."}
+              </p>
+            ) : (
+              <Select value={serverId} onValueChange={setServerId}>
+                <SelectTrigger id="server">
+                  <SelectValue placeholder="Pick a server" />
+                </SelectTrigger>
+                <SelectContent>
+                  {compatible.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}{" "}
+                      <span className="text-muted-foreground text-xs ml-2">{s.status}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {isLocalTool && compatible.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Runs on your machine via <code className="font-mono">ctx7 connect</code>.
+              </p>
+            )}
           </div>
 
           {fields.length > 0 && (

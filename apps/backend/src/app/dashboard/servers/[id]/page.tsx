@@ -163,6 +163,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
 
           <ConnectPanel
             serverSlug={srv.slug}
+            hostType={srv.hostType}
             mcps={installations.map((i) => ({
               slug: i.mcpSlug,
               name: i.mcpName,

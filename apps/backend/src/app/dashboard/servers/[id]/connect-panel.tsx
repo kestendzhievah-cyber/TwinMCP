@@ -24,7 +24,15 @@ type TestState = "idle" | "running" | "success" | "error";
 
 const IDE_KEYS = Object.keys(IDE_LABELS) as IdeKey[];
 
-export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: ConnectMcp[] }) {
+export function ConnectPanel({
+  serverSlug,
+  mcps,
+  hostType,
+}: {
+  serverSlug: string;
+  mcps: ConnectMcp[];
+  hostType?: string;
+}) {
   const enabled = useMemo(() => mcps.filter((m) => m.enabled), [mcps]);
 
   const [origin, setOrigin] = useState("");
@@ -116,6 +124,23 @@ export function ConnectPanel({ serverSlug, mcps }: { serverSlug: string; mcps: C
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {hostType === "local_agent" && (
+          <div className="space-y-2 rounded-md border border-sky-500/30 bg-sky-500/5 p-3 text-xs">
+            <p className="font-medium text-sky-700 dark:text-sky-400">Run the local agent</p>
+            <p className="text-muted-foreground">
+              This server&apos;s tools run on your machine. Start the agent so your LLM can reach
+              them (keep it running):
+            </p>
+            <CodeSnippet
+              code={`npx ctx7 connect --server ${serverSlug}`}
+              language="bash"
+              filename="Run in your terminal (needs Node)"
+            />
+            <p className="text-muted-foreground">
+              The status badge above turns <strong>running</strong> once the agent is connected.
+            </p>
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

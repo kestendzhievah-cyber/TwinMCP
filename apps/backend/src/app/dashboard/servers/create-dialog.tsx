@@ -33,6 +33,8 @@ const BOX_SIZES = [
   { value: "large", label: "Large — 8 vCPU / 16 GB RAM" },
 ] as const;
 
+type HostType = "upstash_box" | "local_agent";
+
 interface CreateServerDialogProps {
   plan: Plan;
   disabled?: boolean;
@@ -43,9 +45,11 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [hostType, setHostType] = useState<HostType>("upstash_box");
   const [boxSize, setBoxSize] = useState("small");
   const [region, setRegion] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const isLocal = hostType === "local_agent";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -55,14 +59,18 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         name: name.trim(),
-        boxSize,
-        region: region.trim() || undefined,
+        hostType,
+        ...(isLocal ? {} : { boxSize, region: region.trim() || undefined }),
       }),
     });
     setSubmitting(false);
     if (res.ok) {
       const data = await res.json();
-      toast.success(`Server "${name}" created — provisioning…`);
+      toast.success(
+        isLocal
+          ? `Server "${name}" created — run \`ctx7 connect\` to bring it online.`
+          : `Server "${name}" created — provisioning…`
+      );
       setOpen(false);
       setName("");
       setRegion("");
@@ -86,10 +94,27 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
         <DialogHeader>
           <DialogTitle>Create a new server</DialogTitle>
           <DialogDescription>
-            A new Upstash Box runtime will be provisioned. TwinMCP Docs is auto-installed.
+            {isLocal
+              ? "A local server hosts tools that run on your own machine (e.g. Blender) — bring it online with the `ctx7 connect` agent."
+              : "A new Upstash Box runtime will be provisioned. TwinMCP Docs is auto-installed."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="host-type">Type</Label>
+            <Select value={hostType} onValueChange={(v) => setHostType(v as HostType)}>
+              <SelectTrigger id="host-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="upstash_box">Cloud box — hosted MCP runtime</SelectItem>
+                <SelectItem value="local_agent">
+                  Local — tools on your machine (via agent)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
             <Input
@@ -99,48 +124,54 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
               maxLength={80}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My MCP Server"
+              placeholder={isLocal ? "My local tools" : "My MCP Server"}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="size">Box size</Label>
-            <Select value={boxSize} onValueChange={setBoxSize}>
-              <SelectTrigger id="size">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BOX_SIZES.map((s) => {
-                  const allowed = allowedBoxSizes(plan).includes(s.value);
-                  const required = minPlanForBoxSize(s.value);
-                  return (
-                    <SelectItem key={s.value} value={s.value} disabled={!allowed}>
-                      {s.label}
-                      {!allowed && required ? ` · ${PLAN_LABELS[required]}` : ""}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            {allowedBoxSizes(plan).length < BOX_SIZES.length && (
-              <p className="text-xs text-muted-foreground">
-                Larger boxes are available on higher plans.{" "}
-                <a href="/dashboard/billing" className="underline underline-offset-2">
-                  Upgrade
-                </a>
-                .
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="region">Region (optional)</Label>
-            <Input
-              id="region"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder="e.g. us-east-1"
-              maxLength={40}
-            />
-          </div>
+
+          {!isLocal && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="size">Box size</Label>
+                <Select value={boxSize} onValueChange={setBoxSize}>
+                  <SelectTrigger id="size">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BOX_SIZES.map((s) => {
+                      const allowed = allowedBoxSizes(plan).includes(s.value);
+                      const required = minPlanForBoxSize(s.value);
+                      return (
+                        <SelectItem key={s.value} value={s.value} disabled={!allowed}>
+                          {s.label}
+                          {!allowed && required ? ` · ${PLAN_LABELS[required]}` : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {allowedBoxSizes(plan).length < BOX_SIZES.length && (
+                  <p className="text-xs text-muted-foreground">
+                    Larger boxes are available on higher plans.{" "}
+                    <a href="/dashboard/billing" className="underline underline-offset-2">
+                      Upgrade
+                    </a>
+                    .
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="region">Region (optional)</Label>
+                <Input
+                  id="region"
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  placeholder="e.g. us-east-1"
+                  maxLength={40}
+                />
+              </div>
+            </>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

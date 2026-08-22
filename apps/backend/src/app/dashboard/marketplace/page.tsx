@@ -27,13 +27,19 @@ export default async function MarketplacePage() {
       version: mcpServers.version,
       isOfficial: mcpServers.isOfficial,
       configSchema: mcpServers.configSchema,
+      hostMode: mcpServers.hostMode,
     })
     .from(mcpServers)
     .where(or(eq(mcpServers.isPublic, true), eq(mcpServers.publishedByUserId, user.id)))
     .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt));
 
   const userServers = await db
-    .select({ id: servers.id, name: servers.name, status: servers.status })
+    .select({
+      id: servers.id,
+      name: servers.name,
+      status: servers.status,
+      hostType: servers.hostType,
+    })
     .from(servers)
     .where(eq(servers.userId, user.id))
     .orderBy(desc(servers.createdAt));
