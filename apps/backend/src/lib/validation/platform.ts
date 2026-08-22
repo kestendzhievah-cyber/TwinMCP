@@ -12,6 +12,10 @@ export const createServerSchema = z.object({
   slug: slugSchema.optional(),
   boxSize: z.enum(boxSizes).optional(),
   region: z.string().min(1).max(40).optional(),
+  // "upstash_box" (default) provisions a cloud runtime; "local_agent" hosts no
+  // box — the user runs `ctx7 connect` and the control plane relays to their
+  // machine. (external_url is not user-creatable.)
+  hostType: z.enum(["upstash_box", "local_agent"]).optional(),
 });
 
 export const updateServerSchema = z.object({

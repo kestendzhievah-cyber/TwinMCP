@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./core";
 
-export const hostTypes = ["upstash_box", "external_url"] as const;
+export const hostTypes = ["upstash_box", "external_url", "local_agent"] as const;
 export type HostType = (typeof hostTypes)[number];
 
 export const serverStatuses = ["provisioning", "running", "stopped", "error", "destroyed"] as const;
@@ -30,6 +30,12 @@ export const mcpRuntimes = [
   "rust",
 ] as const;
 export type McpRuntime = (typeof mcpRuntimes)[number];
+
+// Where a catalog MCP runs: "box" = inside an Upstash Box (default), "local" =
+// on the user's machine via the local agent (`ctx7 connect`) — e.g. desktop
+// apps like Blender that expose a localhost socket the cloud box can't reach.
+export const mcpHostModes = ["box", "local"] as const;
+export type McpHostMode = (typeof mcpHostModes)[number];
 
 export const servers = pgTable(
   "servers",
@@ -66,6 +72,7 @@ export const mcpServers = pgTable(
     description: text("description").notNull().default(""),
     repoUrl: text("repo_url"),
     runtime: text("runtime").$type<McpRuntime>().notNull(),
+    hostMode: text("host_mode").$type<McpHostMode>().notNull().default("box"),
     installCmd: text("install_cmd").notNull(),
     startCmd: text("start_cmd").notNull(),
     version: text("version").notNull().default("latest"),

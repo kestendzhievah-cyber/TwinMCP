@@ -26,6 +26,8 @@ type SeedEntry = {
   installCmd: string;
   startCmd: string;
   version: string;
+  // "local" = runs on the user's machine via `ctx7 connect` (default "box").
+  hostMode?: "box" | "local";
   configSchema: {
     properties: Record<
       string,
@@ -326,6 +328,22 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "0.9.10",
     configSchema: { properties: {} },
   },
+  {
+    // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
+    // blender-mcp bridges to the BlenderMCP add-on socket (localhost:9876), which
+    // only the user's own machine can reach — hence hostMode "local".
+    slug: "blender",
+    name: "Blender",
+    description:
+      "Drive Blender from your LLM — create/edit 3D scenes, objects, and materials, and run Python inside Blender. Runs locally via the TwinMCP agent; requires the BlenderMCP add-on installed and running in Blender.",
+    repoUrl: "https://github.com/ahujasid/blender-mcp",
+    runtime: "python",
+    installCmd: "true",
+    startCmd: "uvx blender-mcp",
+    version: "latest",
+    hostMode: "local",
+    configSchema: { properties: {} },
+  },
 ];
 
 // Servers with no viable runtime in a Node box: github (Go/Docker-only) and the
@@ -349,6 +367,7 @@ async function main() {
         startCmd: m.startCmd,
         version: m.version,
         configSchema: m.configSchema,
+        hostMode: m.hostMode ?? "box",
         isOfficial: true,
         isPublic: true,
       })
@@ -364,6 +383,7 @@ async function main() {
           startCmd: m.startCmd,
           version: m.version,
           configSchema: m.configSchema,
+          hostMode: m.hostMode ?? "box",
           isOfficial: true,
           isPublic: true,
         },

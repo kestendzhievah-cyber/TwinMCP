@@ -78,10 +78,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return notFound("MCP server not in catalog");
     }
 
+    // A tool's host mode must match the server: "local" tools (e.g. Blender) run
+    // on the user's machine via the agent and only fit local_agent servers; box
+    // tools only fit box servers.
+    const isLocal = server.hostType === "local_agent";
+    if (isLocal !== (mcp.hostMode === "local")) {
+      return badRequest(
+        isLocal
+          ? "This tool runs in a cloud box — install it on a standard server, not a local-agent one."
+          : "This tool runs locally via the agent — install it on a local-agent server."
+      );
+    }
+
     // Capacity guard: every box-hosted MCP runs at once, so too many OOM the box
     // (and flip the whole server to `error`). twinmcp-docs runs on the control
-    // plane, so it doesn't count against the box.
-    if (mcp.slug !== TWINMCP_DOCS_SLUG) {
+    // plane, so it doesn't count against the box. Local-agent tools run on the
+    // user's machine — no box to OOM — so the cap doesn't apply.
+    if (!isLocal && mcp.slug !== TWINMCP_DOCS_SLUG) {
       const cap = maxMcpsForBoxSize(server.boxSize);
       const [tally] = await db
         .select({ n: count() })
@@ -131,10 +144,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ip: clientIp(req),
     });
 
-    // Enqueue install in box (no-op if server isn't running yet)
-    await enqueue({ type: "install-mcp", userServerId: id }).catch((err) =>
-      console.error(`[mcps POST] enqueue install ${id} failed:`, err)
-    );
+    // Box tools install into the box (no-op if not running yet). Local-agent
+    // tools need no box job — the running agent picks them up on its next sync.
+    if (!isLocal) {
+      await enqueue({ type: "install-mcp", userServerId: id }).catch((err) =>
+        console.error(`[mcps POST] enqueue install ${id} failed:`, err)
+      );
+    }
 
     return NextResponse.json({ id, mcpServerId: mcp.id }, { status: 201 });
   } catch (err) {

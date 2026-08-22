@@ -75,11 +75,17 @@ export async function POST(req: NextRequest) {
 
     await assertServerQuota(session.userId, me.plan);
 
+    // "local_agent" servers host no box — the user runs `ctx7 connect` and the
+    // control plane relays to their machine. They skip box provisioning, sizing,
+    // and region selection, and start `stopped` (offline) until an agent attaches.
+    const hostType = parsed.data.hostType ?? "upstash_box";
+    const isLocal = hostType === "local_agent";
+
     // Box size is plan-gated (free: small, pro: +medium, team: all). Enforce
     // here — the Zod schema accepts any valid enum value, so without this a
     // free user could POST boxSize:"large" and provision an oversized box.
     const boxSize = parsed.data.boxSize ?? "small";
-    if (!isBoxSizeAllowed(me.plan, boxSize)) {
+    if (!isLocal && !isBoxSizeAllowed(me.plan, boxSize)) {
       const required = minPlanForBoxSize(boxSize) ?? "team";
       throw new PlanRestrictionError(
         "box-size",
@@ -89,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Region selection is a Team capability — don't let lower plans pin a region.
-    if (parsed.data.region !== undefined && !can(me.plan, "regionSelection")) {
+    if (!isLocal && parsed.data.region !== undefined && !can(me.plan, "regionSelection")) {
       const required = minPlanFor("regionSelection");
       throw new PlanRestrictionError(
         "region-selection",
@@ -101,46 +107,52 @@ export async function POST(req: NextRequest) {
     const slug = parsed.data.slug ?? slugify(parsed.data.name);
     if (!slug) return badRequest("Could not derive a slug from the name");
 
+    const initialStatus = isLocal ? "stopped" : "provisioning";
     const id = randomUUID();
     await db.insert(servers).values({
       id,
       userId: session.userId,
       name: parsed.data.name,
       slug,
+      hostType,
       boxSize,
-      region: parsed.data.region ?? null,
-      status: "provisioning",
+      region: isLocal ? null : (parsed.data.region ?? null),
+      status: initialStatus,
     });
 
-    // Auto-install TwinMCP Docs (handled by control-plane proxy, no exec in box).
-    // Best-effort: a missing CONFIG_ENCRYPTION_KEY or transient DB error must
-    // not block server creation — the user can install MCPs manually later.
-    const [docsMcp] = await db
-      .select({ id: mcpServers.id })
-      .from(mcpServers)
-      .where(eq(mcpServers.slug, TWINMCP_DOCS_SLUG))
-      .limit(1);
-    if (docsMcp) {
-      try {
-        const empty = encryptConfig({});
-        await db.insert(userServers).values({
-          id: randomUUID(),
-          userId: session.userId,
-          serverId: id,
-          mcpServerId: docsMcp.id,
-          configCiphertext: empty.ciphertext,
-          configIv: empty.iv,
-          configTag: empty.tag,
-          enabled: true,
-        });
-      } catch (autoInstallErr) {
-        console.warn(
-          `[servers POST] auto-install of ${TWINMCP_DOCS_SLUG} skipped:`,
-          autoInstallErr instanceof Error ? autoInstallErr.message : autoInstallErr
-        );
+    // Box servers auto-install TwinMCP Docs (control-plane proxy, no exec in box)
+    // and enqueue provisioning. Local-agent servers do neither — they host only
+    // the local tools the user installs, and come online when `ctx7 connect` runs.
+    // Best-effort: a missing CONFIG_ENCRYPTION_KEY or transient DB error must not
+    // block server creation — the user can install MCPs manually later.
+    if (!isLocal) {
+      const [docsMcp] = await db
+        .select({ id: mcpServers.id })
+        .from(mcpServers)
+        .where(eq(mcpServers.slug, TWINMCP_DOCS_SLUG))
+        .limit(1);
+      if (docsMcp) {
+        try {
+          const empty = encryptConfig({});
+          await db.insert(userServers).values({
+            id: randomUUID(),
+            userId: session.userId,
+            serverId: id,
+            mcpServerId: docsMcp.id,
+            configCiphertext: empty.ciphertext,
+            configIv: empty.iv,
+            configTag: empty.tag,
+            enabled: true,
+          });
+        } catch (autoInstallErr) {
+          console.warn(
+            `[servers POST] auto-install of ${TWINMCP_DOCS_SLUG} skipped:`,
+            autoInstallErr instanceof Error ? autoInstallErr.message : autoInstallErr
+          );
+        }
+      } else {
+        console.warn(`[servers POST] ${TWINMCP_DOCS_SLUG} not in catalog — run pnpm seed:mcps`);
       }
-    } else {
-      console.warn(`[servers POST] ${TWINMCP_DOCS_SLUG} not in catalog — run pnpm seed:mcps`);
     }
 
     logAudit({
@@ -148,16 +160,18 @@ export async function POST(req: NextRequest) {
       action: "server.create",
       targetType: "server",
       targetId: id,
-      metadata: { slug, boxSize },
+      metadata: { slug, hostType, ...(isLocal ? {} : { boxSize }) },
       ip: clientIp(req),
     });
 
-    // Enqueue provisioning (queued via QStash in prod, inline in dev)
-    await enqueue({ type: "provision-server", serverId: id }).catch((err) =>
-      console.error(`[servers POST] enqueue provision ${id} failed:`, err)
-    );
+    if (!isLocal) {
+      // Enqueue provisioning (queued via QStash in prod, inline in dev)
+      await enqueue({ type: "provision-server", serverId: id }).catch((err) =>
+        console.error(`[servers POST] enqueue provision ${id} failed:`, err)
+      );
+    }
 
-    return NextResponse.json({ id, slug, status: "provisioning" }, { status: 201 });
+    return NextResponse.json({ id, slug, status: initialStatus }, { status: 201 });
   } catch (err) {
     if (err instanceof QuotaExceededError || err instanceof PlanRestrictionError) {
       return forbidden(err.message);

@@ -5,6 +5,7 @@ import { registerSkillCommands, registerSkillAliases } from "./commands/skill.js
 import { registerAuthCommands, setAuthBaseUrl } from "./commands/auth.js";
 import { registerSetupCommand } from "./commands/setup.js";
 import { registerDocsCommands } from "./commands/docs.js";
+import { registerConnectCommand } from "./commands/connect.js";
 import { setBaseUrl } from "./utils/api.js";
 import { VERSION } from "./constants.js";
 
@@ -60,6 +61,7 @@ registerSkillAliases(program);
 registerAuthCommands(program);
 registerSetupCommand(program);
 registerDocsCommands(program);
+registerConnectCommand(program);
 
 program.action(() => {
   console.log("");

@@ -179,6 +179,13 @@ export async function provisionServer(serverId: string): Promise<void> {
     console.error(`[provision] server ${serverId} not found`);
     return;
   }
+  if (srv.hostType === "local_agent") {
+    // Local-agent servers have no box to provision — they come online when the
+    // user runs `ctx7 connect`. A stray provision job (e.g. a start click) must
+    // not create a box for them.
+    console.warn(`[provision] server ${serverId} is local_agent — nothing to provision`);
+    return;
+  }
 
   try {
     await db

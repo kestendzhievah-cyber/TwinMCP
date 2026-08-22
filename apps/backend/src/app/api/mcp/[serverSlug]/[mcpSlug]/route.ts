@@ -3,13 +3,14 @@ import { and, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
-import { authenticateRequest } from "@/lib/auth";
+import { authenticateRequest, type AuthedContext } from "@/lib/auth";
 import { jsonError, rateLimited } from "@/lib/errors";
 import { TWINMCP_DOCS_SLUG, resumeServer } from "@/lib/provisioning";
 import { decryptConfig } from "@/lib/crypto/config-encryption";
 import { MCP_STREAM_PATH } from "@/lib/upstash/mcp-bridge";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { recordMcpUsage } from "@/lib/usage-metrics";
+import { connKey, isAgentOnline, relayToAgent } from "@/lib/agent/registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,7 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
     .select({
       serverId: servers.id,
       serverStatus: servers.status,
+      hostType: servers.hostType,
       enabled: userServers.enabled,
       userServerId: userServers.id,
       mcpEndpoint: userServers.endpointUrl,
@@ -93,6 +95,12 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
 
   // Per-MCP usage metering (fire-and-forget; never blocks the request).
   const meter = (ok: boolean) => void recordMcpUsage(row.userServerId, ok).catch(() => {});
+
+  // Local-agent MCP: served by the user's own machine over a live relay, not a
+  // box. Skip every box gate and route to the connected agent.
+  if (row.hostType === "local_agent") {
+    return handleLocalAgent(req, auth, serverSlug, mcpSlug, method, meter);
+  }
 
   // TwinMCP Docs is served by the control plane (no box). It is stateless and
   // offers no server→client SSE stream, so only POST is meaningful. Its rate
@@ -213,6 +221,65 @@ function wakingUp(bodyText: string | undefined): NextResponse {
       error: {
         code: -32001,
         message: "MCP server is waking up from idle. Retry in a few seconds.",
+      },
+    },
+    { status: 503, headers: { "retry-after": "3" } }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Local-agent relay. The MCP runs on the user's machine (via `ctx7 connect`);
+// we relay the JSON-RPC request over the agent's live link instead of forwarding
+// to a box. Request/response only in v1 (no server→client SSE stream).
+// ---------------------------------------------------------------------------
+async function handleLocalAgent(
+  req: NextRequest,
+  auth: AuthedContext,
+  serverSlug: string,
+  mcpSlug: string,
+  method: Method,
+  meter: (ok: boolean) => void
+): Promise<NextResponse> {
+  if (method !== "POST") {
+    return new NextResponse(null, { status: 405, headers: { Allow: "POST" } });
+  }
+
+  const rl = await checkRateLimit(auth.userId, auth.plan);
+  if (!rl.ok) {
+    meter(false);
+    return rateLimited(true);
+  }
+
+  const bodyText = await req.text();
+  const key = connKey(auth.userId, serverSlug);
+  if (!isAgentOnline(key)) {
+    meter(false);
+    return agentOffline(bodyText);
+  }
+
+  try {
+    const resp = await relayToAgent(key, mcpSlug, bodyText);
+    meter(resp.ok);
+    return new NextResponse(resp.body, {
+      status: resp.ok ? 200 : 502,
+      headers: { "content-type": resp.contentType ?? "application/json" },
+    });
+  } catch (err) {
+    console.error("[mcp proxy] local-agent relay failed:", err);
+    meter(false);
+    return agentOffline(bodyText);
+  }
+}
+
+/** JSON-RPC 503 shown when no local agent is currently connected for the server. */
+function agentOffline(bodyText: string | undefined): NextResponse {
+  return NextResponse.json(
+    {
+      jsonrpc: "2.0",
+      id: requestId(bodyText),
+      error: {
+        code: -32001,
+        message: "Local agent offline — run `ctx7 connect` on the machine that hosts this tool.",
       },
     },
     { status: 503, headers: { "retry-after": "3" } }
