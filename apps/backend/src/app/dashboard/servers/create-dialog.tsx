@@ -68,7 +68,7 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
       const data = await res.json();
       toast.success(
         isLocal
-          ? `Server "${name}" created — run \`ctx7 connect\` to bring it online.`
+          ? `Server "${name}" created — run \`ctx7 connect --server ${data.slug}\` to bring it online.`
           : `Server "${name}" created — provisioning…`
       );
       setOpen(false);

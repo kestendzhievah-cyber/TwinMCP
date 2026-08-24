@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PLANS, formatPrice } from "@/components/pricing/pricing-data";
@@ -53,7 +53,7 @@ export function StepPlan({ initialPlan, onSelectPlan }: StepPlanProps) {
               key={p.id}
               className={cn(
                 "flex flex-col rounded-xl border p-5 transition-colors",
-                recommended || preSelected ? "border-foreground shadow-sm" : "border-border",
+                recommended || preSelected ? "border-foreground shadow-sm" : "border-border"
               )}
             >
               {recommended && (
@@ -83,7 +83,16 @@ export function StepPlan({ initialPlan, onSelectPlan }: StepPlanProps) {
                 disabled={pending !== null}
                 onClick={() => choose(p.id as SelectablePlan)}
               >
-                {isPending ? "…" : p.id === "free" ? "Start free" : `Choose ${p.name}`}
+                {isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {p.id === "free" ? "Starting…" : "Redirecting…"}
+                  </>
+                ) : p.id === "free" ? (
+                  "Start free"
+                ) : (
+                  `Choose ${p.name}`
+                )}
               </Button>
             </div>
           );

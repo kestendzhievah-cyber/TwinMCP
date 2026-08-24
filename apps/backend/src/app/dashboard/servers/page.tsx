@@ -92,7 +92,7 @@ export default async function ServersPage() {
           }
         />
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -108,7 +108,10 @@ export default async function ServersPage() {
               {rows.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell>
-                    <Link href={`/dashboard/servers/${s.id}` as Route} className="font-medium hover:underline">
+                    <Link
+                      href={`/dashboard/servers/${s.id}` as Route}
+                      className="font-medium hover:underline"
+                    >
                       {s.name}
                     </Link>
                     <div className="text-xs text-muted-foreground font-mono mt-0.5">{s.slug}</div>

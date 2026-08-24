@@ -183,7 +183,7 @@ export function PricingCards({ cadence, promo }: PricingCardsProps) {
                 {pending === plan.id ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Redirection…
+                    Redirecting…
                   </>
                 ) : (
                   plan.cta.label

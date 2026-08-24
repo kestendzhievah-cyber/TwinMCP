@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 
 const links = [
-  { href: "/dashboard", label: "API Keys", icon: Key },
+  { href: "/dashboard", label: "Overview", icon: Key },
   { href: "/dashboard/servers", label: "Servers", icon: Boxes },
   { href: "/dashboard/marketplace", label: "Marketplace", icon: Store },
   { href: "/dashboard/mcps", label: "Publish MCP", icon: Upload },

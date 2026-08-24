@@ -136,6 +136,9 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
             <p className="mt-3 max-w-md text-balance text-sm text-muted-foreground">
               {current.description}
             </p>
+            <p className="sr-only" aria-live="polite">
+              MCP {index + 1} of {catalog.length}: {current.name}
+            </p>
           </div>
 
           <button
@@ -197,8 +200,7 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
                       type={def.secret ? "password" : def.type === "number" ? "number" : "text"}
                       value={(value ?? "") as string | number}
                       onChange={(e) => {
-                        const v =
-                          def.type === "number" ? Number(e.target.value) : e.target.value;
+                        const v = def.type === "number" ? Number(e.target.value) : e.target.value;
                         update(key, v);
                       }}
                     />

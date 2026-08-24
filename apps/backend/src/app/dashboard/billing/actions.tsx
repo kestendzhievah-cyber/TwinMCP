@@ -55,10 +55,17 @@ export function BillingActions({
     if (status === "success") {
       setBanner({
         type: "success",
-        message:
-          "Payment confirmed! Your plan is activating — refresh in a few seconds if nothing shows.",
+        message: "Payment confirmed! Your plan is activating — this page updates automatically.",
       });
       router.replace("/dashboard/billing");
+      // The plan flips when Stripe's webhook lands (usually a few seconds). Poll
+      // so the page self-updates instead of asking the user to refresh manually.
+      let n = 0;
+      const poll = setInterval(() => {
+        router.refresh();
+        if (++n >= 6) clearInterval(poll);
+      }, 2500);
+      return () => clearInterval(poll);
     } else if (status === "canceled") {
       setBanner({ type: "info", message: "Checkout canceled. You were not charged." });
       router.replace("/dashboard/billing");

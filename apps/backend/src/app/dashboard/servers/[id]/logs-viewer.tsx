@@ -55,6 +55,7 @@ export function LogsViewer({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   async function fetchLogs() {
@@ -74,13 +75,19 @@ export function LogsViewer({
       setLastFetch(new Date(data.fetchedAt).toLocaleTimeString());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     fetchLogs();
     if (paused) return;
-    const interval = setInterval(fetchLogs, POLL_INTERVAL_MS);
+    const interval = setInterval(() => {
+      // Don't poll a background tab — saves battery and requests.
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchLogs();
+    }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverId, slug, paused]);
@@ -121,10 +128,17 @@ export function LogsViewer({
               variant="outline"
               onClick={() => setPaused((p) => !p)}
               title={paused ? "Resume" : "Pause"}
+              aria-label={paused ? "Resume live tail" : "Pause live tail"}
             >
               {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             </Button>
-            <Button size="icon" variant="outline" onClick={fetchLogs} title="Refresh now">
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={fetchLogs}
+              title="Refresh now"
+              aria-label="Refresh logs now"
+            >
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button
@@ -132,6 +146,8 @@ export function LogsViewer({
               variant={autoScroll ? "default" : "outline"}
               onClick={() => setAutoScroll((a) => !a)}
               title="Auto-scroll to bottom"
+              aria-label="Auto-scroll to bottom"
+              aria-pressed={autoScroll}
             >
               <ArrowDownToLine className="h-4 w-4" />
             </Button>
@@ -153,7 +169,9 @@ export function LogsViewer({
           ref={containerRef}
           className="h-[480px] overflow-auto rounded-md bg-zinc-950 p-3 font-mono text-xs text-zinc-200"
         >
-          {lines.length === 0 ? (
+          {loading && lines.length === 0 ? (
+            <div className="text-zinc-500">Loading logs…</div>
+          ) : lines.length === 0 ? (
             <div className="text-zinc-500">No log lines yet.</div>
           ) : (
             lines.map((l, i) => {
@@ -161,9 +179,7 @@ export function LogsViewer({
               return (
                 <div key={i} className="flex gap-2 leading-5">
                   {l.ts && <span className="text-zinc-500 shrink-0">{l.ts.slice(11, 19)}</span>}
-                  {slug === "all" && (
-                    <span className="text-cyan-400 shrink-0">[{l.source}]</span>
-                  )}
+                  {slug === "all" && <span className="text-cyan-400 shrink-0">[{l.source}]</span>}
                   <span className={cn("whitespace-pre-wrap break-all", levelColor[level])}>
                     {l.message}
                   </span>

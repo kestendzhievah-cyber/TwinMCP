@@ -69,9 +69,9 @@ export function SettingsPanel({ email, idePreference }: { email: string; idePref
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Email
-            </label>
+            </span>
             <div className="rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm">
               {email || "—"}
             </div>
