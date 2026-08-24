@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -151,17 +158,28 @@ export function ReconfigureDialog({
                       </span>
                     )}
                   </Label>
-                  <Input
-                    id={key}
-                    type={isSecret ? "password" : def.type === "number" ? "number" : "text"}
-                    value={values[key] ?? ""}
-                    onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
-                    placeholder={
-                      isSecret && hasExisting
-                        ? "••••••••"
-                        : def.description ?? ""
-                    }
-                  />
+                  {def.type === "boolean" ? (
+                    <Select
+                      value={values[key] ?? ""}
+                      onValueChange={(v) => setValues((vs) => ({ ...vs, [key]: v }))}
+                    >
+                      <SelectTrigger id={key}>
+                        <SelectValue placeholder={hasExisting ? "Keep current" : "Select…"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">true</SelectItem>
+                        <SelectItem value="false">false</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id={key}
+                      type={isSecret ? "password" : def.type === "number" ? "number" : "text"}
+                      value={values[key] ?? ""}
+                      onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
+                      placeholder={isSecret && hasExisting ? "••••••••" : (def.description ?? "")}
+                    />
+                  )}
                   {def.description && !isSecret && (
                     <p className="text-xs text-muted-foreground">{def.description}</p>
                   )}

@@ -37,7 +37,7 @@ export function ConnectPanel({
 
   const [origin, setOrigin] = useState("");
   const [ide, setIde] = useState<IdeKey>("cursor");
-  const [mcpSlug, setMcpSlug] = useState<string>(enabled[0]?.slug ?? mcps[0]?.slug ?? "");
+  const [mcpSlug, setMcpSlug] = useState<string>(enabled[0]?.slug ?? "");
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [keyError, setKeyError] = useState("");
@@ -57,6 +57,17 @@ export function ConnectPanel({
   );
 
   async function generateKey() {
+    // Minting is additive — the previous key keeps working until it's revoked.
+    // Confirm so a "generate another" click doesn't silently orphan a key the
+    // user already pasted into a client.
+    if (
+      apiKey &&
+      !window.confirm(
+        "Generate a new API key? Your current key keeps working until you revoke it on the API Keys page."
+      )
+    ) {
+      return;
+    }
     setGenerating(true);
     setKeyError("");
     try {
@@ -151,10 +162,9 @@ export function ConnectPanel({
               onChange={(e) => setMcpSlug(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground [&>option]:bg-background [&>option]:text-foreground"
             >
-              {mcps.map((m) => (
+              {enabled.map((m) => (
                 <option key={m.slug} value={m.slug}>
                   {m.name}
-                  {m.enabled ? "" : " (disabled)"}
                 </option>
               ))}
             </select>
@@ -224,7 +234,7 @@ export function ConnectPanel({
             ) : (
               <KeyRound className="h-3.5 w-3.5" />
             )}
-            {apiKey ? "Rotate API key" : "Generate API key"}
+            {apiKey ? "Generate another key" : "Generate API key"}
           </Button>
           <Button
             variant="outline"

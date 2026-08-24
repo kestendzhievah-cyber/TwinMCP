@@ -168,14 +168,29 @@ export function InstallDialog({
                     {key}
                     {def.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
-                  <Input
-                    id={key}
-                    type={def.secret ? "password" : def.type === "number" ? "number" : "text"}
-                    required={def.required}
-                    value={config[key] ?? ""}
-                    onChange={(e) => setConfig((c) => ({ ...c, [key]: e.target.value }))}
-                    placeholder={def.description ?? ""}
-                  />
+                  {def.type === "boolean" ? (
+                    <Select
+                      value={config[key] ?? "false"}
+                      onValueChange={(v) => setConfig((c) => ({ ...c, [key]: v }))}
+                    >
+                      <SelectTrigger id={key}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">true</SelectItem>
+                        <SelectItem value="false">false</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id={key}
+                      type={def.secret ? "password" : def.type === "number" ? "number" : "text"}
+                      required={def.required}
+                      value={config[key] ?? ""}
+                      onChange={(e) => setConfig((c) => ({ ...c, [key]: e.target.value }))}
+                      placeholder={def.description ?? ""}
+                    />
+                  )}
                   {def.description && (
                     <p className="text-xs text-muted-foreground">{def.description}</p>
                   )}

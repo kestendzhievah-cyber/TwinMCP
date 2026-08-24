@@ -13,6 +13,16 @@ const VARIANT: Record<ServerStatus, "success" | "secondary" | "warning" | "destr
   destroyed: "secondary",
 };
 
+// Plain-language explanation of each status, shown on hover so the raw enum
+// isn't the only signal (esp. `error`, which otherwise reads as a dead end).
+const HELP: Record<ServerStatus, string> = {
+  running: "Online and serving MCP requests.",
+  provisioning: "Spinning up your runtime — usually about 30 seconds.",
+  stopped: "Sleeping to save resources. Start it to wake it up.",
+  error: "The runtime failed to start. Check the Logs tab, or restart the server.",
+  destroyed: "This server has been torn down.",
+};
+
 // Only poll while the status is in-flight; settled states don't change on their own.
 const TRANSIENT: ServerStatus[] = ["provisioning"];
 
@@ -56,5 +66,9 @@ export function ServerStatusBadge({
     };
   }, [serverId, status, router]);
 
-  return <Badge variant={VARIANT[status]}>{status}</Badge>;
+  return (
+    <Badge variant={VARIANT[status]} title={HELP[status]} className="capitalize">
+      {status}
+    </Badge>
+  );
 }

@@ -57,15 +57,7 @@ export default async function MarketplacePage() {
         <EmptyState
           icon={Store}
           title="Catalog is empty"
-          description={
-            <>
-              No MCPs are available yet. Ask an admin to run{" "}
-              <code className="font-mono text-xs bg-secondary px-1 py-0.5 rounded">
-                pnpm seed:mcps
-              </code>
-              , then refresh.
-            </>
-          }
+          description="No MCPs are available yet — check back soon."
           primaryAction={<RefreshCatalogButton />}
         />
       ) : (

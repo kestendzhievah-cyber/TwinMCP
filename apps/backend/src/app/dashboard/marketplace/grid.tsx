@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,24 +42,21 @@ export function McpCatalogGrid({
               <CardDescription className="mt-2 line-clamp-3">{mcp.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() => setPicking(mcp)}
-                disabled={userServers.length === 0}
-              >
-                {userServers.length === 0 ? "Create a server first" : "Install"}
-              </Button>
+              {userServers.length === 0 ? (
+                <Button asChild size="sm" variant="outline" className="w-full">
+                  <Link href={"/dashboard/servers" as Route}>Create a server first</Link>
+                </Button>
+              ) : (
+                <Button size="sm" className="w-full" onClick={() => setPicking(mcp)}>
+                  Install
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <InstallDialog
-        mcp={picking}
-        userServers={userServers}
-        onClose={() => setPicking(null)}
-      />
+      <InstallDialog mcp={picking} userServers={userServers} onClose={() => setPicking(null)} />
     </>
   );
 }
