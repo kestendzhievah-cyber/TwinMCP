@@ -70,7 +70,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{srv.name}</h1>
@@ -80,6 +80,13 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
         </div>
         <ServerControls serverId={srv.id} status={srv.status} />
       </div>
+
+      {srv.status === "error" && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          This server&apos;s runtime failed to start. Open the <strong>Logs</strong> tab below to
+          see why, then <strong>Restart</strong> it.
+        </div>
+      )}
 
       <Tabs defaultValue="overview">
         <TabsList>
@@ -91,7 +98,11 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Runtime</CardTitle>
-              <CardDescription>Upstash Box hosting this MCP server.</CardDescription>
+              <CardDescription>
+                {srv.hostType === "local_agent"
+                  ? "Runs on your machine via the local agent."
+                  : "Upstash Box hosting this MCP server."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-x-8 gap-y-3 text-sm md:grid-cols-2">
               <div>
@@ -164,6 +175,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
           <ConnectPanel
             serverSlug={srv.slug}
             hostType={srv.hostType}
+            status={srv.status}
             mcps={installations.map((i) => ({
               slug: i.mcpSlug,
               name: i.mcpName,

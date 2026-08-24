@@ -28,10 +28,12 @@ export function ConnectPanel({
   serverSlug,
   mcps,
   hostType,
+  status,
 }: {
   serverSlug: string;
   mcps: ConnectMcp[];
   hostType?: string;
+  status?: string;
 }) {
   const enabled = useMemo(() => mcps.filter((m) => m.enabled), [mcps]);
 
@@ -151,6 +153,15 @@ export function ConnectPanel({
               The status badge above turns <strong>running</strong> once the agent is connected.
             </p>
           </div>
+        )}
+        {hostType !== "local_agent" && status && status !== "running" && (
+          <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              Your server is <strong>{status}</strong> — the connection details below start working
+              once it reaches <strong>running</strong>.
+            </span>
+          </p>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">

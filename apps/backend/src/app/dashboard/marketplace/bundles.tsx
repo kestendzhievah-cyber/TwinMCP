@@ -50,6 +50,12 @@ export function McpBundles({
     })).filter((b) => b.entries.length > 0);
   }, [catalog]);
 
+  // Starter bundles are cloud-box MCPs — only box servers can host them.
+  const boxServers = useMemo(
+    () => userServers.filter((s) => s.hostType === "upstash_box"),
+    [userServers]
+  );
+
   const [picking, setPicking] = useState<ResolvedBundle | null>(null);
   const [serverId, setServerId] = useState("");
   const [installing, setInstalling] = useState(false);
@@ -57,7 +63,7 @@ export function McpBundles({
   if (bundles.length === 0) return null;
 
   function open(b: ResolvedBundle) {
-    setServerId(userServers[0]?.id ?? "");
+    setServerId(boxServers[0]?.id ?? "");
     setPicking(b);
   }
 
@@ -101,7 +107,7 @@ export function McpBundles({
     if (installed > 0) {
       const parts = [`${installed} installed`];
       if (already) parts.push(`${already} already present`);
-      if (failed) parts.push(`${failed} didn’t fit`);
+      if (failed) parts.push(`${failed} failed`);
       toast.success(`${picking.bundle.name}: ${parts.join(" · ")}`);
       router.push(`/dashboard/servers/${target}` as Route);
     } else if (already > 0 && failed === 0) {
@@ -147,10 +153,10 @@ export function McpBundles({
                 size="sm"
                 className="w-full"
                 onClick={() => open(b)}
-                disabled={userServers.length === 0}
+                disabled={boxServers.length === 0}
               >
-                {userServers.length === 0
-                  ? "Create a server first"
+                {boxServers.length === 0
+                  ? "Needs a cloud-box server"
                   : `Install ${b.entries.length} MCPs`}
               </Button>
             </CardContent>
@@ -178,7 +184,7 @@ export function McpBundles({
               ))}
             </div>
 
-            {userServers.length > 1 && (
+            {boxServers.length > 1 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Target server</label>
                 <Select value={serverId} onValueChange={setServerId}>
@@ -186,7 +192,7 @@ export function McpBundles({
                     <SelectValue placeholder="Pick a server" />
                   </SelectTrigger>
                   <SelectContent>
-                    {userServers.map((s) => (
+                    {boxServers.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
                         <span className="ml-2 text-xs text-muted-foreground">{s.status}</span>
