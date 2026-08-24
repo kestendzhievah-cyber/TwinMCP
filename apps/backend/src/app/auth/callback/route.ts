@@ -25,14 +25,32 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get("code");
   const returnTo = url.searchParams.get("returnTo") ?? DEFAULT_RETURN_TO;
 
+  // Supabase reports OAuth denials and expired / already-used links via `error`.
+  // Never redirect a failed auth onto a protected or action page (e.g. the reset
+  // form) with no session — send the user to sign-in with a friendly error.
+  const errorParam = url.searchParams.get("error_code") ?? url.searchParams.get("error");
+  if (errorParam) {
+    return NextResponse.redirect(
+      new URL(`/sign-in?error=${encodeURIComponent(errorParam)}`, url.origin)
+    );
+  }
+  if (!code) {
+    return NextResponse.redirect(new URL("/sign-in?error=auth_failed", url.origin));
+  }
+
   let userId: string | undefined;
   let userEmail: string | undefined;
-  if (code) {
+  {
     const supabase = await createClient();
-    const { data } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     const u = data?.user;
-    userId = u?.id;
-    userEmail = u?.email;
+    if (error || !u) {
+      return NextResponse.redirect(
+        new URL(`/sign-in?error=${encodeURIComponent(error?.code ?? "auth_failed")}`, url.origin)
+      );
+    }
+    userId = u.id;
+    userEmail = u.email;
 
     // Fire signup_completed once per user, server-side. Client-side signup
     // form fires its own copy with via:"client" — we tag this one with

@@ -22,7 +22,12 @@ export function SignInForm() {
   const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  // Surface an auth error the callback bounced us here with (OAuth denied,
+  // expired reset/magic link, failed exchange).
+  const [error, setError] = useState(() => {
+    const code = searchParams.get("error");
+    return code ? friendlyAuthError({ message: "", code }) : "";
+  });
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 

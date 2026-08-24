@@ -7,6 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableHeader,
   TableBody,
@@ -31,6 +39,8 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
   const [creating, setCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<Key | null>(null);
+  const [revoking, setRevoking] = useState(false);
 
   const limit = limitFor(plan, "apiKeys");
   const atLimit = keys.length >= limit;
@@ -58,8 +68,11 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
   }
 
   async function revokeKey(id: string) {
+    setRevoking(true);
     const res = await fetch(`/api/v2/auth/keys/${id}`, { method: "DELETE" });
+    setRevoking(false);
     if (res.ok) {
+      setRevokeTarget(null);
       router.refresh();
       toast.success("Key revoked");
     } else {
@@ -69,8 +82,12 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
 
   async function copyKey() {
     if (!revealedKey) return;
-    await navigator.clipboard.writeText(revealedKey);
-    toast.success("Copied to clipboard");
+    try {
+      await navigator.clipboard.writeText(revealedKey);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy — select the key and copy it manually.");
+    }
   }
 
   return (
@@ -168,8 +185,8 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => revokeKey(k.id)}
-                        aria-label="Revoke"
+                        onClick={() => setRevokeTarget(k)}
+                        aria-label={`Revoke key ${k.name ?? k.prefix}`}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -180,6 +197,31 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
             </Table>
           </div>
         )}
+
+        <Dialog open={!!revokeTarget} onOpenChange={(o) => !o && setRevokeTarget(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Revoke this API key?</DialogTitle>
+              <DialogDescription>
+                This immediately breaks any IDE or script using{" "}
+                <code className="font-mono">{revokeTarget?.name ?? revokeTarget?.prefix}</code>. It
+                can&apos;t be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRevokeTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => revokeTarget && revokeKey(revokeTarget.id)}
+                disabled={revoking}
+              >
+                {revoking ? "Revoking…" : "Revoke key"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

@@ -16,6 +16,14 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Props {
   userId: string;
@@ -29,6 +37,8 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
   const [creating, setCreating] = useState(false);
   const [email, setEmail] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<Props["members"][number] | null>(null);
+  const [removing, setRemoving] = useState(false);
   const isOwner = members.some((m) => m.userId === userId && m.role === "owner");
 
   async function invite(e: FormEvent) {
@@ -53,10 +63,13 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
 
   async function removeMember(memberUserId: string) {
     if (!teamspace) return;
+    setRemoving(true);
     const res = await fetch(`/api/v2/team/${teamspace.id}/members?userId=${memberUserId}`, {
       method: "DELETE",
     });
+    setRemoving(false);
     if (res.ok) {
+      setRemoveTarget(null);
       toast.success("Member removed");
       router.refresh();
     } else {
@@ -175,8 +188,8 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() => removeMember(m.userId)}
-                            aria-label="Remove member"
+                            onClick={() => setRemoveTarget(m)}
+                            aria-label={`Remove ${m.email}`}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -189,6 +202,30 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
             </Table>
           </div>
         </div>
+
+        <Dialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove this member?</DialogTitle>
+              <DialogDescription>
+                <code className="font-mono">{removeTarget?.email}</code> will immediately lose
+                access to this teamspace.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRemoveTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => removeTarget && removeMember(removeTarget.userId)}
+                disabled={removing}
+              >
+                {removing ? "Removing…" : "Remove member"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

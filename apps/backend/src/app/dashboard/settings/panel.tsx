@@ -41,8 +41,17 @@ export function SettingsPanel({ email, idePreference }: { email: string; idePref
 
   async function handleDelete() {
     setDeleting(true);
-    await fetch("/api/v2/account", { method: "DELETE" });
-    router.push("/");
+    const res = await fetch("/api/v2/account", { method: "DELETE" });
+    if (res.ok) {
+      router.push("/");
+      return;
+    }
+    // Keep the dialog open on failure so the user knows the account still exists.
+    setDeleting(false);
+    const err = await res.json().catch(() => ({}));
+    toast.error(
+      err.message ?? "Couldn't delete your account. Please try again or contact support."
+    );
   }
 
   return (
@@ -79,7 +88,7 @@ export function SettingsPanel({ email, idePreference }: { email: string; idePref
               value={ide}
               onChange={(e) => saveIde(e.target.value)}
               disabled={savingIde}
-              className="h-9 max-w-xs rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 max-w-xs rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <option value="">Not set</option>
               {IDE_KEYS.map((k) => (

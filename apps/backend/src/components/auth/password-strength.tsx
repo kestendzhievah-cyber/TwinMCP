@@ -6,10 +6,10 @@ import { Check, X } from "lucide-react";
 type Rule = { label: string; test: (pw: string) => boolean };
 
 const RULES: Rule[] = [
-  { label: "Au moins 8 caractères", test: (p) => p.length >= 8 },
-  { label: "Une minuscule et une majuscule", test: (p) => /[a-z]/.test(p) && /[A-Z]/.test(p) },
-  { label: "Un chiffre", test: (p) => /\d/.test(p) },
-  { label: "Un caractère spécial", test: (p) => /[^A-Za-z0-9]/.test(p) },
+  { label: "At least 8 characters", test: (p) => p.length >= 8 },
+  { label: "Lower- and uppercase letters", test: (p) => /[a-z]/.test(p) && /[A-Z]/.test(p) },
+  { label: "A number", test: (p) => /\d/.test(p) },
+  { label: "A special character", test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
 export function passwordScore(pw: string) {
@@ -29,8 +29,7 @@ export function PasswordStrength({ password }: { password: string }) {
         : score === 3
           ? "bg-yellow-400"
           : "bg-emerald-500";
-  const label =
-    score <= 1 ? "Faible" : score === 2 ? "Moyen" : score === 3 ? "Bon" : "Fort";
+  const label = score <= 1 ? "Weak" : score === 2 ? "Fair" : score === 3 ? "Good" : "Strong";
 
   return (
     <div className="mt-1.5">

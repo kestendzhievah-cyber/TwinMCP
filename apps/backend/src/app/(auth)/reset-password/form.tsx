@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,21 @@ export function ResetPasswordForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
+
+  // A reset only works with the recovery session the email link establishes. If
+  // it's missing (link expired, opened in another browser), say so up front
+  // instead of letting the user fill the form and fail on submit.
+  useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        setHasSession(!!data.user);
+        setChecking(false);
+      })
+      .catch(() => setChecking(false));
+  }, []);
 
   const mismatch = confirm.length > 0 && confirm !== password;
   const tooWeak = passwordScore(password) < 2;
@@ -49,6 +64,34 @@ export function ResetPasswordForm() {
         </div>
         <h1 className="mt-5 text-2xl font-semibold tracking-tight">Password updated</h1>
         <p className="mt-2 text-sm text-muted-foreground">Redirecting to your dashboard…</p>
+      </div>
+    );
+  }
+
+  if (checking) {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <p className="text-sm text-muted-foreground">Checking your reset link…</p>
+      </div>
+    );
+  }
+
+  if (!hasSession) {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <div className="grid h-12 w-12 place-items-center rounded-full bg-destructive/10">
+          <AlertCircle className="h-5 w-5 text-destructive" />
+        </div>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Link invalid or expired</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This password reset link is no longer valid. Request a new one to continue.
+        </p>
+        <Link
+          href={"/forgot-password" as Route}
+          className="mt-6 text-sm font-medium text-foreground hover:underline"
+        >
+          Request a new link
+        </Link>
       </div>
     );
   }
