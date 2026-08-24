@@ -185,7 +185,7 @@ export function BillingActions({
                 from the billing portal.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
               <Button
                 variant="secondary"
                 onClick={openPortal}
@@ -193,6 +193,12 @@ export function BillingActions({
               >
                 {loading === "portal" ? "Redirecting…" : "Billing portal"}
               </Button>
+              {!hasStripeCustomer && (
+                <p className="text-xs text-muted-foreground">
+                  Available once you have a subscription. If your plan was set up manually, contact
+                  support to manage it.
+                </p>
+              )}
             </CardContent>
           </Card>
           <EnterpriseCard />
@@ -329,7 +335,7 @@ function CadenceToggle({
           type="button"
           onClick={() => onChange("monthly")}
           className={cn(
-            "rounded-full px-6 py-2.5 font-medium transition-colors",
+            "rounded-full px-6 py-2.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             cadence === "monthly"
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -341,7 +347,7 @@ function CadenceToggle({
           type="button"
           onClick={() => onChange("yearly")}
           className={cn(
-            "flex items-center gap-2 rounded-full px-6 py-2.5 font-medium transition-colors",
+            "flex items-center gap-2 rounded-full px-6 py-2.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             cadence === "yearly"
               ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
               : "text-muted-foreground hover:text-foreground"
@@ -356,13 +362,15 @@ function CadenceToggle({
                 : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
             )}
           >
-            Save 25%
+            Save up to 25%
           </span>
         </button>
       </div>
       <p className="text-xs text-muted-foreground">
         Pay yearly — like getting{" "}
-        <span className="font-semibold text-emerald-600 dark:text-emerald-400">3 months free</span>
+        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+          up to 3 months free
+        </span>
       </p>
     </div>
   );

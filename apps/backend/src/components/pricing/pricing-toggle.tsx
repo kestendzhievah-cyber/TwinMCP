@@ -3,7 +3,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { BillingCadence } from "./pricing-data";
-import { ANNUAL_DISCOUNT_PCT } from "./pricing-data";
 
 interface PricingToggleProps {
   cadence: BillingCadence;
@@ -31,12 +30,9 @@ export function PricingToggle({ cadence, onChange }: PricingToggleProps) {
       </div>
       <Badge
         variant="secondary"
-        className={cn(
-          "transition-opacity",
-          cadence === "annual" ? "opacity-100" : "opacity-60"
-        )}
+        className={cn("transition-opacity", cadence === "annual" ? "opacity-100" : "opacity-60")}
       >
-        Save {ANNUAL_DISCOUNT_PCT}%
+        Save up to 25%
       </Badge>
     </div>
   );
@@ -58,7 +54,7 @@ function ToggleButton({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+        "rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         active
           ? "bg-primary text-primary-foreground shadow-sm"
           : "text-muted-foreground hover:text-foreground"

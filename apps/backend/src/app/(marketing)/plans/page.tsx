@@ -9,17 +9,15 @@ import { TrustSignals } from "@/components/pricing/trust-signals";
 import { ComparisonTable } from "@/components/pricing/comparison-table";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
-import {
-  productPricingSchema,
-  faqPageSchema,
-  breadcrumbListSchema,
-} from "@/lib/seo/schema";
+import { productPricingSchema, faqPageSchema, breadcrumbListSchema } from "@/lib/seo/schema";
 import { PLANS } from "@/components/pricing/pricing-data";
+
+const proMonthly = PLANS.find((p) => p.id === "pro")?.monthlyUsd ?? 14.99;
+const teamMonthly = PLANS.find((p) => p.id === "team")?.monthlyUsd ?? 99;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description:
-    "Free forever (1 server, 5 official MCPs). Pro $20/mo, Team $50/mo, Enterprise on request. No credit card on the free tier.",
+  description: `Free forever (1 server, 5 official MCPs). Pro €${proMonthly}/mo, Team €${teamMonthly}/mo, Enterprise on request. No credit card on the free tier.`,
   alternates: { canonical: "/plans" },
   openGraph: {
     title: "TwinMCP Pricing — start free, upgrade only when you outgrow it",
@@ -32,7 +30,7 @@ export const metadata: Metadata = {
 const pricingFaq: FaqItem[] = [
   {
     q: "How does annual billing work?",
-    a: "You pay 12 months up front and save 20% versus monthly. Cancel mid-cycle within the first 7 days for a full refund — after that the plan keeps running until the end of the year, no refunds prorated.",
+    a: "You pay 12 months up front and save up to 25% versus monthly. Cancel mid-cycle within the first 7 days for a full refund — after that the plan keeps running until the end of the year, no refunds prorated.",
   },
   {
     q: "Can I switch plans later?",

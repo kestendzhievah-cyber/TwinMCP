@@ -116,7 +116,7 @@ export function UsagePanel() {
               key={r}
               type="button"
               onClick={() => setDays(r)}
-              className={`rounded-full px-3 py-1 font-medium transition-colors ${
+              className={`rounded-full px-3 py-1 font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                 days === r
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -134,9 +134,11 @@ export function UsagePanel() {
             </a>
           </Button>
         ) : (
-          <Button variant="outline" size="sm" disabled title="Available on the Pro plan">
-            <Lock className="h-3.5 w-3.5" />
-            Export CSV
+          <Button asChild variant="outline" size="sm">
+            <a href="/dashboard/billing">
+              <Lock className="h-3.5 w-3.5" />
+              Export CSV · Pro
+            </a>
           </Button>
         )}
       </div>

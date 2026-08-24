@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { PLANS, formatPrice, type BillingCadence } from "./pricing-data";
 import { track } from "@/lib/analytics/funnel";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 
 export interface PromoOffer {
   /** Stripe promotion_code id (promo_xxx) — pre-applied in checkout. */
@@ -84,13 +85,14 @@ export function PricingCards({ cadence, promo }: PricingCardsProps) {
               : {}),
           }),
         });
-        const data = await res.json();
-        if (data.url) {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.url) {
           window.location.href = data.url;
           return;
         }
+        toast.error(data.message ?? "Couldn't start checkout. Please try again.");
       } catch {
-        // Fall through to the sign-up route as a safety net.
+        toast.error("Network error — couldn't start checkout. Please try again.");
       }
       setPending(null);
       return;
