@@ -94,7 +94,7 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
   if (!row.enabled) return jsonError(409, "MCP is disabled");
 
   // Per-MCP usage metering (fire-and-forget; never blocks the request).
-  const meter = (ok: boolean) => void recordMcpUsage(row.userServerId, ok).catch(() => {});
+  const meter = (ok: boolean) => recordMcpUsage(row.userServerId, ok);
 
   // Local-agent MCP: served by the user's own machine over a live relay, not a
   // box. Skip every box gate and route to the connected agent.
