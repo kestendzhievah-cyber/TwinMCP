@@ -79,7 +79,7 @@ export function DetailDialog({
 
   return (
     <Dialog open={!!mcp} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[85vh] gap-4 overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">{mcp.name}</DialogTitle>
           <div className="flex flex-wrap gap-1 pt-1">
