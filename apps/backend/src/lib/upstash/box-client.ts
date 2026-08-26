@@ -135,6 +135,21 @@ const READY_POLL_MS = 2_000;
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 class UpstashBoxClient implements BoxClient {
+  // A Box handle is a thin client (boxId + auth headers) — memoize it so
+  // exec/status/expose/resume don't each pay an extra Box.get() network
+  // round-trip. getStatus()/resume() still fetch fresh per call, so a cached
+  // handle never serves stale state. Evicted on delete.
+  private handles = new Map<string, Box>();
+
+  private async getBox(boxId: string): Promise<Box> {
+    let box = this.handles.get(boxId);
+    if (!box) {
+      box = await Box.get(boxId);
+      this.handles.set(boxId, box);
+    }
+    return box;
+  }
+
   private async waitUntilReady(box: Box): Promise<void> {
     const deadline = Date.now() + READY_TIMEOUT_MS;
     // First check is immediate; create() may already return a ready box.
@@ -173,16 +188,18 @@ class UpstashBoxClient implements BoxClient {
       ...(opts.initCommand ? { initCommand: opts.initCommand } : {}),
     });
     await this.waitUntilReady(box);
+    this.handles.set(box.id, box);
     // The box has no single public URL; per-MCP URLs are minted via exposePort.
     return { id: box.id, endpointUrl: null };
   }
 
   async deleteBox(boxId: string): Promise<void> {
     await Box.delete({ boxIds: boxId });
+    this.handles.delete(boxId);
   }
 
   async exec(boxId: string, command: string): Promise<ExecResult> {
-    const box = await Box.get(boxId);
+    const box = await this.getBox(boxId);
     const run = await box.exec.command(command);
     // "detached" = a backgrounded process launched successfully.
     const ok = run.status === "completed" || run.status === "detached";
@@ -221,33 +238,33 @@ class UpstashBoxClient implements BoxClient {
   }
 
   async writeFile(boxId: string, path: string, content: string): Promise<void> {
-    const box = await Box.get(boxId);
+    const box = await this.getBox(boxId);
     await box.files.write({ path, content });
   }
 
   async exposePort(boxId: string, port: number): Promise<PublicEndpoint> {
-    const box = await Box.get(boxId);
+    const box = await this.getBox(boxId);
     const pub = await box.getPublicURL(port, { bearerToken: true });
     return { url: pub.url, port: pub.port, token: pub.token ?? null };
   }
 
   async unexposePort(boxId: string, port: number): Promise<void> {
-    const box = await Box.get(boxId);
+    const box = await this.getBox(boxId);
     await box.deletePublicURL(port);
   }
 
   async setInitCommand(boxId: string, command: string): Promise<void> {
-    const box = await Box.get(boxId);
+    const box = await this.getBox(boxId);
     await box.setInitCommand(command);
   }
 
   async getStatus(boxId: string): Promise<string> {
-    const box = await Box.get(boxId);
+    const box = await this.getBox(boxId);
     return (await box.getStatus()).status;
   }
 
   async resume(boxId: string): Promise<void> {
-    const box = await Box.get(boxId);
+    const box = await this.getBox(boxId);
     await box.resume();
   }
 }

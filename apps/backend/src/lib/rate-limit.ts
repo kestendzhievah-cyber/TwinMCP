@@ -11,13 +11,21 @@ const DAILY_LIMITS: Record<Plan, number> = {
 
 const limiters = new Map<Plan, Ratelimit>();
 
+// Short-circuits a user already known to be over (or well under) the daily
+// window without a Redis round-trip. Per-process (prod is a single container),
+// so counts stay exact here.
+const ephemeralCache = new Map<string, number>();
+
 function getLimiter(plan: Plan): Ratelimit {
   const cached = limiters.get(plan);
   if (cached) return cached;
   const rl = new Ratelimit({
     redis: getRedis(),
     limiter: Ratelimit.fixedWindow(DAILY_LIMITS[plan], "24 h"),
-    analytics: true,
+    // analytics adds extra Redis commands per .limit() — not worth it on the
+    // per-request hot path. ephemeralCache avoids a Redis hop for known users.
+    analytics: false,
+    ephemeralCache,
     prefix: `rl:${plan}`,
   });
   limiters.set(plan, rl);
