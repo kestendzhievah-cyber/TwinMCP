@@ -49,7 +49,7 @@ export default async function MarketplacePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Marketplace</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {catalog.length} MCPs available · install on your servers in one click
+          {catalog.length} MCPs available · search, filter, and install on any of your servers
         </p>
       </div>
 
