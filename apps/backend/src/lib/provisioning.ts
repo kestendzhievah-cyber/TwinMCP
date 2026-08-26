@@ -278,11 +278,19 @@ export async function provisionServer(serverId: string): Promise<void> {
     // must not error the whole server. Failed MCPs keep a null endpoint (the
     // proxy then returns "not provisioned; restart the server"); the user can fix
     // config and restart to retry just that one.
+    //
+    // Assign ports up-front (deterministic), then install with BOUNDED
+    // concurrency: parallel enough to cut wall-clock, capped so concurrent
+    // npx/uvx installs don't thrash the box's shared npm cache. Tune with
+    // PROVISION_CONCURRENCY.
+    const toLaunch = installations
+      .filter((inst) => inst.mcpSlug !== TWINMCP_DOCS_SLUG) // docs is control-plane served
+      .map((inst) => ({ inst, port: inst.bridgePort ?? nextPort++ }));
+
     const launchedSlugs: string[] = [];
     const failedSlugs: string[] = [];
-    for (const inst of installations) {
-      if (inst.mcpSlug === TWINMCP_DOCS_SLUG) continue; // served by the control plane
-      const port = inst.bridgePort ?? nextPort++;
+
+    const installOne = async ({ inst, port }: (typeof toLaunch)[number]): Promise<void> => {
       try {
         const { endpointUrl, token } = await setupMcpBridge(boxId, {
           slug: inst.mcpSlug,
@@ -301,6 +309,11 @@ export async function provisionServer(serverId: string): Promise<void> {
         });
         failedSlugs.push(inst.mcpSlug);
       }
+    };
+
+    const PROVISION_CONCURRENCY = Number(process.env.PROVISION_CONCURRENCY ?? 3);
+    for (let i = 0; i < toLaunch.length; i += PROVISION_CONCURRENCY) {
+      await Promise.all(toLaunch.slice(i, i + PROVISION_CONCURRENCY).map(installOne));
     }
 
     // Write the restart script that resumeServer re-runs on wake. (Non-keep-alive
