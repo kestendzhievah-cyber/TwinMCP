@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { mcpServers, servers, userServers as installedTable } from "@/db/schema";
 import { desc, eq, or } from "drizzle-orm";
 import { McpCatalogGrid, type InstalledMap } from "./grid";
+import type { CatalogEntry } from "./install-dialog";
 import { McpBundles } from "./bundles";
 import { Store } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -17,27 +18,42 @@ export default async function MarketplacePage() {
 
   const db = getDb();
 
-  const catalogRows = await db
-    .select({
-      id: mcpServers.id,
-      slug: mcpServers.slug,
-      name: mcpServers.name,
-      description: mcpServers.description,
-      runtime: mcpServers.runtime,
-      version: mcpServers.version,
-      isOfficial: mcpServers.isOfficial,
-      configSchema: mcpServers.configSchema,
-      hostMode: mcpServers.hostMode,
-      category: mcpServers.category,
-      repoUrl: mcpServers.repoUrl,
-      createdAt: mcpServers.createdAt,
-    })
-    .from(mcpServers)
-    .where(or(eq(mcpServers.isPublic, true), eq(mcpServers.publishedByUserId, user.id)))
-    .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt));
+  const catalogWhere = or(eq(mcpServers.isPublic, true), eq(mcpServers.publishedByUserId, user.id));
+  const baseCols = {
+    id: mcpServers.id,
+    slug: mcpServers.slug,
+    name: mcpServers.name,
+    description: mcpServers.description,
+    runtime: mcpServers.runtime,
+    version: mcpServers.version,
+    isOfficial: mcpServers.isOfficial,
+    configSchema: mcpServers.configSchema,
+    hostMode: mcpServers.hostMode,
+    repoUrl: mcpServers.repoUrl,
+    createdAt: mcpServers.createdAt,
+  };
 
-  // Serialize the timestamp to epoch ms so the client grid can sort by "newest".
-  const catalog = catalogRows.map((c) => ({ ...c, createdAt: c.createdAt.getTime() }));
+  // `category` ships in migration 0009. When the app image is deployed before
+  // migrations run (deploy → migrate ordering), the column can be briefly
+  // absent — degrade to a category-less catalog instead of 500-ing the page.
+  // Self-heals once the migration lands.
+  let catalog: CatalogEntry[];
+  try {
+    const rows = await db
+      .select({ ...baseCols, category: mcpServers.category })
+      .from(mcpServers)
+      .where(catalogWhere)
+      .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt));
+    catalog = rows.map((c) => ({ ...c, createdAt: c.createdAt.getTime() }));
+  } catch (err) {
+    console.error("[marketplace] catalog query with category failed; falling back", err);
+    const rows = await db
+      .select(baseCols)
+      .from(mcpServers)
+      .where(catalogWhere)
+      .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt));
+    catalog = rows.map((c) => ({ ...c, createdAt: c.createdAt.getTime(), category: null }));
+  }
 
   const userServers = await db
     .select({
