@@ -4,27 +4,23 @@ import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Globe } from "lucide-react";
-import { LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
-
-// Detects the current locale from the URL and offers a switch to the others.
-// Server-side equivalent could be made, but the language switcher only
-// renders inside the marketing footer — client-side is fine.
-function detectLocale(pathname: string): Locale {
-  const seg = pathname.split("/").filter(Boolean)[0];
-  if (seg && (LOCALES as string[]).includes(seg)) return seg as Locale;
-  return DEFAULT_LOCALE;
-}
-
-function stripLocale(pathname: string, current: Locale): string {
-  if (current === DEFAULT_LOCALE) return pathname || "/";
-  const prefix = `/${current}`;
-  return pathname.startsWith(prefix) ? pathname.slice(prefix.length) || "/" : pathname;
-}
+import {
+  LOCALES,
+  LOCALE_LABELS,
+  DEFAULT_LOCALE,
+  hasFrenchVersion,
+  localeFromPath,
+  stripLocalePrefix,
+} from "@/lib/i18n/locales";
 
 export function LanguageSwitcher() {
   const pathname = usePathname() ?? "/";
-  const current = detectLocale(pathname);
-  const basePath = stripLocale(pathname, current);
+  const current = localeFromPath(pathname);
+  const basePath = stripLocalePrefix(pathname);
+
+  // Hide when there's no French twin to switch to (would 404). Shares the same
+  // allow-list as the header switcher so both stay consistent.
+  if (!hasFrenchVersion(basePath)) return null;
 
   return (
     <div className="flex items-center gap-2">

@@ -9,17 +9,18 @@ import { SocialProof } from "@/components/marketing/social-proof";
 import { Faq, defaultFaqItems } from "@/components/marketing/faq";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
-import {
-  softwareApplicationSchema,
-  faqPageSchema,
-  howToSchema,
-} from "@/lib/seo/schema";
+import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
 
 export const metadata: Metadata = {
   title: "TwinMCP — Run your MCP servers without managing infra",
   description:
     "Provision MCP runtimes, install MCPs from a curated marketplace, connect Cursor, Claude Code, and Windsurf in 2 minutes. Free tier — no credit card.",
-  alternates: { canonical: "/" },
+  // Mirror the FR home's hreflang so the pair points both ways (the FR page
+  // advertises en/fr/x-default; without this the EN page would drop the fr alt).
+  alternates: {
+    canonical: "/",
+    languages: { en: "/", fr: "/fr", "x-default": "/" },
+  },
 };
 
 const homeHowTo = howToSchema({

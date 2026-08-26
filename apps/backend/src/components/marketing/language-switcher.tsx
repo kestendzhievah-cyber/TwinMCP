@@ -4,23 +4,28 @@ import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LOCALES, type Locale } from "@/lib/i18n/locales";
+import {
+  LOCALES,
+  hasFrenchVersion,
+  localeFromPath,
+  stripLocalePrefix,
+  type Locale,
+} from "@/lib/i18n/locales";
 
-// Toggle the locale prefix on the current pathname. The router auto-resolves
-// the target route — if no FR equivalent exists, Next renders 404 (acceptable
-// fallback). Keeping it stateless and link-based means no client roundtrip.
-function altPath(pathname: string, target: Locale): string {
-  const stripped = pathname.replace(/^\/fr(?=\/|$)/, "") || "/";
+// Toggle the locale prefix on the current pathname.
+function altPath(stripped: string, target: Locale): string {
   return target === "en" ? stripped : `/fr${stripped === "/" ? "" : stripped}`;
-}
-
-function currentLocale(pathname: string): Locale {
-  return pathname === "/fr" || pathname.startsWith("/fr/") ? "fr" : "en";
 }
 
 export function LanguageSwitcher({ className }: { className?: string }) {
   const pathname = usePathname() ?? "/";
-  const active = currentLocale(pathname);
+  const stripped = stripLocalePrefix(pathname);
+  const active = localeFromPath(pathname);
+
+  // Only render when a real toggle exists: on English pages with no French twin
+  // the FR link would 404, so hide the control entirely. (On a /fr page the
+  // English origin always exists, so hasFrenchVersion is true there too.)
+  if (!hasFrenchVersion(stripped)) return null;
 
   return (
     <div
@@ -33,7 +38,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
     >
       {LOCALES.map((loc) => {
         const isActive = loc === active;
-        const target = altPath(pathname, loc);
+        const target = altPath(stripped, loc);
         return (
           <Link
             key={loc}

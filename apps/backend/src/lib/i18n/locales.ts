@@ -19,6 +19,37 @@ export function localePrefix(locale: Locale): string {
   return locale === DEFAULT_LOCALE ? "" : `/${locale}`;
 }
 
+// Marketing paths (WITHOUT the /fr prefix) that actually have a French page.
+// The language switcher only flips the /fr prefix, so offering "FR" on a path
+// with no French twin dead-ends in a 404 — this is the allow-list that prevents
+// that. Keep in sync with the pages under `app/fr/`.
+const FR_AVAILABLE_EXACT = new Set<string>([
+  "/",
+  "/blog",
+  "/blog/what-is-mcp",
+  "/blog/build-mcp-server",
+  "/blog/mcp-server-hosting",
+]);
+
+// True when the locale-agnostic path has a French translation available.
+export function hasFrenchVersion(path: string): boolean {
+  const clean = path.replace(/\/+$/, "") || "/";
+  if (FR_AVAILABLE_EXACT.has(clean)) return true;
+  // Creator landing pages are localized (`fr/p/[slug]`).
+  if (clean.startsWith("/p/")) return true;
+  return false;
+}
+
+// Strips a leading `/fr` (if present) → the locale-agnostic path ("/" when empty).
+export function stripLocalePrefix(pathname: string): string {
+  return pathname.replace(/^\/fr(?=\/|$)/, "") || "/";
+}
+
+// Detects the active locale from the current pathname.
+export function localeFromPath(pathname: string): Locale {
+  return pathname === "/fr" || pathname.startsWith("/fr/") ? "fr" : "en";
+}
+
 // Builds an absolute URL for a path in a given locale.
 export function localizedUrl(locale: Locale, path: string): string {
   const prefix = localePrefix(locale);
