@@ -19,14 +19,23 @@ interface StepWelcomeProps {
   selected: IdePreference | null;
   onSelect: (ide: IdePreference) => void;
   onContinue: () => void;
+  onBack?: () => void;
   selectedPlan?: string | null;
 }
 
-export function StepWelcome({ selected, onSelect, onContinue, selectedPlan }: StepWelcomeProps) {
+export function StepWelcome({
+  selected,
+  onSelect,
+  onContinue,
+  onBack,
+  selectedPlan,
+}: StepWelcomeProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Let&apos;s get you running in 2 minutes.</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Let&apos;s get you running in 2 minutes.
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           A few quick choices and you&apos;ll have a live MCP server wired into your IDE.
         </p>
@@ -63,7 +72,14 @@ export function StepWelcome({ selected, onSelect, onContinue, selectedPlan }: St
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        {onBack ? (
+          <Button variant="ghost" onClick={onBack}>
+            Back
+          </Button>
+        ) : (
+          <span />
+        )}
         <Button onClick={onContinue} disabled={!selected} size="lg">
           Continue
         </Button>

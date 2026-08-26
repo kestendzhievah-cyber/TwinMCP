@@ -159,15 +159,16 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
           </p>
         )}
 
-        {phase === "stuck" && serverId && (
+        {serverId && (
           <div className="flex justify-end">
             <Button
               size="lg"
+              variant={phase === "stuck" ? "default" : "ghost"}
               onClick={() =>
                 onReady({ id: serverId, name, slug: serverSlug ?? "", endpointUrl: null })
               }
             >
-              Continue anyway
+              {phase === "stuck" ? "Continue anyway" : "Continue in the background"}
             </Button>
           </div>
         )}

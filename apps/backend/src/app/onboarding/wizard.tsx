@@ -160,6 +160,7 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
               track({ name: "onboarding_step_completed", properties: { step: "ide" } });
               setStep(2);
             }}
+            onBack={() => setStep(0)}
             selectedPlan={selectedPlan}
           />
         )}
