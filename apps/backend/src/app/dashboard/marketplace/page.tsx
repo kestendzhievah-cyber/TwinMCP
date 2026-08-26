@@ -1,8 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { mcpServers, servers } from "@/db/schema";
+import { mcpServers, servers, userServers as installedTable } from "@/db/schema";
 import { desc, eq, or } from "drizzle-orm";
-import { McpCatalogGrid } from "./grid";
+import { McpCatalogGrid, type InstalledMap } from "./grid";
 import { McpBundles } from "./bundles";
 import { Store } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -17,7 +17,7 @@ export default async function MarketplacePage() {
 
   const db = getDb();
 
-  const catalog = await db
+  const catalogRows = await db
     .select({
       id: mcpServers.id,
       slug: mcpServers.slug,
@@ -28,10 +28,16 @@ export default async function MarketplacePage() {
       isOfficial: mcpServers.isOfficial,
       configSchema: mcpServers.configSchema,
       hostMode: mcpServers.hostMode,
+      category: mcpServers.category,
+      repoUrl: mcpServers.repoUrl,
+      createdAt: mcpServers.createdAt,
     })
     .from(mcpServers)
     .where(or(eq(mcpServers.isPublic, true), eq(mcpServers.publishedByUserId, user.id)))
     .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt));
+
+  // Serialize the timestamp to epoch ms so the client grid can sort by "newest".
+  const catalog = catalogRows.map((c) => ({ ...c, createdAt: c.createdAt.getTime() }));
 
   const userServers = await db
     .select({
@@ -43,6 +49,26 @@ export default async function MarketplacePage() {
     .from(servers)
     .where(eq(servers.userId, user.id))
     .orderBy(desc(servers.createdAt));
+
+  // Which catalog MCPs the user already installed, and on which server(s), so
+  // the grid can show an "Installed" state that links to the server.
+  const installedRows = await db
+    .select({
+      mcpServerId: installedTable.mcpServerId,
+      serverId: servers.id,
+      serverName: servers.name,
+    })
+    .from(installedTable)
+    .innerJoin(servers, eq(servers.id, installedTable.serverId))
+    .where(eq(servers.userId, user.id));
+
+  const installed: InstalledMap = {};
+  for (const row of installedRows) {
+    (installed[row.mcpServerId] ??= []).push({
+      serverId: row.serverId,
+      serverName: row.serverName,
+    });
+  }
 
   return (
     <div className="space-y-8">
@@ -65,7 +91,7 @@ export default async function MarketplacePage() {
           <McpBundles catalog={catalog} userServers={userServers} />
           <div className="space-y-3">
             <h2 className="text-lg font-semibold tracking-tight">All MCPs</h2>
-            <McpCatalogGrid catalog={catalog} userServers={userServers} />
+            <McpCatalogGrid catalog={catalog} userServers={userServers} installed={installed} />
           </div>
         </div>
       )}

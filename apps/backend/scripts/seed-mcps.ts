@@ -28,6 +28,8 @@ type SeedEntry = {
   version: string;
   // "local" = runs on the user's machine via `ctx7 connect` (default "box").
   hostMode?: "box" | "local";
+  // Marketplace grouping; falls back to the CATEGORY map below, else null.
+  category?: string;
   configSchema: {
     properties: Record<
       string,
@@ -351,6 +353,29 @@ const OFFICIAL_MCPS: SeedEntry[] = [
 // Unpublished (not deleted — installs keep their FK).
 const RETIRED_SLUGS = ["github", "postgres-readonly"];
 
+// Marketplace category per official slug (keeps the entries above uncluttered).
+const CATEGORY: Record<string, string> = {
+  "twinmcp-docs": "docs",
+  filesystem: "dev",
+  git: "dev",
+  shell: "dev",
+  memory: "utility",
+  time: "utility",
+  calculator: "utility",
+  everything: "utility",
+  "sequential-thinking": "ai",
+  fetch: "web",
+  duckduckgo: "web",
+  wikipedia: "web",
+  arxiv: "web",
+  youtube: "web",
+  sqlite: "data",
+  duckdb: "data",
+  markitdown: "data",
+  chart: "data",
+  blender: "creative",
+};
+
 async function main() {
   console.log(`[seed] upserting ${OFFICIAL_MCPS.length} official MCPs…`);
   for (const m of OFFICIAL_MCPS) {
@@ -368,6 +393,7 @@ async function main() {
         version: m.version,
         configSchema: m.configSchema,
         hostMode: m.hostMode ?? "box",
+        category: m.category ?? CATEGORY[m.slug] ?? null,
         isOfficial: true,
         isPublic: true,
       })
@@ -384,6 +410,7 @@ async function main() {
           version: m.version,
           configSchema: m.configSchema,
           hostMode: m.hostMode ?? "box",
+          category: m.category ?? CATEGORY[m.slug] ?? null,
           isOfficial: true,
           isPublic: true,
         },

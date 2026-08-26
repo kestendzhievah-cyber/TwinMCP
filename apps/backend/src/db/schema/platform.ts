@@ -73,6 +73,9 @@ export const mcpServers = pgTable(
     repoUrl: text("repo_url"),
     runtime: text("runtime").$type<McpRuntime>().notNull(),
     hostMode: text("host_mode").$type<McpHostMode>().notNull().default("box"),
+    // Marketplace grouping (dev, data, web, creative, ai, utility, docs). Null =
+    // uncategorized ("Other").
+    category: text("category"),
     installCmd: text("install_cmd").notNull(),
     startCmd: text("start_cmd").notNull(),
     version: text("version").notNull().default("latest"),

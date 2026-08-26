@@ -33,6 +33,10 @@ export interface CatalogEntry {
   isOfficial: boolean;
   configSchema: unknown;
   hostMode: string;
+  category: string | null;
+  repoUrl: string | null;
+  // Epoch ms (serialized from the DB timestamp) — used for the "newest" sort.
+  createdAt: number;
 }
 
 export interface ServerOption {
@@ -42,17 +46,17 @@ export interface ServerOption {
   hostType: string;
 }
 
-interface SchemaField {
+export interface SchemaField {
   type: "string" | "number" | "boolean";
   required?: boolean;
   description?: string;
   secret?: boolean;
 }
-interface ConfigSchema {
+export interface ConfigSchema {
   properties: Record<string, SchemaField>;
 }
 
-function parseSchema(raw: unknown): ConfigSchema {
+export function parseSchema(raw: unknown): ConfigSchema {
   if (raw && typeof raw === "object" && "properties" in raw) {
     return raw as ConfigSchema;
   }
