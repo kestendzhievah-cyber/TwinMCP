@@ -23,6 +23,16 @@ function periodEnd(sub: Stripe.Subscription): Date | null {
 }
 
 async function findUserIdByCustomer(customerId: string): Promise<string | undefined> {
+  // Resolve locally first — stripeCustomerId is stored (and uniquely indexed) on
+  // the user row, so most billing events skip the Stripe round-trip entirely.
+  // Fall back to Stripe's customer metadata for legacy rows written before the
+  // id was persisted.
+  const [row] = await getDb()
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.stripeCustomerId, customerId))
+    .limit(1);
+  if (row) return row.id;
   const customer = (await getStripe().customers.retrieve(customerId)) as Stripe.Customer;
   return customer.metadata?.userId;
 }

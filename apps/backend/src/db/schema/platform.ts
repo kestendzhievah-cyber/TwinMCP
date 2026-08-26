@@ -136,7 +136,12 @@ export const auditLogs = pgTable(
     ip: text("ip"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("audit_logs_user_time_idx").on(t.userId, t.createdAt)]
+  (t) => [
+    index("audit_logs_user_time_idx").on(t.userId, t.createdAt),
+    // Global recent-activity sort (admin) — the composite can't serve a
+    // created_at-only ORDER BY.
+    index("audit_logs_created_idx").on(t.createdAt),
+  ]
 );
 
 export const usageMetrics = pgTable(
@@ -155,6 +160,8 @@ export const usageMetrics = pgTable(
   (t) => [
     index("usage_metrics_us_period_idx").on(t.userServerId, t.periodStart),
     uniqueIndex("usage_metrics_us_period_unique").on(t.userServerId, t.periodStart),
+    // Period-only range for admin/global analytics scans.
+    index("usage_metrics_period_idx").on(t.periodStart),
   ]
 );
 

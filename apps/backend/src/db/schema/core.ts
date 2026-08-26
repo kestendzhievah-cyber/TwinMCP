@@ -193,6 +193,9 @@ export const usageEvents = pgTable(
   (t) => [
     index("usage_user_time_idx").on(t.userId, t.timestamp),
     index("usage_endpoint_idx").on(t.endpoint),
+    // Time-only range for admin/global analytics (the composite above can't
+    // serve a timestamp filter without a user_id).
+    index("usage_time_idx").on(t.timestamp),
   ]
 );
 
