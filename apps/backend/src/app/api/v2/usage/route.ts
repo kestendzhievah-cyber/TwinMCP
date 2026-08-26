@@ -32,61 +32,56 @@ export async function GET(req: NextRequest) {
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const rangeStart = new Date(utcDayStart(new Date()).getTime() - (days - 1) * 86_400_000);
 
-    const [userRow] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
-    const plan = userRow?.plan ?? "free";
-
-    // --- API usage (usageEvents): request count + per-endpoint latency, last 24h.
-    const [dayCount] = await db
-      .select({ n: count() })
-      .from(usageEvents)
-      .where(and(eq(usageEvents.userId, session.userId), gte(usageEvents.timestamp, dayAgo)));
-
-    const perEndpoint = await db
-      .select({
-        endpoint: usageEvents.endpoint,
-        n: count(),
-        avgLatency: sql<number>`coalesce(avg(${usageEvents.latencyMs})::int, 0)`,
-      })
-      .from(usageEvents)
-      .where(and(eq(usageEvents.userId, session.userId), gte(usageEvents.timestamp, dayAgo)))
-      .groupBy(usageEvents.endpoint)
-      .orderBy(desc(count()));
-
-    // --- MCP runtime usage (usageMetrics): daily series + per-MCP, over `days`.
+    // Ownership filter used by the two usageMetrics queries.
     const owned = and(
       eq(userServers.userId, session.userId),
       gte(usageMetrics.periodStart, rangeStart)
     );
 
-    const dailyRows = await db
-      .select({
-        day: usageMetrics.periodStart,
-        requests: sql<number>`sum(${usageMetrics.requestCount})::int`,
-        errors: sql<number>`sum(${usageMetrics.errorsCount})::int`,
-      })
-      .from(usageMetrics)
-      .innerJoin(userServers, eq(usageMetrics.userServerId, userServers.id))
-      .where(owned)
-      .groupBy(usageMetrics.periodStart)
-      .orderBy(usageMetrics.periodStart);
-
-    const perMcp = await db
-      .select({
-        slug: mcpServers.slug,
-        name: mcpServers.name,
-        requests: sql<number>`sum(${usageMetrics.requestCount})::int`,
-        errors: sql<number>`sum(${usageMetrics.errorsCount})::int`,
-      })
-      .from(usageMetrics)
-      .innerJoin(userServers, eq(usageMetrics.userServerId, userServers.id))
-      .innerJoin(mcpServers, eq(userServers.mcpServerId, mcpServers.id))
-      .where(owned)
-      .groupBy(mcpServers.slug, mcpServers.name)
-      .orderBy(desc(sql`sum(${usageMetrics.requestCount})`));
+    // All five reads are independent — run them as one concurrent batch.
+    const [userRows, dayCounts, perEndpoint, dailyRows, perMcp] = await Promise.all([
+      db.select({ plan: users.plan }).from(users).where(eq(users.id, session.userId)).limit(1),
+      db
+        .select({ n: count() })
+        .from(usageEvents)
+        .where(and(eq(usageEvents.userId, session.userId), gte(usageEvents.timestamp, dayAgo))),
+      db
+        .select({
+          endpoint: usageEvents.endpoint,
+          n: count(),
+          avgLatency: sql<number>`coalesce(avg(${usageEvents.latencyMs})::int, 0)`,
+        })
+        .from(usageEvents)
+        .where(and(eq(usageEvents.userId, session.userId), gte(usageEvents.timestamp, dayAgo)))
+        .groupBy(usageEvents.endpoint)
+        .orderBy(desc(count())),
+      db
+        .select({
+          day: usageMetrics.periodStart,
+          requests: sql<number>`sum(${usageMetrics.requestCount})::int`,
+          errors: sql<number>`sum(${usageMetrics.errorsCount})::int`,
+        })
+        .from(usageMetrics)
+        .innerJoin(userServers, eq(usageMetrics.userServerId, userServers.id))
+        .where(owned)
+        .groupBy(usageMetrics.periodStart)
+        .orderBy(usageMetrics.periodStart),
+      db
+        .select({
+          slug: mcpServers.slug,
+          name: mcpServers.name,
+          requests: sql<number>`sum(${usageMetrics.requestCount})::int`,
+          errors: sql<number>`sum(${usageMetrics.errorsCount})::int`,
+        })
+        .from(usageMetrics)
+        .innerJoin(userServers, eq(usageMetrics.userServerId, userServers.id))
+        .innerJoin(mcpServers, eq(userServers.mcpServerId, mcpServers.id))
+        .where(owned)
+        .groupBy(mcpServers.slug, mcpServers.name)
+        .orderBy(desc(sql`sum(${usageMetrics.requestCount})`)),
+    ]);
+    const plan = userRows[0]?.plan ?? "free";
+    const dayCount = dayCounts[0];
 
     // Zero-fill a bar per day so the chart is continuous.
     const byDay = new Map(dailyRows.map((r) => [dateKey(new Date(r.day)), r]));

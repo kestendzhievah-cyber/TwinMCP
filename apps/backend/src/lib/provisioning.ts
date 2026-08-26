@@ -559,15 +559,20 @@ export async function resumeServer(serverId: string): Promise<void> {
     .from(userServers)
     .innerJoin(mcpServers, eq(mcpServers.id, userServers.mcpServerId))
     .where(and(eq(userServers.serverId, serverId), eq(userServers.enabled, true)));
-  for (const r of rows) {
-    if (r.slug === TWINMCP_DOCS_SLUG || r.port == null) continue;
-    try {
-      const ep = await client.exposePort(boxId, r.port);
-      await persistEndpoint(r.usId, r.port, ep.url, ep.token);
-    } catch (err) {
-      console.error(`[resume] re-expose ${r.slug}:${r.port} failed:`, err);
-    }
-  }
+  // Re-expose every port in parallel — independent calls, and this runs on the
+  // user-facing proxy cold-start path, so the wall-clock is max, not sum.
+  await Promise.all(
+    rows
+      .filter((r) => r.slug !== TWINMCP_DOCS_SLUG && r.port != null)
+      .map(async (r) => {
+        try {
+          const ep = await client.exposePort(boxId, r.port!);
+          await persistEndpoint(r.usId, r.port!, ep.url, ep.token);
+        } catch (err) {
+          console.error(`[resume] re-expose ${r.slug}:${r.port} failed:`, err);
+        }
+      })
+  );
 
   await db
     .update(servers)

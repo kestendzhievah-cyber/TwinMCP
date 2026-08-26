@@ -1,4 +1,4 @@
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, lt, inArray } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers } from "@/db/schema/platform";
@@ -40,33 +40,41 @@ export async function reconcileServerHealth(): Promise<{
     .where(eq(servers.status, "running"));
 
   const client = getBoxClient();
-  let errored = 0;
+  const withBox = running.filter((s): s is { id: string; boxId: string } => !!s.boxId);
 
-  for (const s of running) {
-    if (!s.boxId) continue;
-    // getStatus() is a metadata read — it does NOT resume a paused box (unlike
-    // ping(), which execs `true` and would fail/wake an idle box).
-    let dead = false;
-    try {
-      const status = await client.getStatus(s.boxId);
-      dead = DEAD_STATUSES.has(status);
-    } catch {
-      // Thrown = the box no longer exists (deleted/reaped).
-      dead = true;
-    }
-    if (dead) {
-      errored++;
-      await db
-        .update(servers)
-        .set({ status: "error", updatedAt: new Date() })
-        .where(eq(servers.id, s.id));
-    } else {
-      await db
-        .update(servers)
-        .set({ lastHeartbeatAt: new Date(), updatedAt: new Date() })
-        .where(eq(servers.id, s.id));
-    }
+  // Check box status concurrently (getStatus is a read-only metadata call that
+  // does NOT resume a paused box), bounded so a large fleet doesn't hammer the
+  // box API, then batch the DB writes into two statements instead of N.
+  const CONCURRENCY = 10;
+  const deadIds: string[] = [];
+  const aliveIds: string[] = [];
+  for (let i = 0; i < withBox.length; i += CONCURRENCY) {
+    const results = await Promise.all(
+      withBox.slice(i, i + CONCURRENCY).map(async (s) => {
+        try {
+          return { id: s.id, dead: DEAD_STATUSES.has(await client.getStatus(s.boxId)) };
+        } catch {
+          // Thrown = the box no longer exists (deleted/reaped).
+          return { id: s.id, dead: true };
+        }
+      })
+    );
+    for (const r of results) (r.dead ? deadIds : aliveIds).push(r.id);
   }
+
+  if (deadIds.length > 0) {
+    await db
+      .update(servers)
+      .set({ status: "error", updatedAt: new Date() })
+      .where(inArray(servers.id, deadIds));
+  }
+  if (aliveIds.length > 0) {
+    await db
+      .update(servers)
+      .set({ lastHeartbeatAt: new Date(), updatedAt: new Date() })
+      .where(inArray(servers.id, aliveIds));
+  }
+  const errored = deadIds.length;
 
   // Rescue servers wedged in `provisioning` — a provisioning job that died and,
   // in inline queue mode, never retried. Flip them to `error` so the dashboard

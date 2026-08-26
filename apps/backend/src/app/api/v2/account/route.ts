@@ -26,14 +26,15 @@ export async function DELETE(req: NextRequest) {
       .select({ boxId: servers.boxId })
       .from(servers)
       .where(eq(servers.userId, session.userId));
-    for (const s of owned) {
-      if (!s.boxId) continue;
-      try {
-        await getBoxClient().deleteBox(s.boxId);
-      } catch (err) {
-        console.error("[account DELETE] box teardown failed:", err);
-      }
-    }
+    await Promise.allSettled(
+      owned
+        .filter((s) => s.boxId)
+        .map((s) =>
+          getBoxClient()
+            .deleteBox(s.boxId!)
+            .catch((err) => console.error("[account DELETE] box teardown failed:", err))
+        )
+    );
 
     // Cancel the Stripe subscription — the user row (with its stripe ids) is
     // about to be deleted, so the webhook could no longer reconcile it.
@@ -50,9 +51,12 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    await db.delete(usageEvents).where(eq(usageEvents.userId, session.userId));
-    await db.delete(apiKeys).where(eq(apiKeys.userId, session.userId));
-    await db.delete(teamspaceMembers).where(eq(teamspaceMembers.userId, session.userId));
+    // These three are independent; only the users row must go last (FKs).
+    await Promise.all([
+      db.delete(usageEvents).where(eq(usageEvents.userId, session.userId)),
+      db.delete(apiKeys).where(eq(apiKeys.userId, session.userId)),
+      db.delete(teamspaceMembers).where(eq(teamspaceMembers.userId, session.userId)),
+    ]);
     await db.delete(users).where(eq(users.id, session.userId));
 
     // GDPR right-to-erasure: deleting our own rows isn't enough — the Supabase
