@@ -1076,6 +1076,163 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "latest",
     configSchema: { properties: {} },
   },
+  {
+    // Python server (PyPI: elevenlabs-mcp, official ElevenLabs), run via uvx.
+    // Text-to-speech, voice cloning, speech-to-text. Needs an ElevenLabs API key.
+    slug: "elevenlabs",
+    name: "ElevenLabs",
+    description:
+      "Generate speech, clone voices and transcribe audio via ElevenLabs — give the model a voice and audio tools. Requires an ElevenLabs API key.",
+    repoUrl: "https://github.com/elevenlabs/elevenlabs-mcp",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx elevenlabs-mcp",
+    version: "latest",
+    configSchema: {
+      properties: {
+        ELEVENLABS_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your ElevenLabs API key (elevenlabs.io → Profile → API key).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: mcp-replicate). Run any Replicate model — image, video,
+    // audio, and other ML models. Needs a Replicate API token.
+    slug: "replicate",
+    name: "Replicate",
+    description:
+      "Run image, video, audio and other ML models on Replicate from the model — generate media and poll predictions to completion. Requires a Replicate API token.",
+    repoUrl: "https://github.com/deepfates/mcp-replicate",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y mcp-replicate@0.1.1",
+    version: "0.1.1",
+    configSchema: {
+      properties: {
+        REPLICATE_API_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Replicate API token (replicate.com → Account → API tokens).",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: mcp-clickhouse, official ClickHouse), run via uvx.
+    // Run read-only analytical SQL against a ClickHouse cluster. Needs host + creds.
+    slug: "clickhouse",
+    name: "ClickHouse",
+    description:
+      "Run fast analytical SQL against a ClickHouse cluster from the model — explore databases and tables and query billions of rows. Requires host and credentials.",
+    repoUrl: "https://github.com/ClickHouse/mcp-clickhouse",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-clickhouse",
+    version: "latest",
+    configSchema: {
+      properties: {
+        CLICKHOUSE_HOST: {
+          type: "string",
+          required: true,
+          description: "ClickHouse host, e.g. my-cluster.clickhouse.cloud",
+        },
+        CLICKHOUSE_USER: {
+          type: "string",
+          required: true,
+          description: "ClickHouse username, e.g. default",
+        },
+        CLICKHOUSE_PASSWORD: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "ClickHouse password.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @delorenj/mcp-server-trello). Manage Trello boards, lists
+    // and cards. Needs a Trello API key + token.
+    slug: "trello",
+    name: "Trello",
+    description:
+      "Manage Trello from the model — read boards and lists, create and move cards, add comments and checklists. Requires a Trello API key and token.",
+    repoUrl: "https://github.com/delorenj/mcp-server-trello",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @delorenj/mcp-server-trello@1.8.1",
+    version: "1.8.1",
+    configSchema: {
+      properties: {
+        TRELLO_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Trello API key (trello.com/power-ups/admin → your key).",
+        },
+        TRELLO_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Trello token (generated from your API key).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @shopify/dev-mcp, official Shopify). Search Shopify dev
+    // docs and introspect the Admin GraphQL schema. No API key.
+    slug: "shopify-dev",
+    name: "Shopify Dev",
+    description:
+      "Search Shopify developer documentation and introspect the Admin GraphQL schema from the model — build Shopify apps faster. No API key required.",
+    repoUrl: "https://github.com/Shopify/dev-mcp",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @shopify/dev-mcp@1.14.7",
+    version: "1.14.7",
+    configSchema: { properties: {} },
+  },
+  {
+    // Node server (npm: mcp-server-kubernetes). Manage a Kubernetes cluster —
+    // list/describe/apply resources, logs, exec. Uses the box's kubeconfig.
+    slug: "kubernetes",
+    name: "Kubernetes",
+    description:
+      "Operate a Kubernetes cluster from the model — list and describe resources, read logs, and apply manifests. Uses a kubeconfig available in your box.",
+    repoUrl: "https://github.com/Flux159/mcp-server-kubernetes",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y mcp-server-kubernetes@4.1.4",
+    version: "4.1.4",
+    configSchema: {
+      properties: {
+        KUBECONFIG: {
+          type: "string",
+          description: "Optional. Path to a kubeconfig file inside your box.",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: mcp-reddit), run via uvx. Read Reddit — hot posts,
+    // post details and comment trees. No API key.
+    slug: "reddit",
+    name: "Reddit",
+    description:
+      "Browse Reddit from the model — fetch hot posts from a subreddit, read a post's details and its comment tree. No API key required.",
+    repoUrl: "https://github.com/adhikasp/mcp-reddit",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-reddit",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
 
   {
     // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
@@ -1155,6 +1312,13 @@ const CATEGORY: Record<string, string> = {
   qdrant: "data",
   chroma: "data",
   "yahoo-finance": "data",
+  elevenlabs: "creative",
+  replicate: "ai",
+  clickhouse: "data",
+  trello: "productivity",
+  "shopify-dev": "dev",
+  kubernetes: "dev",
+  reddit: "web",
 };
 
 async function main() {
