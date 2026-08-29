@@ -330,6 +330,152 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "0.9.10",
     configSchema: { properties: {} },
   },
+
+  // ─────────────────────────── Connectors (need an API key/token) ───────────────────────────
+  // These run in a box exactly like the servers above (npx / uvx). They use
+  // `@latest` because their published versions weren't box-verified here — pin an
+  // exact version once you've confirmed a working install (matches the npm entries
+  // above). Secrets are entered per-user at install and injected as box env vars.
+  {
+    // Node server (npm: @upstash/context7-mcp, by Upstash). Injects up-to-date,
+    // version-specific library docs + code examples into context. No API key.
+    slug: "context7",
+    name: "Context7",
+    description:
+      "Pull up-to-date, version-specific documentation and code examples for any library straight into the model's context. No API key — works out of the box.",
+    repoUrl: "https://github.com/upstash/context7",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @upstash/context7-mcp@latest",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
+  {
+    // Node server (npm: @modelcontextprotocol/server-brave-search). Web + local
+    // search via the Brave Search API. Needs a free Brave API key.
+    slug: "brave-search",
+    name: "Brave Search",
+    description:
+      "Search the web and local businesses via the Brave Search API — fast, privacy-first results for the model. Requires a free Brave Search API key.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @modelcontextprotocol/server-brave-search@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        BRAVE_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Brave Search API key (free tier at brave.com/search/api).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @modelcontextprotocol/server-google-maps). Places,
+    // geocoding, directions, distance matrix. Needs a Google Maps API key.
+    slug: "google-maps",
+    name: "Google Maps",
+    description:
+      "Geocode addresses, search places, get directions and distances, and look up place details via the Google Maps API. Requires a Google Maps API key.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/google-maps",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @modelcontextprotocol/server-google-maps@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        GOOGLE_MAPS_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Google Maps Platform API key (with Places + Directions enabled).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @modelcontextprotocol/server-slack). Read/post to Slack.
+    // Needs a Slack bot token + workspace/team ID.
+    slug: "slack",
+    name: "Slack",
+    description:
+      "Read and post to Slack — list channels, fetch history, send messages and replies, add reactions, and look up users. Requires a Slack bot token.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/slack",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @modelcontextprotocol/server-slack@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        SLACK_BOT_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Slack bot token (xoxb-…) with the channels/chat scopes.",
+        },
+        SLACK_TEAM_ID: {
+          type: "string",
+          required: true,
+          description: "Your Slack workspace/team ID (starts with T…).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @modelcontextprotocol/server-gitlab). Projects, files,
+    // issues, merge requests. Needs a GitLab personal access token.
+    slug: "gitlab",
+    name: "GitLab",
+    description:
+      "Work with GitLab from the model — search and read projects, browse files, create issues and merge requests, and push changes. Requires a GitLab access token.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/gitlab",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @modelcontextprotocol/server-gitlab@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        GITLAB_PERSONAL_ACCESS_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "GitLab personal access token with the api scope.",
+        },
+        GITLAB_API_URL: {
+          type: "string",
+          description:
+            "Optional. Self-hosted GitLab API URL. Defaults to https://gitlab.com/api/v4.",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: mcp-server-sentry), run via uvx like fetch. Pulls a
+    // Sentry issue's stack trace + metadata into context. Needs an auth token.
+    slug: "sentry",
+    name: "Sentry",
+    description:
+      "Pull Sentry issue and error details into the model's context — fetch a stack trace and metadata by issue ID or URL to debug faster. Requires a Sentry auth token.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/sentry",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-sentry --auth-token $SENTRY_AUTH_TOKEN",
+    version: "latest",
+    configSchema: {
+      properties: {
+        SENTRY_AUTH_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Sentry auth token (Settings → Account → API → Auth Tokens).",
+        },
+      },
+    },
+  },
+
   {
     // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
     // blender-mcp bridges to the BlenderMCP add-on socket (localhost:9876), which
@@ -374,6 +520,13 @@ const CATEGORY: Record<string, string> = {
   markitdown: "data",
   chart: "data",
   blender: "creative",
+  // Connectors
+  context7: "docs",
+  "brave-search": "web",
+  "google-maps": "web",
+  gitlab: "dev",
+  sentry: "dev",
+  slack: "productivity",
 };
 
 async function main() {

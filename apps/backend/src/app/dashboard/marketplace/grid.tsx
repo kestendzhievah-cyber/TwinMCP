@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Check, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { InstallDialog, type CatalogEntry, type ServerOption } from "./install-dialog";
 import { DetailDialog } from "./detail-dialog";
 
@@ -32,6 +33,42 @@ function categoryLabel(cat: string | null): string {
   if (!cat) return "Other";
   if (cat === "ai") return "AI";
   return cat.charAt(0).toUpperCase() + cat.slice(1);
+}
+
+function CategoryChip({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active
+          ? "border-transparent bg-primary text-primary-foreground"
+          : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+      )}
+    >
+      {label}
+      <span
+        className={cn(
+          "rounded-full px-1.5 text-xs tabular-nums",
+          active ? "bg-primary-foreground/20" : "bg-secondary text-muted-foreground"
+        )}
+      >
+        {count}
+      </span>
+    </button>
+  );
 }
 
 export function McpCatalogGrid({
@@ -57,16 +94,20 @@ export function McpCatalogGrid({
     () => Array.from(new Set(catalog.map((m) => m.runtime))).sort(),
     [catalog]
   );
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    let hasOther = false;
+  // Categories present in the catalog + how many MCPs each holds, for the
+  // browse-by-category chip row.
+  const { categories, categoryCounts } = useMemo(() => {
+    const counts: Record<string, number> = {};
     for (const m of catalog) {
-      if (m.category) set.add(m.category);
-      else hasOther = true;
+      const cat = m.category ?? "other";
+      counts[cat] = (counts[cat] ?? 0) + 1;
     }
-    const list = Array.from(set).sort();
-    if (hasOther) list.push("other");
-    return list;
+    const list = Object.keys(counts).sort((a, b) => {
+      if (a === "other") return 1; // keep "Other" last
+      if (b === "other") return -1;
+      return a.localeCompare(b);
+    });
+    return { categories: list, categoryCounts: counts };
   }, [catalog]);
 
   const filtered = useMemo(() => {
@@ -124,19 +165,6 @@ export function McpCatalogGrid({
             <SelectItem value="community">Community</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-full sm:w-40" aria-label="Filter by category">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All categories</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c} value={c}>
-                {categoryLabel(c === "other" ? null : c)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Select value={runtime} onValueChange={setRuntime}>
           <SelectTrigger className="w-full sm:w-36" aria-label="Filter by runtime">
             <SelectValue />
@@ -170,6 +198,25 @@ export function McpCatalogGrid({
             <SelectItem value="newest">Newest</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Browse by category (mcp.so-style chips) */}
+      <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+        <CategoryChip
+          label="All"
+          count={catalog.length}
+          active={category === ALL}
+          onClick={() => setCategory(ALL)}
+        />
+        {categories.map((c) => (
+          <CategoryChip
+            key={c}
+            label={categoryLabel(c === "other" ? null : c)}
+            count={categoryCounts[c] ?? 0}
+            active={category === c}
+            onClick={() => setCategory(c)}
+          />
+        ))}
       </div>
 
       <p className="mt-3 text-xs text-muted-foreground" aria-live="polite">
