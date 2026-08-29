@@ -894,6 +894,188 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "latest",
     configSchema: { properties: {} },
   },
+  {
+    // Node server (npm: @supabase/mcp-server-supabase, official). Manage a
+    // Supabase project — tables, SQL, edge functions, logs. --read-only by
+    // default here for safety. Needs a Supabase access token.
+    slug: "supabase",
+    name: "Supabase",
+    description:
+      "Work with your Supabase project from the model — browse tables, run SQL, read logs and manage schema (read-only by default). Requires a Supabase access token.",
+    repoUrl: "https://github.com/supabase-community/supabase-mcp",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @supabase/mcp-server-supabase@0.11.0 --read-only",
+    version: "0.11.0",
+    configSchema: {
+      properties: {
+        SUPABASE_ACCESS_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Supabase personal access token (supabase.com → Account → Access Tokens).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @neondatabase/mcp-server-neon, official). Manage Neon
+    // serverless Postgres — projects, branches, SQL. Needs a Neon API key.
+    slug: "neon",
+    name: "Neon",
+    description:
+      "Manage Neon serverless Postgres from the model — create projects and branches, run SQL, and inspect databases. Requires a Neon API key.",
+    repoUrl: "https://github.com/neondatabase-labs/mcp-server-neon",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @neondatabase/mcp-server-neon@0.6.5 start $NEON_API_KEY",
+    version: "0.6.5",
+    configSchema: {
+      properties: {
+        NEON_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Neon API key (console.neon.tech → Account settings → API keys).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @bytebase/dbhub). Universal database gateway — connect to
+    // Postgres/MySQL/SQL Server/SQLite/MariaDB via a DSN. Runs in stdio transport.
+    slug: "dbhub",
+    name: "DBHub",
+    description:
+      "Universal database connector — query and inspect Postgres, MySQL, SQL Server, MariaDB or SQLite through one server via a connection string (DSN).",
+    repoUrl: "https://github.com/bytebase/dbhub",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @bytebase/dbhub@1.2.1 --transport stdio --dsn $DSN",
+    version: "1.2.1",
+    configSchema: {
+      properties: {
+        DSN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Database connection string, e.g. postgres://user:pass@host:5432/db",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @browserbasehq/mcp, by Browserbase). Cloud browser
+    // automation — navigate, click, extract, screenshot (no local Chromium).
+    // Needs a Browserbase API key + project ID.
+    slug: "browserbase",
+    name: "Browserbase",
+    description:
+      "Drive a cloud browser from the model — navigate pages, click, fill forms, extract content and screenshot, all in Browserbase's managed browsers. Requires a Browserbase API key + project ID.",
+    repoUrl: "https://github.com/browserbase/mcp-server-browserbase",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @browserbasehq/mcp@3.0.0",
+    version: "3.0.0",
+    configSchema: {
+      properties: {
+        BROWSERBASE_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Browserbase API key (browserbase.com → Settings).",
+        },
+        BROWSERBASE_PROJECT_ID: {
+          type: "string",
+          required: true,
+          description: "Your Browserbase project ID.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: youtube-data-mcp-server). Search videos, read metadata,
+    // stats and captions via the YouTube Data API. Needs a YouTube API key.
+    slug: "youtube-data",
+    name: "YouTube Data",
+    description:
+      "Search YouTube and read video/channel metadata, statistics and captions via the YouTube Data API. Requires a YouTube Data API key.",
+    repoUrl: "https://github.com/icraft2170/youtube-data-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y youtube-data-mcp-server@1.0.16",
+    version: "1.0.16",
+    configSchema: {
+      properties: {
+        YOUTUBE_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "YouTube Data API v3 key (Google Cloud console).",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: mcp-server-qdrant, official Qdrant), run via uvx.
+    // Store + semantically search memories in a Qdrant vector DB.
+    slug: "qdrant",
+    name: "Qdrant",
+    description:
+      "Store and semantically search text in a Qdrant vector database — give the model a long-term, searchable memory. Requires a Qdrant URL and collection name.",
+    repoUrl: "https://github.com/qdrant/mcp-server-qdrant",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-qdrant",
+    version: "latest",
+    configSchema: {
+      properties: {
+        QDRANT_URL: {
+          type: "string",
+          required: true,
+          description: "Qdrant endpoint, e.g. https://xyz.cloud.qdrant.io:6333",
+        },
+        QDRANT_API_KEY: {
+          type: "string",
+          secret: true,
+          description: "Optional. Qdrant API key (for Qdrant Cloud).",
+        },
+        COLLECTION_NAME: {
+          type: "string",
+          required: true,
+          description: "Collection to read/write, e.g. twinmcp-memory.",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: chroma-mcp, official Chroma), run via uvx. Vector
+    // search over an in-box ephemeral Chroma DB — no API key.
+    slug: "chroma",
+    name: "Chroma",
+    description:
+      "Embed and semantically search documents in a Chroma vector database inside your box — add documents and query by meaning. Runs ephemerally; no API key.",
+    repoUrl: "https://github.com/chroma-core/chroma-mcp",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx chroma-mcp --client-type ephemeral",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
+  {
+    // Python server (PyPI: mcp-yahoo-finance), run via uvx. Stock quotes,
+    // history, and company info via Yahoo Finance. No API key.
+    slug: "yahoo-finance",
+    name: "Yahoo Finance",
+    description:
+      "Look up stock prices, historical data, and company information via Yahoo Finance — market data the model can reason over. No API key required.",
+    repoUrl: "https://github.com/maxscheijen/mcp-yahoo-finance",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-yahoo-finance",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
 
   {
     // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
@@ -965,6 +1147,14 @@ const CATEGORY: Record<string, string> = {
   elasticsearch: "data",
   redis: "data",
   e2b: "dev",
+  supabase: "dev",
+  neon: "data",
+  dbhub: "data",
+  browserbase: "web",
+  "youtube-data": "web",
+  qdrant: "data",
+  chroma: "data",
+  "yahoo-finance": "data",
 };
 
 async function main() {
