@@ -1389,6 +1389,158 @@ const OFFICIAL_MCPS: SeedEntry[] = [
       },
     },
   },
+  {
+    // Node server (npm: @pinecone-database/mcp, official Pinecone). Upsert +
+    // semantic search over a Pinecone vector index. Needs a Pinecone API key.
+    slug: "pinecone",
+    name: "Pinecone",
+    description:
+      "Store and semantically search vectors in Pinecone from the model — upsert records, query by meaning, and manage indexes for long-term memory/RAG. Requires a Pinecone API key.",
+    repoUrl: "https://github.com/pinecone-io/pinecone-mcp",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @pinecone-database/mcp@0.3.0",
+    version: "0.3.0",
+    configSchema: {
+      properties: {
+        PINECONE_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Pinecone API key (app.pinecone.io → API Keys).",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: mcp-neo4j-cypher, official Neo4j), run via uvx. Read +
+    // write a Neo4j graph with Cypher. Needs a Bolt URL + credentials.
+    slug: "neo4j",
+    name: "Neo4j",
+    description:
+      "Query and update a Neo4j graph database from the model — run read and write Cypher and inspect the schema. Requires a Bolt URL and credentials.",
+    repoUrl: "https://github.com/neo4j-contrib/mcp-neo4j",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-neo4j-cypher",
+    version: "latest",
+    configSchema: {
+      properties: {
+        NEO4J_URI: {
+          type: "string",
+          required: true,
+          description: "Neo4j Bolt URL, e.g. neo4j+s://xxxx.databases.neo4j.io",
+        },
+        NEO4J_USERNAME: {
+          type: "string",
+          required: true,
+          description: "Neo4j username, e.g. neo4j",
+        },
+        NEO4J_PASSWORD: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Neo4j password.",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: mcp-server-milvus, by Zilliz), run via uvx. Vector
+    // search + collection management on Milvus. Needs the Milvus URI.
+    slug: "milvus",
+    name: "Milvus",
+    description:
+      "Search and manage a Milvus vector database from the model — semantic + full-text search, collection management, and inserts. Requires a Milvus URI.",
+    repoUrl: "https://github.com/zilliztech/mcp-server-milvus",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-server-milvus --milvus-uri $MILVUS_URI",
+    version: "latest",
+    configSchema: {
+      properties: {
+        MILVUS_URI: {
+          type: "string",
+          required: true,
+          description: "Milvus endpoint, e.g. http://localhost:19530 or a Zilliz Cloud URI.",
+        },
+        MILVUS_TOKEN: {
+          type: "string",
+          secret: true,
+          description: "Optional. Milvus/Zilliz auth token.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @netlify/mcp, official Netlify). Manage Netlify sites,
+    // deploys, env vars and functions. Needs a Netlify personal access token.
+    slug: "netlify",
+    name: "Netlify",
+    description:
+      "Manage Netlify from the model — list sites and deploys, read build logs, and manage environment variables. Requires a Netlify personal access token.",
+    repoUrl: "https://github.com/netlify/netlify-mcp",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @netlify/mcp@1.15.1",
+    version: "1.15.1",
+    configSchema: {
+      properties: {
+        NETLIFY_AUTH_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description:
+            "Netlify personal access token (app.netlify.com → User settings → Applications).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @digitalocean/mcp, official DigitalOcean). Manage droplets,
+    // apps, databases and more. Needs a DigitalOcean API token.
+    slug: "digitalocean",
+    name: "DigitalOcean",
+    description:
+      "Manage DigitalOcean from the model — droplets, App Platform apps, managed databases, and account resources. Requires a DigitalOcean API token.",
+    repoUrl: "https://github.com/digitalocean/digitalocean-mcp",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @digitalocean/mcp@1.0.68",
+    version: "1.0.68",
+    configSchema: {
+      properties: {
+        DIGITALOCEAN_API_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "DigitalOcean API token (cloud.digitalocean.com → API → Tokens).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: mcp-searxng). Meta-search via a SearXNG instance — private,
+    // aggregated results. No API key; you point it at a SearXNG URL.
+    slug: "searxng",
+    name: "SearXNG",
+    description:
+      "Private meta-search via a SearXNG instance — aggregate results from many engines with no tracking. No API key; requires a SearXNG instance URL.",
+    repoUrl: "https://github.com/ihor-sokoliuk/mcp-searxng",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y mcp-searxng@2.1.0",
+    version: "2.1.0",
+    configSchema: {
+      properties: {
+        SEARXNG_URL: {
+          type: "string",
+          required: true,
+          description: "Your SearXNG instance URL, e.g. https://searx.example.com",
+        },
+      },
+    },
+  },
 
   {
     // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
@@ -1482,6 +1634,12 @@ const CATEGORY: Record<string, string> = {
   kagi: "web",
   coingecko: "data",
   nasa: "web",
+  pinecone: "ai",
+  neo4j: "data",
+  milvus: "data",
+  netlify: "dev",
+  digitalocean: "dev",
+  searxng: "web",
 };
 
 async function main() {
