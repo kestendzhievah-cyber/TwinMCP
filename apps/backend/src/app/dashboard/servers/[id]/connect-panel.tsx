@@ -165,10 +165,14 @@ export function ConnectPanel({
         )}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <label
+              htmlFor="connect-mcp"
+              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >
               MCP
             </label>
             <select
+              id="connect-mcp"
               value={mcpSlug}
               onChange={(e) => setMcpSlug(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground [&>option]:bg-background [&>option]:text-foreground"
@@ -181,10 +185,14 @@ export function ConnectPanel({
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <label
+              htmlFor="connect-client"
+              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >
               Client
             </label>
             <select
+              id="connect-client"
               value={ide}
               onChange={(e) => setIde(e.target.value as IdeKey)}
               className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground [&>option]:bg-background [&>option]:text-foreground"

@@ -12,7 +12,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <Logo />
           </Link>
         </header>
-        <main className="flex flex-1 items-center justify-center px-6 py-10 lg:px-10">
+        <main
+          id="main-content"
+          className="flex flex-1 items-center justify-center px-6 py-10 lg:px-10"
+        >
           <div className="w-full max-w-sm">{children}</div>
         </main>
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-6 py-4 text-xs text-muted-foreground lg:px-10">

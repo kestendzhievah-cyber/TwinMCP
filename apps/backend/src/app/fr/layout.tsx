@@ -7,7 +7,9 @@ export default function FrMarketingLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-screen flex-col bg-background" lang="fr">
       <MarketingHeader locale="fr" />
-      <main className="flex-1">{children}</main>
+      <main id="main-content" className="flex-1">
+        {children}
+      </main>
       <MarketingFooter locale="fr" />
     </div>
   );

@@ -12,7 +12,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
           <span className="text-xs text-muted-foreground">Onboarding</span>
         </div>
       </header>
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <div className="mx-auto max-w-3xl px-6 py-12 md:py-16">{children}</div>
       </main>
     </div>

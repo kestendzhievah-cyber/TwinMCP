@@ -347,8 +347,11 @@ export function PublishMcpPanel({
                         className="grid items-end gap-2 sm:grid-cols-[1fr_7rem_1fr_auto]"
                       >
                         <div className="space-y-1">
-                          <Label className="text-xs">Key</Label>
+                          <Label htmlFor={`cfg-key-${i}`} className="text-xs">
+                            Key
+                          </Label>
                           <Input
+                            id={`cfg-key-${i}`}
                             placeholder="API_KEY"
                             value={f.key}
                             onChange={(e) => updateField(i, { key: e.target.value })}
@@ -356,14 +359,16 @@ export function PublishMcpPanel({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Type</Label>
+                          <Label htmlFor={`cfg-type-${i}`} className="text-xs">
+                            Type
+                          </Label>
                           <Select
                             value={f.type}
                             onValueChange={(v) =>
                               updateField(i, { type: v as ConfigField["type"] })
                             }
                           >
-                            <SelectTrigger>
+                            <SelectTrigger id={`cfg-type-${i}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -374,8 +379,11 @@ export function PublishMcpPanel({
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Description</Label>
+                          <Label htmlFor={`cfg-desc-${i}`} className="text-xs">
+                            Description
+                          </Label>
                           <Input
+                            id={`cfg-desc-${i}`}
                             placeholder="What is this?"
                             value={f.description}
                             onChange={(e) => updateField(i, { description: e.target.value })}

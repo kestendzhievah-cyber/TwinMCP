@@ -10,7 +10,10 @@ export const metadata: Metadata = {
   title: "Blog — TwinMCP",
   description:
     "Deep dives, tutorials, and field notes on Model Context Protocol, AI coding agents, and the runtimes that power them.",
-  alternates: { canonical: "/blog" },
+  alternates: {
+    canonical: "/blog",
+    languages: { en: "/blog", fr: "/fr/blog", "x-default": "/blog" },
+  },
   openGraph: {
     title: "TwinMCP Blog",
     description:

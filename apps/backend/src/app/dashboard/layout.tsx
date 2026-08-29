@@ -27,7 +27,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
       <DashboardNav email={user.email ?? ""} plan={plan} isAdmin={isAdmin} />
-      <main className="w-full max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+      <main id="main-content" className="w-full max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-8">
+        {children}
+      </main>
     </div>
   );
 }
