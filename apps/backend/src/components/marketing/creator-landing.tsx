@@ -83,10 +83,10 @@ export function CreatorLanding({ creator, locale }: Props) {
           </div>
         </div>
 
-        <PricingExperience promo={promo} />
+        <PricingExperience promo={promo} locale={locale} />
 
         <div className="mt-10 flex justify-center">
-          <TrustSignals />
+          <TrustSignals locale={locale} />
         </div>
       </Section>
     </>

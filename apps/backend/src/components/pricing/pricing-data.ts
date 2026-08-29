@@ -1,3 +1,5 @@
+import type { Locale } from "@/lib/i18n/locales";
+
 export type PlanId = "free" | "pro" | "team" | "enterprise";
 export type BillingCadence = "monthly" | "annual";
 
@@ -171,8 +173,62 @@ export const FEATURES: FeatureRow[] = [
   },
 ];
 
-export function formatPrice(plan: PlanTier, cadence: BillingCadence): string {
-  if (plan.monthlyUsd === null) return "Custom";
+export function formatPrice(
+  plan: PlanTier,
+  cadence: BillingCadence,
+  locale: Locale = "en"
+): string {
+  if (plan.monthlyUsd === null) return locale === "fr" ? "Sur devis" : "Custom";
   const value = cadence === "annual" ? (plan.annualMonthlyUsd ?? plan.monthlyUsd) : plan.monthlyUsd;
   return value === 0 ? "€0" : `€${value}`;
+}
+
+// French marketing copy per plan (prices, ids and hrefs stay in PLANS above).
+// English pages read PLANS directly; only the localized surfaces call planCopy.
+const PLAN_COPY_FR: Record<PlanId, { blurb: string; ctaLabel: string; bullets: string[] }> = {
+  free: {
+    blurb: "Tout pour évaluer la plateforme.",
+    ctaLabel: "Commencer gratuitement",
+    bullets: ["1 serveur", "5 MCP officiels", "Support communautaire", "Accès au catalogue public"],
+  },
+  pro: {
+    blurb: "Pour les développeurs qui codent avec l’IA au quotidien.",
+    ctaLabel: "Passer à Pro",
+    bullets: [
+      "25 serveurs",
+      "Publiez vos propres MCP",
+      "Journaux d’audit · 30 jours",
+      "Support e-mail prioritaire",
+    ],
+  },
+  team: {
+    blurb: "Pour les équipes qui grandissent ensemble.",
+    ctaLabel: "Passer à Team",
+    bullets: [
+      "Serveurs illimités",
+      "Gestion des membres",
+      "Journaux d’audit · 90 jours",
+      "SLA · 99,9 % de disponibilité",
+    ],
+  },
+  enterprise: {
+    blurb: "Auto-hébergement, SSO, audit, dédié.",
+    ctaLabel: "Contacter l’équipe commerciale",
+    bullets: ["Tout en illimité", "SSO / SAML / SCIM", "Déploiement privé", "Canal Slack dédié"],
+  },
+};
+
+export interface PlanCopy {
+  blurb: string;
+  ctaLabel: string;
+  bullets: string[];
+}
+
+// Returns the plan's marketing copy in the given locale (falls back to English).
+export function planCopy(plan: PlanTier, locale: Locale): PlanCopy {
+  if (locale === "fr") {
+    const fr = PLAN_COPY_FR[plan.id];
+    return { blurb: fr.blurb, ctaLabel: fr.ctaLabel, bullets: fr.bullets };
+  }
+  return { blurb: plan.blurb, ctaLabel: plan.cta.label, bullets: plan.bullets };
 }
