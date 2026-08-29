@@ -11,6 +11,8 @@ export interface UseCase {
   heroHeadline: string;
   heroSubheadline: string;
   targetKeyword: string;
+  relatedServerSlugs: string[]; // /servers/<slug> catalog pages to cross-link
+  relatedBlogSlugs: string[]; // /blog/<slug> posts to cross-link
 }
 
 export const USE_CASES: UseCase[] = [
@@ -25,6 +27,8 @@ export const USE_CASES: UseCase[] = [
     heroSubheadline:
       "Provision isolated MCP servers, install MCPs from the marketplace, and connect Cursor in two minutes. Free tier — no credit card.",
     targetKeyword: "Cursor MCP hosting",
+    relatedServerSlugs: ["filesystem", "memory", "fetch"],
+    relatedBlogSlugs: ["cursor-mcp-setup", "production-mcp-servers"],
   },
   {
     slug: "claude-mcp-hosting",
@@ -37,6 +41,8 @@ export const USE_CASES: UseCase[] = [
     heroSubheadline:
       "Spin up MCP servers for Claude Desktop or Claude Code without operating containers. Per-server sandboxes, encrypted secrets, ready-to-paste config.",
     targetKeyword: "Claude MCP hosting",
+    relatedServerSlugs: ["filesystem", "memory", "sequential-thinking"],
+    relatedBlogSlugs: ["claude-desktop-mcp", "mcp-server-hosting"],
   },
   {
     slug: "notion-mcp",
@@ -49,6 +55,8 @@ export const USE_CASES: UseCase[] = [
     heroSubheadline:
       "Give your AI coding agent access to your Notion workspace through MCP. One install, one stable URL, secrets encrypted at rest.",
     targetKeyword: "Notion MCP",
+    relatedServerSlugs: ["notion", "fetch"],
+    relatedBlogSlugs: ["notion-mcp-server-tutorial", "mcp-server-hosting"],
   },
   {
     slug: "github-mcp",
@@ -61,6 +69,8 @@ export const USE_CASES: UseCase[] = [
     heroSubheadline:
       "Run the official GitHub MCP server on a managed runtime. Your AI agent reads code, browses pull requests, and creates branches with a scoped token.",
     targetKeyword: "GitHub MCP",
+    relatedServerSlugs: ["github", "sentry"],
+    relatedBlogSlugs: ["secure-mcp-server", "production-mcp-servers"],
   },
 ];
 

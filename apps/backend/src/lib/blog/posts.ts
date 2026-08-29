@@ -131,6 +131,14 @@ export function getPostBySlug(slug: string): BlogPost | undefined {
   return BLOG_POSTS.find((p) => p.slug === slug);
 }
 
+// Look up posts by an explicit, ordered list of slugs (skips unknowns). Powers
+// the "Related reading" block on use-case pages.
+export function getPostsBySlugs(slugs: string[]): BlogPost[] {
+  return slugs
+    .map((slug) => BLOG_POSTS.find((p) => p.slug === slug))
+    .filter((p): p is BlogPost => Boolean(p));
+}
+
 export function getSortedPosts(): BlogPost[] {
   return [...BLOG_POSTS].sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
 }

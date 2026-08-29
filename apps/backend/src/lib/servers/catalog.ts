@@ -743,6 +743,17 @@ export function getRelatedServers(
     .map((s) => ({ slug: s.slug, name: s.name, tagline: s.tagline }));
 }
 
+// Look up catalog servers by an explicit, ordered list of slugs (skips unknowns).
+// Powers the "Related MCP servers" block on use-case pages.
+export function getServersBySlugs(
+  slugs: string[]
+): Array<Pick<ServerEntry, "slug" | "name" | "tagline">> {
+  return slugs
+    .map((slug) => SERVERS.find((s) => s.slug === slug))
+    .filter((s): s is ServerEntry => Boolean(s))
+    .map((s) => ({ slug: s.slug, name: s.name, tagline: s.tagline }));
+}
+
 export function getServersByCategory(): Record<string, ServerEntry[]> {
   const grouped: Record<string, ServerEntry[]> = {};
   for (const s of SERVERS) {

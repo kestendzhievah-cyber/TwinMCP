@@ -4,6 +4,8 @@ import { ArrowRight } from "lucide-react";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbListSchema, faqPageSchema } from "@/lib/seo/schema";
 import type { UseCase } from "@/lib/use-cases/registry";
+import { getServersBySlugs } from "@/lib/servers/catalog";
+import { getPostsBySlugs } from "@/lib/blog/posts";
 
 export interface BenefitBlock {
   title: string;
@@ -37,6 +39,8 @@ export function UseCaseLayout({
   extraSchemas = [],
   children,
 }: UseCaseLayoutProps) {
+  const relatedServers = getServersBySlugs(useCase.relatedServerSlugs);
+  const relatedPosts = getPostsBySlugs(useCase.relatedBlogSlugs);
   return (
     <>
       <JsonLd
@@ -150,6 +154,70 @@ export function UseCaseLayout({
             ))}
           </dl>
         </section>
+
+        {/* Related MCP servers + reading (internal linking) */}
+        {(relatedServers.length > 0 || relatedPosts.length > 0) && (
+          <section className="mb-20 grid gap-10 md:grid-cols-2">
+            {relatedServers.length > 0 && (
+              <div>
+                <div className="mb-6 flex items-baseline justify-between gap-4">
+                  <h2 className="text-xl font-semibold tracking-tight">Related MCP servers</h2>
+                  <Link
+                    href={"/servers" as Route}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    All servers →
+                  </Link>
+                </div>
+                <ul className="space-y-3">
+                  {relatedServers.map((s) => (
+                    <li key={s.slug}>
+                      <Link
+                        href={`/servers/${s.slug}` as Route}
+                        className="group block rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/40"
+                      >
+                        <span className="font-semibold group-hover:underline">{s.name}</span>
+                        <span className="mt-1 line-clamp-1 block text-sm text-muted-foreground">
+                          {s.tagline}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {relatedPosts.length > 0 && (
+              <div>
+                <div className="mb-6 flex items-baseline justify-between gap-4">
+                  <h2 className="text-xl font-semibold tracking-tight">Related reading</h2>
+                  <Link
+                    href={"/blog" as Route}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    All posts →
+                  </Link>
+                </div>
+                <ul className="space-y-3">
+                  {relatedPosts.map((p) => (
+                    <li key={p.slug}>
+                      <Link
+                        href={`/blog/${p.slug}` as Route}
+                        className="group block rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/40"
+                      >
+                        <span className="font-semibold leading-snug group-hover:underline">
+                          {p.title}
+                        </span>
+                        <span className="mt-1 line-clamp-2 block text-sm text-muted-foreground">
+                          {p.description}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Final CTA */}
         <section className="rounded-2xl border border-border bg-card p-10 text-center md:p-14">
