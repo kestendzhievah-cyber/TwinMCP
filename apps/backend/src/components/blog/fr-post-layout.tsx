@@ -3,6 +3,7 @@ import type { Route } from "next";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbListSchema, articleSchema } from "@/lib/seo/schema";
 import { Prose } from "./prose";
+import { getRelatedServers } from "@/lib/servers/catalog";
 
 export interface FrPost {
   slug: string;
@@ -26,6 +27,7 @@ export function FrPostLayout({
   children,
   extraSchemas = [],
 }: FrPostLayoutProps) {
+  const relatedServers = getRelatedServers(post.slug, 4);
   const publishedDate = new Date(post.publishedAt).toLocaleDateString("fr-FR", {
     year: "numeric",
     month: "long",
@@ -119,6 +121,42 @@ export function FrPostLayout({
                 Voir les tarifs
               </Link>
             </div>
+          </div>
+
+          <div className="mt-12">
+            <div className="mb-6 flex items-baseline justify-between gap-4">
+              <h2 className="text-xl font-semibold tracking-tight">Serveurs MCP associés</h2>
+              <Link
+                href={"/servers" as Route}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Voir tous les serveurs →
+              </Link>
+            </div>
+            {relatedServers.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {relatedServers.map((s) => (
+                  <Link
+                    key={s.slug}
+                    href={`/servers/${s.slug}` as Route}
+                    className="group rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground/40"
+                  >
+                    <h3 className="text-base font-semibold leading-snug group-hover:underline">
+                      {s.name}
+                    </h3>
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{s.tagline}</p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Explorez le{" "}
+                <Link href={"/servers" as Route} className="text-foreground underline">
+                  catalogue de serveurs MCP
+                </Link>{" "}
+                — installez-en un sur un runtime hébergé en un clic.
+              </p>
+            )}
           </div>
 
           {related.length > 0 && (

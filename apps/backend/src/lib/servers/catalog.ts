@@ -731,6 +731,18 @@ export function getServerBySlug(slug: string): ServerEntry | undefined {
   return SERVERS.find((s) => s.slug === slug);
 }
 
+// Inverse of `relatedBlogSlugs`: the catalog servers that reference a given blog
+// post. Powers the "Related MCP servers" block on blog posts so editorial pages
+// pass link equity to the programmatic /servers pages (internal linking).
+export function getRelatedServers(
+  blogSlug: string,
+  limit = 4
+): Array<Pick<ServerEntry, "slug" | "name" | "tagline">> {
+  return SERVERS.filter((s) => s.relatedBlogSlugs.includes(blogSlug))
+    .slice(0, limit)
+    .map((s) => ({ slug: s.slug, name: s.name, tagline: s.tagline }));
+}
+
 export function getServersByCategory(): Record<string, ServerEntry[]> {
   const grouped: Record<string, ServerEntry[]> = {};
   for (const s of SERVERS) {

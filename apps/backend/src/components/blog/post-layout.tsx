@@ -7,6 +7,7 @@ import { breadcrumbListSchema, articleSchema } from "@/lib/seo/schema";
 import { Prose } from "./prose";
 import type { BlogPost } from "@/lib/blog/posts";
 import { getRelatedPosts } from "@/lib/blog/posts";
+import { getRelatedServers } from "@/lib/servers/catalog";
 
 interface PostLayoutProps {
   post: BlogPost;
@@ -16,6 +17,7 @@ interface PostLayoutProps {
 
 export function PostLayout({ post, children, extraSchemas = [] }: PostLayoutProps) {
   const related = getRelatedPosts(post.slug, 2);
+  const relatedServers = getRelatedServers(post.slug, 4);
   const publishedDate = new Date(post.publishedAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -110,6 +112,42 @@ export function PostLayout({ post, children, extraSchemas = [] }: PostLayoutProp
                 See pricing
               </Link>
             </div>
+          </div>
+
+          <div className="mt-12">
+            <div className="mb-6 flex items-baseline justify-between gap-4">
+              <h2 className="text-xl font-semibold tracking-tight">Related MCP servers</h2>
+              <Link
+                href={"/servers" as Route}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Browse all servers →
+              </Link>
+            </div>
+            {relatedServers.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {relatedServers.map((s) => (
+                  <Link
+                    key={s.slug}
+                    href={`/servers/${s.slug}` as Route}
+                    className="group rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground/40"
+                  >
+                    <h3 className="text-base font-semibold leading-snug group-hover:underline">
+                      {s.name}
+                    </h3>
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{s.tagline}</p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Explore the full{" "}
+                <Link href={"/servers" as Route} className="text-foreground underline">
+                  MCP server catalog
+                </Link>{" "}
+                — install any of them on a hosted runtime in one click.
+              </p>
+            )}
           </div>
 
           {related.length > 0 && (
