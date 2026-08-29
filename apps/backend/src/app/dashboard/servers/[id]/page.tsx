@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
+import { formatDateTime } from "@/lib/format";
 import { Zap } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
@@ -133,13 +134,13 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
                 <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
                   Last heartbeat
                 </div>
-                <div>{srv.lastHeartbeatAt?.toLocaleString() ?? "—"}</div>
+                <div>{srv.lastHeartbeatAt ? formatDateTime(srv.lastHeartbeatAt) : "—"}</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
                   Created
                 </div>
-                <div>{srv.createdAt.toLocaleString()}</div>
+                <div>{formatDateTime(srv.createdAt)}</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">

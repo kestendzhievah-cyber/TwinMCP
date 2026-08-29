@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/format";
 
 interface Props {
   plan: string;
@@ -24,11 +25,8 @@ function formatPeriodEnd(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  // Deterministic (server === client) to avoid a hydration mismatch.
+  return formatDate(d);
 }
 
 export function BillingActions({
@@ -48,8 +46,11 @@ export function BillingActions({
     message: string;
   } | null>(null);
 
-  // Surface checkout outcome from Stripe redirect, then strip the query
-  // so a refresh doesn't re-trigger the toast.
+  // Surface the checkout outcome from the Stripe redirect, then strip the query
+  // so a refresh doesn't re-trigger it. Runs once on mount: reading `status` here
+  // and depending on `params` would tear the poll down the instant router.replace
+  // strips the query (params changes → effect cleanup fires before the first
+  // tick), which is exactly the bug that left the plan not auto-updating.
   useEffect(() => {
     const status = params.get("status");
     if (status === "success") {
@@ -70,7 +71,9 @@ export function BillingActions({
       setBanner({ type: "info", message: "Checkout canceled. You were not charged." });
       router.replace("/dashboard/billing");
     }
-  }, [params, router]);
+    // Mount-only on purpose: reading `params`/`router` here must NOT re-run this
+    // effect, or router.replace (which changes params) would tear down the poll.
+  }, []);
 
   async function checkout(target: "pro" | "team") {
     setLoading(target);

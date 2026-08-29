@@ -1,4 +1,5 @@
 import { and, desc, eq, gte } from "drizzle-orm";
+import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { auditLogs, users } from "@/db/schema";
@@ -96,7 +97,7 @@ export default async function AuditLogsPage() {
                   {rows.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                        {new Date(r.createdAt).toLocaleString()}
+                        {formatDateTime(r.createdAt)}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="font-mono text-xs">

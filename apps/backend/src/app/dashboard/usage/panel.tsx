@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, AlertTriangle, Download, Gauge, Lock, Server } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,17 +55,22 @@ export function UsagePanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Guards against a slow earlier request (e.g. 7d) resolving after a newer one
+  // (30d) and clobbering the displayed range with stale numbers.
+  const reqId = useRef(0);
   const load = useCallback(async (d: number) => {
+    const id = ++reqId.current;
     setLoading(true);
     setError("");
     try {
       const res = await fetch(`/api/v2/usage?days=${d}`);
       if (!res.ok) throw new Error();
-      setData((await res.json()) as UsageData);
+      const json = (await res.json()) as UsageData;
+      if (id === reqId.current) setData(json);
     } catch {
-      setError("Could not load usage. Try again.");
+      if (id === reqId.current) setError("Could not load usage. Try again.");
     } finally {
-      setLoading(false);
+      if (id === reqId.current) setLoading(false);
     }
   }, []);
 

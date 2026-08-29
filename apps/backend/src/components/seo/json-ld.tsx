@@ -5,6 +5,13 @@ interface JsonLdProps {
   data: object | object[];
 }
 
+// Escape "<" so a "</script>" that ever appears in a value (today only static
+// config, but community-published names could flow here later) can't break out
+// of the tag — defense-in-depth against stored XSS.
+function safeJson(item: object): string {
+  return JSON.stringify(item).replace(/</g, "\\u003c");
+}
+
 export function JsonLd({ data }: JsonLdProps) {
   const items = Array.isArray(data) ? data : [data];
   return (
@@ -13,8 +20,7 @@ export function JsonLd({ data }: JsonLdProps) {
         <script
           key={i}
           type="application/ld+json"
-          // Content is server-rendered from static config — no user input.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(item) }}
+          dangerouslySetInnerHTML={{ __html: safeJson(item) }}
         />
       ))}
     </>

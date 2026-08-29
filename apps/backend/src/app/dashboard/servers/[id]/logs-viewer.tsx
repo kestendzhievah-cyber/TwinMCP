@@ -57,26 +57,32 @@ export function LogsViewer({
   const [lastFetch, setLastFetch] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Ignore a stale in-flight response (e.g. after switching the MCP filter) so it
+  // can't overwrite the newer request's logs.
+  const reqId = useRef(0);
 
   async function fetchLogs() {
+    const id = ++reqId.current;
     try {
       const res = await fetch(
         `/api/v2/servers/${serverId}/logs?slug=${encodeURIComponent(slug)}&lines=400`,
         { cache: "no-store" }
       );
+      if (id !== reqId.current) return;
       if (!res.ok) {
         setError(`Fetch failed: ${res.status}`);
         return;
       }
       const data = (await res.json()) as { lines: LogLine[]; notice?: string; fetchedAt: string };
+      if (id !== reqId.current) return;
       setLines(data.lines ?? []);
       setNotice(data.notice ?? null);
       setError(null);
       setLastFetch(new Date(data.fetchedAt).toLocaleTimeString());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      if (id === reqId.current) setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (id === reqId.current) setLoading(false);
     }
   }
 

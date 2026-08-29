@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,7 +181,7 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
                       <Badge variant={m.role === "owner" ? "default" : "secondary"}>{m.role}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {new Date(m.joinedAt).toLocaleDateString()}
+                      {formatDate(m.joinedAt)}
                     </TableCell>
                     {isOwner && (
                       <TableCell>

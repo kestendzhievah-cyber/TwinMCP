@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import { formatDate } from "@/lib/format";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { servers, users } from "@/db/schema";
@@ -122,7 +123,7 @@ export default async function ServersPage() {
                   <TableCell className="capitalize">{s.boxSize}</TableCell>
                   <TableCell className="text-muted-foreground">{s.region ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {s.createdAt.toLocaleDateString()}
+                    {formatDate(s.createdAt)}
                   </TableCell>
                   <TableCell>
                     <Link href={`/dashboard/servers/${s.id}` as Route}>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,10 +177,10 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
                     <TableCell className="font-mono text-xs">{k.prefix}…</TableCell>
                     <TableCell>{k.name ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : "never"}
+                      {k.lastUsedAt ? formatDate(k.lastUsedAt) : "never"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(k.createdAt).toLocaleDateString()}
+                      {formatDate(k.createdAt)}
                     </TableCell>
                     <TableCell>
                       <Button
