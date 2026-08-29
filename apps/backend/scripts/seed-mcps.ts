@@ -346,8 +346,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/upstash/context7",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @upstash/context7-mcp@latest",
-    version: "latest",
+    startCmd: "npx -y @upstash/context7-mcp@4.0.4",
+    version: "4.0.4",
     configSchema: { properties: {} },
   },
   {
@@ -360,8 +360,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @modelcontextprotocol/server-brave-search@latest",
-    version: "latest",
+    startCmd: "npx -y @modelcontextprotocol/server-brave-search@0.6.2",
+    version: "0.6.2",
     configSchema: {
       properties: {
         BRAVE_API_KEY: {
@@ -383,8 +383,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/google-maps",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @modelcontextprotocol/server-google-maps@latest",
-    version: "latest",
+    startCmd: "npx -y @modelcontextprotocol/server-google-maps@0.6.2",
+    version: "0.6.2",
     configSchema: {
       properties: {
         GOOGLE_MAPS_API_KEY: {
@@ -406,8 +406,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/slack",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @modelcontextprotocol/server-slack@latest",
-    version: "latest",
+    startCmd: "npx -y @modelcontextprotocol/server-slack@2025.4.25",
+    version: "2025.4.25",
     configSchema: {
       properties: {
         SLACK_BOT_TOKEN: {
@@ -434,8 +434,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/gitlab",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @modelcontextprotocol/server-gitlab@latest",
-    version: "latest",
+    startCmd: "npx -y @modelcontextprotocol/server-gitlab@2025.4.25",
+    version: "2025.4.25",
     configSchema: {
       properties: {
         GITLAB_PERSONAL_ACCESS_TOKEN: {
@@ -486,8 +486,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/makenotion/notion-mcp-server",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @notionhq/notion-mcp-server@latest",
-    version: "latest",
+    startCmd: "npx -y @notionhq/notion-mcp-server@2.5.1",
+    version: "2.5.1",
     configSchema: {
       properties: {
         OPENAPI_MCP_HEADERS: {
@@ -510,8 +510,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/domdomegg/airtable-mcp-server",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y airtable-mcp-server@latest",
-    version: "latest",
+    startCmd: "npx -y airtable-mcp-server@1.14.0",
+    version: "1.14.0",
     configSchema: {
       properties: {
         AIRTABLE_API_KEY: {
@@ -533,8 +533,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/abhiz123/todoist-mcp-server",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @abhiz123/todoist-mcp-server@latest",
-    version: "latest",
+    startCmd: "npx -y @abhiz123/todoist-mcp-server@0.1.0",
+    version: "0.1.0",
     configSchema: {
       properties: {
         TODOIST_API_TOKEN: {
@@ -556,8 +556,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/exa-labs/exa-mcp-server",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y exa-mcp-server@latest",
-    version: "latest",
+    startCmd: "npx -y exa-mcp-server@3.4.1",
+    version: "3.4.1",
     configSchema: {
       properties: {
         EXA_API_KEY: {
@@ -579,8 +579,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/tavily-ai/tavily-mcp",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y tavily-mcp@latest",
-    version: "latest",
+    startCmd: "npx -y tavily-mcp@0.2.22",
+    version: "0.2.22",
     configSchema: {
       properties: {
         TAVILY_API_KEY: {
@@ -602,8 +602,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/mendableai/firecrawl-mcp-server",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y firecrawl-mcp@latest",
-    version: "latest",
+    startCmd: "npx -y firecrawl-mcp@3.24.0",
+    version: "3.24.0",
     configSchema: {
       properties: {
         FIRECRAWL_API_KEY: {
@@ -625,8 +625,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/tacticlaunch/mcp-linear",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @tacticlaunch/mcp-linear@latest",
-    version: "latest",
+    startCmd: "npx -y @tacticlaunch/mcp-linear@1.4.3",
+    version: "1.4.3",
     configSchema: {
       properties: {
         LINEAR_API_TOKEN: {
@@ -648,8 +648,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/stripe/agent-toolkit",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @stripe/mcp@latest --tools=all --api-key=$STRIPE_SECRET_KEY",
-    version: "latest",
+    startCmd: "npx -y @stripe/mcp@0.3.3 --tools=all --api-key=$STRIPE_SECRET_KEY",
+    version: "0.3.3",
     configSchema: {
       properties: {
         STRIPE_SECRET_KEY: {
@@ -695,8 +695,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/mongodb-js/mongodb-mcp-server",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y mongodb-mcp-server@latest",
-    version: "latest",
+    startCmd: "npx -y mongodb-mcp-server@2.1.0",
+    version: "2.1.0",
     configSchema: {
       properties: {
         MDB_MCP_CONNECTION_STRING: {
@@ -718,8 +718,8 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     repoUrl: "https://github.com/negokaz/excel-mcp-server",
     runtime: "node",
     installCmd: "true",
-    startCmd: "npx -y @negokaz/excel-mcp-server@latest",
-    version: "latest",
+    startCmd: "npx -y @negokaz/excel-mcp-server@0.12.0",
+    version: "0.12.0",
     configSchema: { properties: {} },
   },
 
