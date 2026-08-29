@@ -27,7 +27,6 @@ export default async function MarketplacePage() {
     runtime: mcpServers.runtime,
     version: mcpServers.version,
     isOfficial: mcpServers.isOfficial,
-    configSchema: mcpServers.configSchema,
     hostMode: mcpServers.hostMode,
     repoUrl: mcpServers.repoUrl,
     createdAt: mcpServers.createdAt,

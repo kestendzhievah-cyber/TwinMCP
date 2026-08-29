@@ -54,15 +54,34 @@ export function DetailDialog({
 }) {
   const [ide, setIde] = useState<IdeKey>("cursor");
   const [origin, setOrigin] = useState("https://twinmcp.fr");
+  const [rawSchema, setRawSchema] = useState<unknown>(null);
+  const [schemaLoading, setSchemaLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") setOrigin(window.location.origin);
   }, []);
 
-  const fields = useMemo(
-    () => (mcp ? Object.entries(parseSchema(mcp.configSchema).properties) : []),
-    [mcp]
-  );
+  // Config schema is loaded on demand (kept out of the marketplace browse payload).
+  useEffect(() => {
+    if (!mcp) return;
+    setRawSchema(null);
+    setSchemaLoading(true);
+    let cancelled = false;
+    fetch(`/api/v2/mcps/${mcp.id}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (!cancelled) setRawSchema(d.configSchema);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSchemaLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mcp]);
+
+  const fields = useMemo(() => Object.entries(parseSchema(rawSchema).properties), [rawSchema]);
 
   // A representative snippet with placeholders — the real URL/key are minted on
   // the server page after install. This just "reduces doubt before installing".
@@ -147,7 +166,9 @@ export function DetailDialog({
           <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Configuration
           </h4>
-          {fields.length === 0 ? (
+          {schemaLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : fields.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No configuration needed — install and connect.
             </p>

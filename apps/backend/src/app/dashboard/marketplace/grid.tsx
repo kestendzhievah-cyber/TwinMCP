@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,7 @@ type Sort = "featured" | "name" | "newest";
 export type InstalledMap = Record<string, { serverId: string; serverName: string }[]>;
 
 const ALL = "all";
+const PAGE_SIZE = 24;
 
 /** Human label for a category slug (null → "Other"). */
 function categoryLabel(cat: string | null): string {
@@ -88,6 +89,7 @@ export function McpCatalogGrid({
   const [runtime, setRuntime] = useState<string>(ALL);
   const [category, setCategory] = useState<string>(ALL);
   const [sort, setSort] = useState<Sort>("featured");
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
   // Distinct runtimes / categories present in the catalog, for the filters.
   const runtimes = useMemo(
@@ -138,6 +140,11 @@ export function McpCatalogGrid({
     }
     return rows;
   }, [catalog, query, source, runs, runtime, category, sort]);
+
+  // Reset pagination whenever the result set changes (new search/filter/sort).
+  useEffect(() => {
+    setVisible(PAGE_SIZE);
+  }, [query, source, runs, runtime, category, sort]);
 
   return (
     <>
@@ -221,6 +228,7 @@ export function McpCatalogGrid({
 
       <p className="mt-3 text-xs text-muted-foreground" aria-live="polite">
         {filtered.length} of {catalog.length} MCP{catalog.length === 1 ? "" : "s"}
+        {filtered.length > visible ? ` · showing ${visible}` : ""}
       </p>
 
       {filtered.length === 0 ? (
@@ -229,7 +237,7 @@ export function McpCatalogGrid({
         </div>
       ) : (
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((mcp) => {
+          {filtered.slice(0, visible).map((mcp) => {
             const local = mcp.hostMode === "local";
             const on = installed[mcp.id] ?? [];
             const isInstalled = on.length > 0;
@@ -313,6 +321,14 @@ export function McpCatalogGrid({
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {filtered.length > visible && (
+        <div className="mt-6 flex justify-center">
+          <Button variant="outline" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
+            Load more ({filtered.length - visible} more)
+          </Button>
         </div>
       )}
 

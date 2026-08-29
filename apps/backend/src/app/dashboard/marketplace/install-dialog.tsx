@@ -31,7 +31,6 @@ export interface CatalogEntry {
   runtime: string;
   version: string;
   isOfficial: boolean;
-  configSchema: unknown;
   hostMode: string;
   category: string | null;
   repoUrl: string | null;
@@ -76,6 +75,8 @@ export function InstallDialog({
   const [serverId, setServerId] = useState<string>("");
   const [config, setConfig] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [rawSchema, setRawSchema] = useState<unknown>(null);
+  const [schemaLoading, setSchemaLoading] = useState(false);
 
   useEffect(() => {
     if (!mcp) return;
@@ -85,8 +86,28 @@ export function InstallDialog({
     setConfig({});
   }, [mcp, userServers]);
 
+  // Config schema is loaded on demand (kept out of the marketplace browse payload).
+  useEffect(() => {
+    if (!mcp) return;
+    setRawSchema(null);
+    setSchemaLoading(true);
+    let cancelled = false;
+    fetch(`/api/v2/mcps/${mcp.id}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (!cancelled) setRawSchema(d.configSchema);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSchemaLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mcp]);
+
   if (!mcp) return null;
-  const schema = parseSchema(mcp.configSchema);
+  const schema = parseSchema(rawSchema);
   const fields = Object.entries(schema.properties);
   // A tool's host mode must match the server: local tools only fit local-agent
   // servers; box tools only fit box servers (the API enforces this too).
@@ -161,7 +182,11 @@ export function InstallDialog({
             )}
           </div>
 
-          {fields.length > 0 && (
+          {schemaLoading && (
+            <p className="border-t pt-3 text-xs text-muted-foreground">Loading configuration…</p>
+          )}
+
+          {!schemaLoading && fields.length > 0 && (
             <div className="space-y-3 pt-2 border-t">
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
                 Configuration
@@ -207,7 +232,7 @@ export function InstallDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting || !serverId}>
+            <Button type="submit" disabled={submitting || !serverId || schemaLoading}>
               {submitting ? "Installing…" : "Install"}
             </Button>
           </DialogFooter>
