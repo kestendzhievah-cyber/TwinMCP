@@ -1233,6 +1233,162 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "latest",
     configSchema: { properties: {} },
   },
+  {
+    // Node server (npm: @hubspot/mcp-server, official HubSpot). CRM contacts,
+    // companies, deals, tickets and engagements. Needs a private-app token.
+    slug: "hubspot",
+    name: "HubSpot",
+    description:
+      "Work with your HubSpot CRM from the model — read and update contacts, companies, deals, tickets and engagements. Requires a HubSpot private-app access token.",
+    repoUrl: "https://github.com/HubSpot/mcp-server-hubspot",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @hubspot/mcp-server@0.4.0",
+    version: "0.4.0",
+    configSchema: {
+      properties: {
+        HUBSPOT_ACCESS_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "HubSpot private-app access token (pat-…) with the needed CRM scopes.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @taazkareem/clickup-mcp-server). Tasks, lists, folders and
+    // docs in ClickUp. Needs an API key + team ID.
+    slug: "clickup",
+    name: "ClickUp",
+    description:
+      "Manage ClickUp from the model — create and update tasks, browse lists and folders, and manage docs. Requires a ClickUp API key and team ID.",
+    repoUrl: "https://github.com/taazkareem/clickup-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @taazkareem/clickup-mcp-server@0.14.5",
+    version: "0.14.5",
+    configSchema: {
+      properties: {
+        CLICKUP_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "ClickUp API key (ClickUp → Settings → Apps).",
+        },
+        CLICKUP_TEAM_ID: {
+          type: "string",
+          required: true,
+          description: "Your ClickUp team (workspace) ID.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: mcp-discord). Read/post to Discord — channels, messages,
+    // reactions. Needs a Discord bot token.
+    slug: "discord",
+    name: "Discord",
+    description:
+      "Read and post to Discord from the model — list channels, fetch and send messages, and add reactions. Requires a Discord bot token.",
+    repoUrl: "https://github.com/barryyip0625/mcp-discord",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y mcp-discord@1.3.4",
+    version: "1.3.4",
+    configSchema: {
+      properties: {
+        DISCORD_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Discord bot token (Discord Developer Portal → your app → Bot).",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: prometheus-mcp-server), run via uvx. Query Prometheus —
+    // instant + range PromQL, list metrics. Needs the Prometheus URL.
+    slug: "prometheus",
+    name: "Prometheus",
+    description:
+      "Query Prometheus from the model — run PromQL (instant and range), list metrics and inspect targets. Requires your Prometheus server URL.",
+    repoUrl: "https://github.com/pab1it0/prometheus-mcp-server",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx prometheus-mcp-server",
+    version: "latest",
+    configSchema: {
+      properties: {
+        PROMETHEUS_URL: {
+          type: "string",
+          required: true,
+          description: "Prometheus base URL, e.g. https://prometheus.mycompany.com",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: kagimcp, official Kagi), run via uvx. High-quality web
+    // search + FastGPT answers via Kagi. Needs a Kagi API key.
+    slug: "kagi",
+    name: "Kagi Search",
+    description:
+      "Search the web via Kagi and get FastGPT answers from the model — high-quality, ad-free results. Requires a Kagi API key.",
+    repoUrl: "https://github.com/kagisearch/kagimcp",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx kagimcp",
+    version: "latest",
+    configSchema: {
+      properties: {
+        KAGI_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Kagi API key (kagi.com → Settings → API).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @coingecko/coingecko-mcp, official). Live crypto prices,
+    // market data, coins and exchanges. Public API — no key required.
+    slug: "coingecko",
+    name: "CoinGecko",
+    description:
+      "Live cryptocurrency prices and market data via CoinGecko — coins, exchanges, historical charts and trending. No API key required (public API).",
+    repoUrl: "https://github.com/coingecko/coingecko-typescript",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @coingecko/coingecko-mcp@7.1.0",
+    version: "7.1.0",
+    configSchema: { properties: {} },
+  },
+  {
+    // Node server (npm: @programcomputer/nasa-mcp-server). NASA open APIs — APOD,
+    // Mars rover photos, NEO asteroids, EPIC imagery. Needs a (free) NASA API key.
+    slug: "nasa",
+    name: "NASA",
+    description:
+      "Access NASA's open APIs from the model — Astronomy Picture of the Day, Mars rover photos, near-Earth asteroids, and Earth imagery. Requires a free NASA API key.",
+    repoUrl: "https://github.com/ProgramComputer/NASA-MCP-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @programcomputer/nasa-mcp-server@1.0.14",
+    version: "1.0.14",
+    configSchema: {
+      properties: {
+        NASA_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your NASA API key (free at api.nasa.gov).",
+        },
+      },
+    },
+  },
 
   {
     // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
@@ -1319,6 +1475,13 @@ const CATEGORY: Record<string, string> = {
   "shopify-dev": "dev",
   kubernetes: "dev",
   reddit: "web",
+  hubspot: "productivity",
+  clickup: "productivity",
+  discord: "productivity",
+  prometheus: "data",
+  kagi: "web",
+  coingecko: "data",
+  nasa: "web",
 };
 
 async function main() {
