@@ -475,6 +475,100 @@ const OFFICIAL_MCPS: SeedEntry[] = [
       },
     },
   },
+  {
+    // Node server (npm: @notionhq/notion-mcp-server, official Notion). Search,
+    // read, create and update pages/databases. Auth via OPENAPI_MCP_HEADERS (a
+    // JSON blob with the integration token + Notion-Version).
+    slug: "notion",
+    name: "Notion",
+    description:
+      "Search, read, create and update Notion pages and databases from the model. Requires a Notion integration token (share the pages with your integration first).",
+    repoUrl: "https://github.com/makenotion/notion-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @notionhq/notion-mcp-server@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        OPENAPI_MCP_HEADERS: {
+          type: "string",
+          required: true,
+          secret: true,
+          description:
+            'JSON headers, e.g. {"Authorization":"Bearer ntn_your_token","Notion-Version":"2022-06-28"}',
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: airtable-mcp-server). List/read/create/update records and
+    // inspect base schema. Needs an Airtable personal access token.
+    slug: "airtable",
+    name: "Airtable",
+    description:
+      "Read and write Airtable — list bases and tables, query, create and update records, and inspect schema. Requires an Airtable personal access token.",
+    repoUrl: "https://github.com/domdomegg/airtable-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y airtable-mcp-server@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        AIRTABLE_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Airtable personal access token (pat…) with the needed scopes.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @abhiz123/todoist-mcp-server). Create/list/update/complete
+    // Todoist tasks with natural language. Needs a Todoist API token.
+    slug: "todoist",
+    name: "Todoist",
+    description:
+      "Manage Todoist tasks from the model — create, list, update and complete tasks and projects with natural language. Requires a Todoist API token.",
+    repoUrl: "https://github.com/abhiz123/todoist-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @abhiz123/todoist-mcp-server@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        TODOIST_API_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Todoist API token (Todoist → Settings → Integrations → Developer).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: exa-mcp-server, by Exa Labs). AI-optimized web search +
+    // content retrieval. Needs an Exa API key.
+    slug: "exa",
+    name: "Exa Search",
+    description:
+      "AI-optimized web search and content retrieval via Exa — semantic search, find similar pages, and pull clean page contents for the model. Requires an Exa API key.",
+    repoUrl: "https://github.com/exa-labs/exa-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y exa-mcp-server@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        EXA_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Exa API key (dashboard.exa.ai).",
+        },
+      },
+    },
+  },
 
   {
     // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
@@ -527,6 +621,10 @@ const CATEGORY: Record<string, string> = {
   gitlab: "dev",
   sentry: "dev",
   slack: "productivity",
+  notion: "productivity",
+  todoist: "productivity",
+  airtable: "data",
+  exa: "web",
 };
 
 async function main() {
