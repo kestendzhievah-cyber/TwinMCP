@@ -569,6 +569,159 @@ const OFFICIAL_MCPS: SeedEntry[] = [
       },
     },
   },
+  {
+    // Node server (npm: tavily-mcp, by Tavily). Web search + extract optimized
+    // for LLMs. Needs a Tavily API key.
+    slug: "tavily",
+    name: "Tavily Search",
+    description:
+      "LLM-optimized web search and content extraction via Tavily — search, get direct answers, and pull clean page content. Requires a Tavily API key.",
+    repoUrl: "https://github.com/tavily-ai/tavily-mcp",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y tavily-mcp@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        TAVILY_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Tavily API key (app.tavily.com).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: firecrawl-mcp, by Firecrawl). Scrape, crawl, map and
+    // extract structured data from websites. Needs a Firecrawl API key.
+    slug: "firecrawl",
+    name: "Firecrawl",
+    description:
+      "Scrape, crawl and map websites into clean markdown or structured data via Firecrawl — turn any site into model-ready content. Requires a Firecrawl API key.",
+    repoUrl: "https://github.com/mendableai/firecrawl-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y firecrawl-mcp@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        FIRECRAWL_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Firecrawl API key (firecrawl.dev).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @tacticlaunch/mcp-linear). Issues, projects, comments and
+    // cycles in Linear. Needs a Linear API token.
+    slug: "linear",
+    name: "Linear",
+    description:
+      "Work with Linear from the model — search, create and update issues, projects, comments and cycles. Requires a Linear API token.",
+    repoUrl: "https://github.com/tacticlaunch/mcp-linear",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @tacticlaunch/mcp-linear@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        LINEAR_API_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Linear API token (Linear → Settings → API → Personal API keys).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @stripe/mcp, official Stripe). Customers, payments,
+    // invoices, products, etc. Pass a RESTRICTED key for safety.
+    slug: "stripe",
+    name: "Stripe",
+    description:
+      "Manage Stripe from the model — customers, payments, invoices, products, prices and refunds. Use a restricted API key. Requires a Stripe secret/restricted key.",
+    repoUrl: "https://github.com/stripe/agent-toolkit",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @stripe/mcp@latest --tools=all --api-key=$STRIPE_SECRET_KEY",
+    version: "latest",
+    configSchema: {
+      properties: {
+        STRIPE_SECRET_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Stripe secret or restricted key (rk_… recommended for least privilege).",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: postgres-mcp, by Crystal DBA), run via uvx. Query +
+    // inspect a Postgres DB; restricted access-mode is read-only-ish. Needs a
+    // connection string. (Distinct from the retired official server.)
+    slug: "postgres",
+    name: "PostgreSQL",
+    description:
+      "Query and inspect a PostgreSQL database — run SQL, explore schema, and analyze indexes/health. Runs in restricted mode by default. Requires a connection string.",
+    repoUrl: "https://github.com/crystaldba/postgres-mcp",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx postgres-mcp --access-mode=restricted",
+    version: "latest",
+    configSchema: {
+      properties: {
+        DATABASE_URI: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Postgres connection string, e.g. postgresql://user:pass@host:5432/dbname",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: mongodb-mcp-server, official MongoDB). Query collections,
+    // run aggregations, inspect schema. Needs a connection string.
+    slug: "mongodb",
+    name: "MongoDB",
+    description:
+      "Query and manage MongoDB — find and aggregate documents, inspect collections and schema, and run admin operations. Requires a connection string.",
+    repoUrl: "https://github.com/mongodb-js/mongodb-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y mongodb-mcp-server@latest",
+    version: "latest",
+    configSchema: {
+      properties: {
+        MDB_MCP_CONNECTION_STRING: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "MongoDB connection string, e.g. mongodb+srv://user:pass@cluster/db",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @negokaz/excel-mcp-server). Read/write .xlsx files inside
+    // the box — no API key. Point it at spreadsheet paths in your box.
+    slug: "excel",
+    name: "Excel",
+    description:
+      "Read and write Excel (.xlsx) spreadsheets inside your box — read ranges, write cells and formulas, create sheets. No API key; works on files in your box.",
+    repoUrl: "https://github.com/negokaz/excel-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @negokaz/excel-mcp-server@latest",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
 
   {
     // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
@@ -625,6 +778,13 @@ const CATEGORY: Record<string, string> = {
   todoist: "productivity",
   airtable: "data",
   exa: "web",
+  tavily: "web",
+  firecrawl: "web",
+  linear: "dev",
+  stripe: "dev",
+  postgres: "data",
+  mongodb: "data",
+  excel: "data",
 };
 
 async function main() {
