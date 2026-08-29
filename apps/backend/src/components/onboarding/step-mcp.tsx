@@ -222,11 +222,11 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
         )}
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={onSkip} disabled={installing}>
             Skip — install later
           </Button>

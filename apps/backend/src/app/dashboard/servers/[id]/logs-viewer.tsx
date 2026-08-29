@@ -109,9 +109,9 @@ export function LogsViewer({
               {lastFetch && <span className="ml-2 text-muted-foreground">· last: {lastFetch}</span>}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={slug} onValueChange={setSlug}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

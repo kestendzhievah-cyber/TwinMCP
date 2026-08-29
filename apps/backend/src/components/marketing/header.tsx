@@ -44,7 +44,7 @@ function buildNav(locale: Locale, t: (typeof T)[Locale]): NavLink[] {
     { href: `${home}#features`, label: t.features, kind: "anchor" },
     { href: "/plans" as Route, label: t.pricing, kind: "internal" },
     { href: "/docs" as Route, label: t.docs, kind: "internal" },
-    { href: "https://github.com/twinmcp", label: t.github, kind: "external" },
+    { href: "https://github.com/kestendzhievah-cyber/TwinMCP", label: t.github, kind: "external" },
   ];
 }
 

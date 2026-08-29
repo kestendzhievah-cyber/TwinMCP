@@ -117,7 +117,7 @@ export default function FrHomePage() {
       <section className="border-b border-border/60 bg-background">
         <div className="mx-auto max-w-5xl px-6 py-24 md:py-32">
           <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            MCPs as a Service
+            Le MCP en tant que service
           </p>
           <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
             Hébergement de serveurs MCP, sans gérer l&apos;infrastructure.
@@ -168,7 +168,7 @@ export default function FrHomePage() {
       </section>
 
       {/* Benefits */}
-      <section className="border-b border-border/60">
+      <section id="features" className="scroll-mt-20 border-b border-border/60">
         <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
           <h2 className="text-balance text-center text-3xl font-semibold tracking-tight md:text-4xl">
             Pourquoi les développeurs choisissent TwinMCP
@@ -185,7 +185,7 @@ export default function FrHomePage() {
       </section>
 
       {/* How it works */}
-      <section className="border-b border-border/60">
+      <section id="how-it-works" className="scroll-mt-20 border-b border-border/60">
         <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
           <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
             Comment ça marche
@@ -324,7 +324,7 @@ export default function FrHomePage() {
       </section>
 
       {/* FAQ */}
-      <section className="border-b border-border/60">
+      <section id="faq" className="scroll-mt-20 border-b border-border/60">
         <div className="mx-auto max-w-3xl px-6 py-20 md:py-28">
           <h2 className="text-balance text-center text-3xl font-semibold tracking-tight md:text-4xl">
             Questions fréquentes

@@ -8,7 +8,6 @@ const ORG_NAME = "TwinMCP";
 const ORG_LOGO = `${SITE_URL}/icon-512.png`;
 const ORG_SAME_AS = [
   "https://twitter.com/twinmcp",
-  "https://github.com/twinmcp",
   "https://github.com/kestendzhievah-cyber/TwinMCP",
 ];
 

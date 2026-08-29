@@ -26,7 +26,8 @@ function buildColumns(locale: Locale): FooterColumn[] {
           href: homeHref(locale, "#how-it-works"),
           label: fr ? "Comment ça marche" : "How it works",
         },
-        { href: homeHref(locale, "#marketplace"), label: "Marketplace" },
+        // FR home has no #marketplace section, so send FR to the real catalog.
+        { href: fr ? "/servers" : homeHref(locale, "#marketplace"), label: "Marketplace" },
         { href: "/servers", label: fr ? "Catalogue MCP" : "MCP catalog" },
         { href: "/use-cases", label: fr ? "Cas d’usage" : "Use cases" },
         { href: "/plans", label: fr ? "Tarifs" : "Pricing" },
@@ -37,7 +38,11 @@ function buildColumns(locale: Locale): FooterColumn[] {
       links: [
         { href: "/docs", label: "Docs" },
         { href: "/docs#api", label: fr ? "Référence API" : "API reference" },
-        { href: "https://github.com/twinmcp", label: "GitHub", external: true },
+        {
+          href: "https://github.com/kestendzhievah-cyber/TwinMCP",
+          label: "GitHub",
+          external: true,
+        },
         { href: homeHref(locale, "#faq"), label: "FAQ" },
       ],
     },
@@ -116,7 +121,7 @@ export function MarketingFooter({ locale = "en" }: { locale?: Locale }) {
             <CookieSettingsLink className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" />
             <span className="mx-1 h-4 w-px bg-border" aria-hidden />
             <a
-              href="https://github.com/twinmcp"
+              href="https://github.com/kestendzhievah-cyber/TwinMCP"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub"

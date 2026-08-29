@@ -109,7 +109,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
                 <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
                   Box ID
                 </div>
-                <div className="font-mono text-xs">{srv.boxId ?? "—"}</div>
+                <div className="font-mono text-xs break-all">{srv.boxId ?? "—"}</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">

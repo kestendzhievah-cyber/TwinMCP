@@ -111,7 +111,7 @@ export function InstalledMcps({
                   className="flex items-start justify-between gap-4 rounded-md border p-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{item.mcpName}</span>
                       {item.mcpIsOfficial && (
                         <Badge variant="outline" className="text-xs">
