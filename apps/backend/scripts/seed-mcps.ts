@@ -722,6 +722,178 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     version: "0.12.0",
     configSchema: { properties: {} },
   },
+  {
+    // Node server (npm: server-perplexity-ask, by Perplexity). Ask Perplexity a
+    // question and get a cited, web-grounded answer. Needs a Perplexity API key.
+    slug: "perplexity",
+    name: "Perplexity",
+    description:
+      "Ask Perplexity from the model — get web-grounded, cited answers to real-time questions. Requires a Perplexity API key.",
+    repoUrl: "https://github.com/ppl-ai/modelcontextprotocol",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y server-perplexity-ask@0.1.3",
+    version: "0.1.3",
+    configSchema: {
+      properties: {
+        PERPLEXITY_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Perplexity API key (perplexity.ai → Settings → API).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: figma-developer-mcp, Framelink). Reads Figma file data +
+    // layout for the model. Runs in stdio mode with --stdio. Needs a Figma token.
+    slug: "figma",
+    name: "Figma",
+    description:
+      "Give the model your Figma designs — read file layout, components, styles and content to generate accurate UI code. Requires a Figma API token.",
+    repoUrl: "https://github.com/GLips/Figma-Context-MCP",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y figma-developer-mcp@0.13.2 --stdio",
+    version: "0.13.2",
+    configSchema: {
+      properties: {
+        FIGMA_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description:
+            "Figma personal access token (Figma → Settings → Account → Personal access tokens).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @apify/actors-mcp-server). Run Apify Actors to scrape the
+    // web, crawl sites and extract data. Needs an Apify API token.
+    slug: "apify",
+    name: "Apify",
+    description:
+      "Run Apify Actors from the model — scrape websites, crawl pages, and extract structured data at scale. Requires an Apify API token.",
+    repoUrl: "https://github.com/apify/actors-mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @apify/actors-mcp-server@0.15.3",
+    version: "0.15.3",
+    configSchema: {
+      properties: {
+        APIFY_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your Apify API token (console.apify.com → Settings → Integrations).",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @elastic/mcp-server-elasticsearch, official Elastic).
+    // Search + inspect Elasticsearch indices. Needs a cluster URL + API key.
+    slug: "elasticsearch",
+    name: "Elasticsearch",
+    description:
+      "Query and inspect Elasticsearch from the model — search indices, run aggregations, and read mappings. Requires a cluster URL and API key.",
+    repoUrl: "https://github.com/elastic/mcp-server-elasticsearch",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @elastic/mcp-server-elasticsearch@0.3.1",
+    version: "0.3.1",
+    configSchema: {
+      properties: {
+        ES_URL: {
+          type: "string",
+          required: true,
+          description: "Elasticsearch endpoint, e.g. https://my-cluster.es.io:9243",
+        },
+        ES_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Elasticsearch API key (base64) with read access.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @modelcontextprotocol/server-redis). Read/write a Redis
+    // instance. The connection URL is passed as an argument.
+    slug: "redis",
+    name: "Redis",
+    description:
+      "Read and write a Redis instance from the model — get/set keys, manage lists, hashes and sets, and inspect the store. Requires a Redis connection URL.",
+    repoUrl: "https://github.com/modelcontextprotocol/servers/tree/main/src/redis",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @modelcontextprotocol/server-redis@2025.4.25 $REDIS_URL",
+    version: "2025.4.25",
+    configSchema: {
+      properties: {
+        REDIS_URL: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Redis connection URL, e.g. redis://user:pass@host:6379",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @openbnb/mcp-server-airbnb). Search Airbnb listings +
+    // details. No API key. --ignore-robots-txt lets it fetch listing pages.
+    slug: "airbnb",
+    name: "Airbnb",
+    description:
+      "Search Airbnb listings and fetch details from the model — filter by location, dates and guests, and read a listing's specifics. No API key required.",
+    repoUrl: "https://github.com/openbnb-org/mcp-server-airbnb",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @openbnb/mcp-server-airbnb@0.3.0 --ignore-robots-txt",
+    version: "0.3.0",
+    configSchema: { properties: {} },
+  },
+  {
+    // Node server (npm: @e2b/mcp-server, by E2B). Runs the model's code in a
+    // secure remote sandbox. Needs an E2B API key.
+    slug: "e2b",
+    name: "E2B Code Interpreter",
+    description:
+      "Let the model run code in a secure remote sandbox via E2B — execute Python/JS, install packages, and read the output. Requires an E2B API key.",
+    repoUrl: "https://github.com/e2b-dev/mcp-server",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @e2b/mcp-server@0.2.3",
+    version: "0.2.3",
+    configSchema: {
+      properties: {
+        E2B_API_KEY: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "Your E2B API key (e2b.dev → Dashboard → API Keys).",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: mcp-hn), run via uvx like fetch. Search + read Hacker
+    // News stories and comments. No API key.
+    slug: "hackernews",
+    name: "Hacker News",
+    description:
+      "Search and read Hacker News from the model — top/new stories, a story's comments, and user profiles. No API key required.",
+    repoUrl: "https://github.com/erithwik/mcp-hn",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd: "uvx mcp-hn",
+    version: "latest",
+    configSchema: { properties: {} },
+  },
 
   {
     // LOCAL tool: runs on the USER's machine via `ctx7 connect`, not in a box.
@@ -785,6 +957,14 @@ const CATEGORY: Record<string, string> = {
   postgres: "data",
   mongodb: "data",
   excel: "data",
+  perplexity: "web",
+  apify: "web",
+  airbnb: "web",
+  hackernews: "web",
+  figma: "creative",
+  elasticsearch: "data",
+  redis: "data",
+  e2b: "dev",
 };
 
 async function main() {
