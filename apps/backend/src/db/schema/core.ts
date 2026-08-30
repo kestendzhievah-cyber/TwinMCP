@@ -85,7 +85,12 @@ export const teamspaceMembers = pgTable(
     role: text("role").notNull().default("member"),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.teamspaceId, t.userId] })]
+  (t) => [
+    primaryKey({ columns: [t.teamspaceId, t.userId] }),
+    // The composite PK leads with teamspaceId, so lookups by userId alone (member
+    // lists, /api/v2/libs/search on every request, account erasure) can't use it.
+    index("teamspace_members_user_idx").on(t.userId),
+  ]
 );
 
 export const teamspaceFilters = pgTable("teamspace_filters", {

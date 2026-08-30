@@ -35,47 +35,52 @@ export default async function MarketplacePage() {
   // `category` ships in migration 0009. When the app image is deployed before
   // migrations run (deploy → migrate ordering), the column can be briefly
   // absent — degrade to a category-less catalog instead of 500-ing the page.
-  // Self-heals once the migration lands.
-  let catalog: CatalogEntry[];
-  try {
-    const rows = await db
-      .select({ ...baseCols, category: mcpServers.category })
-      .from(mcpServers)
-      .where(catalogWhere)
-      .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt));
-    catalog = rows.map((c) => ({ ...c, createdAt: c.createdAt.getTime() }));
-  } catch (err) {
-    console.error("[marketplace] catalog query with category failed; falling back", err);
-    const rows = await db
-      .select(baseCols)
-      .from(mcpServers)
-      .where(catalogWhere)
-      .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt));
-    catalog = rows.map((c) => ({ ...c, createdAt: c.createdAt.getTime(), category: null }));
-  }
+  // Capped at 200 so the render/transfer stays bounded as the catalog grows.
+  const loadCatalog = async (): Promise<CatalogEntry[]> => {
+    try {
+      const rows = await db
+        .select({ ...baseCols, category: mcpServers.category })
+        .from(mcpServers)
+        .where(catalogWhere)
+        .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt))
+        .limit(200);
+      return rows.map((c) => ({ ...c, createdAt: c.createdAt.getTime() }));
+    } catch (err) {
+      console.error("[marketplace] catalog query with category failed; falling back", err);
+      const rows = await db
+        .select(baseCols)
+        .from(mcpServers)
+        .where(catalogWhere)
+        .orderBy(desc(mcpServers.isOfficial), desc(mcpServers.createdAt))
+        .limit(200);
+      return rows.map((c) => ({ ...c, createdAt: c.createdAt.getTime(), category: null }));
+    }
+  };
 
-  const userServers = await db
-    .select({
-      id: servers.id,
-      name: servers.name,
-      status: servers.status,
-      hostType: servers.hostType,
-    })
-    .from(servers)
-    .where(eq(servers.userId, user.id))
-    .orderBy(desc(servers.createdAt));
-
-  // Which catalog MCPs the user already installed, and on which server(s), so
-  // the grid can show an "Installed" state that links to the server.
-  const installedRows = await db
-    .select({
-      mcpServerId: installedTable.mcpServerId,
-      serverId: servers.id,
-      serverName: servers.name,
-    })
-    .from(installedTable)
-    .innerJoin(servers, eq(servers.id, installedTable.serverId))
-    .where(eq(servers.userId, user.id));
+  // Catalog, the user's servers, and their installs are independent — run in
+  // parallel instead of three sequential round-trips.
+  const [catalog, userServers, installedRows] = await Promise.all([
+    loadCatalog(),
+    db
+      .select({
+        id: servers.id,
+        name: servers.name,
+        status: servers.status,
+        hostType: servers.hostType,
+      })
+      .from(servers)
+      .where(eq(servers.userId, user.id))
+      .orderBy(desc(servers.createdAt)),
+    db
+      .select({
+        mcpServerId: installedTable.mcpServerId,
+        serverId: servers.id,
+        serverName: servers.name,
+      })
+      .from(installedTable)
+      .innerJoin(servers, eq(servers.id, installedTable.serverId))
+      .where(eq(servers.userId, user.id)),
+  ]);
 
   const installed: InstalledMap = {};
   for (const row of installedRows) {

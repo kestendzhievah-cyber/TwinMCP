@@ -71,6 +71,13 @@
       "when": 1782864000000,
       "tag": "0009_mcp_category",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783468800000,
+      "tag": "0010_teamspace_members_user_idx",
+      "breakpoints": true
     }
   ]
 }

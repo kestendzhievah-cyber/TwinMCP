@@ -26,40 +26,53 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
   if (!user) return null;
 
   const db = getDb();
-  const [srv] = await db
-    .select()
-    .from(servers)
-    .where(and(eq(servers.id, id), eq(servers.userId, user.id)))
-    .limit(1);
+  // srv, the user's plan, and this server's installations are independent
+  // (installations key off the id param — srv.id === id), so fetch them in
+  // parallel instead of three sequential round-trips. srv is projected to the
+  // columns the page renders rather than SELECT *.
+  const [[srv], [me], installations] = await Promise.all([
+    db
+      .select({
+        id: servers.id,
+        name: servers.name,
+        slug: servers.slug,
+        status: servers.status,
+        hostType: servers.hostType,
+        boxId: servers.boxId,
+        boxSize: servers.boxSize,
+        region: servers.region,
+        endpointUrl: servers.endpointUrl,
+        lastHeartbeatAt: servers.lastHeartbeatAt,
+        createdAt: servers.createdAt,
+      })
+      .from(servers)
+      .where(and(eq(servers.id, id), eq(servers.userId, user.id)))
+      .limit(1),
+    db.select({ plan: users.plan }).from(users).where(eq(users.id, user.id)).limit(1),
+    db
+      .select({
+        id: userServers.id,
+        enabled: userServers.enabled,
+        installedAt: userServers.installedAt,
+        mcpId: mcpServers.id,
+        mcpSlug: mcpServers.slug,
+        mcpName: mcpServers.name,
+        mcpDescription: mcpServers.description,
+        mcpRuntime: mcpServers.runtime,
+        mcpIsOfficial: mcpServers.isOfficial,
+        mcpConfigSchema: mcpServers.configSchema,
+      })
+      .from(userServers)
+      .innerJoin(mcpServers, eq(mcpServers.id, userServers.mcpServerId))
+      .where(eq(userServers.serverId, id)),
+  ]);
   if (!srv) notFound();
 
   // Runtime mode: warm (always-on, no cold start) vs pause-when-idle. Gated by
   // plan + the WARM_BOXES_ENABLED ops switch — same decision as provisioning.
-  const [me] = await db
-    .select({ plan: users.plan })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
   const plan = me?.plan ?? "free";
   const warmEnabled = process.env.WARM_BOXES_ENABLED === "true";
   const warm = keepWarm(plan, warmEnabled);
-
-  const installations = await db
-    .select({
-      id: userServers.id,
-      enabled: userServers.enabled,
-      installedAt: userServers.installedAt,
-      mcpId: mcpServers.id,
-      mcpSlug: mcpServers.slug,
-      mcpName: mcpServers.name,
-      mcpDescription: mcpServers.description,
-      mcpRuntime: mcpServers.runtime,
-      mcpIsOfficial: mcpServers.isOfficial,
-      mcpConfigSchema: mcpServers.configSchema,
-    })
-    .from(userServers)
-    .innerJoin(mcpServers, eq(mcpServers.id, userServers.mcpServerId))
-    .where(eq(userServers.serverId, srv.id));
 
   function hasConfigFields(schema: unknown): boolean {
     if (!schema || typeof schema !== "object" || !("properties" in schema)) return false;

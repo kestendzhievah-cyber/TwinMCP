@@ -24,7 +24,9 @@ export default async function McpsPage() {
   const plan = me?.plan ?? "free";
   const canPublish = can(plan, "publishMcp");
 
-  const mine = await db
+  // Only the columns the panel's table renders — description (up to 2000 chars)
+  // and createdAt were shipped to the client but never used.
+  const mcps = await db
     .select({
       id: mcpServers.id,
       slug: mcpServers.slug,
@@ -32,14 +34,10 @@ export default async function McpsPage() {
       runtime: mcpServers.runtime,
       version: mcpServers.version,
       isPublic: mcpServers.isPublic,
-      description: mcpServers.description,
-      createdAt: mcpServers.createdAt,
     })
     .from(mcpServers)
     .where(and(eq(mcpServers.publishedByUserId, user.id), eq(mcpServers.isOfficial, false)))
     .orderBy(desc(mcpServers.createdAt));
-
-  const mcps = mine.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() }));
 
   return (
     <div className="space-y-8">

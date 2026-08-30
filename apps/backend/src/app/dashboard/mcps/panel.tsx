@@ -53,8 +53,6 @@ interface PublishedMcp {
   runtime: string;
   version: string;
   isPublic: boolean;
-  description: string;
-  createdAt: string;
 }
 
 interface ConfigField {
