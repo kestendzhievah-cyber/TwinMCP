@@ -84,12 +84,20 @@ export function McpCatalogGrid({
   const [picking, setPicking] = useState<CatalogEntry | null>(null);
   const [detail, setDetail] = useState<CatalogEntry | null>(null);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [source, setSource] = useState<Source>("all");
   const [runs, setRuns] = useState<Runs>("all");
   const [runtime, setRuntime] = useState<string>(ALL);
   const [category, setCategory] = useState<string>(ALL);
   const [sort, setSort] = useState<Sort>("featured");
   const [visible, setVisible] = useState(PAGE_SIZE);
+
+  // Debounce the search box so filtering doesn't run on every keystroke (matters
+  // as the catalog grows).
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 200);
+    return () => clearTimeout(t);
+  }, [query]);
 
   // Distinct runtimes / categories present in the catalog, for the filters.
   const runtimes = useMemo(
@@ -113,7 +121,7 @@ export function McpCatalogGrid({
   }, [catalog]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     const rows = catalog.filter((mcp) => {
       if (source === "official" && !mcp.isOfficial) return false;
       if (source === "community" && mcp.isOfficial) return false;
@@ -139,12 +147,12 @@ export function McpCatalogGrid({
       rows.sort((a, b) => Number(b.isOfficial) - Number(a.isOfficial) || b.createdAt - a.createdAt);
     }
     return rows;
-  }, [catalog, query, source, runs, runtime, category, sort]);
+  }, [catalog, debouncedQuery, source, runs, runtime, category, sort]);
 
   // Reset pagination whenever the result set changes (new search/filter/sort).
   useEffect(() => {
     setVisible(PAGE_SIZE);
-  }, [query, source, runs, runtime, category, sort]);
+  }, [debouncedQuery, source, runs, runtime, category, sort]);
 
   return (
     <>

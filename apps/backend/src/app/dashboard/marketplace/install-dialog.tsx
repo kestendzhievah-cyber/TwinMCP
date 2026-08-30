@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { useMcpConfigSchema } from "./use-config-schema";
 import {
   Dialog,
   DialogContent,
@@ -75,8 +76,8 @@ export function InstallDialog({
   const [serverId, setServerId] = useState<string>("");
   const [config, setConfig] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [rawSchema, setRawSchema] = useState<unknown>(null);
-  const [schemaLoading, setSchemaLoading] = useState(false);
+  // Config schema loaded on demand + cached across opens.
+  const { schema: rawSchema, loading: schemaLoading } = useMcpConfigSchema(mcp?.id ?? null);
 
   useEffect(() => {
     if (!mcp) return;
@@ -85,26 +86,6 @@ export function InstallDialog({
     setServerId(compat[0]?.id ?? "");
     setConfig({});
   }, [mcp, userServers]);
-
-  // Config schema is loaded on demand (kept out of the marketplace browse payload).
-  useEffect(() => {
-    if (!mcp) return;
-    setRawSchema(null);
-    setSchemaLoading(true);
-    let cancelled = false;
-    fetch(`/api/v2/mcps/${mcp.id}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => {
-        if (!cancelled) setRawSchema(d.configSchema);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setSchemaLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mcp]);
 
   if (!mcp) return null;
   const schema = parseSchema(rawSchema);

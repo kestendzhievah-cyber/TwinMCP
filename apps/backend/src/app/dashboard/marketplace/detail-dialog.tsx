@@ -30,6 +30,7 @@ import {
   type IdeKey,
 } from "@/lib/mcp/client-config";
 import { parseSchema, type CatalogEntry, type ServerOption } from "./install-dialog";
+import { useMcpConfigSchema } from "./use-config-schema";
 
 const IDE_KEYS = Object.keys(IDE_LABELS) as IdeKey[];
 
@@ -54,32 +55,12 @@ export function DetailDialog({
 }) {
   const [ide, setIde] = useState<IdeKey>("cursor");
   const [origin, setOrigin] = useState("https://twinmcp.fr");
-  const [rawSchema, setRawSchema] = useState<unknown>(null);
-  const [schemaLoading, setSchemaLoading] = useState(false);
+  // Config schema loaded on demand + cached across opens.
+  const { schema: rawSchema, loading: schemaLoading } = useMcpConfigSchema(mcp?.id ?? null);
 
   useEffect(() => {
     if (typeof window !== "undefined") setOrigin(window.location.origin);
   }, []);
-
-  // Config schema is loaded on demand (kept out of the marketplace browse payload).
-  useEffect(() => {
-    if (!mcp) return;
-    setRawSchema(null);
-    setSchemaLoading(true);
-    let cancelled = false;
-    fetch(`/api/v2/mcps/${mcp.id}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => {
-        if (!cancelled) setRawSchema(d.configSchema);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setSchemaLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mcp]);
 
   const fields = useMemo(() => Object.entries(parseSchema(rawSchema).properties), [rawSchema]);
 
