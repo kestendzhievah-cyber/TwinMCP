@@ -76,13 +76,22 @@ function relTime(iso: string, nowMs: number): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+// Owns its own 1s tick so a relative timestamp stays live WITHOUT re-rendering
+// the whole analytics panel (6 KPI cards + 2 charts + 2 tables) every second.
+function RelTime({ iso }: { iso: string }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return <>{relTime(iso, Date.now())}</>;
+}
+
 export function AdminAnalyticsPanel() {
   const [data, setData] = useState<AdminStats | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  // Ticks once a second so the "updated Xs ago" label stays live between fetches.
-  const [nowMs, setNowMs] = useState(() => 0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -127,12 +136,6 @@ export function AdminAnalyticsPanel() {
     };
   }, [load]);
 
-  useEffect(() => {
-    const t = setInterval(() => setNowMs(Date.now()), 1000);
-    setNowMs(Date.now());
-    return () => clearInterval(t);
-  }, []);
-
   if (loading && !data) {
     return (
       <div className="space-y-4">
@@ -173,7 +176,7 @@ export function AdminAnalyticsPanel() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
           </span>
-          Live · updated {relTime(data.generatedAt, nowMs)}
+          Live · updated <RelTime iso={data.generatedAt} />
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={refreshing}>
           <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
@@ -334,7 +337,7 @@ export function AdminAnalyticsPanel() {
                     <span className="flex items-center gap-2 shrink-0">
                       <Badge variant={u.plan === "free" ? "secondary" : "success"}>{u.plan}</Badge>
                       <span className="text-xs text-muted-foreground">
-                        {relTime(u.createdAt, nowMs)}
+                        <RelTime iso={u.createdAt} />
                       </span>
                     </span>
                   </li>
@@ -364,7 +367,7 @@ export function AdminAnalyticsPanel() {
                       )}
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      {relTime(a.createdAt, nowMs)}
+                      <RelTime iso={a.createdAt} />
                     </span>
                   </li>
                 ))}

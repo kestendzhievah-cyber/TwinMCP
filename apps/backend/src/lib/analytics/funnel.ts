@@ -9,8 +9,11 @@
 // Discriminated union ensures the call site cannot use the wrong properties
 // for an event. New events MUST be added here, not inlined at the call site.
 
-import posthog from "posthog-js";
 import { hasAnalyticsConsent } from "./consent";
+
+// posthog-js (~50KB gz) is loaded lazily, only after the user grants consent —
+// so it never ships in the initial bundle of any page (marketing home included).
+type PostHogClient = typeof import("posthog-js").default;
 
 export type FunnelEvent =
   | { name: "landing_view" }
@@ -53,10 +56,11 @@ export type FunnelEvent =
 
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com";
 
-let initialized = false;
+let ph: PostHogClient | null = null;
+let initializing = false;
 
-export function initAnalytics(): void {
-  if (initialized) return;
+export async function initAnalytics(): Promise<void> {
+  if (ph || initializing) return;
   if (typeof window === "undefined") return;
   // No analytics cookies before the user opts in (CNIL / CPDP / ePrivacy).
   // The cookie banner calls setConsent("granted"), which re-invokes this.
@@ -66,30 +70,36 @@ export function initAnalytics(): void {
     // No-op when the env is unset (dev without analytics, ephemeral previews).
     return;
   }
-  posthog.init(key, {
-    api_host: POSTHOG_HOST,
-    person_profiles: "identified_only",
-    capture_pageview: false,
-    capture_pageleave: true,
-    autocapture: true,
-    persistence: "localStorage+cookie",
-  });
-  initialized = true;
+  initializing = true;
+  try {
+    const posthog = (await import("posthog-js")).default;
+    posthog.init(key, {
+      api_host: POSTHOG_HOST,
+      person_profiles: "identified_only",
+      capture_pageview: false,
+      capture_pageleave: true,
+      autocapture: true,
+      persistence: "localStorage+cookie",
+    });
+    ph = posthog;
+  } finally {
+    initializing = false;
+  }
 }
 
 export function isAnalyticsReady(): boolean {
-  return initialized;
+  return ph !== null;
 }
 
 export function track(event: FunnelEvent): void {
-  if (!initialized) return;
+  if (!ph) return;
   const properties = "properties" in event ? event.properties : undefined;
-  posthog.capture(event.name, properties);
+  ph.capture(event.name, properties);
 }
 
 export function trackPageview(path: string, search?: string): void {
-  if (!initialized) return;
-  posthog.capture("$pageview", {
+  if (!ph) return;
+  ph.capture("$pageview", {
     $current_url: typeof window !== "undefined" ? window.location.href : path,
     path,
     search,
@@ -100,8 +110,8 @@ export function identifyUser(
   userId: string,
   traits: { email?: string | null; plan?: string | null; signupDate?: string }
 ): void {
-  if (!initialized) return;
-  posthog.identify(userId, {
+  if (!ph) return;
+  ph.identify(userId, {
     email: traits.email ?? undefined,
     plan: traits.plan ?? undefined,
     signup_date: traits.signupDate,
@@ -109,6 +119,6 @@ export function identifyUser(
 }
 
 export function resetAnalytics(): void {
-  if (!initialized) return;
-  posthog.reset();
+  if (!ph) return;
+  ph.reset();
 }

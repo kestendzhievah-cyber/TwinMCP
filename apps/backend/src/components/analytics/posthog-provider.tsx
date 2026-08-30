@@ -16,11 +16,13 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   //    banner. initAnalytics() no-ops without consent, so this is safe to call
   //    eagerly. When the user accepts, re-init and capture the current page.
   useEffect(() => {
-    initAnalytics();
+    void initAnalytics();
     const onConsent = (e: Event) => {
       if ((e as CustomEvent).detail !== "granted") return;
-      initAnalytics();
-      trackPageview(window.location.pathname, window.location.search.replace(/^\?/, ""));
+      // Await the lazy posthog load so the current page is captured once ready.
+      void initAnalytics().then(() =>
+        trackPageview(window.location.pathname, window.location.search.replace(/^\?/, ""))
+      );
     };
     window.addEventListener(CONSENT_EVENT, onConsent);
     return () => window.removeEventListener(CONSENT_EVENT, onConsent);

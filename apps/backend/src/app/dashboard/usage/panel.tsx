@@ -58,17 +58,28 @@ export function UsagePanel() {
   // Guards against a slow earlier request (e.g. 7d) resolving after a newer one
   // (30d) and clobbering the displayed range with stale numbers.
   const reqId = useRef(0);
+  // Cache each range's response so toggling back to a loaded range is instant
+  // (served from cache, then refreshed silently in the background).
+  const cacheRef = useRef<Map<number, UsageData>>(new Map());
   const load = useCallback(async (d: number) => {
     const id = ++reqId.current;
-    setLoading(true);
-    setError("");
+    const cached = cacheRef.current.get(d);
+    if (cached) {
+      setData(cached);
+      setError("");
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setError("");
+    }
     try {
       const res = await fetch(`/api/v2/usage?days=${d}`);
       if (!res.ok) throw new Error();
       const json = (await res.json()) as UsageData;
+      cacheRef.current.set(d, json);
       if (id === reqId.current) setData(json);
     } catch {
-      if (id === reqId.current) setError("Could not load usage. Try again.");
+      if (id === reqId.current && !cached) setError("Could not load usage. Try again.");
     } finally {
       if (id === reqId.current) setLoading(false);
     }
