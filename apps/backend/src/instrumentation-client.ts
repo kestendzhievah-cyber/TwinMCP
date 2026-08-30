@@ -4,12 +4,10 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
     tracesSampleRate: 0.1,
-    // Record a replay only around errors (0% of ordinary sessions, 100% of
-    // sessions that hit an error). The sample rates are inert without the
-    // Replay integration actually registered — add it so the replays land.
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 1.0,
-    integrations: [Sentry.replayIntegration()],
+    // Session Replay is intentionally NOT registered: its integration is a heavy
+    // (~40KB) client add-on that shipped on every page. Error capture + tracing
+    // stay. To re-enable replays, add replayIntegration() back (and note the
+    // lazy-load path pulls from the Sentry CDN, which the strict CSP blocks).
   });
 }
 
