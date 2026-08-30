@@ -2,7 +2,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { getSortedPosts } from "@/lib/blog/posts";
 import { JsonLd } from "@/components/seo/json-ld";
-import { breadcrumbListSchema } from "@/lib/seo/schema";
+import { breadcrumbListSchema, itemListSchema } from "@/lib/seo/schema";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -43,6 +43,7 @@ export default function BlogIndexPage() {
             { name: "Blog", url: "/blog" },
           ]),
           collectionSchema,
+          itemListSchema(posts.map((p) => ({ name: p.title, url: `/blog/${p.slug}` }))),
         ]}
       />
 

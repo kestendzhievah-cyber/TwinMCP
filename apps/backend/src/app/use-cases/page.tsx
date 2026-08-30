@@ -2,7 +2,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { USE_CASES } from "@/lib/use-cases/registry";
 import { JsonLd } from "@/components/seo/json-ld";
-import { breadcrumbListSchema } from "@/lib/seo/schema";
+import { breadcrumbListSchema, itemListSchema } from "@/lib/seo/schema";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -22,10 +22,13 @@ export default function UseCasesIndexPage() {
   return (
     <>
       <JsonLd
-        data={breadcrumbListSchema([
-          { name: "Home", url: "/" },
-          { name: "Use cases", url: "/use-cases" },
-        ])}
+        data={[
+          breadcrumbListSchema([
+            { name: "Home", url: "/" },
+            { name: "Use cases", url: "/use-cases" },
+          ]),
+          itemListSchema(USE_CASES.map((u) => ({ name: u.title, url: `/use-cases/${u.slug}` }))),
+        ]}
       />
 
       <div className="mx-auto max-w-5xl px-6 py-16">

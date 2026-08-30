@@ -128,6 +128,23 @@ export function faqPageSchema(items: FaqItemPlain[]) {
   };
 }
 
+// Google's preferred structured data for list/index pages (servers, blog,
+// use-cases). Positioned ListItems help it understand the set and can yield
+// list/carousel rich results.
+export function itemListSchema(items: { name: string; url: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    numberOfItems: items.length,
+    itemListElement: items.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: it.name,
+      url: abs(it.url),
+    })),
+  };
+}
+
 export interface Breadcrumb {
   name: string;
   url: string;

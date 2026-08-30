@@ -2,7 +2,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { SERVERS, getServersByCategory } from "@/lib/servers/catalog";
 import { JsonLd } from "@/components/seo/json-ld";
-import { breadcrumbListSchema } from "@/lib/seo/schema";
+import { breadcrumbListSchema, itemListSchema } from "@/lib/seo/schema";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -54,6 +54,7 @@ export default function ServersIndexPage() {
             { name: "MCP servers", url: "/servers" },
           ]),
           collectionSchema,
+          itemListSchema(SERVERS.map((s) => ({ name: s.name, url: `/servers/${s.slug}` }))),
         ]}
       />
 

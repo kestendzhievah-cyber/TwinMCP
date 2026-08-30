@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ContactSalesForm } from "./contact-form";
+import { JsonLd } from "@/components/seo/json-ld";
+import { breadcrumbListSchema } from "@/lib/seo/schema";
 
 export const metadata: Metadata = {
   title: "TwinMCP Enterprise — Talk to sales",
@@ -11,6 +13,12 @@ export const metadata: Metadata = {
 export default function EnterprisePage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
+      <JsonLd
+        data={breadcrumbListSchema([
+          { name: "Home", url: "/" },
+          { name: "Enterprise", url: "/enterprise" },
+        ])}
+      />
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">TwinMCP Enterprise</h1>
         <p className="mt-3 max-w-xl text-muted-foreground">
