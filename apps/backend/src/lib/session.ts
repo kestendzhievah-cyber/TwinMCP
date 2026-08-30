@@ -9,7 +9,18 @@ export interface SessionUser {
   email?: string;
 }
 
+// Skip the idempotent upsert when we already ran it for this (userId, email)
+// recently. Keyed on email too, so the one-time empty→real backfill still fires.
+// Per-process (single-container assumption, like the auth cache).
+const ensuredCache = new Map<string, number>();
+const ENSURE_TTL_MS = 60_000;
+
 async function ensureUserRow(userId: string, email: string | undefined) {
+  const key = `${userId}:${email ?? ""}`;
+  const now = Date.now();
+  const exp = ensuredCache.get(key);
+  if (exp && exp > now) return;
+
   await getDb()
     .insert(users)
     .values({ id: userId, email: email ?? `${userId}@placeholder.twinmcp.fr` })
@@ -27,6 +38,9 @@ async function ensureUserRow(userId: string, email: string | undefined) {
         END`,
       },
     });
+
+  if (ensuredCache.size > 5000) ensuredCache.clear(); // cheap unbounded-growth guard
+  ensuredCache.set(key, now + ENSURE_TTL_MS);
 }
 
 export async function requireSessionUser(req: Request): Promise<SessionUser | null> {

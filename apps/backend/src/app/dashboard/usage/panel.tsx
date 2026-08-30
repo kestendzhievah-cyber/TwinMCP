@@ -47,6 +47,7 @@ interface UsageData {
 
 const RANGES = [7, 30, 90] as const;
 const fmt = (n: number) => n.toLocaleString();
+const ROW_CAP = 15;
 const pctOf = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
 export function UsagePanel() {
@@ -54,6 +55,8 @@ export function UsagePanel() {
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showAllMcp, setShowAllMcp] = useState(false);
+  const [showAllEp, setShowAllEp] = useState(false);
 
   // Guards against a slow earlier request (e.g. 7d) resolving after a newer one
   // (30d) and clobbering the displayed range with stale numbers.
@@ -255,7 +258,7 @@ export function UsagePanel() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {runtime.perMcp.map((m) => (
+                  {(showAllMcp ? runtime.perMcp : runtime.perMcp.slice(0, ROW_CAP)).map((m) => (
                     <TableRow key={m.slug}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -277,6 +280,15 @@ export function UsagePanel() {
                   ))}
                 </TableBody>
               </Table>
+              {!showAllMcp && runtime.perMcp.length > ROW_CAP && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllMcp(true)}
+                  className="w-full border-t py-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Show all {runtime.perMcp.length}
+                </button>
+              )}
             </div>
           )}
         </CardContent>
@@ -305,7 +317,7 @@ export function UsagePanel() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.perEndpoint.map((e) => (
+                  {(showAllEp ? data.perEndpoint : data.perEndpoint.slice(0, ROW_CAP)).map((e) => (
                     <TableRow key={e.endpoint}>
                       <TableCell className="font-mono text-xs">{e.endpoint}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmt(e.n)}</TableCell>
@@ -314,6 +326,15 @@ export function UsagePanel() {
                   ))}
                 </TableBody>
               </Table>
+              {!showAllEp && data.perEndpoint.length > ROW_CAP && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllEp(true)}
+                  className="w-full border-t py-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Show all {data.perEndpoint.length}
+                </button>
+              )}
             </div>
           )}
         </CardContent>

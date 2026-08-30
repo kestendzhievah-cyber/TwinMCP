@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { Route } from "next";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/utils/supabase/server";
@@ -5,6 +7,7 @@ import { getDb } from "@/db";
 import { auditLogs, users } from "@/db/schema";
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { UpgradeCard } from "@/components/billing/upgrade-card";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,7 +21,14 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function AuditLogsPage() {
+const PAGE_SIZE = 50;
+
+export default async function AuditLogsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const page = Math.max(1, parseInt((await searchParams).page ?? "1", 10) || 1);
   const supabase = await createClient();
   const {
     data: { user },
@@ -59,7 +69,8 @@ export default async function AuditLogsPage() {
   }
 
   const since = new Date(Date.now() - retentionDays * 86_400_000);
-  const rows = await db
+  // Fetch one extra row to know whether a next page exists, without a count().
+  const fetched = await db
     .select({
       id: auditLogs.id,
       action: auditLogs.action,
@@ -71,7 +82,10 @@ export default async function AuditLogsPage() {
     .from(auditLogs)
     .where(and(eq(auditLogs.userId, user.id), gte(auditLogs.createdAt, since)))
     .orderBy(desc(auditLogs.createdAt))
-    .limit(250);
+    .limit(PAGE_SIZE + 1)
+    .offset((page - 1) * PAGE_SIZE);
+  const rows = fetched.slice(0, PAGE_SIZE);
+  const hasNext = fetched.length > PAGE_SIZE;
 
   return (
     <div className="space-y-8">
@@ -123,6 +137,30 @@ export default async function AuditLogsPage() {
           )}
         </CardContent>
       </Card>
+
+      {(page > 1 || hasNext) && (
+        <div className="flex items-center justify-between">
+          {page > 1 ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/dashboard/audit-logs?page=${page - 1}` as Route}>← Newer</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              ← Newer
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground">Page {page}</span>
+          {hasNext ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/dashboard/audit-logs?page=${page + 1}` as Route}>Older →</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              Older →
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
