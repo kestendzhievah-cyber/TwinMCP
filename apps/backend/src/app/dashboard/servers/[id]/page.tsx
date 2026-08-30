@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { Route } from "next";
 import { formatDateTime } from "@/lib/format";
@@ -12,7 +13,9 @@ import { ServerControls } from "./controls";
 import { InstalledMcps } from "./installed-mcps";
 import { ConnectPanel } from "./connect-panel";
 import { ServerStatusBadge } from "./server-status-badge";
-import { LogsViewer } from "./logs-viewer";
+// Lazy: the logs viewer (and its 2s polling) only mounts when the Logs tab is
+// opened — split it into its own chunk instead of the server-detail bundle.
+const LogsViewer = dynamic(() => import("./logs-viewer").then((m) => m.LogsViewer));
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
