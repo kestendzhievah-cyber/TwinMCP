@@ -10,20 +10,24 @@ export type EncryptedPayload = {
   tag: string;
 };
 
-// Memoized: decrypt runs on every MCP proxy request (box-token decrypt), so
-// parse+validate the 32-byte key once instead of on every call.
+// Memoized: decrypt runs on every MCP proxy request (box-token decrypt), so the
+// expensive parse+validate of the 32-byte key runs once. Keyed on the raw env
+// value so a changed/removed key is still re-validated (never happens in prod —
+// the env is fixed — but it keeps the missing/malformed-key guards live).
 let _key: Buffer | null = null;
+let _keyHex: string | undefined;
 function getKey(): Buffer {
-  if (_key) return _key;
   const hex = process.env.CONFIG_ENCRYPTION_KEY;
   if (!hex) {
     throw new Error("CONFIG_ENCRYPTION_KEY env var is required (32 bytes hex, 64 chars)");
   }
+  if (_key && hex === _keyHex) return _key;
   const key = Buffer.from(hex, "hex");
   if (key.length !== KEY_LENGTH) {
     throw new Error(`CONFIG_ENCRYPTION_KEY must decode to ${KEY_LENGTH} bytes, got ${key.length}`);
   }
   _key = key;
+  _keyHex = hex;
   return _key;
 }
 
