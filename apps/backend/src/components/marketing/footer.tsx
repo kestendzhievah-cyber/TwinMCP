@@ -30,6 +30,7 @@ function buildColumns(locale: Locale): FooterColumn[] {
         { href: fr ? "/servers" : homeHref(locale, "#marketplace"), label: "Marketplace" },
         { href: "/servers", label: fr ? "Catalogue MCP" : "MCP catalog" },
         { href: "/use-cases", label: fr ? "Cas d’usage" : "Use cases" },
+        ...(fr ? [{ href: "/fr/entreprises", label: "Entreprises" }] : []),
         { href: "/plans", label: fr ? "Tarifs" : "Pricing" },
       ],
     },
