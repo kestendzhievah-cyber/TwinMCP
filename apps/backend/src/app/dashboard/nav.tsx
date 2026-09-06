@@ -29,6 +29,9 @@ import {
   CreditCard,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+type NavItem = { href: string; label: string; icon: LucideIcon; badge?: number };
 
 const links = [
   { href: "/dashboard", label: "Overview", icon: Key },
@@ -46,19 +49,26 @@ export function DashboardNav({
   email,
   plan,
   isAdmin = false,
+  prospectsDue = 0,
 }: {
   email: string;
   plan: Plan;
   isAdmin?: boolean;
+  prospectsDue?: number;
 }) {
   const pathname = usePathname();
   // The Admin analytics link is only shown to allowlisted admins. This is a UI
   // convenience only — the page and its API are gated server-side regardless.
-  const navLinks = isAdmin
+  const navLinks: NavItem[] = isAdmin
     ? [
         ...links,
         { href: "/dashboard/admin", label: "Admin", icon: BarChart3 },
-        { href: "/dashboard/admin/prospects", label: "Prospection", icon: Target },
+        {
+          href: "/dashboard/admin/prospects",
+          label: "Prospection",
+          icon: Target,
+          badge: prospectsDue,
+        },
       ]
     : links;
   const router = useRouter();
@@ -118,6 +128,11 @@ export function DashboardNav({
             >
               <Icon className="h-4 w-4" />
               {l.label}
+              {l.badge ? (
+                <span className="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-medium text-destructive-foreground">
+                  {l.badge}
+                </span>
+              ) : null}
             </Link>
           );
         })}

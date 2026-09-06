@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Check, Boxes, ShieldCheck, Zap } from "lucide-react";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbListSchema, faqPageSchema } from "@/lib/seo/schema";
+import { DemoRequestForm } from "./demo-request-form";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -109,12 +110,12 @@ export default function EntreprisesPage() {
               Démarrer gratuitement
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href={"/enterprise" as Route}
+            <a
+              href="#demo"
               className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-accent"
             >
-              Parler à un expert
-            </Link>
+              Demander une démo
+            </a>
           </div>
         </div>
       </section>
@@ -205,6 +206,41 @@ export default function EntreprisesPage() {
         </div>
       </section>
 
+      {/* Demander une démo */}
+      <section id="demo" className="scroll-mt-20 border-b border-border/60">
+        <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
+          <div className="grid gap-10 md:grid-cols-2 md:gap-16">
+            <div>
+              <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Demander une démo
+              </p>
+              <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
+                Voyons ce que l'IA peut faire sur vos outils.
+              </h2>
+              <p className="mt-5 leading-relaxed text-muted-foreground">
+                Dites-nous quels outils vous souhaitez connecter. On vous montre une démo sur un cas
+                concret et on cadre, si besoin, votre éligibilité aux aides France 2030.
+              </p>
+              <ul className="mt-6 space-y-2 text-sm">
+                {[
+                  "15 min, sans engagement",
+                  "Démo sur vos cas d'usage",
+                  "Accompagnement sur les financements",
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-muted-foreground">{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+              <DemoRequestForm />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="border-b border-border/60">
         <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
@@ -239,12 +275,12 @@ export default function EntreprisesPage() {
               Démarrer gratuitement
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href={"/enterprise" as Route}
+            <a
+              href="#demo"
               className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-accent"
             >
-              Parler à un expert
-            </Link>
+              Demander une démo
+            </a>
           </div>
         </div>
       </section>

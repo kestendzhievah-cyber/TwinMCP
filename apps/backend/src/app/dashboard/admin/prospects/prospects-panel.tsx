@@ -81,6 +81,9 @@ interface ProspectRow {
   nextActionAt: string | null;
   createdAt: string;
   updatedAt: string;
+  // True when this prospect's email already has a TwinMCP account (conversion
+  // signal). Server-computed in the list endpoint.
+  hasAccount?: boolean;
 }
 
 const eur = new Intl.NumberFormat("fr-FR", {
@@ -448,7 +451,14 @@ export function ProspectsPanel() {
                 return (
                   <TableRow key={p.id}>
                     <TableCell>
-                      <div className="font-medium">{p.company}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{p.company}</span>
+                        {p.hasAccount && (
+                          <Badge variant="success" title="Ce prospect a déjà un compte TwinMCP">
+                            Inscrit
+                          </Badge>
+                        )}
+                      </div>
                       {p.source && <div className="text-xs text-muted-foreground">{p.source}</div>}
                     </TableCell>
                     <TableCell>
