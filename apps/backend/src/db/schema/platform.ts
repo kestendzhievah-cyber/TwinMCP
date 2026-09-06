@@ -168,8 +168,47 @@ export const usageMetrics = pgTable(
   ]
 );
 
+// ─── Admin-only CRM (prospection) ───────────────────────────────────────────
+// Leads the founder is reaching out to. Gated to admins (isAdminEmail) at every
+// API route + page — never exposed to normal users.
+export const prospectStatuses = [
+  "new",
+  "contacted",
+  "replied",
+  "meeting",
+  "won",
+  "lost",
+] as const;
+export type ProspectStatus = (typeof prospectStatuses)[number];
+
+export const prospects = pgTable(
+  "prospects",
+  {
+    id: text("id").primaryKey(),
+    company: text("company").notNull(),
+    contactName: text("contact_name"),
+    email: text("email"),
+    role: text("role"),
+    source: text("source"),
+    status: text("status").$type<ProspectStatus>().notNull().default("new"),
+    estimatedValueEur: integer("estimated_value_eur").notNull().default(0),
+    notes: text("notes").notNull().default(""),
+    // Optional follow-up date — powers the "à relancer" reminder.
+    nextActionAt: timestamp("next_action_at", { withTimezone: true }),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("prospects_status_idx").on(t.status),
+    index("prospects_next_action_idx").on(t.nextActionAt),
+    index("prospects_created_idx").on(t.createdAt),
+  ]
+);
+
 export type Server = typeof servers.$inferSelect;
 export type McpServer = typeof mcpServers.$inferSelect;
 export type UserServer = typeof userServers.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type UsageMetric = typeof usageMetrics.$inferSelect;
+export type Prospect = typeof prospects.$inferSelect;

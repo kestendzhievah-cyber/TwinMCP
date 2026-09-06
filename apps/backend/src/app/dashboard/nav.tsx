@@ -23,6 +23,7 @@ import {
   ScrollText,
   Settings,
   Store,
+  Target,
   Upload,
   Users,
   CreditCard,
@@ -54,7 +55,11 @@ export function DashboardNav({
   // The Admin analytics link is only shown to allowlisted admins. This is a UI
   // convenience only — the page and its API are gated server-side regardless.
   const navLinks = isAdmin
-    ? [...links, { href: "/dashboard/admin", label: "Admin", icon: BarChart3 }]
+    ? [
+        ...links,
+        { href: "/dashboard/admin", label: "Admin", icon: BarChart3 },
+        { href: "/dashboard/admin/prospects", label: "Prospection", icon: Target },
+      ]
     : links;
   const router = useRouter();
   const [open, setOpen] = useState(false);
