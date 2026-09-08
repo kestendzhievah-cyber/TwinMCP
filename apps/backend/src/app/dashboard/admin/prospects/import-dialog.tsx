@@ -14,7 +14,14 @@ import {
 } from "@/components/ui/dialog";
 
 // CSV columns we understand, mapped from flexible (FR/EN) header names.
-type Field = "company" | "contactName" | "email" | "role" | "source" | "estimatedValueEur";
+type Field =
+  | "company"
+  | "contactName"
+  | "email"
+  | "phone"
+  | "role"
+  | "source"
+  | "estimatedValueEur";
 
 const HEADER_MAP: Record<string, Field> = {
   company: "company",
@@ -29,6 +36,14 @@ const HEADER_MAP: Record<string, Field> = {
   mail: "email",
   "e-mail": "email",
   courriel: "email",
+  phone: "phone",
+  téléphone: "phone",
+  telephone: "phone",
+  tel: "phone",
+  mobile: "phone",
+  numéro: "phone",
+  numero: "phone",
+  whatsapp: "phone",
   role: "role",
   rôle: "role",
   poste: "role",
@@ -46,6 +61,7 @@ const POSITIONAL: Field[] = [
   "company",
   "contactName",
   "email",
+  "phone",
   "role",
   "source",
   "estimatedValueEur",
@@ -156,7 +172,7 @@ export function ImportDialog({ onImported }: { onImported: () => void }) {
             <DialogTitle>Importer des prospects (CSV)</DialogTitle>
             <DialogDescription>
               Collez un CSV ou choisissez un fichier. Colonnes reconnues : entreprise, contact,
-              email, rôle, source, valeur. Une ligne d'en-tête est optionnelle.
+              email, téléphone, rôle, source, valeur. Une ligne d'en-tête est optionnelle.
             </DialogDescription>
           </DialogHeader>
 
@@ -172,7 +188,7 @@ export function ImportDialog({ onImported }: { onImported: () => void }) {
               onChange={(e) => setText(e.target.value)}
               rows={8}
               placeholder={
-                "entreprise,contact,email,rôle,source,valeur\nAcme SAS,Marie Dupont,marie@acme.fr,CTO,LinkedIn,5000"
+                "entreprise,contact,email,téléphone,rôle,source,valeur\nAcme SAS,Marie Dupont,marie@acme.fr,+33612345678,CTO,LinkedIn,5000"
               }
               className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />

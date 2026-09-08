@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       company,
       contactName: str(body.contactName),
       email: str(body.email),
+      phone: str(body.phone),
       role: str(body.role),
       source: str(body.source),
       status,

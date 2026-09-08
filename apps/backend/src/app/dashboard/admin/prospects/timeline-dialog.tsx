@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowRight, Mail, MessageSquarePlus, Sparkles, StickyNote } from "lucide-react";
+import {
+  ArrowRight,
+  Mail,
+  MessageCircle,
+  MessageSquarePlus,
+  Sparkles,
+  StickyNote,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -15,7 +22,7 @@ import { STATUS_LABEL, type ProspectRow } from "./prospects-shared";
 
 interface Activity {
   id: string;
-  type: "created" | "status_change" | "note" | "email";
+  type: "created" | "status_change" | "note" | "email" | "whatsapp";
   body: string;
   createdAt: string;
 }
@@ -48,6 +55,8 @@ function describe(a: Activity): { icon: React.ReactNode; text: string } {
         icon: <Mail className="h-3.5 w-3.5" />,
         text: `Email envoyé${a.body ? ` · ${a.body}` : ""}`,
       };
+    case "whatsapp":
+      return { icon: <MessageCircle className="h-3.5 w-3.5" />, text: a.body || "WhatsApp envoyé" };
     default:
       return { icon: <StickyNote className="h-3.5 w-3.5" />, text: a.body };
   }

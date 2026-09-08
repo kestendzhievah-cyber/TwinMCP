@@ -13,6 +13,7 @@ interface ImportRow {
   company?: unknown;
   contactName?: unknown;
   email?: unknown;
+  phone?: unknown;
   role?: unknown;
   source?: unknown;
   estimatedValueEur?: unknown;
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
       company: company.slice(0, 200),
       contactName: str(r?.contactName),
       email: email ? email.toLowerCase() : null,
+      phone: str(r?.phone),
       role: str(r?.role),
       source: str(r?.source) ?? "Import",
       status: "new" as const,

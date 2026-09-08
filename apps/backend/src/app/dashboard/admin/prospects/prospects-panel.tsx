@@ -7,6 +7,7 @@ import {
   Download,
   Gauge,
   Mail,
+  MessageCircle,
   Pencil,
   Plus,
   RefreshCw,
@@ -74,11 +75,13 @@ import { ProspectsKanban } from "./prospects-kanban";
 import { ProspectsAnalytics } from "./prospects-analytics";
 import { ImportDialog } from "./import-dialog";
 import { TimelineDialog } from "./timeline-dialog";
+import { WhatsappQuickDialog } from "./whatsapp-dialog";
 
 type FormState = {
   company: string;
   contactName: string;
   email: string;
+  phone: string;
   role: string;
   source: string;
   status: Status;
@@ -91,6 +94,7 @@ const EMPTY_FORM: FormState = {
   company: "",
   contactName: "",
   email: "",
+  phone: "",
   role: "",
   source: "",
   status: "new",
@@ -199,6 +203,7 @@ export function ProspectsPanel() {
       company: p.company,
       contactName: p.contactName ?? "",
       email: p.email ?? "",
+      phone: p.phone ?? "",
       role: p.role ?? "",
       source: p.source ?? "",
       status: p.status,
@@ -220,6 +225,7 @@ export function ProspectsPanel() {
       company,
       contactName: form.contactName.trim() || null,
       email: form.email.trim() || null,
+      phone: form.phone.trim() || null,
       role: form.role.trim() || null,
       source: form.source.trim() || null,
       status: form.status,
@@ -296,6 +302,23 @@ export function ProspectsPanel() {
     },
     [changeStatus]
   );
+
+  async function sendWhatsapp(p: ProspectRow) {
+    if (!p.phone) {
+      toast.error("Ce prospect n'a pas de numéro.");
+      return;
+    }
+    const res = await fetch(`/api/v2/admin/prospects/${p.id}/whatsapp`, { method: "POST" });
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    if (res.ok) {
+      toast.success(`WhatsApp envoyé à ${p.company}`);
+      if (p.status === "new") {
+        setItems((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: "contacted" } : x)));
+      }
+    } else {
+      toast.error(data.message ?? "Échec de l'envoi WhatsApp.");
+    }
+  }
 
   function exportCsv() {
     const header = [
@@ -411,6 +434,7 @@ export function ProspectsPanel() {
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <WhatsappQuickDialog onDone={() => void load()} />
           <ImportDialog onImported={() => void load()} />
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={items.length === 0}>
             <Download className="h-3.5 w-3.5" />
@@ -502,11 +526,11 @@ export function ProspectsPanel() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {p.contactName || p.email ? (
+                            {p.contactName || p.email || p.phone ? (
                               <div className="text-sm">
                                 <div>{p.contactName || "—"}</div>
                                 <div className="text-xs text-muted-foreground">
-                                  {[p.role, p.email].filter(Boolean).join(" · ")}
+                                  {[p.role, p.email, p.phone].filter(Boolean).join(" · ")}
                                 </div>
                               </div>
                             ) : (
@@ -572,6 +596,15 @@ export function ProspectsPanel() {
                                   ))}
                                 </DropdownMenuContent>
                               </DropdownMenu>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title={p.phone ? "Envoyer un WhatsApp" : "Aucun numéro"}
+                                onClick={() => void sendWhatsapp(p)}
+                                disabled={!p.phone}
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -681,6 +714,13 @@ export function ProspectsPanel() {
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="marie@acme.fr"
+              />
+            </Field>
+            <Field label="Téléphone (WhatsApp)">
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="+33 6 12 34 56 78"
               />
             </Field>
             <Field label="Source">

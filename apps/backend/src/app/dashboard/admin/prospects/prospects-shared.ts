@@ -42,6 +42,7 @@ export interface ProspectRow {
   company: string;
   contactName: string | null;
   email: string | null;
+  phone: string | null;
   role: string | null;
   source: string | null;
   status: Status;

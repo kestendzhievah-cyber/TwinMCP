@@ -181,6 +181,7 @@ export const prospects = pgTable(
     company: text("company").notNull(),
     contactName: text("contact_name"),
     email: text("email"),
+    phone: text("phone"),
     role: text("role"),
     source: text("source"),
     status: text("status").$type<ProspectStatus>().notNull().default("new"),
@@ -202,7 +203,13 @@ export const prospects = pgTable(
 // Append-only activity log per prospect: creation, status moves, notes, emails.
 // Powers the "timeline" view. status_change/created/email rows are written
 // automatically by the API; notes are added by the admin.
-export const prospectActivityTypes = ["created", "status_change", "note", "email"] as const;
+export const prospectActivityTypes = [
+  "created",
+  "status_change",
+  "note",
+  "email",
+  "whatsapp",
+] as const;
 export type ProspectActivityType = (typeof prospectActivityTypes)[number];
 
 export const prospectActivities = pgTable(

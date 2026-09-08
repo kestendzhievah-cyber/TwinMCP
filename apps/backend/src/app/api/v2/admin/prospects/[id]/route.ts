@@ -26,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if ("contactName" in body) patch.contactName = str(body.contactName);
   if ("email" in body) patch.email = str(body.email);
+  if ("phone" in body) patch.phone = str(body.phone);
   if ("role" in body) patch.role = str(body.role);
   if ("source" in body) patch.source = str(body.source);
   if ("notes" in body) patch.notes = typeof body.notes === "string" ? body.notes : "";
