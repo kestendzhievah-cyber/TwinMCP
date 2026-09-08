@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BellRing,
+  Clock,
   Download,
   Gauge,
   Mail,
@@ -72,6 +73,7 @@ import {
 import { ProspectsKanban } from "./prospects-kanban";
 import { ProspectsAnalytics } from "./prospects-analytics";
 import { ImportDialog } from "./import-dialog";
+import { TimelineDialog } from "./timeline-dialog";
 
 type FormState = {
   company: string;
@@ -116,6 +118,9 @@ export function ProspectsPanel() {
   const [editing, setEditing] = useState<ProspectRow | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+
+  const [timelineProspect, setTimelineProspect] = useState<ProspectRow | null>(null);
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -278,6 +283,12 @@ export function ProspectsPanel() {
   const emailProspect = useCallback(
     (p: ProspectRow, tpl: EmailTemplate = EMAIL_TEMPLATES[0]) => {
       window.location.href = mailtoHref(p, tpl);
+      // Log the outreach to the prospect's timeline (fire-and-forget).
+      void fetch(`/api/v2/admin/prospects/${p.id}/activities`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "email", body: tpl.label }),
+      }).catch(() => {});
       if (p.status === "new") {
         void changeStatus(p.id, "contacted");
         toast.success(`${p.company} marqué comme contacté`);
@@ -564,6 +575,17 @@ export function ProspectsPanel() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                title="Historique / notes"
+                                onClick={() => {
+                                  setTimelineProspect(p);
+                                  setTimelineOpen(true);
+                                }}
+                              >
+                                <Clock className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 title="Modifier"
                                 onClick={() => openEdit(p)}
                               >
@@ -721,6 +743,12 @@ export function ProspectsPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TimelineDialog
+        prospect={timelineProspect}
+        open={timelineOpen}
+        onOpenChange={setTimelineOpen}
+      />
     </div>
   );
 }

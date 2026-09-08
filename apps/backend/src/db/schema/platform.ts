@@ -171,14 +171,7 @@ export const usageMetrics = pgTable(
 // ─── Admin-only CRM (prospection) ───────────────────────────────────────────
 // Leads the founder is reaching out to. Gated to admins (isAdminEmail) at every
 // API route + page — never exposed to normal users.
-export const prospectStatuses = [
-  "new",
-  "contacted",
-  "replied",
-  "meeting",
-  "won",
-  "lost",
-] as const;
+export const prospectStatuses = ["new", "contacted", "replied", "meeting", "won", "lost"] as const;
 export type ProspectStatus = (typeof prospectStatuses)[number];
 
 export const prospects = pgTable(
@@ -206,9 +199,31 @@ export const prospects = pgTable(
   ]
 );
 
+// Append-only activity log per prospect: creation, status moves, notes, emails.
+// Powers the "timeline" view. status_change/created/email rows are written
+// automatically by the API; notes are added by the admin.
+export const prospectActivityTypes = ["created", "status_change", "note", "email"] as const;
+export type ProspectActivityType = (typeof prospectActivityTypes)[number];
+
+export const prospectActivities = pgTable(
+  "prospect_activities",
+  {
+    id: text("id").primaryKey(),
+    prospectId: text("prospect_id")
+      .notNull()
+      .references(() => prospects.id, { onDelete: "cascade" }),
+    type: text("type").$type<ProspectActivityType>().notNull(),
+    body: text("body").notNull().default(""),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("prospect_activities_prospect_idx").on(t.prospectId, t.createdAt)]
+);
+
 export type Server = typeof servers.$inferSelect;
 export type McpServer = typeof mcpServers.$inferSelect;
 export type UserServer = typeof userServers.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type UsageMetric = typeof usageMetrics.$inferSelect;
 export type Prospect = typeof prospects.$inferSelect;
+export type ProspectActivity = typeof prospectActivities.$inferSelect;

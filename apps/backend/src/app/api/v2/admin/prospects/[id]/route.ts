@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { prospects, prospectStatuses, type ProspectStatus } from "@/db/schema";
 import { badRequest, notFound } from "@/lib/errors";
-import { requireAdmin, str, int } from "@/lib/admin/prospects-lib";
+import { requireAdmin, str, int, logActivity } from "@/lib/admin/prospects-lib";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,9 +40,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     patch.nextActionAt = body.nextActionAt ? new Date(body.nextActionAt) : null;
   }
 
+  // Capture the prior status so we only log a real transition to the timeline.
+  let oldStatus: string | undefined;
+  if ("status" in patch) {
+    const [cur] = await getDb()
+      .select({ status: prospects.status })
+      .from(prospects)
+      .where(eq(prospects.id, id));
+    oldStatus = cur?.status;
+  }
+
   const [row] = await getDb().update(prospects).set(patch).where(eq(prospects.id, id)).returning();
 
   if (!row) return notFound("Prospect not found");
+
+  if ("status" in patch && patch.status !== oldStatus) {
+    await logActivity(id, "status_change", String(patch.status), admin.userId).catch(() => {});
+  }
+
   return NextResponse.json(row);
 }
 

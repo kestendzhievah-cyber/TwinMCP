@@ -4,7 +4,7 @@ import { desc, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { prospects, prospectStatuses, users, type ProspectStatus } from "@/db/schema";
 import { badRequest } from "@/lib/errors";
-import { requireAdmin, str, int } from "@/lib/admin/prospects-lib";
+import { requireAdmin, str, int, logActivity } from "@/lib/admin/prospects-lib";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
       createdBy: admin.userId,
     })
     .returning();
+
+  await logActivity(row.id, "created", "", admin.userId).catch(() => {});
 
   return NextResponse.json(row, { status: 201 });
 }
