@@ -7,10 +7,11 @@
 - [x] **Configurer Stripe** (mode test) → `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_TEAM`
 - [x] **Récupérer une clé OpenAI** → `OPENAI_API_KEY` (pour ingestion)
 - [x] **Créer un GitHub PAT** → `GITHUB_TOKEN` (pour ingestion)
-- [x] **Configurer domaine + DNS** (voir `PROVISIONING.md` §1)
-- [x] **Configurer Vercel** : importer repo, ajouter env vars, lier domaine
-- [x] **Configurer GitHub secrets** : `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `DATABASE_URL_UNPOOLED`
-- [x] **Suivre `PRODUCTION.md`** — checklist complète avant lancement
+- [x] **Configurer domaine + DNS** → `twinmcp.fr`
+- [x] **Déployer sur VPS via Dokploy** (PAS Vercel) : conteneur Docker (root `Dockerfile`), déploiement auto par push sur `main` (SSH via `.github/workflows/deploy.yml`, cible `/opt/twinmcp`)
+- [x] **Secrets GitHub du déploiement** : `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_SSH_PORT` (déploiements OK)
+- [ ] ⚠️ **Ajouter le secret `DATABASE_URL_UNPOOLED`** — Settings → Secrets and variables → Actions → onglet **Secrets**. NON configuré : sans lui, `db:migrate` + `seed:mcps` ne tournent pas en CI (appliqués à la main le 2026-09-06). Valeur = ligne `DATABASE_URL_UNPOOLED=` de `apps/backend/.env.local` (version **UNPOOLED**, port 5432). Depuis le durcissement CI, un push ne se déploie plus tant que ce secret est absent.
+- [x] **Suivre `PRODUCTION.md`** — checklist complète avant lancement (⚠️ doc partiellement obsolète : mentionne Vercel/Neon alors que la prod est Dokploy/Supabase)
 
 ## Optionnel
 

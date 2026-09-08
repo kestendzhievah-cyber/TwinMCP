@@ -28,6 +28,26 @@ env:
   BASE_URL: ${{ vars.BASE_URL || 'https://twinmcp.fr' }}
 
 jobs:
+  # Fail the WHOLE pipeline at the very first step if the DB migration secret is
+  # missing — before we build or deploy anything. Rationale: the `migrate` job
+  # runs after `deploy`, so a missing secret used to let new code ship against an
+  # old schema (marketplace 500 on a column that never got added) while only a
+  # late, easy-to-miss job went red. Gating `build` on this makes a missing
+  # secret impossible to miss and impossible to deploy past. To unblock: add
+  # DATABASE_URL_UNPOOLED in Settings → Secrets and variables → Actions → Secrets.
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the DB migration secret
+        run: |
+          if [ -z "${DATABASE_URL_UNPOOLED}" ]; then
+            echo "::error::DATABASE_URL_UNPOOLED secret is not set — refusing to build/deploy because migrations could not run afterwards. Add it in Settings → Secrets and variables → Actions → Secrets."
+            exit 1
+          fi
+          echo "DB migration secret present ✓"
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -43,7 +63,7 @@ jobs:
       - run: pnpm --filter @twinmcp/ingest test
 
   build:
-    needs: test
+    needs: [test, preflight]
     runs-on: ubuntu-latest
     permissions:
       contents: read
