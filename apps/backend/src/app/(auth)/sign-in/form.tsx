@@ -8,7 +8,6 @@ import { AlertCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 import { createClient } from "@/utils/supabase/client";
 import { friendlyAuthError } from "@/lib/auth/errors";
 
@@ -136,9 +135,6 @@ export function SignInForm() {
         <h1 className="text-2xl font-semibold tracking-tight">Sign in to TwinMCP</h1>
         <p className="mt-2 text-sm text-muted-foreground">Choose the method that works for you.</p>
       </div>
-
-      <OAuthButtons returnTo={returnTo} />
-      <OAuthDivider>or with email</OAuthDivider>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { OAuthButtons, OAuthDivider } from "@/components/auth/oauth-buttons";
 import { PasswordStrength, passwordScore } from "@/components/auth/password-strength";
 import { createClient } from "@/utils/supabase/client";
 import { track } from "@/lib/analytics/funnel";
@@ -218,9 +217,6 @@ export function SignUpForm() {
           </Badge>
         )}
       </div>
-
-      <OAuthButtons returnTo={returnTo} />
-      <OAuthDivider>or with email</OAuthDivider>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">
