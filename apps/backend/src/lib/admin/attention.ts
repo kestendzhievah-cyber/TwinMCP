@@ -1,6 +1,7 @@
 import { asc, desc, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { prospects, servers, users } from "@/db/schema";
+import { atRiskClients, computeClientHealth } from "./health";
 
 // Everything that needs the founder's attention right now, in one place. Shared
 // by the "À traiter" cockpit (UI) and the daily digest email so they never drift.
@@ -13,8 +14,8 @@ export async function computeAttention() {
   const db = getDb();
   const since24 = new Date(Date.now() - DAY);
 
-  const [followUpsDue, newLeads, serversInError, stuckProvisioning, newSignups] = await Promise.all(
-    [
+  const [followUpsDue, newLeads, serversInError, stuckProvisioning, newSignups, health] =
+    await Promise.all([
       db
         .select({
           id: prospects.id,
@@ -72,8 +73,10 @@ export async function computeAttention() {
         .where(gte(users.createdAt, since24))
         .orderBy(desc(users.createdAt))
         .limit(50),
-    ]
-  );
+      computeClientHealth(),
+    ]);
+
+  const clientsAtRisk = atRiskClients(health);
 
   const counts = {
     followUpsDue: followUpsDue.length,
@@ -81,11 +84,20 @@ export async function computeAttention() {
     serversInError: serversInError.length,
     stuckProvisioning: stuckProvisioning.length,
     newSignups: newSignups.length,
+    clientsAtRisk: clientsAtRisk.length,
     // "Actionable" total (new signups are informational, not an action item).
     total: followUpsDue.length + newLeads.length + serversInError.length + stuckProvisioning.length,
   };
 
-  return { followUpsDue, newLeads, serversInError, stuckProvisioning, newSignups, counts };
+  return {
+    followUpsDue,
+    newLeads,
+    serversInError,
+    stuckProvisioning,
+    newSignups,
+    clientsAtRisk,
+    counts,
+  };
 }
 
 export type AttentionData = Awaited<ReturnType<typeof computeAttention>>;

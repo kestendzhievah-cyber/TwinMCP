@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   BellRing,
   CheckCircle2,
+  HeartPulse,
   Loader2,
   Mail,
   RefreshCw,
@@ -39,14 +40,29 @@ interface Attention {
     createdAt: string;
   }[];
   newSignups: { id: string; email: string; plan: string; createdAt: string }[];
+  clientsAtRisk: { userId: string; email: string; plan: string; status: string; reason: string }[];
   counts: {
     followUpsDue: number;
     newLeads: number;
     serversInError: number;
     stuckProvisioning: number;
     newSignups: number;
+    clientsAtRisk: number;
     total: number;
   };
+}
+
+const HEALTH_LABEL: Record<string, string> = {
+  critical: "Critique",
+  at_risk: "À risque",
+  inactive: "Inactif",
+  new: "Nouveau",
+  healthy: "OK",
+};
+function healthVariant(s: string): "destructive" | "secondary" | "outline" {
+  if (s === "critical") return "destructive";
+  if (s === "at_risk") return "secondary";
+  return "outline";
 }
 
 function relTime(iso: string | null): string {
@@ -122,7 +138,15 @@ export function CockpitPanel() {
     );
   }
 
-  const { followUpsDue, newLeads, serversInError, stuckProvisioning, newSignups, counts } = data;
+  const {
+    followUpsDue,
+    newLeads,
+    serversInError,
+    stuckProvisioning,
+    newSignups,
+    clientsAtRisk,
+    counts,
+  } = data;
 
   return (
     <div className="space-y-6">
@@ -142,6 +166,11 @@ export function CockpitPanel() {
             value={counts.stuckProvisioning}
             danger={counts.stuckProvisioning > 0}
           />
+          <Chip
+            label="Clients à risque"
+            value={counts.clientsAtRisk}
+            danger={counts.clientsAtRisk > 0}
+          />
           <Chip label="Inscrits 24 h" value={counts.newSignups} />
         </div>
         <div className="flex items-center gap-2">
@@ -155,7 +184,7 @@ export function CockpitPanel() {
         </div>
       </div>
 
-      {counts.total === 0 && (
+      {counts.total === 0 && clientsAtRisk.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
@@ -268,6 +297,36 @@ export function CockpitPanel() {
                 </span>
                 <Link
                   href={`/dashboard/admin/clients/${s.userId}` as Route}
+                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Voir le client →
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {/* Clients à risque (churn) */}
+      {clientsAtRisk.length > 0 && (
+        <Section
+          icon={<HeartPulse className="h-4 w-4 text-destructive" />}
+          title={`Clients à risque (${clientsAtRisk.length})`}
+        >
+          <ul className="divide-y">
+            {clientsAtRisk.map((c) => (
+              <li key={c.userId} className="flex items-center justify-between gap-2 py-2 text-sm">
+                <span className="flex min-w-0 items-center gap-2">
+                  <Badge variant={healthVariant(c.status)}>
+                    {HEALTH_LABEL[c.status] ?? c.status}
+                  </Badge>
+                  <span className="min-w-0">
+                    <span className="font-medium">{c.email}</span>
+                    <span className="text-xs text-muted-foreground"> · {c.reason}</span>
+                  </span>
+                </span>
+                <Link
+                  href={`/dashboard/admin/clients/${c.userId}` as Route}
                   className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
                 >
                   Voir le client →

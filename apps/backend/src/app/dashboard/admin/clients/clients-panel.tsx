@@ -35,7 +35,23 @@ interface ClientRow {
   mcpRequests30d: number;
   mrr: number;
   crmStatus: string | null;
+  health: string;
 }
+
+const HEALTH_COLOR: Record<string, string> = {
+  healthy: "bg-emerald-500",
+  at_risk: "bg-amber-500",
+  critical: "bg-destructive",
+  inactive: "bg-muted-foreground/40",
+  new: "bg-blue-500",
+};
+const HEALTH_LABEL: Record<string, string> = {
+  healthy: "En bonne santé",
+  at_risk: "À risque",
+  critical: "Critique",
+  inactive: "Inactif",
+  new: "Nouveau",
+};
 
 interface Payload {
   clients: ClientRow[];
@@ -183,10 +199,17 @@ export function ClientsPanel() {
                 >
                   <TableCell>
                     <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "inline-block h-2 w-2 shrink-0 rounded-full",
+                          HEALTH_COLOR[c.health] ?? "bg-muted-foreground/40"
+                        )}
+                        title={`Santé : ${HEALTH_LABEL[c.health] ?? c.health}`}
+                      />
                       <span className="font-medium">{c.name || c.email}</span>
                       {c.crmStatus === "won" && <Badge variant="success">Client gagné</Badge>}
                     </div>
-                    {c.name && <div className="text-xs text-muted-foreground">{c.email}</div>}
+                    {c.name && <div className="pl-4 text-xs text-muted-foreground">{c.email}</div>}
                   </TableCell>
                   <TableCell>
                     <Badge variant={planVariant(c.plan)}>{PLAN_LABEL[c.plan]}</Badge>

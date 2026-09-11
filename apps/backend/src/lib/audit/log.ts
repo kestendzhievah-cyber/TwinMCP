@@ -19,6 +19,7 @@ export type AuditAction =
   | "admin.server.delete"
   | "admin.mcp.install"
   | "admin.mcp.uninstall"
+  | "admin.churn.alert"
   | "mcp_server.publish"
   | "mcp_server.update"
   | "mcp_server.delete"

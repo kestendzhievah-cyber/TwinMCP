@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { users, servers, userServers, usageMetrics, prospects } from "@/db/schema";
 import type { Plan } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin/prospects-lib";
+import { computeClientHealth } from "@/lib/admin/health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   const since30 = new Date(Date.now() - 30 * DAY);
 
-  const [userRows, serverAgg, mcpAgg, usageAgg, prospectRows] = await Promise.all([
+  const [userRows, serverAgg, mcpAgg, usageAgg, prospectRows, health] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
       .select({ email: prospects.email, status: prospects.status })
       .from(prospects)
       .where(isNotNull(prospects.email)),
+    computeClientHealth(),
   ]);
 
   // Index the aggregates by userId for an O(users) merge.
@@ -72,6 +74,7 @@ export async function GET(req: NextRequest) {
   }
   const mcpsByUser = new Map(mcpAgg.map((r) => [r.userId, r.n]));
   const usageByUser = new Map(usageAgg.map((r) => [r.userId, r.req]));
+  const healthByUser = new Map(health.map((h) => [h.userId, h.status]));
 
   // Prospect status by email (prefer "won" if a lead appears more than once).
   const crmByEmail = new Map<string, string>();
@@ -106,6 +109,7 @@ export async function GET(req: NextRequest) {
       mcpRequests30d: usageByUser.get(u.id) ?? 0,
       mrr: price,
       crmStatus: crmByEmail.get((u.email ?? "").toLowerCase()) ?? null,
+      health: healthByUser.get(u.id) ?? "healthy",
     };
   });
 
