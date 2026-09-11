@@ -9,9 +9,14 @@ import {
   Activity,
   CreditCard,
   KeyRound,
+  MoreHorizontal,
   Package,
-  ScrollText,
+  Play,
   Puzzle,
+  ScrollText,
+  Square,
+  Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -176,6 +181,50 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
     }
   }
 
+  async function serverAction(serverId: string, action: "stop" | "start") {
+    const res = await fetch(`/api/v2/admin/clients/${clientId}/servers/${serverId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    if (res.ok) {
+      toast.success(action === "stop" ? "Serveur arrêté." : "Serveur démarré.");
+      void load();
+    } else {
+      const d = (await res.json().catch(() => ({}))) as { message?: string };
+      toast.error(d.message ?? "Échec de l'action.");
+    }
+  }
+
+  async function deleteServer(serverId: string, name: string) {
+    if (!window.confirm(`Supprimer le serveur « ${name} » de ce client ? Action définitive.`)) {
+      return;
+    }
+    const res = await fetch(`/api/v2/admin/clients/${clientId}/servers/${serverId}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      toast.success("Serveur supprimé.");
+      void load();
+    } else {
+      toast.error("Échec de la suppression.");
+    }
+  }
+
+  async function uninstallMcp(serverId: string, userServerId: string, name: string) {
+    if (!window.confirm(`Désinstaller « ${name} » ?`)) return;
+    const res = await fetch(
+      `/api/v2/admin/clients/${clientId}/servers/${serverId}/mcps/${userServerId}`,
+      { method: "DELETE" }
+    );
+    if (res.ok) {
+      toast.success("MCP désinstallé.");
+      void load();
+    } else {
+      toast.error("Échec de la désinstallation.");
+    }
+  }
+
   if (loading) return <Skeleton className="h-96 w-full" />;
 
   if (error || !data) {
@@ -316,46 +365,79 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                       {relTime(s.lastHeartbeatAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {s.hostType !== "local_agent" && (
-                        <div className="flex items-center justify-end gap-1.5">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Package className="h-3.5 w-3.5" />
-                                Pack
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="max-w-xs">
-                              <DropdownMenuLabel>Déployer un pack</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              {MCP_BUNDLES.map((b) => (
-                                <DropdownMenuItem
-                                  key={b.id}
-                                  onSelect={() => void installBundle(s.id, b.id)}
-                                >
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{b.label}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {b.description}
-                                    </span>
-                                  </div>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {s.hostType !== "local_agent" && (
+                          <>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Package className="h-3.5 w-3.5" />
+                                  Pack
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="max-w-xs">
+                                <DropdownMenuLabel>Déployer un pack</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {MCP_BUNDLES.map((b) => (
+                                  <DropdownMenuItem
+                                    key={b.id}
+                                    onSelect={() => void installBundle(s.id, b.id)}
+                                  >
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{b.label}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {b.description}
+                                      </span>
+                                    </div>
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setInstallServerId(s.id);
+                                setInstallOpen(true);
+                              }}
+                            >
+                              <Puzzle className="h-3.5 w-3.5" />
+                              MCP
+                            </Button>
+                          </>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" title="Cycle de vie">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {s.hostType !== "local_agent" &&
+                              (s.status === "stopped" || s.status === "error") && (
+                                <DropdownMenuItem onSelect={() => void serverAction(s.id, "start")}>
+                                  <Play className="h-4 w-4" />
+                                  Démarrer
                                 </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setInstallServerId(s.id);
-                              setInstallOpen(true);
-                            }}
-                          >
-                            <Puzzle className="h-3.5 w-3.5" />
-                            MCP
-                          </Button>
-                        </div>
-                      )}
+                              )}
+                            {s.hostType !== "local_agent" &&
+                              (s.status === "running" || s.status === "provisioning") && (
+                                <DropdownMenuItem onSelect={() => void serverAction(s.id, "stop")}>
+                                  <Square className="h-4 w-4" />
+                                  Arrêter
+                                </DropdownMenuItem>
+                              )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onSelect={() => void deleteServer(s.id, s.name)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Supprimer le serveur
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -372,10 +454,9 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
         ) : (
           <div className="flex flex-wrap gap-2">
             {mcps.map((m) => (
-              <Badge
+              <span
                 key={m.id}
-                variant={m.enabled ? "secondary" : "outline"}
-                className="gap-1.5 py-1"
+                className="inline-flex items-center gap-1.5 rounded-md border bg-secondary/50 px-2 py-1 text-sm"
                 title={`${m.mcpSlug}${m.category ? ` · ${m.category}` : ""}`}
               >
                 <span
@@ -385,7 +466,17 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                   )}
                 />
                 {m.mcpName}
-              </Badge>
+                {m.mcpSlug !== "twinmcp-docs" && (
+                  <button
+                    type="button"
+                    title="Désinstaller"
+                    onClick={() => void uninstallMcp(m.serverId, m.id, m.mcpName)}
+                    className="ml-0.5 rounded p-0.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </span>
             ))}
           </div>
         )}
