@@ -8,10 +8,12 @@ import {
   BellRing,
   CheckCircle2,
   Loader2,
+  Mail,
   RefreshCw,
   Sparkles,
   UserPlus,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +68,25 @@ export function CockpitPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  async function sendDigest() {
+    setSending(true);
+    try {
+      const res = await fetch("/api/cron/digest", { method: "POST" });
+      if (res.ok) {
+        const d = (await res.json()) as { sentTo: string };
+        toast.success(`Digest envoyé à ${d.sentTo}`);
+      } else {
+        const d = (await res.json().catch(() => ({}))) as { message?: string };
+        toast.error(d.message ?? "Échec de l'envoi du digest.");
+      }
+    } catch {
+      toast.error("Échec de l'envoi du digest.");
+    } finally {
+      setSending(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -123,9 +144,15 @@ export function CockpitPanel() {
           />
           <Chip label="Inscrits 24 h" value={counts.newSignups} />
         </div>
-        <Button variant="outline" size="sm" onClick={() => void load()} disabled={refreshing}>
-          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => void sendDigest()} disabled={sending}>
+            <Mail className="h-3.5 w-3.5" />
+            {sending ? "Envoi…" : "M'envoyer le digest"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={refreshing}>
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+          </Button>
+        </div>
       </div>
 
       {counts.total === 0 && (

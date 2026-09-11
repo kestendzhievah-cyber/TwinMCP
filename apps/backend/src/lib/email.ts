@@ -48,6 +48,11 @@ ${data.message ? `<p><strong>Message:</strong><br/>${esc(data.message).replace(/
   });
 }
 
+/** Daily admin digest — subject + prebuilt HTML from lib/admin/digest-email. */
+export async function sendAdminDigest(to: string, subject: string, html: string) {
+  return getResend().emails.send({ from: FROM, to, subject, html });
+}
+
 export async function sendWelcomeEmail(to: string) {
   return getResend().emails.send({
     from: FROM,
