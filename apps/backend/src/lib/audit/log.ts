@@ -13,6 +13,8 @@ export type AuditAction =
   | "mcp.uninstall"
   | "mcp.toggle"
   | "mcp.reconfigure"
+  | "admin.server.create"
+  | "admin.mcp.install"
   | "mcp_server.publish"
   | "mcp_server.update"
   | "mcp_server.delete"

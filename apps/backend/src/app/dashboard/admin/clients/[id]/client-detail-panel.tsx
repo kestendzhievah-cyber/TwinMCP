@@ -16,6 +16,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { AdminCreateServerDialog } from "./admin-create-server-dialog";
+import { AdminInstallMcpDialog } from "./admin-install-mcp-dialog";
 
 type Plan = "free" | "pro" | "team";
 
@@ -109,6 +112,8 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
   const [data, setData] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [installServerId, setInstallServerId] = useState<string | null>(null);
+  const [installOpen, setInstallOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -235,9 +240,13 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
       </Card>
 
       {/* Servers */}
-      <Section icon={<Boxes className="h-4 w-4" />} title={`Serveurs (${servers.length})`}>
+      <Section
+        icon={<Boxes className="h-4 w-4" />}
+        title={`Serveurs (${servers.length})`}
+        action={<AdminCreateServerDialog clientId={clientId} onDone={() => void load()} />}
+      >
         {servers.length === 0 ? (
-          <Empty>Aucun serveur.</Empty>
+          <Empty>Aucun serveur. Créez-en un pour ce client.</Empty>
         ) : (
           <div className="rounded-md border">
             <Table>
@@ -247,7 +256,8 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                   <TableHead className="w-24">Statut</TableHead>
                   <TableHead className="w-24">Type</TableHead>
                   <TableHead className="w-20">Taille</TableHead>
-                  <TableHead>Dernier heartbeat</TableHead>
+                  <TableHead>Heartbeat</TableHead>
+                  <TableHead className="w-40 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -264,6 +274,21 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                     <TableCell className="text-xs">{s.boxSize}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {relTime(s.lastHeartbeatAt)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {s.hostType !== "local_agent" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setInstallServerId(s.id);
+                            setInstallOpen(true);
+                          }}
+                        >
+                          <Puzzle className="h-3.5 w-3.5" />
+                          Installer un MCP
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -341,6 +366,14 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
           </ul>
         )}
       </Section>
+
+      <AdminInstallMcpDialog
+        clientId={clientId}
+        serverId={installServerId}
+        open={installOpen}
+        onOpenChange={setInstallOpen}
+        onDone={() => void load()}
+      />
     </div>
   );
 }
@@ -390,18 +423,23 @@ function Kpi({
 function Section({
   icon,
   title,
+  action,
   children,
 }: {
   icon: React.ReactNode;
   title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          {icon} {title}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            {icon} {title}
+          </CardTitle>
+          {action}
+        </div>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
