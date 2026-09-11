@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowLeft, Boxes, Activity, CreditCard, KeyRound, ScrollText, Puzzle } from "lucide-react";
+import {
+  ArrowLeft,
+  Boxes,
+  Activity,
+  CreditCard,
+  KeyRound,
+  Package,
+  ScrollText,
+  Puzzle,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +27,15 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MCP_BUNDLES } from "@/lib/mcp-bundles";
 import { AdminCreateServerDialog } from "./admin-create-server-dialog";
 import { AdminInstallMcpDialog } from "./admin-install-mcp-dialog";
 
@@ -135,6 +154,27 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function installBundle(serverId: string, bundleId: string) {
+    const res = await fetch(`/api/v2/admin/clients/${clientId}/servers/${serverId}/bundle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ bundleId }),
+    });
+    const d = (await res.json().catch(() => ({}))) as {
+      installed?: string[];
+      skipped?: { slug: string; reason: string }[];
+      message?: string;
+    };
+    if (res.ok) {
+      const ins = d.installed?.length ?? 0;
+      const sk = d.skipped?.length ?? 0;
+      toast.success(`Pack déployé : ${ins} installé(s)${sk ? ` · ${sk} ignoré(s)` : ""}`);
+      void load();
+    } else {
+      toast.error(d.message ?? "Échec du déploiement du pack.");
+    }
+  }
 
   if (loading) return <Skeleton className="h-96 w-full" />;
 
@@ -257,7 +297,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                   <TableHead className="w-24">Type</TableHead>
                   <TableHead className="w-20">Taille</TableHead>
                   <TableHead>Heartbeat</TableHead>
-                  <TableHead className="w-40 text-right">Actions</TableHead>
+                  <TableHead className="w-56 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -277,17 +317,44 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                     </TableCell>
                     <TableCell className="text-right">
                       {s.hostType !== "local_agent" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setInstallServerId(s.id);
-                            setInstallOpen(true);
-                          }}
-                        >
-                          <Puzzle className="h-3.5 w-3.5" />
-                          Installer un MCP
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Package className="h-3.5 w-3.5" />
+                                Pack
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="max-w-xs">
+                              <DropdownMenuLabel>Déployer un pack</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {MCP_BUNDLES.map((b) => (
+                                <DropdownMenuItem
+                                  key={b.id}
+                                  onSelect={() => void installBundle(s.id, b.id)}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{b.label}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {b.description}
+                                    </span>
+                                  </div>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setInstallServerId(s.id);
+                              setInstallOpen(true);
+                            }}
+                          >
+                            <Puzzle className="h-3.5 w-3.5" />
+                            MCP
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
