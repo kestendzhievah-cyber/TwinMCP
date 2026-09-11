@@ -17,6 +17,7 @@ import {
   BarChart3,
   BookOpen,
   Boxes,
+  Building2,
   Key,
   LogOut,
   Menu,
@@ -63,6 +64,7 @@ export function DashboardNav({
     ? [
         ...links,
         { href: "/dashboard/admin", label: "Admin", icon: BarChart3 },
+        { href: "/dashboard/admin/clients", label: "Clients", icon: Building2 },
         {
           href: "/dashboard/admin/prospects",
           label: "Prospection",
