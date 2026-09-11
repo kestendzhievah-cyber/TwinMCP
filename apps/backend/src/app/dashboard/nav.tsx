@@ -18,6 +18,7 @@ import {
   BookOpen,
   Boxes,
   Building2,
+  ListChecks,
   Key,
   LogOut,
   Menu,
@@ -51,11 +52,13 @@ export function DashboardNav({
   plan,
   isAdmin = false,
   prospectsDue = 0,
+  attentionCount = 0,
 }: {
   email: string;
   plan: Plan;
   isAdmin?: boolean;
   prospectsDue?: number;
+  attentionCount?: number;
 }) {
   const pathname = usePathname();
   // The Admin analytics link is only shown to allowlisted admins. This is a UI
@@ -64,6 +67,12 @@ export function DashboardNav({
     ? [
         ...links,
         { href: "/dashboard/admin", label: "Admin", icon: BarChart3 },
+        {
+          href: "/dashboard/admin/cockpit",
+          label: "À traiter",
+          icon: ListChecks,
+          badge: attentionCount,
+        },
         { href: "/dashboard/admin/clients", label: "Clients", icon: Building2 },
         {
           href: "/dashboard/admin/prospects",

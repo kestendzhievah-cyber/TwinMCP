@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { users, prospects } from "@/db/schema";
 import { isAdminEmail } from "@/lib/admin";
+import { attentionCount } from "@/lib/admin/attention";
 import { DashboardNav } from "./nav";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // in play. Guarded — the prospects table may not exist yet (migration 0011
   // pending), and a nav badge must never 500 the whole dashboard.
   let prospectsDue = 0;
+  let attention = 0;
   if (isAdmin) {
     try {
       const [due] = await getDb()
@@ -37,8 +39,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
           sql`${prospects.nextActionAt} is not null and ${prospects.nextActionAt} <= now() and ${prospects.status} not in ('won','lost')`
         );
       prospectsDue = due?.n ?? 0;
+      // Combined "À traiter" cockpit badge (due follow-ups + error/stuck servers
+      // + new leads). Guarded so a table hiccup never 500s the dashboard.
+      attention = await attentionCount();
     } catch {
       prospectsDue = 0;
+      attention = 0;
     }
   }
 
@@ -49,6 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         plan={plan}
         isAdmin={isAdmin}
         prospectsDue={prospectsDue}
+        attentionCount={attention}
       />
       <main id="main-content" className="w-full max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-8">
         {children}
