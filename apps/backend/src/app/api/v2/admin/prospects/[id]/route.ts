@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { prospects, prospectStatuses, type ProspectStatus } from "@/db/schema";
 import { badRequest, notFound } from "@/lib/errors";
 import { requireAdmin, str, int, logActivity } from "@/lib/admin/prospects-lib";
+import { autoOnboardWonProspect } from "@/lib/admin/onboard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +58,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if ("status" in patch && patch.status !== oldStatus) {
     await logActivity(id, "status_change", String(patch.status), admin.userId).catch(() => {});
+  }
+
+  // Won → auto-onboard the matching account (best-effort; never blocks the
+  // update). Logs the outcome to the prospect timeline so you know what happened.
+  if ("status" in patch && patch.status === "won" && patch.status !== oldStatus) {
+    const result = await autoOnboardWonProspect({ email: row.email, adminUserId: admin.userId });
+    const note = result.onboarded
+      ? `🎉 Gagné — onboarding auto : serveur « Production » créé + pack Essentiel (${result.installed.length} MCPs).`
+      : result.reason === "no_account"
+        ? "🎉 Gagné — aucun compte TwinMCP pour cet email. Invitez le client à s'inscrire, puis provisionnez depuis sa fiche Client."
+        : result.reason === "already_provisioned"
+          ? "🎉 Gagné — le client a déjà un serveur (pas de provisioning automatique)."
+          : "🎉 Gagné — l'onboarding auto a échoué ; provisionnez manuellement depuis la fiche Client.";
+    await logActivity(id, "note", note, admin.userId).catch(() => {});
   }
 
   return NextResponse.json(row);
