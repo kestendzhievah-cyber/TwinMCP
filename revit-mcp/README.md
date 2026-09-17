@@ -3,65 +3,61 @@
 An MCP server that lets Claude query a **Revit BIM model** in natural language —
 element queries, quantities (take-offs), fire-rating QA and accessibility checks.
 
-It has two modes:
+Two modes:
 
 - **`demo`** (default) — a realistic sample office building is baked in. **Works
-  with no Revit install** → perfect for a live sales demo.
-- **`live`** — reads the real model from a listener running inside Revit (see
-  [`revit_listener.py`](./revit_listener.py)) over a local socket.
-
-The tools work identically in both modes.
+  with no Revit install** → ready for a live demo.
+- **`live`** — reads the real model from a listener inside Revit
+  ([`revit_listener.py`](./revit_listener.py)) over a local socket. Data never
+  leaves the machine.
 
 ---
 
-## ⚡ Fastest demo (no Revit needed) — Claude Desktop
+## ⚡ Install in one command (on the client's machine)
 
-**1. Install [`uv`](https://docs.astral.sh/uv/)** (one line, handles Python +
-deps automatically):
+From the `revit-mcp` folder, in PowerShell:
+
+**Demo (no Revit needed):**
 
 ```powershell
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-**2. Point Claude Desktop at the server.** Edit
-`%APPDATA%\Claude\claude_desktop_config.json`:
+**Live (real Revit model):**
 
-```json
-{
-  "mcpServers": {
-    "revit": {
-      "command": "uvx",
-      "args": ["--from", "C:\\Users\\sofia\\Desktop\\TwinMCP-master\\revit-mcp", "revit-mcp"],
-      "env": { "REVIT_MCP_MODE": "demo" }
-    }
-  }
-}
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -Mode live
 ```
 
-(Fallback without uv: `"command": "python", "args": ["-m", "revit_mcp"], "cwd":
-"…\\revit-mcp"` after `pip install mcp` in that Python.)
+That's it. The script:
 
-**3. Restart Claude Desktop.** You'll see a 🔌 **revit** tool. Done.
+1. installs [`uv`](https://docs.astral.sh/uv/) if it's missing,
+2. **auto-configures Claude Desktop for you** (writes the config, merges with any
+   existing servers, keeps a backup).
+
+Then **restart Claude Desktop and just prompt it** about the model — no JSON to
+edit, nothing else to launch. (In live mode, do one extra thing: start the
+listener inside Revit — the script prints the exact line.)
+
+> Already have `uv`? The whole install is a single command:
+> `uvx --from . revit-mcp configure` (add `--mode live` for the real model).
 
 ---
 
-## 🎬 Demo script (in Bulgarian, matches the pitch deck)
+## 🎬 Demo script (Bulgarian — matches the pitch deck)
 
-Ask Claude these — it calls the Revit tools and answers from the model:
+Once Claude Desktop is restarted, just ask (it calls the Revit tools and answers
+from the model):
 
-1. **„Дай ми обобщение на проекта.“** → `project_summary`
-2. **„Колко пожарни врати има на ниво 3?“** → `query_elements(Doors, L3)`
-3. **„Кои стени нямат зададена пожароустойчивост?“** → `check_fire_ratings`
-4. **„Дай количествата на вратите и прозорците по нива.“** → `get_quantities`
-5. **„Кои врати не отговарят на изискванията за достъпност (мин. 900 мм)?“** → `check_accessibility`
-6. **„Направи списък за контрол на качеството преди предаване.“** → Claude combines the checks
+1. **„Дай ми обобщение на проекта.“**
+2. **„Колко пожарни врати има на ниво 3?“**
+3. **„Кои стени нямат зададена пожароустойчивост?“**
+4. **„Дай количествата на вратите и прозорците по нива.“**
+5. **„Кои врати не отговарят на изискванията за достъпност (мин. 900 мм)?“**
+6. **„Направи списък за контрол на качеството преди предаване.“**
 
-The sample model deliberately contains **3 walls without a fire rating** and **2
-doors below 900 mm**, so the QA/accessibility answers are non-trivial and
-convincing.
-
-> Tip: keep the model dict in [`revit_mcp/model.py`](./revit_mcp/model.py) open
-> on a second screen — "this is your model's data" lands well.
+The sample model has deliberate gaps — **3 walls without a fire rating** and **2
+doors below 900 mm** — so the QA/accessibility answers are non-trivial.
 
 ---
 
@@ -77,44 +73,62 @@ convincing.
 | `check_accessibility(min_door_width_mm=900)` | Doors below the min clear width |
 | `get_element(element_id)` | Full details of one element |
 
-Verify the data with no MCP client at all:
+Verify the data with no Claude / MCP client at all:
 
 ```powershell
-cd revit-mcp
-python -m revit_mcp --selftest
+uvx --from . revit-mcp --selftest
 ```
 
 ---
 
 ## 🏗️ Live mode (real Revit model)
 
-1. Open your project in **Revit** and run [`revit_listener.py`](./revit_listener.py)
-   from **pyRevit** (it opens a socket on `127.0.0.1:8765` and reads the model
-   via the Revit API). Adapt the parameter names to your template.
-2. Switch the MCP server to live mode:
+`install.ps1 -Mode live` configures Claude Desktop for live mode. Then, on the
+machine where Revit runs:
 
-   ```json
-   "env": { "REVIT_MCP_MODE": "live", "REVIT_HOST": "127.0.0.1", "REVIT_PORT": "8765" }
+1. Open the project in **Revit** and start the listener from the **pyRevit**
+   console (it opens a socket on `127.0.0.1:8765` and reads the model via the
+   Revit API):
+
+   ```python
+   exec(open(r"C:\path\to\revit-mcp\revit_listener.py").read())
    ```
 
-Same questions, now answered from the client's real model — and the data never
-leaves their machine.
+2. Ask Claude the same questions — now answered from the client's real model.
+
+Adapt the parameter names in [`revit_listener.py`](./revit_listener.py)
+(`Fire Rating`, `Width`, …) to the client's Revit template. To make it permanent,
+drop the listener into a pyRevit startup script so it's always on.
+
+---
+
+## 🔧 Manual config (fallback)
+
+If you'd rather not run the script, add this to
+`%APPDATA%\Claude\claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "revit": {
+      "command": "uvx",
+      "args": ["--from", "C:\\path\\to\\revit-mcp", "revit-mcp"],
+      "env": { "REVIT_MCP_MODE": "demo" }
+    }
+  }
+}
+```
 
 ---
 
 ## 🔗 Via TwinMCP (the product path)
 
-To deliver this to the client through TwinMCP (one URL, one key, per-user access,
-audit) instead of a local Claude Desktop config:
-
-1. Publish `revit-mcp` (so `uvx revit-mcp` resolves), then add a catalog entry
-   with `hostMode: "local"`, `runtime: "python"`, `startCmd: "uvx revit-mcp"`.
-2. On the client's machine (where Revit runs), start the local agent:
-   `ctx7 connect --server <slug>`. It relays this local MCP to the TwinMCP proxy.
-3. Point the client's Claude/Cursor at the TwinMCP proxy URL + their key.
-
-This is the same local-agent pattern already proven for other desktop design
-tools — the Revit data stays on the client's network, relayed securely.
+To deliver this through TwinMCP (one URL, one key, per-user access, audit) rather
+than a local Claude Desktop config: publish `revit-mcp`, add a catalog entry with
+`hostMode: "local"`, `runtime: "python"`, `startCmd: "uvx revit-mcp"`, then run the
+local agent on the client's machine (`ctx7 connect --server <slug>`) so it relays
+this local MCP to the TwinMCP proxy. Same local-agent pattern already proven for
+other desktop design tools — the Revit data stays on the client's network.
 
 ---
 

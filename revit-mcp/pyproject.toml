@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 dependencies = ["mcp>=1.2.0"]
 
 [project.scripts]
-revit-mcp = "revit_mcp.server:main"
+revit-mcp = "revit_mcp.cli:main"
 
 [build-system]
 requires = ["hatchling"]
