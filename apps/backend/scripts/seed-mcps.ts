@@ -1558,6 +1558,40 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     hostMode: "local",
     configSchema: { properties: {} },
   },
+  {
+    // LOCAL tool: runs on the USER's machine via `ctx7 connect`, where Revit is.
+    // Bridges the LLM to a Revit BIM model; the model never leaves the machine.
+    // Demo mode ships a built-in sample model (zero-config); live mode talks to
+    // the pyRevit listener (see /revit-mcp).
+    slug: "revit",
+    name: "Revit",
+    description:
+      "Query your Revit BIM model from your LLM — element queries, quantities/take-offs, and fire-rating & accessibility checks. Runs locally via the TwinMCP agent, so your model never leaves your machine. Ships with a built-in demo model; set REVIT_MCP_MODE=live to connect a real Revit via the pyRevit listener.",
+    repoUrl: "https://github.com/kestendzhievah-cyber/TwinMCP/tree/main/revit-mcp",
+    runtime: "python",
+    installCmd: "true",
+    startCmd:
+      "uvx --from git+https://github.com/kestendzhievah-cyber/TwinMCP.git@main#subdirectory=revit-mcp revit-mcp",
+    version: "0.1.0",
+    hostMode: "local",
+    configSchema: {
+      properties: {
+        REVIT_MCP_MODE: {
+          type: "string",
+          description:
+            '"demo" (built-in sample model, default) or "live" (real Revit via the pyRevit listener).',
+        },
+        REVIT_HOST: {
+          type: "string",
+          description: "Revit listener host for live mode (default 127.0.0.1).",
+        },
+        REVIT_PORT: {
+          type: "string",
+          description: "Revit listener port for live mode (default 8765).",
+        },
+      },
+    },
+  },
 ];
 
 // Servers with no viable runtime in a Node box: github (Go/Docker-only) and the
@@ -1586,6 +1620,7 @@ const CATEGORY: Record<string, string> = {
   markitdown: "data",
   chart: "data",
   blender: "creative",
+  revit: "creative",
   // Connectors
   context7: "docs",
   "brave-search": "web",
