@@ -17,7 +17,7 @@ export function IdeLogosBar() {
           {ides.map((ide) => (
             <li
               key={ide.name}
-              className="font-mono text-sm font-medium tracking-tight text-muted-foreground/80 grayscale transition hover:text-foreground hover:grayscale-0 md:text-base"
+              className="font-mono text-sm font-medium tracking-tight text-muted-foreground transition hover:text-foreground md:text-base"
               aria-label={ide.name}
             >
               {ide.wordmark}

@@ -8,9 +8,9 @@ const fakeServers = [
 
 const statusStyles: Record<string, string> = {
   running:
-    "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-400/20",
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-400/20",
   provisioning:
-    "bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-400/20",
+    "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-400/20",
 };
 
 export function HeroMockup() {
@@ -49,9 +49,7 @@ export function HeroMockup() {
                 key={label}
                 className={
                   "flex items-center gap-2 rounded-md px-2 py-1.5 " +
-                  (active
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground")
+                  (active ? "bg-secondary text-foreground" : "text-muted-foreground")
                 }
               >
                 <Icon className="h-3 w-3" />
