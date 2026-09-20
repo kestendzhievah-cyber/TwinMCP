@@ -7,7 +7,7 @@ import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
-  title: "TwinMCP — Hébergement de serveurs MCP sans gérer l'infrastructure",
+  title: { absolute: "Hébergement de serveurs MCP, sans gérer l'infra — TwinMCP" },
   description:
     "TwinMCP héberge vos serveurs Model Context Protocol dans des runtimes isolés. Installez des MCPs depuis le catalogue, connectez Cursor, Claude Code et Windsurf en 2 minutes. Offre gratuite — sans carte bancaire.",
   alternates: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "TwinMCP",
     url: `${SITE_URL}/fr`,
-    title: "TwinMCP — Hébergement de serveurs MCP sans gérer l'infrastructure",
+    title: "Hébergement de serveurs MCP, sans gérer l'infra — TwinMCP",
     description:
       "Provisionnez des serveurs MCP isolés, installez depuis le catalogue, connectez Cursor / Claude Code / Windsurf en 2 minutes.",
     locale: "fr_FR",

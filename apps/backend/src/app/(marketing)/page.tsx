@@ -12,7 +12,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
 
 export const metadata: Metadata = {
-  title: "TwinMCP — Run your MCP servers without managing infra",
+  title: { absolute: "MCP Server Hosting Without Managing Infra — TwinMCP" },
   description:
     "Provision MCP runtimes, install MCPs from a curated marketplace, connect Cursor, Claude Code, and Windsurf in 2 minutes. Free tier — no credit card.",
   // Mirror the FR home's hreflang so the pair points both ways (the FR page

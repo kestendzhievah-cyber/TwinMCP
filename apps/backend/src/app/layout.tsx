@@ -25,7 +25,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "TwinMCP — Run your MCP servers without managing infra",
+    default: "MCP Server Hosting Without Managing Infra — TwinMCP",
     template: "%s · TwinMCP",
   },
   description:
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "TwinMCP",
     url: SITE_URL,
-    title: "TwinMCP — Run your MCP servers without managing infra",
+    title: "MCP Server Hosting Without Managing Infra — TwinMCP",
     description:
       "Provision MCP servers, install MCPs from a curated marketplace, connect Cursor / Claude Code / Windsurf in 2 minutes.",
     locale: "en_US",
