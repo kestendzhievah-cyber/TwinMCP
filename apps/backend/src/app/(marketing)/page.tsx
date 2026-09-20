@@ -50,6 +50,13 @@ const homeHowTo = howToSchema({
   ],
 });
 
+// Skip rendering off-screen sections until they're scrolled near — cuts the
+// initial layout/paint work on this long landing page (a Lighthouse "forced
+// reflow"/render win). `contain-intrinsic-size: auto 640px` reserves space so
+// the scrollbar doesn't jump (no CLS) and remembers each section's real height
+// after its first render. Unsupported browsers ignore it and render normally.
+const CV = "[content-visibility:auto] [contain-intrinsic-size:auto_640px]";
+
 export default function HomePage() {
   return (
     <>
@@ -69,12 +76,24 @@ export default function HomePage() {
       <TrackOnMount name="landing_view" />
       <Hero />
       <IdeLogosBar />
-      <ProblemSolution />
-      <HowItWorks />
-      <MarketplacePreview />
-      <PricingTeaser />
-      <SocialProof />
-      <Faq />
+      <div className={CV}>
+        <ProblemSolution />
+      </div>
+      <div className={CV}>
+        <HowItWorks />
+      </div>
+      <div className={CV}>
+        <MarketplacePreview />
+      </div>
+      <div className={CV}>
+        <PricingTeaser />
+      </div>
+      <div className={CV}>
+        <SocialProof />
+      </div>
+      <div className={CV}>
+        <Faq />
+      </div>
     </>
   );
 }
