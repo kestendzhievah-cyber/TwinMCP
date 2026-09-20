@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: "Conditions d'utilisation",
   description:
     "Conditions générales d'utilisation du service TwinMCP — droits, obligations, facturation, résiliation.",
-  alternates: { canonical: "/legal/terms" },
+  alternates: {
+    canonical: "/legal/terms",
+    languages: { fr: "/legal/terms", en: "/legal/en/terms" },
+  },
   robots: { index: true, follow: true },
 };
 
@@ -16,11 +19,19 @@ export default function TermsPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-16 lg:px-10 lg:py-24">
       <header className="mb-12 border-b border-border/60 pb-8">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Document légal</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight">Conditions d&apos;utilisation</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Dernière mise à jour : {LAST_UPDATED}
+        <p className="flex items-center justify-between gap-4 text-xs uppercase tracking-wider text-muted-foreground">
+          <span>Document légal</span>
+          <Link
+            href={"/legal/en/terms" as Route}
+            className="normal-case underline hover:text-foreground"
+          >
+            English
+          </Link>
         </p>
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight">
+          Conditions d&apos;utilisation
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">Dernière mise à jour : {LAST_UPDATED}</p>
       </header>
 
       <div className="prose prose-neutral dark:prose-invert max-w-none [&_h2]:mt-12 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h3]:mt-6 [&_h3]:text-base [&_h3]:font-semibold [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-muted-foreground [&_li]:text-sm [&_li]:text-muted-foreground">
@@ -34,18 +45,17 @@ export default function TermsPage() {
         <h2>1. Définitions</h2>
         <p>
           <strong>« Service »</strong> désigne la plateforme TwinMCP accessible à l&apos;adresse
-          twinmcp.fr, ses API, et tous les sous-domaines associés.{" "}
-          <strong>« Compte »</strong> désigne l&apos;espace personnel créé via inscription.{" "}
-          <strong>« Contenu »</strong> désigne les serveurs MCP, configurations, clés et données que
-          tu fournis ou génères via le Service.
+          twinmcp.fr, ses API, et tous les sous-domaines associés. <strong>« Compte »</strong>{" "}
+          désigne l&apos;espace personnel créé via inscription. <strong>« Contenu »</strong> désigne
+          les serveurs MCP, configurations, clés et données que tu fournis ou génères via le
+          Service.
         </p>
 
         <h2>2. Inscription et compte</h2>
         <p>
           Tu dois avoir au moins 16 ans (ou l&apos;âge légal de ta juridiction) pour créer un
           compte. Les informations fournies à l&apos;inscription doivent être exactes. Tu es seul
-          responsable de la confidentialité de tes identifiants et de toute activité sur ton
-          compte.
+          responsable de la confidentialité de tes identifiants et de toute activité sur ton compte.
         </p>
         <p>
           Nous nous réservons le droit de suspendre ou supprimer un compte en cas d&apos;usage
@@ -80,7 +90,10 @@ export default function TermsPage() {
         <h2>4. Usage acceptable</h2>
         <p>Tu t&apos;engages à ne pas :</p>
         <ul>
-          <li>héberger ou diffuser du contenu illégal, malveillant ou portant atteinte aux droits de tiers ;</li>
+          <li>
+            héberger ou diffuser du contenu illégal, malveillant ou portant atteinte aux droits de
+            tiers ;
+          </li>
           <li>contourner les quotas, limites de débit, ou mécanismes de sécurité du Service ;</li>
           <li>utiliser le Service pour attaquer, scanner ou surcharger des systèmes tiers ;</li>
           <li>revendre ou redistribuer l&apos;accès au Service sans autorisation écrite ;</li>
@@ -106,10 +119,10 @@ export default function TermsPage() {
 
         <h2>7. Résiliation</h2>
         <p>
-          Tu peux résilier ton compte à tout moment depuis l&apos;onglet Billing du dashboard. La
-          résiliation prend effet à la fin de la période de facturation en cours. Tes données sont
-          conservées 30 jours après résiliation pour permettre une réactivation, puis supprimées
-          définitivement.
+          Tu peux résilier ton abonnement à tout moment depuis l&apos;onglet Billing du dashboard ;
+          la résiliation prend effet à la fin de la période de facturation en cours et ton compte
+          repasse alors au plan gratuit. Tu peux aussi supprimer ton compte et toutes les données
+          associées immédiatement depuis <strong>Paramètres → Supprimer le compte</strong>.
         </p>
 
         <h2>8. Limitation de responsabilité</h2>
@@ -122,9 +135,9 @@ export default function TermsPage() {
 
         <h2>9. Modifications</h2>
         <p>
-          Nous pouvons mettre à jour ces conditions. Les modifications substantielles sont
-          notifiées par email au moins 30 jours avant leur entrée en vigueur. Continuer à utiliser
-          le Service après cette date vaut acceptation.
+          Nous pouvons mettre à jour ces conditions. Les modifications substantielles sont notifiées
+          par email au moins 30 jours avant leur entrée en vigueur. Continuer à utiliser le Service
+          après cette date vaut acceptation.
         </p>
 
         <h2>10. Droit applicable</h2>
@@ -135,8 +148,7 @@ export default function TermsPage() {
 
         <h2>11. Contact</h2>
         <p>
-          Pour toute question, écris-nous à{" "}
-          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>.
+          Pour toute question, écris-nous à <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>.
         </p>
       </div>
 

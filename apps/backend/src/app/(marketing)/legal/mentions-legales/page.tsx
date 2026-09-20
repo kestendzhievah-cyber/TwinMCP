@@ -1,42 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Route } from "next";
+import { EDITEUR, HEBERGEUR } from "@/lib/legal/entity";
 
 export const metadata: Metadata = {
   title: "Mentions légales",
   description:
     "Mentions légales de TwinMCP : éditeur, directeur de la publication, hébergeur et contact, conformément à la loi pour la confiance dans l'économie numérique (LCEN).",
-  alternates: { canonical: "/legal/mentions-legales" },
+  alternates: {
+    canonical: "/legal/mentions-legales",
+    languages: { fr: "/legal/mentions-legales", en: "/legal/en/notice" },
+  },
   robots: { index: true, follow: true },
 };
 
 const LAST_UPDATED = "20 septembre 2026";
 
-// Champs à renseigner avec l'identité réelle de l'éditeur avant la mise en
-// production. La LCEN (art. 6-III) impose ces informations pour tout site
-// commercial ; tant que les crochets [ ] ne sont pas remplacés, la page n'est
-// pas juridiquement complète.
-const EDITEUR = {
-  denomination: "[à compléter : nom / raison sociale de l'éditeur]",
-  formeJuridique: "[à compléter : ex. entrepreneur individuel, SASU, SAS…]",
-  adresse: "[à compléter : adresse du siège / du domicile professionnel]",
-  siren: "[à compléter : n° SIREN / SIRET]",
-  tva: "[à compléter : n° de TVA intracommunautaire, le cas échéant]",
-  directeurPublication: "[à compléter : nom du directeur de la publication]",
-  email: "hello@twinmcp.fr",
-};
-
-const HEBERGEUR = {
-  nom: "[à compléter : nom / raison sociale de l'hébergeur]",
-  adresse: "[à compléter : adresse de l'hébergeur]",
-  telephone: "[à compléter : téléphone de l'hébergeur]",
-};
-
 export default function MentionsLegalesPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-16 lg:px-10 lg:py-24">
       <header className="mb-12 border-b border-border/60 pb-8">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Document légal</p>
+        <p className="flex items-center justify-between gap-4 text-xs uppercase tracking-wider text-muted-foreground">
+          <span>Document légal</span>
+          <Link
+            href={"/legal/en/notice" as Route}
+            className="normal-case underline hover:text-foreground"
+          >
+            English
+          </Link>
+        </p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">Mentions légales</h1>
         <p className="mt-3 text-sm text-muted-foreground">Dernière mise à jour : {LAST_UPDATED}</p>
       </header>

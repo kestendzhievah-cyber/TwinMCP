@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: "Politique de confidentialité",
   description:
     "Comment TwinMCP collecte, utilise et protège tes données personnelles. Conformité RGPD.",
-  alternates: { canonical: "/legal/privacy" },
+  alternates: {
+    canonical: "/legal/privacy",
+    languages: { fr: "/legal/privacy", en: "/legal/en/privacy" },
+  },
   robots: { index: true, follow: true },
 };
 
@@ -16,7 +19,15 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-16 lg:px-10 lg:py-24">
       <header className="mb-12 border-b border-border/60 pb-8">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Document légal</p>
+        <p className="flex items-center justify-between gap-4 text-xs uppercase tracking-wider text-muted-foreground">
+          <span>Document légal</span>
+          <Link
+            href={"/legal/en/privacy" as Route}
+            className="normal-case underline hover:text-foreground"
+          >
+            English
+          </Link>
+        </p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">Politique de confidentialité</h1>
         <p className="mt-3 text-sm text-muted-foreground">Dernière mise à jour : {LAST_UPDATED}</p>
       </header>

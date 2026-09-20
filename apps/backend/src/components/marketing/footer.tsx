@@ -59,9 +59,15 @@ function buildColumns(locale: Locale): FooterColumn[] {
     {
       label: fr ? "Légal" : "Legal",
       links: [
-        { href: "/legal/terms", label: fr ? "Conditions" : "Terms" },
-        { href: "/legal/privacy", label: fr ? "Confidentialité" : "Privacy" },
-        { href: "/legal/mentions-legales", label: fr ? "Mentions légales" : "Legal notice" },
+        { href: fr ? "/legal/terms" : "/legal/en/terms", label: fr ? "Conditions" : "Terms" },
+        {
+          href: fr ? "/legal/privacy" : "/legal/en/privacy",
+          label: fr ? "Confidentialité" : "Privacy",
+        },
+        {
+          href: fr ? "/legal/mentions-legales" : "/legal/en/notice",
+          label: fr ? "Mentions légales" : "Legal notice",
+        },
         { href: "mailto:security@twinmcp.fr", label: fr ? "Sécurité" : "Security" },
       ],
     },

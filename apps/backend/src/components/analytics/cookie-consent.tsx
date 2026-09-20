@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { getConsent, setConsent, OPEN_COOKIE_SETTINGS } from "@/lib/analytics/consent";
@@ -35,7 +36,9 @@ const COPY = {
 export function CookieConsent() {
   const [show, setShow] = useState(false);
   const pathname = usePathname();
-  const t = pathname?.startsWith("/fr") ? COPY.fr : COPY.en;
+  const isFr = pathname?.startsWith("/fr") ?? false;
+  const t = isFr ? COPY.fr : COPY.en;
+  const privacyHref = isFr ? "/legal/privacy" : "/legal/en/privacy";
 
   useEffect(() => {
     if (getConsent() === "unset") setShow(true);
@@ -61,7 +64,7 @@ export function CookieConsent() {
       <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           {t.lead}
-          <Link href="/legal/privacy" className="underline hover:text-foreground">
+          <Link href={privacyHref as Route} className="underline hover:text-foreground">
             {t.privacy}
           </Link>
           .
