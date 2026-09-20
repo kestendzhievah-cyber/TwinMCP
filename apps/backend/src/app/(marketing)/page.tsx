@@ -52,10 +52,11 @@ const homeHowTo = howToSchema({
 
 // Skip rendering off-screen sections until they're scrolled near — cuts the
 // initial layout/paint work on this long landing page (a Lighthouse "forced
-// reflow"/render win). `contain-intrinsic-size: auto 640px` reserves space so
-// the scrollbar doesn't jump (no CLS) and remembers each section's real height
-// after its first render. Unsupported browsers ignore it and render normally.
-const CV = "[content-visibility:auto] [contain-intrinsic-size:auto_640px]";
+// reflow"/render win). A fixed `contain-intrinsic-size` reserves a stable 640px
+// placeholder per section so the scrollbar stays put on load (no CLS) — and,
+// unlike the `auto` keyword, it's honored on every browser that supports
+// content-visibility. Unsupported browsers ignore it and render normally.
+const CV = "[content-visibility:auto] [contain-intrinsic-size:640px]";
 
 export default function HomePage() {
   return (

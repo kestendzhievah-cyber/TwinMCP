@@ -96,9 +96,10 @@ const benefits = [
 
 // Skip rendering off-screen sections until scrolled near — cuts the initial
 // layout/paint work on this long page (the Lighthouse forced-reflow / render
-// item). contain-intrinsic-size reserves space (no CLS) and remembers each
-// section's real height after first render. Unsupported browsers ignore it.
-const CV = "[content-visibility:auto] [contain-intrinsic-size:auto_640px]";
+// item). A fixed contain-intrinsic-size reserves a stable 640px placeholder per
+// section (no CLS on load) and — unlike the `auto` keyword — is honored on every
+// browser that supports content-visibility. Unsupported browsers ignore it.
+const CV = "[content-visibility:auto] [contain-intrinsic-size:640px]";
 
 export default function FrHomePage() {
   return (
