@@ -21,11 +21,18 @@ export interface ClientConfig {
  *  "replace me", not a censored real key. */
 export const API_KEY_PLACEHOLDER = "ctx7sk_YOUR_KEY_HERE";
 
+// When the API runs on a dedicated origin (e.g. https://api.twinmcp.fr), its
+// root IS the API — middleware maps /mcp/* onto /api/mcp/* — so we build clean
+// URLs against it and drop the /api prefix. Unset → same-origin /api/mcp/* as
+// before. See docs/API-SUBDOMAIN.md.
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+
 /**
  * The single source of truth for a connection URL: the authenticated control-plane
  * proxy, one URL per MCP. Never the raw box endpoint.
  */
 export function proxyUrl(origin: string, serverSlug: string, mcpSlug: string): string {
+  if (API_URL) return `${API_URL}/mcp/${serverSlug}/${mcpSlug}`;
   return `${origin.replace(/\/$/, "")}/api/mcp/${serverSlug}/${mcpSlug}`;
 }
 
