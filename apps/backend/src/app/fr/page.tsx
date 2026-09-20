@@ -94,6 +94,12 @@ const benefits = [
   },
 ];
 
+// Skip rendering off-screen sections until scrolled near — cuts the initial
+// layout/paint work on this long page (the Lighthouse forced-reflow / render
+// item). contain-intrinsic-size reserves space (no CLS) and remembers each
+// section's real height after first render. Unsupported browsers ignore it.
+const CV = "[content-visibility:auto] [contain-intrinsic-size:auto_640px]";
+
 export default function FrHomePage() {
   return (
     <>
@@ -146,7 +152,7 @@ export default function FrHomePage() {
       </section>
 
       {/* Problem / solution */}
-      <section className="border-b border-border/60">
+      <section className={`border-b border-border/60 ${CV}`}>
         <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
           <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
             Le problème : MCP local sur chaque ordinateur ne passe pas à l&apos;échelle.
@@ -168,7 +174,7 @@ export default function FrHomePage() {
       </section>
 
       {/* Benefits */}
-      <section id="features" className="scroll-mt-20 border-b border-border/60">
+      <section id="features" className={`scroll-mt-20 border-b border-border/60 ${CV}`}>
         <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
           <h2 className="text-balance text-center text-3xl font-semibold tracking-tight md:text-4xl">
             Pourquoi les développeurs choisissent TwinMCP
@@ -185,7 +191,7 @@ export default function FrHomePage() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="scroll-mt-20 border-b border-border/60">
+      <section id="how-it-works" className={`scroll-mt-20 border-b border-border/60 ${CV}`}>
         <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
           <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
             Comment ça marche
@@ -244,7 +250,7 @@ export default function FrHomePage() {
       </section>
 
       {/* Pricing teaser */}
-      <section className="border-b border-border/60">
+      <section className={`border-b border-border/60 ${CV}`}>
         <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
           <h2 className="text-balance text-center text-3xl font-semibold tracking-tight md:text-4xl">
             Tarification simple
@@ -324,7 +330,7 @@ export default function FrHomePage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="scroll-mt-20 border-b border-border/60">
+      <section id="faq" className={`scroll-mt-20 border-b border-border/60 ${CV}`}>
         <div className="mx-auto max-w-3xl px-6 py-20 md:py-28">
           <h2 className="text-balance text-center text-3xl font-semibold tracking-tight md:text-4xl">
             Questions fréquentes
@@ -341,7 +347,7 @@ export default function FrHomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="mx-auto max-w-5xl px-6 py-20 md:py-28">
+      <section className={`mx-auto max-w-5xl px-6 py-20 md:py-28 ${CV}`}>
         <div className="rounded-2xl border border-border bg-card p-10 text-center md:p-14">
           <h2 className="text-balance text-2xl font-semibold tracking-tight md:text-3xl">
             Prêt à lancer votre premier serveur MCP en 2 minutes ?
