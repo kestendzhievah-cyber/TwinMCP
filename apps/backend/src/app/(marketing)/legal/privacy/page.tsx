@@ -10,41 +10,41 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "12 mai 2026";
+const LAST_UPDATED = "20 septembre 2026";
 
 export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-16 lg:px-10 lg:py-24">
       <header className="mb-12 border-b border-border/60 pb-8">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Document légal</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight">
-          Politique de confidentialité
-        </h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Dernière mise à jour : {LAST_UPDATED}
-        </p>
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight">Politique de confidentialité</h1>
+        <p className="mt-3 text-sm text-muted-foreground">Dernière mise à jour : {LAST_UPDATED}</p>
       </header>
 
       <div className="prose prose-neutral dark:prose-invert max-w-none [&_h2]:mt-12 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h3]:mt-6 [&_h3]:text-base [&_h3]:font-semibold [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-muted-foreground [&_li]:text-sm [&_li]:text-muted-foreground [&_table]:text-sm [&_th]:font-medium [&_th]:text-foreground [&_td]:text-muted-foreground">
         <section>
           <p>
-            Cette politique explique quelles données TwinMCP collecte, pourquoi, avec qui elles
-            sont partagées, et comment exercer tes droits. Elle s&apos;applique au site
-            twinmcp.fr, aux API associées, et au service hébergé d&apos;exécution de serveurs MCP.
+            Cette politique explique quelles données TwinMCP collecte, pourquoi, avec qui elles sont
+            partagées, et comment exercer tes droits. Elle s&apos;applique au site twinmcp.fr, aux
+            API associées, et au service hébergé d&apos;exécution de serveurs MCP.
           </p>
         </section>
 
         <h2>1. Responsable du traitement</h2>
         <p>
-          Le responsable du traitement est l&apos;équipe TwinMCP, joignable à{" "}
-          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>.
+          Le responsable du traitement est l&apos;éditeur de TwinMCP, dont l&apos;identité complète
+          (dénomination, forme juridique, adresse, SIREN) figure dans les{" "}
+          <Link href={"/legal/mentions-legales" as Route}>mentions légales</Link>. Il est joignable
+          à <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>.
         </p>
 
         <h2>2. Données collectées</h2>
         <h3>2.1 Compte et authentification</h3>
         <ul>
           <li>Adresse email (obligatoire)</li>
-          <li>Mot de passe (haché, jamais stocké en clair) ou identifiant OAuth (GitHub, Google)</li>
+          <li>
+            Mot de passe (haché, jamais stocké en clair) ou identifiant OAuth (GitHub, Google)
+          </li>
           <li>Identifiant utilisateur unique généré par Supabase Auth</li>
           <li>Date de création du compte, date de dernière connexion</li>
         </ul>
@@ -52,10 +52,12 @@ export default function PrivacyPage() {
         <h3>2.2 Facturation</h3>
         <ul>
           <li>
-            Informations de paiement (carte, IBAN) : traitées et stockées par Stripe. Nous ne
-            voyons jamais les numéros complets.
+            Informations de paiement (carte, IBAN) : traitées et stockées par Stripe. Nous ne voyons
+            jamais les numéros complets.
           </li>
-          <li>Plan souscrit, historique de facturation, identifiants Stripe (customer, subscription)</li>
+          <li>
+            Plan souscrit, historique de facturation, identifiants Stripe (customer, subscription)
+          </li>
           <li>Adresse de facturation et numéro de TVA si fournis</li>
         </ul>
 
@@ -63,10 +65,14 @@ export default function PrivacyPage() {
         <ul>
           <li>Serveurs MCP créés, MCPs installés, configurations associées</li>
           <li>
-            Logs d&apos;audit des requêtes API (méthode, route, code retour, timestamp,
-            identifiant de clé)
+            Logs d&apos;audit des requêtes API (méthode, route, code retour, timestamp, identifiant
+            de clé)
           </li>
-          <li>Adresse IP du client : stockée chiffrée pour rate-limiting et détection d&apos;abus</li>
+          <li>
+            Adresse IP de la requête : enregistrée dans les journaux d&apos;audit (que tu peux
+            consulter dans ton tableau de bord) pour la sécurité et la détection d&apos;abus. Le
+            rate-limiting, lui, s&apos;applique par compte et non par adresse IP.
+          </li>
         </ul>
 
         <h3>2.4 Analytics et monitoring</h3>
@@ -145,9 +151,11 @@ export default function PrivacyPage() {
               <td>UE / US</td>
             </tr>
             <tr>
-              <td>Cloudflare R2</td>
-              <td>Stockage d&apos;objets (documents indexés)</td>
-              <td>Mondial (CDN)</td>
+              <td>OpenAI</td>
+              <td>
+                Génération d&apos;embeddings pour l&apos;indexation et la recherche de documents
+              </td>
+              <td>États-Unis</td>
             </tr>
             <tr>
               <td>Resend</td>
@@ -156,7 +164,7 @@ export default function PrivacyPage() {
             </tr>
             <tr>
               <td>Sentry</td>
-              <td>Monitoring d&apos;erreurs</td>
+              <td>Monitoring d&apos;erreurs (sans cookie ni enregistrement de session)</td>
               <td>UE</td>
             </tr>
             <tr>
@@ -167,6 +175,13 @@ export default function PrivacyPage() {
             <tr>
               <td>Axiom</td>
               <td>Logs d&apos;infrastructure</td>
+              <td>UE</td>
+            </tr>
+            <tr>
+              <td>Hébergeur du site</td>
+              <td>
+                Hébergement du serveur applicatif (identité complète dans les mentions légales)
+              </td>
               <td>UE</td>
             </tr>
           </tbody>
@@ -182,8 +197,10 @@ export default function PrivacyPage() {
             <strong>Compte actif :</strong> tant que le compte existe.
           </li>
           <li>
-            <strong>Après résiliation :</strong> 30 jours, puis suppression définitive
-            (anonymisation des logs d&apos;audit conservés pour obligations légales).
+            <strong>Suppression du compte :</strong> immédiate — compte, serveurs, clés et identité
+            d&apos;authentification supprimés. Les journaux d&apos;audit conservés pour la sécurité
+            et nos obligations légales sont anonymisés (identifiant utilisateur et adresse IP
+            retirés).
           </li>
           <li>
             <strong>Données de facturation :</strong> 10 ans (obligation comptable française).
@@ -197,9 +214,7 @@ export default function PrivacyPage() {
         </ul>
 
         <h2>6. Cookies</h2>
-        <p>
-          Nous utilisons un nombre minimal de cookies :
-        </p>
+        <p>Nous utilisons un nombre minimal de cookies :</p>
         <ul>
           <li>
             <strong>Session Supabase</strong> (essentiel) : maintient ta session connectée.
@@ -243,33 +258,40 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Pour exercer ces droits, écris à{" "}
-          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>. Nous répondons sous 30 jours.
+          Tu peux exercer directement ton droit à l&apos;effacement depuis{" "}
+          <strong>Paramètres → Supprimer le compte</strong> : cela supprime ton compte, tes
+          serveurs, tes clés et ton identité d&apos;authentification, et anonymise tes journaux
+          d&apos;audit. Pour les autres droits (accès, portabilité, rectification, opposition,
+          limitation), écris à <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a> — nous
+          répondons sous 30 jours.
         </p>
 
         <h2>8. Sécurité</h2>
         <p>
-          Nous appliquons des mesures techniques et organisationnelles standards de
-          l&apos;industrie : chiffrement TLS en transit, chiffrement au repos, hachage des mots de
-          passe (bcrypt via Supabase), isolation par RLS Postgres, audit logs, accès restreint au
-          principe du moindre privilège.
+          Nous appliquons des mesures techniques et organisationnelles standards de l&apos;industrie
+          : chiffrement TLS en transit, chiffrement au repos, hachage des mots de passe (bcrypt via
+          Supabase), isolation par RLS Postgres, audit logs, accès restreint au principe du moindre
+          privilège.
         </p>
         <p>
-          En cas de violation de données affectant tes droits, tu seras notifié dans les 72 heures
-          conformément à l&apos;article 34 du RGPD.
+          En cas de violation de données susceptible d&apos;engendrer un risque élevé pour tes
+          droits et libertés, nous te notifions dans les meilleurs délais (RGPD art. 34) et
+          informons la CNIL dans les 72 heures (RGPD art. 33).
         </p>
 
         <h2>9. Mineurs</h2>
         <p>
-          Le service n&apos;est pas destiné aux personnes de moins de 16 ans. Nous ne collectons
-          pas sciemment de données les concernant. Si tu penses qu&apos;un mineur nous a fourni
-          des données, contacte-nous pour suppression immédiate.
+          Le service n&apos;est pas destiné aux mineurs. En France, le traitement des données
+          d&apos;un enfant de moins de 15 ans requiert le consentement d&apos;un titulaire de
+          l&apos;autorité parentale (art. 45 de la loi Informatique et Libertés). Nous ne collectons
+          pas sciemment de données concernant des enfants de moins de 15 ans ; si tu penses que
+          c&apos;est le cas, contacte-nous pour suppression immédiate.
         </p>
 
         <h2>10. Modifications de cette politique</h2>
         <p>
-          Cette politique peut évoluer. Les changements majeurs sont notifiés par email au moins
-          30 jours avant leur entrée en vigueur. L&apos;historique des versions est disponible sur
+          Cette politique peut évoluer. Les changements majeurs sont notifiés par email au moins 30
+          jours avant leur entrée en vigueur. L&apos;historique des versions est disponible sur
           demande.
         </p>
 

@@ -61,6 +61,7 @@ function buildColumns(locale: Locale): FooterColumn[] {
       links: [
         { href: "/legal/terms", label: fr ? "Conditions" : "Terms" },
         { href: "/legal/privacy", label: fr ? "Confidentialité" : "Privacy" },
+        { href: "/legal/mentions-legales", label: fr ? "Mentions légales" : "Legal notice" },
         { href: "mailto:security@twinmcp.fr", label: fr ? "Sécurité" : "Security" },
       ],
     },

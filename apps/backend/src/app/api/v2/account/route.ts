@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
-import { users, apiKeys, usageEvents, teamspaceMembers, servers } from "@/db/schema";
+import { users, apiKeys, usageEvents, teamspaceMembers, servers, auditLogs } from "@/db/schema";
 import { serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 import { createClient } from "@/utils/supabase/server";
@@ -51,11 +51,15 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    // These three are independent; only the users row must go last (FKs).
+    // These are independent; only the users row must go last (FKs).
     await Promise.all([
       db.delete(usageEvents).where(eq(usageEvents.userId, session.userId)),
       db.delete(apiKeys).where(eq(apiKeys.userId, session.userId)),
       db.delete(teamspaceMembers).where(eq(teamspaceMembers.userId, session.userId)),
+      // GDPR: audit_logs.userId is SET NULL on user delete (rows are kept for
+      // security / legal), but the stored IP is still personal data — scrub it
+      // now, while we can still match by userId, so deletion truly anonymizes.
+      db.update(auditLogs).set({ ip: null }).where(eq(auditLogs.userId, session.userId)),
     ]);
     await db.delete(users).where(eq(users.id, session.userId));
 
