@@ -3,7 +3,23 @@ import { updateSession } from "@/utils/supabase/middleware";
 import { isApiHost, apiCorsHeaders } from "@/lib/api-host";
 
 export async function middleware(request: NextRequest) {
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const rawHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const host = rawHost?.split(",")[0].trim();
+
+  // Force HTTPS. Behind Traefik/Dokploy, TLS terminates at the proxy and the
+  // original scheme arrives in x-forwarded-proto. Only an explicit "http" is
+  // redirected, so already-secure requests and the internal health check (which
+  // sets no such header) are left alone — no redirect loop, no broken probe.
+  // HSTS (Strict-Transport-Security) is set in next.config.mjs for subsequent
+  // visits; this handles the first/direct http hit.
+  const proto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
+  if (proto === "http" && host) {
+    return NextResponse.redirect(
+      `https://${host}${request.nextUrl.pathname}${request.nextUrl.search}`,
+      308
+    );
+  }
+
   if (isApiHost(host)) return handleApiHost(request);
   return updateSession(request);
 }
