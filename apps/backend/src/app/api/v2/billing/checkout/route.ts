@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { getStripe, getPriceId, TRIAL_DAYS, TAX_ENABLED } from "@/lib/stripe";
+import { returnOrigin } from "@/lib/billing/origin";
 import { badRequest, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 import { getCreator } from "@/lib/promos/creators";
@@ -56,13 +57,35 @@ export async function POST(req: NextRequest) {
   try {
     const db = getDb();
     const [userRow] = await db
-      .select({ email: users.email, stripeCustomerId: users.stripeCustomerId })
+      .select({
+        email: users.email,
+        stripeCustomerId: users.stripeCustomerId,
+        stripeSubscriptionId: users.stripeSubscriptionId,
+        subscriptionStatus: users.subscriptionStatus,
+      })
       .from(users)
       .where(eq(users.id, session.userId))
       .limit(1);
 
-    const origin = req.headers.get("origin") ?? "https://twinmcp.fr";
+    const origin = returnOrigin(req);
     const stripe = getStripe();
+
+    // Already subscribed → send them to the Customer Portal to switch/manage
+    // instead of opening a fresh Checkout, which would create a SECOND
+    // subscription and double-bill. active/trialing/past_due (dunning) count as
+    // subscribed; canceled/incomplete fall through to a normal checkout.
+    const ACTIVE_STATUSES = ["active", "trialing", "past_due"];
+    if (
+      userRow?.stripeCustomerId &&
+      userRow.stripeSubscriptionId &&
+      ACTIVE_STATUSES.includes(userRow.subscriptionStatus ?? "")
+    ) {
+      const portal = await stripe.billingPortal.sessions.create({
+        customer: userRow.stripeCustomerId,
+        return_url: `${origin}/dashboard/billing`,
+      });
+      return NextResponse.json({ url: portal.url });
+    }
 
     // Reuse an existing Stripe customer if we already linked one — avoids
     // duplicate customers across upgrades and keeps Customer Portal happy.

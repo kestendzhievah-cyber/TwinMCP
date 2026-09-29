@@ -8,16 +8,12 @@ export type AuditAction =
   | "plan.upgrade"
   | "plan.downgrade"
   | "plan.cancel"
+  | "payment.failed"
   | "session.signin"
   | "session.signup"
   | "user.password_reset";
 
-export type AuditTargetType =
-  | "api_key"
-  | "subscription"
-  | "oauth_provider"
-  | "user"
-  | "none";
+export type AuditTargetType = "api_key" | "subscription" | "oauth_provider" | "user" | "none";
 
 export interface AuditEntry {
   userId: string | null;

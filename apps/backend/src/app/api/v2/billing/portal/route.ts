@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
+import { returnOrigin } from "@/lib/billing/origin";
 import { badRequest, serverError, unauthorized } from "@/lib/errors";
 import { requireSessionUser } from "@/lib/session";
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
       .where(eq(users.id, session.userId))
       .limit(1);
 
-    const origin = req.headers.get("origin") ?? "https://twinmcp.fr";
+    const origin = returnOrigin(req);
 
     // No customer yet — user has never checked out. Steer them to /plans
     // with a clear hint instead of opening an empty portal.

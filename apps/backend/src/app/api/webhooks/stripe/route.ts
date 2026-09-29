@@ -76,6 +76,14 @@ async function shouldProcess(eventId: string, type: string): Promise<boolean> {
   }
 }
 
+/**
+ * Release a claim taken by shouldProcess() so a failed handler is retried by
+ * Stripe instead of being deduped into a permanent no-op. Best-effort.
+ */
+async function releaseEvent(eventId: string): Promise<void> {
+  await getDb().delete(processedStripeEvents).where(eq(processedStripeEvents.eventId, eventId));
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
@@ -98,6 +106,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, deduped: true });
   }
 
+  try {
+    await handleStripeEvent(event);
+  } catch (err) {
+    // A handler threw AFTER shouldProcess() claimed the event. If we returned
+    // 500 without releasing the claim, Stripe's retry would be deduped into a
+    // no-op and the plan/status change would be lost for good. Release the
+    // claim (handlers only set/upsert, so re-running is idempotent) and 500 so
+    // Stripe retries and re-applies the side effects.
+    console.error("[stripe webhook] handler failed:", err);
+    Sentry.captureException(err, {
+      tags: { area: "billing", stage: "handler", eventType: event.type },
+    });
+    await releaseEvent(event.id).catch((e) =>
+      console.error("[stripe webhook] failed to release idempotency claim:", e)
+    );
+    return NextResponse.json({ error: "handler failed" }, { status: 500 });
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+async function handleStripeEvent(event: Stripe.Event): Promise<void> {
   const db = getDb();
 
   switch (event.type) {
@@ -137,15 +167,18 @@ export async function POST(req: NextRequest) {
               }
             : undefined;
 
-        // Period fields aren't on the checkout session — pull them from the
+        // Period + status aren't on the checkout session — pull them from the
         // subscription so the billing UI is correct immediately after purchase.
+        // Read the real status too (a trial is `trialing`, not `active`).
         let currentPeriodEnd: Date | null = null;
         let cancelAtPeriodEnd = false;
+        let subStatus = "active";
         if (subscriptionId) {
           try {
             const sub = await getStripe().subscriptions.retrieve(subscriptionId);
             currentPeriodEnd = periodEnd(sub);
             cancelAtPeriodEnd = sub.cancel_at_period_end;
+            subStatus = sub.status;
           } catch (err) {
             console.error("[stripe webhook] retrieve subscription failed:", err);
           }
@@ -157,7 +190,7 @@ export async function POST(req: NextRequest) {
             plan,
             stripeCustomerId: customerId,
             stripeSubscriptionId: subscriptionId,
-            subscriptionStatus: "active",
+            subscriptionStatus: subStatus,
             currentPeriodEnd,
             cancelAtPeriodEnd,
             ...(nextMetadata ? { metadata: nextMetadata } : {}),
@@ -304,9 +337,11 @@ export async function POST(req: NextRequest) {
         subscriptionId = raw.id;
       }
 
+      // Not a downgrade — dunning is still in progress. Logged as its own action
+      // so the audit trail isn't misread as a plan change.
       audit({
         userId,
-        action: "plan.downgrade",
+        action: "payment.failed",
         targetType: "subscription",
         targetId: subscriptionId,
         metadata: {
@@ -319,6 +354,4 @@ export async function POST(req: NextRequest) {
       break;
     }
   }
-
-  return NextResponse.json({ received: true });
 }

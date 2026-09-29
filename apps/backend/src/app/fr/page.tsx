@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { JsonLd } from "@/components/seo/json-ld";
 import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
+import { marketingOffers } from "@/components/pricing/pricing-data";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -109,11 +110,7 @@ export default function FrHomePage() {
           softwareApplicationSchema({
             description:
               "TwinMCP fait tourner les serveurs Model Context Protocol dans des runtimes isolés pour les agents de codage IA (Cursor, Claude Code, Windsurf, Cline).",
-            offers: [
-              { name: "Free", price: "0", url: "/plans" },
-              { name: "Pro", price: "20", url: "/plans" },
-              { name: "Team", price: "50", url: "/plans" },
-            ],
+            offers: marketingOffers(),
           }),
           faqPageSchema(faqFr),
           howToFr,
@@ -263,7 +260,7 @@ export default function FrHomePage() {
           <div className="mt-12 grid gap-5 md:grid-cols-3">
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-xl font-semibold">Free</h3>
-              <p className="mt-2 text-3xl font-bold">0 $</p>
+              <p className="mt-2 text-3xl font-bold">€0</p>
               <p className="mt-1 text-sm text-muted-foreground">Pour évaluer la plateforme</p>
               <ul className="mt-6 space-y-2 text-sm">
                 <li className="flex items-start gap-2">
@@ -282,7 +279,7 @@ export default function FrHomePage() {
             </div>
             <div className="rounded-2xl border-2 border-foreground bg-card p-6">
               <h3 className="text-xl font-semibold">Pro</h3>
-              <p className="mt-2 text-3xl font-bold">20 $</p>
+              <p className="mt-2 text-3xl font-bold">€14.99</p>
               <p className="mt-1 text-sm text-muted-foreground">par mois</p>
               <ul className="mt-6 space-y-2 text-sm">
                 <li className="flex items-start gap-2">
@@ -301,7 +298,7 @@ export default function FrHomePage() {
             </div>
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-xl font-semibold">Team</h3>
-              <p className="mt-2 text-3xl font-bold">50 $</p>
+              <p className="mt-2 text-3xl font-bold">€99</p>
               <p className="mt-1 text-sm text-muted-foreground">par mois</p>
               <ul className="mt-6 space-y-2 text-sm">
                 <li className="flex items-start gap-2">

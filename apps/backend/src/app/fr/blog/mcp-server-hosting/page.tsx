@@ -207,8 +207,8 @@ export default function Post() {
         Windsurf et Cline.
       </p>
       <p>
-        Le coût chez TwinMCP démarre à 0 $ pour un serveur sur l&apos;offre gratuite et scale
-        jusqu&apos;à 20 $ par mois fixe pour Pro (25 serveurs). Setup deux minutes &mdash;
+        Le coût chez TwinMCP démarre à €0 pour un serveur sur l&apos;offre gratuite et scale
+        jusqu&apos;à €14.99 par mois fixe pour Pro (25 serveurs). Setup deux minutes &mdash;
         choisissez un runtime, collez une commande d&apos;install, c&apos;est parti. Le compromis
         est le verrouillage plateforme : la configuration de déploiement est spécifique à la
         plateforme, et migrer demande de reconstruire le conteneur vous-même. (Le code du serveur

@@ -170,7 +170,7 @@ export default function Post() {
         Code, Windsurf, and Cline.
       </p>
       <p>
-        Cost on TwinMCP starts at $0 for one server on the free tier and scales to a flat $20 per
+        Cost on TwinMCP starts at €0 for one server on the free tier and scales to a flat €14.99 per
         month for Pro (25 servers). Setup time is two minutes &mdash; pick a runtime, paste an
         install command, hit go. The trade-off is platform lock-in: the deployment configuration is
         platform-specific, and migrating off requires rebuilding the container yourself. (The MCP
@@ -272,7 +272,7 @@ export default function Post() {
         Two hundred calls per workday across the team, each averaging 200 ms. Local stdio is not an
         option (no sharing). Hetzner CX22: around $5 per month (CPU and memory headroom is enormous
         at this volume). Cloudflare Workers: still under the free tier or about $5 on the paid plan.
-        TwinMCP Team tier: $50 per month for unlimited servers and ten members. Smithery: free but
+        TwinMCP Team tier: €99 per month for unlimited servers and ten members. Smithery: free but
         does not host private code, so this scenario only works if your Postgres MCP is a public,
         generic one (which it is not, by definition).
       </p>
@@ -280,7 +280,7 @@ export default function Post() {
       <p>
         Ten thousand calls per day, half of them with streaming responses. Hetzner: needs to scale
         to CPX31 (~$12/mo) and you are now managing real infrastructure. Cloudflare Workers: $5/mo
-        plus paid SSE add-ons; awkward for streaming. TwinMCP Team: $50/mo flat. Self-hosted
+        plus paid SSE add-ons; awkward for streaming. TwinMCP Team: €99/mo flat. Self-hosted
         Kubernetes on AWS: $200&ndash;500/mo by the time you have HA, observability, and a runbook.
       </p>
 

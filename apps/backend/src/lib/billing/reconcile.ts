@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
+import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers } from "@/db/schema/platform";
 import type { Plan } from "@/db/schema/core";
@@ -36,9 +37,15 @@ export async function reconcileServersForPlan(
       continue;
     }
     stopped.push(s.id);
-    await enqueue({ type: "destroy-server", serverId: s.id }).catch((err) =>
-      console.error(`[reconcile] enqueue destroy ${s.id} failed:`, err)
-    );
+    await enqueue({ type: "destroy-server", serverId: s.id }).catch((err) => {
+      // Surface, don't swallow: a failed enqueue leaves an over-quota server
+      // running with no retry from this path — the team needs to see it.
+      console.error(`[reconcile] enqueue destroy ${s.id} failed:`, err);
+      Sentry.captureException(err, {
+        tags: { area: "billing", stage: "reconcile-enqueue" },
+        extra: { serverId: s.id },
+      });
+    });
   }
   return { stopped };
 }

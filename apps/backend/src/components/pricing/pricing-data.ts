@@ -71,6 +71,25 @@ export const PLANS: PlanTier[] = [
   },
 ];
 
+/**
+ * Offers for JSON-LD (softwareApplicationSchema), derived from PLANS so the
+ * structured data search engines index can never drift from the pricing page.
+ * EUR, to match the real Stripe prices.
+ */
+export function marketingOffers(): {
+  name: string;
+  price: string;
+  priceCurrency: string;
+  url: string;
+}[] {
+  return PLANS.filter((p) => p.monthlyUsd !== null).map((p) => ({
+    name: p.name,
+    price: String(p.monthlyUsd),
+    priceCurrency: "EUR",
+    url: "/plans",
+  }));
+}
+
 export interface FeatureRow {
   group: string;
   label: string;

@@ -78,7 +78,7 @@ export function softwareApplicationSchema(opts: SoftwareApplicationOptions = {})
     "@type": "Offer",
     name: o.name,
     price: o.price,
-    priceCurrency: o.priceCurrency ?? "USD",
+    priceCurrency: o.priceCurrency ?? "EUR",
     ...(o.url ? { url: abs(o.url) } : {}),
   }));
 
@@ -243,12 +243,12 @@ export function productPricingSchema(opts: {
       name: t.name,
       description: t.description,
       price: String(t.priceMonthlyUsd),
-      priceCurrency: "USD",
+      priceCurrency: "EUR",
       priceSpecification: [
         {
           "@type": "UnitPriceSpecification",
           price: t.priceMonthlyUsd,
-          priceCurrency: "USD",
+          priceCurrency: "EUR",
           unitText: "MONTH",
           billingDuration: 1,
           billingIncrement: 1,
@@ -258,7 +258,7 @@ export function productPricingSchema(opts: {
               {
                 "@type": "UnitPriceSpecification",
                 price: t.priceAnnualMonthlyUsd,
-                priceCurrency: "USD",
+                priceCurrency: "EUR",
                 unitText: "MONTH",
                 billingDuration: 12,
                 billingIncrement: 12,

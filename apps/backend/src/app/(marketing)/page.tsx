@@ -10,6 +10,7 @@ import { Faq, defaultFaqItems } from "@/components/marketing/faq";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
 import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
+import { marketingOffers } from "@/components/pricing/pricing-data";
 
 export const metadata: Metadata = {
   title: { absolute: "MCP Server Hosting Without Managing Infra — TwinMCP" },
@@ -64,11 +65,7 @@ export default function HomePage() {
       <JsonLd
         data={[
           softwareApplicationSchema({
-            offers: [
-              { name: "Free", price: "0", url: "/plans" },
-              { name: "Pro", price: "20", url: "/plans" },
-              { name: "Team", price: "50", url: "/plans" },
-            ],
+            offers: marketingOffers(),
           }),
           faqPageSchema(defaultFaqItems),
           homeHowTo,

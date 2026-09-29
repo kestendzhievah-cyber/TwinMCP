@@ -70,6 +70,14 @@ describe("planActionForSubscription", () => {
     });
   });
 
+  it("prefers the price id over STALE metadata (Customer Portal plan switch)", () => {
+    // The customer switched pro→team in the portal: metadata is frozen at "pro"
+    // but the price is now team's. The price is what they're billed → it wins.
+    expect(
+      planActionForSubscription({ status: "active", metadataPlan: "pro", priceId: "price_team_m" })
+    ).toEqual({ kind: "restore", plan: "team" });
+  });
+
   it("KEEPS the plan on past_due — the reactivation fix (no downgrade)", () => {
     expect(planActionForSubscription({ status: "past_due", metadataPlan: "pro" })).toEqual({
       kind: "restore",

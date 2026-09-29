@@ -60,10 +60,13 @@ export type SubscriptionPlanAction =
  * Extracted as a PURE function so the money path is unit-testable.
  *
  * - `unpaid` / `canceled` → downgrade to free (dunning exhausted / canceled).
- * - `active` / `trialing` / `past_due` → restore the paid plan (from the
- *   subscription metadata, else the price id). `past_due` deliberately keeps
- *   the plan because Stripe is still retrying the card — this is what fixes the
- *   "customer pays but is stuck on free after a recovered payment" bug.
+ * - `active` / `trialing` / `past_due` → restore the paid plan. The price id is
+ *   the source of truth (it's what the customer is actually billed), so it wins
+ *   over the subscription metadata — which is set at checkout and goes STALE
+ *   when the plan is switched via the Customer Portal. Metadata is only a
+ *   fallback for when the price id isn't recognised. `past_due` deliberately
+ *   keeps the plan because Stripe is still retrying the card — this is what
+ *   fixes the "customer pays but is stuck on free after a recovered payment" bug.
  * - anything else (`incomplete`, `paused`, …) → leave the plan as-is.
  */
 export function planActionForSubscription(opts: {
@@ -75,7 +78,8 @@ export function planActionForSubscription(opts: {
   if (status === "unpaid" || status === "canceled") return { kind: "downgrade" };
   if (status === "active" || status === "trialing" || status === "past_due") {
     const plan =
-      metadataPlan === "pro" || metadataPlan === "team" ? metadataPlan : planFromPriceId(priceId);
+      planFromPriceId(priceId) ??
+      (metadataPlan === "pro" || metadataPlan === "team" ? metadataPlan : null);
     return plan ? { kind: "restore", plan } : { kind: "none" };
   }
   return { kind: "none" };
