@@ -7,7 +7,7 @@
 // It's enforced server-side on both the /dashboard/admin page and the
 // /api/v2/admin/* API — never trust the hidden nav link alone.
 
-const DEFAULT_ADMIN_EMAILS = ["akestendzhiev@gmail.com"];
+const DEFAULT_ADMIN_EMAILS = ["kestendzhievah@gmail.com", "akestendzhiev@gmail.com"];
 
 /** The current admin allowlist, lowercased + trimmed. */
 export function adminEmails(): string[] {
