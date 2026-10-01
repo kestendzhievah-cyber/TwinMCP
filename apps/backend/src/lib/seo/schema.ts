@@ -24,6 +24,15 @@ export function organizationSchema() {
     name: ORG_NAME,
     url: SITE_URL,
     logo: ORG_LOGO,
+    description:
+      "TwinMCP hosts Model Context Protocol (MCP) servers in isolated runtimes — install from a catalog and connect Cursor, Claude Code, Windsurf, and Cline with one URL and one key.",
+    slogan: "MCPs as a Service",
+    knowsAbout: [
+      "Model Context Protocol",
+      "MCP server hosting",
+      "AI coding agents",
+      "Developer tools",
+    ],
     sameAs: ORG_SAME_AS,
     contactPoint: [
       {
@@ -92,6 +101,13 @@ export function softwareApplicationSchema(opts: SoftwareApplicationOptions = {})
     description:
       opts.description ??
       "TwinMCP runs Model Context Protocol servers in isolated runtimes for AI coding agents (Cursor, Claude Code, Windsurf, Cline).",
+    featureList: [
+      "Hosted MCP server runtimes",
+      "One-click install from the MCP catalog",
+      "Works with Cursor, Claude Code, Windsurf, and Cline",
+      "Isolated sandbox per server with encrypted secrets",
+      "Live logs and audit trail",
+    ],
     publisher: { "@id": `${SITE_URL}/#organization` },
     ...(offers.length > 0 ? { offers } : {}),
     ...(opts.rating
@@ -171,6 +187,7 @@ export interface ArticleSchemaOptions {
   datePublished: string;
   dateModified?: string;
   authorName?: string;
+  inLanguage?: string;
 }
 
 export function articleSchema(opts: ArticleSchemaOptions) {
@@ -183,7 +200,7 @@ export function articleSchema(opts: ArticleSchemaOptions) {
     image: opts.image ? abs(opts.image) : undefined,
     datePublished: opts.datePublished,
     dateModified: opts.dateModified ?? opts.datePublished,
-    inLanguage: "en",
+    inLanguage: opts.inLanguage ?? "en",
     author: {
       "@type": "Organization",
       name: opts.authorName ?? ORG_NAME,

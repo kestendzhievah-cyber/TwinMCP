@@ -48,6 +48,7 @@ export function FrPostLayout({
             description: post.description,
             url: `/fr/blog/${post.slug}`,
             datePublished: post.publishedAt,
+            inLanguage: "fr",
           }),
           ...extraSchemas,
         ]}
