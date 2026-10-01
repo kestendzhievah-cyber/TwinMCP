@@ -24,6 +24,24 @@ export const metadata: Metadata = {
 
 const FR_POSTS = [
   {
+    slug: "smithery-alternatives",
+    title: "Les meilleures alternatives à Smithery pour héberger un serveur MCP (2026)",
+    description:
+      "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, accès équipe.",
+    publishedAt: "2026-10-01",
+    readingTimeMinutes: 10,
+    tags: ["mcp", "smithery", "alternatives", "hébergement", "comparaison"],
+  },
+  {
+    slug: "managed-vs-self-hosted-mcp",
+    title: "Serveur MCP géré vs auto-hébergé : les vrais compromis (2026)",
+    description:
+      "Vos serveurs MCP doivent-ils tourner sur une plateforme gérée ou sur votre propre infrastructure ? Comparaison lucide du coût, de l'exploitation, de l'isolation, de la sécurité et du passage à l'échelle — et le point de bascule où chacun l'emporte.",
+    publishedAt: "2026-10-01",
+    readingTimeMinutes: 10,
+    tags: ["mcp", "hébergement", "auto-hébergé", "géré", "comparaison"],
+  },
+  {
     slug: "what-is-mcp",
     title: "Qu'est-ce que Model Context Protocol ? Le guide complet 2026",
     description:

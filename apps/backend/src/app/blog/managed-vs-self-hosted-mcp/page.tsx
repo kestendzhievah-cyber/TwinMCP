@@ -11,7 +11,14 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 export const metadata: Metadata = {
   title: post.title,
   description: post.description,
-  alternates: { canonical: `/blog/${SLUG}` },
+  alternates: {
+    canonical: `/blog/${SLUG}`,
+    languages: {
+      en: `/blog/${SLUG}`,
+      fr: `/fr/blog/${SLUG}`,
+      "x-default": `/blog/${SLUG}`,
+    },
+  },
   openGraph: {
     type: "article",
     title: post.title,

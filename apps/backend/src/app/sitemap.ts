@@ -134,7 +134,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   );
 
   // French pages (Phase 5 — additive shadow of EN marketing + 3 pillars).
-  const FR_PILLARS = ["what-is-mcp", "mcp-server-hosting", "build-mcp-server"];
+  const FR_PILLARS = [
+    "what-is-mcp",
+    "mcp-server-hosting",
+    "build-mcp-server",
+    "smithery-alternatives",
+    "managed-vs-self-hosted-mcp",
+  ];
   const frPages: MetadataRoute.Sitemap = [
     {
       url: `${SITE_URL}/fr`,
