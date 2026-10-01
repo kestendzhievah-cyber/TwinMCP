@@ -125,6 +125,24 @@ export const BLOG_POSTS: BlogPost[] = [
     readingTimeMinutes: 9,
     tags: ["mcp", "observability", "monitoring"],
   },
+  {
+    slug: "smithery-alternatives",
+    title: "The best Smithery alternatives for hosting MCP servers (2026)",
+    description:
+      "Looking for a Smithery alternative? Compare managed MCP runtimes, public registries, self-hosting, and serverless — with a decision table for private code, isolation, secrets, and team access.",
+    publishedAt: "2026-10-01",
+    readingTimeMinutes: 10,
+    tags: ["mcp", "smithery", "alternatives", "hosting", "comparison"],
+  },
+  {
+    slug: "managed-vs-self-hosted-mcp",
+    title: "Managed vs self-hosted MCP hosting: the real trade-offs (2026)",
+    description:
+      "Should your MCP servers run on a managed platform or your own infrastructure? A clear-eyed comparison of cost, ops, isolation, security, and scaling — and the crossover point where each wins.",
+    publishedAt: "2026-10-01",
+    readingTimeMinutes: 10,
+    tags: ["mcp", "hosting", "self-hosted", "managed", "comparison"],
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
