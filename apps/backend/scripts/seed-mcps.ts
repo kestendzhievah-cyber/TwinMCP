@@ -54,7 +54,7 @@ const OFFICIAL_MCPS: SeedEntry[] = [
     name: "TwinMCP Docs",
     description:
       "Official TwinMCP documentation retrieval. Auto-installed for every server. Wraps /api/v2/context.",
-    repoUrl: "https://github.com/upstash/twinmcp",
+    repoUrl: "https://twinmcp.fr/docs",
     runtime: "node",
     installCmd: "true",
     startCmd: "twinmcp-docs-proxy",

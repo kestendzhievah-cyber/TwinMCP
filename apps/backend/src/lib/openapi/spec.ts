@@ -668,11 +668,11 @@ export function buildOpenApiSpec(originUrl?: string) {
       version: VERSION,
       description:
         "Control plane API for TwinMCP — user-hosted MCP runtimes on Upstash Box. Two auth modes: Supabase session cookie (dashboard) and API key (`Authorization: Bearer ctx7sk_…`) for SDK / MCP clients.",
-      contact: { name: "TwinMCP", url: "https://twinmcp.com" },
+      contact: { name: "TwinMCP", url: "https://twinmcp.fr" },
     },
     servers: originUrl
       ? [{ url: originUrl, description: "Current host" }]
-      : [{ url: "https://twinmcp.com", description: "Production" }],
+      : [{ url: "https://twinmcp.fr", description: "Production" }],
     tags: [
       { name: "Servers", description: "User-owned runtime instances" },
       { name: "MCP installations", description: "MCPs installed on a specific server" },

@@ -114,8 +114,8 @@ body:
         {
           "mcpServers": {
             "twinmcp": {
-              "command": "npx",
-              "args": ["-y", "@upstash/twinmcp-mcp"]
+              "url": "https://twinmcp.fr/api/mcp/<server-slug>/<mcp-slug>",
+              "headers": { "Authorization": "Bearer ctx7sk_…" }
             }
           }
         }

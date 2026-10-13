@@ -2,13 +2,9 @@
 
 ## Supported Versions
 
-The following versions of TwinMCP MCP are currently supported with security updates:
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-
-We recommend always using the latest version (`@kestendzhievah-cyber/TwinMCP-mcp@latest`) to ensure you have the most recent security patches and features.
+TwinMCP is a hosted platform (twinmcp.fr) deployed continuously from `main` — the
+production version is always the latest commit. Security fixes ship through the
+same pipeline and take effect on deploy.
 
 ## Reporting a Vulnerability
 
@@ -17,7 +13,7 @@ We take the security of TwinMCP seriously. If you discover a security vulnerabil
 ### How to Report
 
 - Please use GitHub's [private vulnerability reporting](https://github.com/kestendzhievah-cyber/TwinMCP/security/advisories/new) feature to submit your report
-- Alternatively, you can email security concerns to [twinmcp@upstash.com](mailto:twinmcp@upstash.com)
+- Alternatively, you can email security concerns to [hello@twinmcp.fr](mailto:hello@twinmcp.fr)
 
 ### What to Include
 
