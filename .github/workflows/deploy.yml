@@ -9,6 +9,8 @@ on:
       - "pnpm-lock.yaml"
       - "scripts/smoke-seo.sh"
       - ".github/workflows/deploy.yml"
+      - "Dockerfile"
+      - "docker-compose.yml"
   workflow_dispatch:
     inputs:
       sha:
@@ -16,9 +18,11 @@ on:
         required: false
         type: string
 
+# Never cancel a run mid-flight: killing the SSH deploy step leaves the VPS in
+# a half-deployed state. Queued runs wait for the in-flight one to finish.
 concurrency:
   group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
@@ -29,11 +33,9 @@ env:
 
 jobs:
   # Fail the WHOLE pipeline at the very first step if the DB migration secret is
-  # missing — before we build or deploy anything. Rationale: the `migrate` job
-  # runs after `deploy`, so a missing secret used to let new code ship against an
-  # old schema (marketplace 500 on a column that never got added) while only a
-  # late, easy-to-miss job went red. Gating `build` on this makes a missing
-  # secret impossible to miss and impossible to deploy past. To unblock: add
+  # missing — before we build or deploy anything. `migrate` now runs BEFORE
+  # `deploy` (schema first, then code), but a missing secret should still stop
+  # everything up front rather than at a late job. To unblock: add
   # DATABASE_URL_UNPOOLED in Settings → Secrets and variables → Actions → Secrets.
   preflight:
     runs-on: ubuntu-latest
@@ -107,8 +109,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # Runs AFTER migrate: the schema is always at least as new as the code it
+  # serves. The old code tolerates the new schema as long as migrations stay
+  # expand/contract (additive first; drop columns only once no deployed code
+  # reads them — one deploy later).
   deploy:
-    needs: build
+    needs: migrate
     runs-on: ubuntu-latest
     steps:
       - name: SSH deploy
@@ -148,8 +154,12 @@ jobs:
             # Cleanup dangling images older than 7 days.
             docker image prune -f --filter "until=168h" || true
 
+  # Schema before code (expand/contract): if the migration fails, nothing is
+  # deployed and prod keeps running old code on the old schema — no incident.
+  # The old "deploy then migrate" order served new code on an old schema for
+  # 1–3 minutes on every schema change (marketplace 500 on a missing column).
   migrate:
-    needs: deploy
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -185,7 +195,7 @@ jobs:
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
 
   smoke:
-    needs: migrate
+    needs: deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -197,8 +207,11 @@ jobs:
   rollback:
     # Auto-rollback only on normal pushes — manual workflow_dispatch with a
     # `sha` input is explicit recovery; we don't want to undo that.
+    # `deploy.result != 'skipped'` matters: if migrate fails, deploy never ran,
+    # the old image is still live, and "rolling back" would needlessly downgrade
+    # prod to an even older snapshot.
     needs: [deploy, migrate, smoke]
-    if: failure() && inputs.sha == ''
+    if: failure() && inputs.sha == '' && needs.deploy.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - name: SSH rollback to previous image
