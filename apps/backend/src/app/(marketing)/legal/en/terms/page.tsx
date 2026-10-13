@@ -95,11 +95,11 @@ export default function TermsPageEn() {
           French Consumer Code, implementing Directive 2011/83/EU).
         </p>
         <p>
-          By subscribing, you <strong>expressly request</strong> that the Service be provided to
-          you immediately, without waiting for the withdrawal period to expire. If you withdraw
-          after performance has begun, you remain liable for the price of the service already
-          provided up to the notification of your withdrawal, calculated pro rata; the balance is
-          refunded within 14 days to the payment method you used (article L221-25).
+          By subscribing, you <strong>expressly request</strong> that the Service be provided to you
+          immediately, without waiting for the withdrawal period to expire. If you withdraw after
+          performance has begun, you remain liable for the price of the service already provided up
+          to the notification of your withdrawal, calculated pro rata; the balance is refunded
+          within 14 days to the payment method you used (article L221-25).
         </p>
         <p>
           To exercise this right, send an unambiguous statement to{" "}

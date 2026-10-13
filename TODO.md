@@ -12,7 +12,7 @@ Référence de lancement à jour : **`docs/GO-LIVE.md`** (les autres docs de pla
 
 ### Inscriptions / connexion (bloquant pour les nouveaux clients)
 
-- [ ] **Supabase → Authentication → URL Configuration** : Site URL = `https://twinmcp.fr` + Redirect URLs `https://twinmcp.fr/**`. ⚠️ Tant que c'est `localhost`, les emails de confirmation pointent dans le vide → **les nouveaux comptes ne s'activent jamais**. (Connexion = **Email + mot de passe + magic link** ; Google/GitHub retirés.)
+- [X] **Supabase → Authentication → URL Configuration** : Site URL = `https://twinmcp.fr` + Redirect URLs `https://twinmcp.fr/**`. ⚠️ Tant que c'est `localhost`, les emails de confirmation pointent dans le vide → **les nouveaux comptes ne s'activent jamais**. (Connexion = **Email + mot de passe + magic link** ; Google/GitHub retirés.)
 
 ### Emails (Resend) — active digest, alertes, emails vente/upgrade
 

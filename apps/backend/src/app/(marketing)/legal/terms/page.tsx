@@ -80,8 +80,8 @@ export default function TermsPage() {
           Tu peux demander un remboursement intégral dans les 7 jours suivant la souscription
           initiale d&apos;un plan payant. Au-delà, le plan reste actif jusqu&apos;au terme de la
           période payée et aucun remboursement prorata n&apos;est accordé. Cette garantie
-          commerciale s&apos;ajoute au droit légal de rétractation des consommateurs (§3.5) et ne
-          le remplace pas.
+          commerciale s&apos;ajoute au droit légal de rétractation des consommateurs (§3.5) et ne le
+          remplace pas.
         </p>
         <h3>3.4 Changements de prix</h3>
         <p>
@@ -95,12 +95,12 @@ export default function TermsPage() {
           motiver ta décision (articles L221-18 et suivants du Code de la consommation).
         </p>
         <p>
-          En souscrivant un abonnement, tu demandes <strong>expressément</strong> que le Service
-          te soit fourni immédiatement, sans attendre l&apos;expiration du délai de rétractation.
-          Si tu exerces ton droit de rétractation après ce début d&apos;exécution, tu restes
-          redevable du prix correspondant au service déjà fourni jusqu&apos;à la notification de ta
-          rétractation, calculé au prorata ; le solde t&apos;est remboursé dans les 14 jours, sur
-          le moyen de paiement utilisé (article L221-25).
+          En souscrivant un abonnement, tu demandes <strong>expressément</strong> que le Service te
+          soit fourni immédiatement, sans attendre l&apos;expiration du délai de rétractation. Si tu
+          exerces ton droit de rétractation après ce début d&apos;exécution, tu restes redevable du
+          prix correspondant au service déjà fourni jusqu&apos;à la notification de ta rétractation,
+          calculé au prorata ; le solde t&apos;est remboursé dans les 14 jours, sur le moyen de
+          paiement utilisé (article L221-25).
         </p>
         <p>
           Pour exercer ce droit, envoie-nous une déclaration dénuée d&apos;ambiguïté à{" "}
@@ -110,8 +110,8 @@ export default function TermsPage() {
         <p>
           <em>
             « Je vous notifie par la présente ma rétractation du contrat portant sur
-            l&apos;abonnement TwinMCP souscrit le [date de souscription]. Nom : [ton nom]. Email
-            du compte : [email]. Date : [date du jour]. »
+            l&apos;abonnement TwinMCP souscrit le [date de souscription]. Nom : [ton nom]. Email du
+            compte : [email]. Date : [date du jour]. »
           </em>
         </p>
 
