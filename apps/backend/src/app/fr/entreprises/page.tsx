@@ -27,7 +27,7 @@ const benefits = [
   {
     icon: Boxes,
     title: "Branchée sur votre SI",
-    body: "GitHub, bases de données, CRM, documentation interne, Slack… Plus de 66 connecteurs, une seule URL, une seule clé. L'IA cesse d'être un chatbot isolé et travaille sur vos vraies données.",
+    body: "GitHub, bases de données, CRM, documentation interne, Slack… Plus de 70 connecteurs, une seule URL, une seule clé. L'IA cesse d'être un chatbot isolé et travaille sur vos vraies données.",
   },
   {
     icon: ShieldCheck,
@@ -67,7 +67,7 @@ const faq = [
   },
   {
     q: "Quels outils peut-on connecter ?",
-    a: "Plus de 66 connecteurs : GitHub, GitLab, Postgres, MongoDB, Notion, Slack, HubSpot, Supabase, bases vectorielles, recherche web, et bien d'autres — installables en un clic depuis le catalogue.",
+    a: "Plus de 70 connecteurs : GitHub, GitLab, Postgres, MongoDB, Notion, Slack, HubSpot, Supabase, bases vectorielles, recherche web, et bien d'autres — installables en un clic depuis le catalogue.",
   },
   {
     q: "Faut-il une équipe technique pour démarrer ?",
