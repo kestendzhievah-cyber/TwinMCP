@@ -211,6 +211,14 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
           },
         });
 
+        // The funnel's "paid" step — without this, visitor→paid conversion is
+        // not measurable (client events stop at checkout_started).
+        trackServer({
+          event: "plan_upgraded",
+          distinctId: userId,
+          properties: { plan, previousPlan: previous?.plan ?? null, status: subStatus },
+        });
+
         if (creatorSlug) {
           trackServer({
             event: "promo_redeemed",
