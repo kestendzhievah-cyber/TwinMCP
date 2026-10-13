@@ -55,8 +55,10 @@ export default function LegalNoticePageEn() {
           <dd>{EDITEUR.formeJuridique}</dd>
           <dt>Address</dt>
           <dd>{EDITEUR.adresse}</dd>
-          <dt>Company registration (SIREN / SIRET)</dt>
-          <dd>{EDITEUR.siren}</dd>
+          <dt>Registration number (EIK — Bulgarian Commercial Register)</dt>
+          <dd>{EDITEUR.immatriculation}</dd>
+          <dt>Share capital</dt>
+          <dd>{EDITEUR.capital}</dd>
           <dt>Intra-EU VAT number</dt>
           <dd>{EDITEUR.tva}</dd>
           <dt>Contact</dt>

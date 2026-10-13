@@ -50,8 +50,10 @@ export default function MentionsLegalesPage() {
           <dd>{EDITEUR.formeJuridique}</dd>
           <dt>Adresse</dt>
           <dd>{EDITEUR.adresse}</dd>
-          <dt>SIREN / SIRET</dt>
-          <dd>{EDITEUR.siren}</dd>
+          <dt>N° d&apos;immatriculation (EIK — registre du commerce bulgare)</dt>
+          <dd>{EDITEUR.immatriculation}</dd>
+          <dt>Capital social</dt>
+          <dd>{EDITEUR.capital}</dd>
           <dt>TVA intracommunautaire</dt>
           <dd>{EDITEUR.tva}</dd>
           <dt>Contact</dt>
