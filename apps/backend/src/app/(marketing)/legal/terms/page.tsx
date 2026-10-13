@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "12 mai 2026";
+const LAST_UPDATED = "13 octobre 2026";
 
 export default function TermsPage() {
   return (
@@ -73,18 +73,46 @@ export default function TermsPage() {
         <p>
           Les abonnements Pro et Team sont facturés mensuellement ou annuellement via Stripe. Le
           paiement est dû à l&apos;avance et non remboursable une fois la période entamée, sauf
-          mention contraire (cf. §3.3).
+          mention contraire (cf. §3.3 et, pour les consommateurs, §3.5).
         </p>
-        <h3>3.3 Remboursements</h3>
+        <h3>3.3 Remboursements (garantie commerciale)</h3>
         <p>
           Tu peux demander un remboursement intégral dans les 7 jours suivant la souscription
           initiale d&apos;un plan payant. Au-delà, le plan reste actif jusqu&apos;au terme de la
-          période payée et aucun remboursement prorata n&apos;est accordé.
+          période payée et aucun remboursement prorata n&apos;est accordé. Cette garantie
+          commerciale s&apos;ajoute au droit légal de rétractation des consommateurs (§3.5) et ne
+          le remplace pas.
         </p>
         <h3>3.4 Changements de prix</h3>
         <p>
           Toute modification des tarifs s&apos;applique à partir de la prochaine période de
           facturation, avec un préavis minimum de 30 jours.
+        </p>
+        <h3>3.5 Droit de rétractation (consommateurs)</h3>
+        <p>
+          Si tu es un consommateur, tu disposes d&apos;un délai de <strong>14 jours</strong> à
+          compter de la souscription d&apos;un abonnement payant pour te rétracter, sans avoir à
+          motiver ta décision (articles L221-18 et suivants du Code de la consommation).
+        </p>
+        <p>
+          En souscrivant un abonnement, tu demandes <strong>expressément</strong> que le Service
+          te soit fourni immédiatement, sans attendre l&apos;expiration du délai de rétractation.
+          Si tu exerces ton droit de rétractation après ce début d&apos;exécution, tu restes
+          redevable du prix correspondant au service déjà fourni jusqu&apos;à la notification de ta
+          rétractation, calculé au prorata ; le solde t&apos;est remboursé dans les 14 jours, sur
+          le moyen de paiement utilisé (article L221-25).
+        </p>
+        <p>
+          Pour exercer ce droit, envoie-nous une déclaration dénuée d&apos;ambiguïté à{" "}
+          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>, depuis l&apos;adresse email
+          associée à ton compte. Tu peux utiliser le modèle suivant (non obligatoire) :
+        </p>
+        <p>
+          <em>
+            « Je vous notifie par la présente ma rétractation du contrat portant sur
+            l&apos;abonnement TwinMCP souscrit le [date de souscription]. Nom : [ton nom]. Email
+            du compte : [email]. Date : [date du jour]. »
+          </em>
         </p>
 
         <h2>4. Usage acceptable</h2>

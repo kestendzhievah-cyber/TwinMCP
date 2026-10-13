@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "September 20, 2026";
+const LAST_UPDATED = "October 13, 2026";
 
 export default function TermsPageEn() {
   return (
@@ -74,18 +74,44 @@ export default function TermsPageEn() {
         <p>
           Pro and Team subscriptions are billed monthly or annually via Stripe. Payment is due in
           advance and is non-refundable once the period has started, unless stated otherwise (see
-          §3.3).
+          §3.3 and, for consumers, §3.5).
         </p>
-        <h3>3.3 Refunds</h3>
+        <h3>3.3 Refunds (commercial guarantee)</h3>
         <p>
           You can request a full refund within 7 days of the initial subscription to a paid plan.
           After that, the plan remains active until the end of the paid period and no pro-rata
-          refund is granted.
+          refund is granted. This commercial guarantee is in addition to the statutory right of
+          withdrawal for consumers (§3.5) and does not replace it.
         </p>
         <h3>3.4 Price changes</h3>
         <p>
           Any change in pricing applies from the next billing period, with a minimum of 30
           days&apos; notice.
+        </p>
+        <h3>3.5 Right of withdrawal (consumers)</h3>
+        <p>
+          If you are a consumer, you have <strong>14 days</strong> from subscribing to a paid plan
+          to withdraw from the contract without giving any reason (articles L221-18 et seq. of the
+          French Consumer Code, implementing Directive 2011/83/EU).
+        </p>
+        <p>
+          By subscribing, you <strong>expressly request</strong> that the Service be provided to
+          you immediately, without waiting for the withdrawal period to expire. If you withdraw
+          after performance has begun, you remain liable for the price of the service already
+          provided up to the notification of your withdrawal, calculated pro rata; the balance is
+          refunded within 14 days to the payment method you used (article L221-25).
+        </p>
+        <p>
+          To exercise this right, send an unambiguous statement to{" "}
+          <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a> from the email address associated
+          with your account. You may use the following model (not mandatory):
+        </p>
+        <p>
+          <em>
+            “I hereby give notice that I withdraw from the contract for the TwinMCP subscription
+            taken out on [subscription date]. Name: [your name]. Account email: [email]. Date:
+            [today&apos;s date].”
+          </em>
         </p>
 
         <h2>4. Acceptable use</h2>
