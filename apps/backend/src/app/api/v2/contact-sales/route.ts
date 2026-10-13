@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
+import { getDb } from "@/db";
+import { prospects } from "@/db/schema";
 import { badRequest, rateLimited, serverError } from "@/lib/errors";
 import { checkAuthWriteLimit } from "@/lib/auth/rate-limit";
 import { clientIp } from "@/lib/audit/log";
@@ -33,17 +36,47 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return badRequest("Please fill in the required fields.");
 
+  // Capture the lead in the prospection CRM first (parity with /api/v2/leads):
+  // email delivery is best-effort — Resend may be unconfigured — and a sales
+  // inquiry must never be lost or answered with a 500 when the DB has it.
+  const { company, name, email, users: userCount, message } = parsed.data;
+  let storedInCrm = false;
+  try {
+    await getDb()
+      .insert(prospects)
+      .values({
+        id: randomUUID(),
+        company,
+        contactName: name,
+        email: email.toLowerCase(),
+        source: "Site web (enterprise)",
+        status: "new",
+        notes: `${userCount} users${message ? ` — ${message}` : ""}`,
+        // Surface immediately in the "à relancer" list + nav badge.
+        nextActionAt: new Date(),
+      });
+    storedInCrm = true;
+  } catch (err) {
+    console.error("[contact-sales] prospect insert failed:", err);
+    Sentry.captureException(err, {
+      tags: { area: "contact-sales" },
+      extra: { inquiry: parsed.data },
+    });
+  }
+
   try {
     await sendSalesInquiry(parsed.data);
-    return NextResponse.json({ ok: true });
   } catch (err) {
-    // Never lose a lead: if email delivery isn't configured/working, capture the
-    // full inquiry so it's recoverable from observability.
     console.error("[contact-sales] delivery failed:", err);
     Sentry.captureException(err, {
       tags: { area: "contact-sales" },
       extra: { inquiry: parsed.data },
     });
-    return serverError("Could not send your message. Please email hello@twinmcp.fr directly.");
+    // Only surface an error when the inquiry is recoverable from nowhere.
+    if (!storedInCrm) {
+      return serverError("Could not send your message. Please email hello@twinmcp.fr directly.");
+    }
   }
+
+  return NextResponse.json({ ok: true });
 }

@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { trackServer } from "@/lib/analytics/server";
 import { audit, auditCtxFromRequest } from "@/lib/audit";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,6 +82,13 @@ export async function GET(req: NextRequest) {
           ip: ctx.ip,
           metadata: { method, userAgent: ctx.userAgent },
         });
+        if (u.email) {
+          // Fire-and-forget: Resend may be unconfigured — never block the
+          // post-signup redirect on a lifecycle email.
+          sendWelcomeEmail(u.email).catch((err) => {
+            console.warn("[auth callback] welcome email failed:", err);
+          });
+        }
       } else {
         audit({
           userId: u.id,
