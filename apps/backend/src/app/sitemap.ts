@@ -160,6 +160,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.85,
     },
+    {
+      url: `${SITE_URL}/fr/docs`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
     ...FR_PILLARS.map((slug) => ({
       url: `${SITE_URL}/fr/blog/${slug}`,
       lastModified: now,

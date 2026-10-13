@@ -319,7 +319,22 @@ export function ConnectPanel({
             ) : (
               <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
             )}
-            <span>{testMsg}</span>
+            <span>
+              {testMsg}
+              {test === "error" && (
+                <>
+                  {" "}
+                  <a
+                    href="/docs#troubleshooting"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium underline underline-offset-2"
+                  >
+                    Troubleshooting guide →
+                  </a>
+                </>
+              )}
+            </span>
           </div>
         )}
       </CardContent>

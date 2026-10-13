@@ -25,10 +25,13 @@ export function localePrefix(locale: Locale): string {
 // that. Keep in sync with the pages under `app/fr/`.
 const FR_AVAILABLE_EXACT = new Set<string>([
   "/",
+  "/docs",
   "/blog",
   "/blog/what-is-mcp",
   "/blog/build-mcp-server",
   "/blog/mcp-server-hosting",
+  "/blog/smithery-alternatives",
+  "/blog/managed-vs-self-hosted-mcp",
 ]);
 
 // True when the locale-agnostic path has a French translation available.

@@ -9,7 +9,10 @@ export const metadata: Metadata = {
   title: "Docs — TwinMCP",
   description:
     "TwinMCP documentation: provision MCP servers, install MCPs from the marketplace, and connect Cursor, Claude Code, Windsurf, and Cline in minutes.",
-  alternates: { canonical: "/docs" },
+  alternates: {
+    canonical: "/docs",
+    languages: { en: "/docs", fr: "/fr/docs", "x-default": "/docs" },
+  },
   openGraph: {
     title: "TwinMCP Documentation",
     description:
@@ -73,8 +76,8 @@ export default function DocsPage() {
               — no credit card required.
             </li>
             <li>
-              From the dashboard, click <strong>Create server</strong> and pick a runtime
-              (Node.js, Python, Go, Ruby, or Rust).
+              From the dashboard, click <strong>Create server</strong>, give it a name and
+              pick a box size. Provisioning usually takes about 10–30 seconds.
             </li>
             <li>
               Open the <strong>Marketplace</strong> and install one or more MCPs into your
@@ -106,8 +109,8 @@ export default function DocsPage() {
           <h3 className="mt-6 text-xl font-semibold">API keys</h3>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
             Each TwinMCP server is reachable via an HTTP endpoint protected by a per-user API
-            key. Rotate keys from the dashboard at any time; old keys remain valid for a
-            short grace period.
+            key. Rotate keys from the dashboard at any time; the old key keeps working until
+            you explicitly revoke it, so you can update your clients without downtime.
           </p>
         </section>
 
@@ -149,6 +152,77 @@ export default function DocsPage() {
             >
               Open interactive API reference →
             </Link>
+          </p>
+        </section>
+
+        <section id="troubleshooting" className="mb-12">
+          <h2 className="text-2xl font-semibold tracking-tight">Troubleshooting</h2>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            Each entry quotes the exact message you&apos;ll see, so you can find it with
+            Ctrl+F. If a fix doesn&apos;t work, jump to the last entry.
+          </p>
+
+          <h3 className="mt-6 text-xl font-semibold">Server stuck on “provisioning”</h3>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            Provisioning normally takes about 30 seconds. If the badge hasn&apos;t settled
+            after a couple of minutes, refresh the page — the platform automatically flags
+            servers stuck longer than 15 minutes to <code>error</code>, after which the{" "}
+            <strong>Start</strong> button reappears. Press it to retry. If it loops back to
+            error, contact support (below) with your server slug.
+          </p>
+
+          <h3 className="mt-6 text-xl font-semibold">
+            “Unauthorized — check your API key.” (HTTP 401)
+          </h3>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            The key in your client config is wrong, revoked, or a placeholder. Open{" "}
+            <strong>Dashboard → API keys</strong>, create or copy a key (it starts with{" "}
+            <code>ctx7sk_</code>), and paste it into the <code>Authorization: Bearer …</code>{" "}
+            header of your client config — then restart the client so it reloads the file.
+          </p>
+
+          <h3 className="mt-6 text-xl font-semibold">
+            “Server isn&apos;t running yet — start it and retry in a moment.” (HTTP 503)
+          </h3>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            The server is stopped or still waking up. Open the server page, press{" "}
+            <strong>Start</strong>, wait for the <code>running</code> badge, then retry. Free
+            runtimes sleep when idle — the first request after a pause can take a few
+            seconds longer.
+          </p>
+
+          <h3 className="mt-6 text-xl font-semibold">
+            Status “error” — “The runtime failed to start.”
+          </h3>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            Open the <strong>Logs</strong> tab of the server. The most common cause is a bad
+            config value on an installed MCP (an invalid API token, a wrong connection
+            string). Fix the MCP&apos;s configuration, then press <strong>Start</strong>{" "}
+            again.
+          </p>
+
+          <h3 className="mt-6 text-xl font-semibold">
+            Claude Desktop / Zed can&apos;t connect (mcp-remote bridge)
+          </h3>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            Clients without native HTTP support go through <code>npx -y mcp-remote</code>:
+            you need Node.js 18+ installed, the first run can take a minute while npx
+            downloads the bridge, and the client must be fully restarted after editing its
+            config file. Use the <strong>Test connection</strong> button on the server&apos;s
+            Connect panel to confirm the endpoint itself works — if the test passes, the
+            problem is on the client side.
+          </p>
+
+          <h3 className="mt-6 text-xl font-semibold">Still stuck? Contact support</h3>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            Email{" "}
+            <a href="mailto:hello@twinmcp.fr" className="underline underline-offset-4">
+              hello@twinmcp.fr
+            </a>{" "}
+            with: your <strong>server slug</strong> (shown on the server page), the{" "}
+            <strong>exact error message</strong>, what the <strong>Logs</strong> tab shows,
+            and roughly when it happened (with your timezone). That&apos;s everything needed
+            to investigate without back-and-forth.
           </p>
         </section>
 
