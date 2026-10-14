@@ -108,6 +108,19 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # NEXT_PUBLIC_* are inlined into the client bundle at BUILD time — the
+          # Dockerfile declares these ARGs but they were never passed, so browser
+          # Sentry/PostHog/site-verification shipped empty. Values come from
+          # repository VARIABLES (Settings → Secrets and variables → Actions →
+          # Variables) — they are public-by-design, not secrets. Unset variables
+          # pass through empty, which matches the previous behavior.
+          build-args: |
+            NEXT_PUBLIC_POSTHOG_KEY=${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
+            NEXT_PUBLIC_POSTHOG_HOST=${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_GSC_VERIFICATION=${{ vars.NEXT_PUBLIC_GSC_VERIFICATION }}
+            NEXT_PUBLIC_BING_VERIFICATION=${{ vars.NEXT_PUBLIC_BING_VERIFICATION }}
+            NEXT_PUBLIC_YANDEX_VERIFICATION=${{ vars.NEXT_PUBLIC_YANDEX_VERIFICATION }}
 
   # Runs AFTER migrate: the schema is always at least as new as the code it
   # serves. The old code tolerates the new schema as long as migrations stay
