@@ -87,7 +87,8 @@ export default function PlansPage() {
         description="Free tier is real — no expiry, no card. Upgrade only when you outgrow the quota."
       >
         <PricingExperience />
-        <div className="mt-10 flex justify-center">
+        {/* The section's address line: facts between two hairlines. */}
+        <div className="mx-auto mt-12 max-w-3xl border-y border-border py-4">
           <TrustSignals />
         </div>
       </Section>
@@ -111,19 +112,20 @@ export default function PlansPage() {
         id="pricing-faq"
       />
 
-      {/* Final CTA */}
+      {/* Final CTA: a single card on the bone page — title, a short rule, lead, buttons. */}
       <Section bordered>
-        <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-2xl border border-border/80 bg-card p-10 text-center md:p-12">
-          <h2 className="text-balance text-2xl font-semibold tracking-tight md:text-3xl">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 border border-border bg-card px-6 py-12 text-center shadow-sm md:px-12 md:py-14">
+          <h2 className="text-balance text-3xl font-medium md:text-4xl">
             Ship faster with context that lives where your agent runs.
           </h2>
-          <p className="text-balance text-base text-muted-foreground">
+          <div className="h-px w-12 bg-foreground/40" />
+          <p className="max-w-xl text-balance text-lg text-muted-foreground">
             Start free. Upgrade when (and only when) it pays for itself.
           </p>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href={"/sign-up?plan=free" as Route}>
-                Start free → no credit card
+                Start free · no credit card
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

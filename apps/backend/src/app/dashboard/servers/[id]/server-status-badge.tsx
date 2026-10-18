@@ -3,14 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { ServerStatus } from "@/db/schema/platform";
 
-const VARIANT: Record<ServerStatus, "success" | "secondary" | "warning" | "destructive"> = {
+// Status tints (DESIGN.md §4.9): running green, provisioning ochre, stopped
+// plain stock, error oxblood, destroyed an empty outline.
+const VARIANT: Record<
+  ServerStatus,
+  "success" | "secondary" | "warning" | "destructive" | "outline"
+> = {
   running: "success",
   provisioning: "warning",
   stopped: "secondary",
   error: "destructive",
-  destroyed: "secondary",
+  destroyed: "outline",
 };
 
 // Plain-language explanation of each status, shown on hover so the raw enum
@@ -68,6 +74,14 @@ export function ServerStatusBadge({
 
   return (
     <Badge variant={VARIANT[status]} title={HELP[status]} className="capitalize">
+      {/* The status dot — the one place a circle is allowed; it breathes while in flight. */}
+      <span
+        aria-hidden
+        className={cn(
+          "h-1.5 w-1.5 rounded-full bg-current",
+          TRANSIENT.includes(status) && "animate-pulse"
+        )}
+      />
       {status}
     </Badge>
   );

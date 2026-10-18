@@ -1,4 +1,5 @@
-import { Boxes, Store, Activity, MoreHorizontal } from "lucide-react";
+import { Boxes, Store, Activity } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const fakeServers = [
   { name: "prod-cluster", slug: "prod-cluster-7f3a", status: "running", region: "fra1" },
@@ -6,38 +7,37 @@ const fakeServers = [
   { name: "data-pipeline", slug: "data-pipeline-9e1d", status: "provisioning", region: "fra1" },
 ];
 
-const statusStyles: Record<string, string> = {
-  running:
-    "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-400/20",
-  provisioning:
-    "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-400/20",
-};
+const statusVariant = {
+  running: "success",
+  provisioning: "warning",
+} as const;
 
+// The product, drawn as a card on the stack: a hairline title bar with the
+// address in typewriter, a small-caps sidebar with an ink rule on the active
+// item, and a ledger of servers (DESIGN.md §4.10).
 export function HeroMockup() {
   return (
     <div
       aria-hidden
-      className="relative w-full max-w-xl select-none overflow-hidden rounded-xl border border-border/80 bg-card shadow-2xl shadow-black/5 dark:shadow-black/40"
+      className="relative w-full max-w-xl select-none overflow-hidden border border-foreground/60 bg-card shadow-stack"
     >
-      {/* fake titlebar */}
-      <div className="flex h-9 items-center gap-1.5 border-b border-border/60 bg-muted/40 px-4">
-        <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
-        <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
-        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
-        <span className="ml-3 truncate font-mono text-[11px] text-muted-foreground">
+      {/* title bar */}
+      <div className="flex h-9 items-center justify-between border-b border-border bg-secondary/60 px-4">
+        <span className="truncate font-mono text-xs text-muted-foreground">
           twinmcp.fr/dashboard/servers
         </span>
+        <span className="smallcaps tracking-sc text-xs text-muted-foreground">Control plane</span>
       </div>
 
       {/* layout */}
-      <div className="grid grid-cols-[140px_1fr] text-[12px]">
+      <div className="grid grid-cols-[1fr] text-xs sm:grid-cols-[150px_1fr]">
         {/* sidebar */}
-        <div className="border-r border-border/60 p-3">
-          <div className="mb-3 flex items-center gap-1.5 px-1">
-            <span className="grid h-4 w-4 place-items-center rounded bg-foreground text-[8px] font-bold text-background">
-              T
-            </span>
-            <span className="font-semibold tracking-tight">TwinMCP</span>
+        <div className="hidden border-r border-border p-3 sm:block">
+          <div className="mb-4 px-2">
+            <p className="smallcaps text-sm font-medium tracking-[0.14em]">TwinMCP</p>
+            <p className="smallcaps text-[0.625rem] tracking-[0.22em] text-muted-foreground">
+              Managed MCP Runtimes
+            </p>
           </div>
           <ul className="space-y-0.5">
             {[
@@ -48,11 +48,13 @@ export function HeroMockup() {
               <li
                 key={label}
                 className={
-                  "flex items-center gap-2 rounded-md px-2 py-1.5 " +
-                  (active ? "bg-secondary text-foreground" : "text-muted-foreground")
+                  "smallcaps tracking-sc flex items-center gap-2 border-l-2 py-1.5 pl-2 " +
+                  (active
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground")
                 }
               >
-                <Icon className="h-3 w-3" />
+                <Icon className="h-3.5 w-3.5" />
                 <span>{label}</span>
               </li>
             ))}
@@ -61,47 +63,48 @@ export function HeroMockup() {
 
         {/* main */}
         <div className="p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex items-end justify-between border-b-[3px] border-double border-border pb-3">
             <div>
-              <p className="font-semibold tracking-tight">Servers</p>
-              <p className="text-[10px] text-muted-foreground">3 active · Pro plan</p>
+              <p className="smallcaps tracking-sc text-sm font-medium">Servers</p>
+              <p className="lining text-xs italic text-muted-foreground">3 active · Pro plan</p>
             </div>
-            <span className="rounded-md bg-foreground px-2 py-1 text-[10px] font-medium text-background">
-              + New server
+            <span className="smallcaps tracking-sc border border-primary bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
+              New server
             </span>
           </div>
 
-          <div className="overflow-hidden rounded-md border border-border/60">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-3 border-b border-border/60 bg-muted/30 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              <span>Name</span>
-              <span>Status</span>
-              <span>Region</span>
-            </div>
-            {fakeServers.map((s) => (
-              <div
-                key={s.slug}
-                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-border/60 px-3 py-2 last:border-b-0"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{s.name}</p>
-                  <p className="truncate font-mono text-[10px] text-muted-foreground">{s.slug}</p>
-                </div>
-                <span
-                  className={
-                    "rounded-full px-2 py-0.5 text-[10px] font-medium capitalize " +
-                    statusStyles[s.status]
-                  }
-                >
-                  {s.status}
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground">{s.region}</span>
-              </div>
-            ))}
-          </div>
+          <table className="lining w-full text-xs">
+            <thead>
+              <tr className="smallcaps tracking-sc border-b border-foreground/50 text-left text-muted-foreground">
+                <th className="py-1.5 pr-3 font-medium">Name</th>
+                <th className="py-1.5 pr-3 font-medium">Status</th>
+                <th className="py-1.5 font-medium">Region</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fakeServers.map((s) => (
+                <tr key={s.slug} className="border-b border-border last:border-b-0">
+                  <td className="py-2 pr-3">
+                    <p className="font-medium text-foreground">{s.name}</p>
+                    <p className="truncate font-mono text-muted-foreground">{s.slug}</p>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Badge
+                      variant={statusVariant[s.status as keyof typeof statusVariant]}
+                      className="capitalize"
+                    >
+                      {s.status}
+                    </Badge>
+                  </td>
+                  <td className="py-2 font-mono text-muted-foreground">{s.region}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-          <div className="mt-3 flex items-center justify-between rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-[11px]">
+          <div className="mt-3 flex items-center justify-between border border-border bg-secondary/40 px-3 py-2 text-xs">
             <span className="text-muted-foreground">prod-cluster · 8 MCPs installed</span>
-            <MoreHorizontal className="h-3 w-3 text-muted-foreground" />
+            <span className="smallcaps tracking-sc text-muted-foreground">Details</span>
           </div>
         </div>
       </div>

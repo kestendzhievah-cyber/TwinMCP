@@ -1,11 +1,34 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "TwinMCP — Run your MCP servers without managing infra";
+export const alt = "TwinMCP — Managed MCP runtimes";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+// The social card is literally the business card (docs/DESIGN.md §5): bone
+// stock, a hairline frame, the name engraved in letterspaced capitals, and one
+// address line of real facts. Satori has no small caps, so capitals + tracking.
+const BONE = "#f4f0e8";
+const CARD = "#f9f6ef";
+const INK = "#2b2825";
+const MUTED = "#665f55";
+const RULE = "#d8d1c3";
+
+// In production the bundler hands back an absolute URL for the traced asset;
+// in dev it is root-relative (/_next/static/media/…), so anchor it on the
+// site origin before fetching.
+const BASE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+function font(url: URL): Promise<ArrayBuffer> {
+  const href = String(url);
+  const abs = href.startsWith("/") ? new URL(href, BASE) : url;
+  return fetch(abs).then((r) => r.arrayBuffer());
+}
+const garamond = font(new URL("./fonts/EBGaramond-Medium.ttf", import.meta.url));
+const courier = font(new URL("./fonts/CourierPrime-Regular.ttf", import.meta.url));
+
+export default async function OpengraphImage() {
+  const [garamondData, courierData] = await Promise.all([garamond, courier]);
+
   return new ImageResponse(
     (
       <div
@@ -13,114 +36,88 @@ export default function OpengraphImage() {
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "72px",
-          background: "#0a0a0a",
-          color: "#fafafa",
-          fontFamily: "system-ui, sans-serif",
+          background: BONE,
+          padding: 36,
+          fontFamily: "Garamond",
+          color: INK,
         }}
       >
-        {/* Halo gradient — top-right */}
         <div
           style={{
-            position: "absolute",
-            top: -200,
-            right: -200,
-            width: 700,
-            height: 700,
-            background:
-              "radial-gradient(circle, rgba(139,92,246,0.35) 0%, rgba(59,130,246,0.15) 40%, transparent 70%)",
-            filter: "blur(40px)",
-          }}
-        />
-
-        {/* Logo + brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 10,
-              background: "#fafafa",
-              color: "#0a0a0a",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 28,
-              fontWeight: 800,
-              letterSpacing: -1,
-            }}
-          >
-            T
-          </div>
-          <span style={{ fontSize: 28, fontWeight: 600, letterSpacing: -0.5 }}>TwinMCP</span>
-        </div>
-
-        {/* Headline */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 1000 }}>
-          <p
-            style={{
-              fontSize: 22,
-              fontWeight: 500,
-              textTransform: "uppercase",
-              letterSpacing: 4,
-              color: "#a1a1aa",
-              margin: 0,
-            }}
-          >
-            MCPs as a Service
-          </p>
-          <h1
-            style={{
-              fontSize: 84,
-              fontWeight: 700,
-              lineHeight: 1.05,
-              letterSpacing: -2,
-              margin: 0,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 16,
-            }}
-          >
-            <span>Run your MCP servers</span>
-            <span
-              style={{
-                background: "linear-gradient(90deg, #a78bfa 0%, #60a5fa 100%)",
-                backgroundClip: "text",
-                color: "transparent",
-              }}
-            >
-              without managing infra.
-            </span>
-          </h1>
-        </div>
-
-        {/* Footer row */}
-        <div
-          style={{
+            flex: 1,
             display: "flex",
-            alignItems: "center",
+            flexDirection: "column",
             justifyContent: "space-between",
-            fontSize: 22,
-            color: "#a1a1aa",
-            borderTop: "1px solid rgba(250,250,250,0.1)",
-            paddingTop: 28,
+            background: CARD,
+            border: `1px solid ${RULE}`,
+            padding: "40px 56px 36px",
           }}
         >
-          <span style={{ display: "flex", gap: 28 }}>
-            <span>Cursor</span>
-            <span>·</span>
-            <span>Claude Code</span>
-            <span>·</span>
-            <span>Windsurf</span>
-            <span>·</span>
-            <span>Cline</span>
-          </span>
-          <span style={{ color: "#fafafa" }}>twinmcp.fr</span>
+          {/* top line: tagline left, site right */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontFamily: "Courier",
+              fontSize: 20,
+              letterSpacing: 4,
+              color: MUTED,
+            }}
+          >
+            <span>MANAGED MCP RUNTIMES</span>
+            <span>twinmcp.fr</span>
+          </div>
+
+          {/* the engraved name */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 132, letterSpacing: 14, lineHeight: 1 }}>TWINMCP</div>
+            <div
+              style={{
+                display: "flex",
+                width: 72,
+                height: 2,
+                background: RULE,
+                marginTop: 34,
+                marginBottom: 34,
+              }}
+            />
+            <div style={{ fontSize: 40, color: MUTED, lineHeight: 1.2, maxWidth: 900 }}>
+              Run your MCP servers without managing infra.
+            </div>
+          </div>
+
+          {/* address line */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              borderTop: `1px solid ${RULE}`,
+              paddingTop: 22,
+              fontFamily: "Courier",
+              fontSize: 19,
+              letterSpacing: 3,
+              color: MUTED,
+            }}
+          >
+            <span>CURSOR · CLAUDE CODE · WINDSURF · CLINE</span>
+            <span>HELLO@TWINMCP.FR</span>
+          </div>
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+      fonts: [
+        { name: "Garamond", data: garamondData, weight: 500, style: "normal" },
+        { name: "Courier", data: courierData, weight: 400, style: "normal" },
+      ],
+    }
   );
 }

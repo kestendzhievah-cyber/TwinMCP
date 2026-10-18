@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { IDE_LABELS, type IdeKey } from "@/lib/mcp/client-config";
 
 const IDE_KEYS = Object.keys(IDE_LABELS) as IdeKey[];
@@ -56,8 +58,11 @@ export function SettingsPanel({ email, idePreference }: { email: string; idePref
 
   return (
     <div className="space-y-8">
+      {/* Page header (DESIGN.md §5): small-caps name, italic line, double rule. */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">Settings</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">Your account and preferences.</p>
+        <Separator variant="double" className="mt-4" />
       </div>
 
       <Card className="max-w-xl">
@@ -67,28 +72,24 @@ export function SettingsPanel({ email, idePreference }: { email: string; idePref
             Your profile and the default IDE used for connect snippets.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <CardContent className="space-y-5">
+          <div className="flex flex-col gap-2">
+            <span className="smallcaps tracking-sc text-xs font-medium leading-none text-foreground/85">
               Email
             </span>
-            <div className="rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm">
+            {/* Read-only field: debossed like an input, but on the darker stock. */}
+            <div className="flex min-h-10 items-center break-all border border-border bg-secondary/60 px-3 py-2 text-sm">
               {email || "—"}
             </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="ide-pref"
-              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >
-              Default IDE
-            </label>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="ide-pref">Default IDE</Label>
             <select
               id="ide-pref"
               value={ide}
               onChange={(e) => saveIde(e.target.value)}
               disabled={savingIde}
-              className="h-9 max-w-xs rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-10 w-full max-w-xs border border-input bg-card px-3 text-sm text-foreground shadow-inner transition-colors focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-card [&>option]:text-foreground"
             >
               <option value="">Not set</option>
               {IDE_KEYS.map((k) => (
@@ -101,6 +102,7 @@ export function SettingsPanel({ email, idePreference }: { email: string; idePref
         </CardContent>
       </Card>
 
+      {/* Danger zone: oxblood hairline and title, the button stamps in oxblood on hover. */}
       <Card className="max-w-xl border-destructive/40">
         <CardHeader>
           <CardTitle className="text-destructive">Delete account</CardTitle>
@@ -115,7 +117,7 @@ export function SettingsPanel({ email, idePreference }: { email: string; idePref
             <DialogTrigger asChild>
               <Button
                 variant="outline"
-                className="border-destructive text-destructive hover:bg-destructive/5"
+                className="border-destructive/60 text-destructive hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 Delete my account
               </Button>

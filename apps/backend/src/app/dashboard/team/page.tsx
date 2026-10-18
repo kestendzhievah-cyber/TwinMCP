@@ -4,6 +4,7 @@ import { teamspaceMembers, teamspaces, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { meetsPlan } from "@/lib/plan-features";
 import { UpgradeCard } from "@/components/billing/upgrade-card";
+import { Separator } from "@/components/ui/separator";
 import { TeamPanel } from "./panel";
 
 export default async function TeamPage() {
@@ -63,7 +64,11 @@ export default async function TeamPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">Team</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">
+          Members and roles on your teamspace.
+        </p>
+        <Separator variant="double" className="mt-4" />
       </div>
       {locked ? (
         <UpgradeCard

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PLANS, formatPrice } from "@/components/pricing/pricing-data";
@@ -35,15 +36,18 @@ export function StepPlan({ initialPlan, onSelectPlan }: StepPlanProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1.5">
-        <h1 className="text-xl font-semibold tracking-tight">Choose your plan</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-medium md:text-3xl">Choose your plan</h1>
+        <p className="mt-2 text-base text-muted-foreground">
           Start free, or unlock more servers and bigger runtimes. You can change this anytime.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Pricing tiers (DESIGN.md §5): hairline cards, small-capital names,
+          lining prices; the recommended tier is the highlight — ink hairline,
+          the stack of cards under it and the one gilt seal of the view. */}
+      <div className="grid gap-5 md:grid-cols-3">
         {tiers.map((p) => {
           const recommended = p.highlighted;
           const isPending = pending === p.id;
@@ -52,33 +56,41 @@ export function StepPlan({ initialPlan, onSelectPlan }: StepPlanProps) {
             <div
               key={p.id}
               className={cn(
-                "flex flex-col rounded-xl border p-5 transition-colors",
-                recommended || preSelected ? "border-foreground shadow-sm" : "border-border"
+                "relative flex flex-col border bg-card p-6 transition-colors",
+                recommended
+                  ? "border-foreground/70 shadow-stack"
+                  : preSelected
+                    ? "border-foreground/70"
+                    : "border-border"
               )}
             >
               {recommended && (
-                <span className="mb-2 w-fit rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-background">
-                  Recommended
-                </span>
+                // The seal straddles the card's top rule; the bg-card wrapper keeps the
+                // hairline from showing through the badge's translucent tint.
+                <div className="absolute -top-3 left-6 bg-card">
+                  <Badge variant="gilt">Recommended</Badge>
+                </div>
               )}
-              <h2 className="text-base font-semibold">{p.name}</h2>
-              <div className="mt-1 flex items-baseline gap-1">
-                <span className="text-2xl font-bold">{formatPrice(p, "monthly")}</span>
-                {p.monthlyUsd !== 0 && <span className="text-xs text-muted-foreground">/mo</span>}
+              <h2 className="smallcaps tracking-sc text-lg font-medium">{p.name}</h2>
+              <div className="mt-3 flex items-baseline gap-1.5">
+                <span className="lining text-4xl font-medium">{formatPrice(p, "monthly")}</span>
+                {p.monthlyUsd !== 0 && (
+                  <span className="text-sm italic text-muted-foreground">/mo</span>
+                )}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">{p.blurb}</p>
+              <p className="mt-2 text-sm italic text-muted-foreground">{p.blurb}</p>
 
-              <ul className="mt-4 space-y-2 text-sm">
+              <ul className="lining mt-5 flex-1 space-y-2 text-sm">
                 {p.bullets.map((b) => (
                   <li key={b} className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                     <span>{b}</span>
                   </li>
                 ))}
               </ul>
 
               <Button
-                className="mt-5"
+                className="mt-6"
                 variant={recommended ? "default" : "outline"}
                 disabled={pending !== null}
                 onClick={() => choose(p.id as SelectablePlan)}
@@ -99,7 +111,7 @@ export function StepPlan({ initialPlan, onSelectPlan }: StepPlanProps) {
         })}
       </div>
 
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-center text-xs italic text-muted-foreground">
         Paid plans open a secure Stripe checkout. Cancel anytime.
       </p>
     </div>

@@ -36,6 +36,8 @@ function categoryLabel(cat: string | null): string {
   return cat.charAt(0).toUpperCase() + cat.slice(1);
 }
 
+// A category chip is a square hairline tab set in small capitals; the chosen
+// one is inked like a stamp. Counts sit in lining figures (DESIGN.md §2, §3).
 function CategoryChip({
   label,
   count,
@@ -53,18 +55,15 @@ function CategoryChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "smallcaps tracking-sc inline-flex min-h-10 items-center gap-2 border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px",
         active
-          ? "border-transparent bg-primary text-primary-foreground"
-          : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+          ? "border-foreground bg-foreground text-background"
+          : "border-border bg-card text-muted-foreground hover:border-foreground/60 hover:text-foreground"
       )}
     >
       {label}
       <span
-        className={cn(
-          "rounded-full px-1.5 text-xs tabular-nums",
-          active ? "bg-primary-foreground/20" : "bg-secondary text-muted-foreground"
-        )}
+        className={cn("lining text-xs", active ? "text-background/75" : "text-muted-foreground")}
       >
         {count}
       </span>
@@ -215,7 +214,7 @@ export function McpCatalogGrid({
         </Select>
       </div>
 
-      {/* Browse by category (mcp.so-style chips) */}
+      {/* Browse by category: an index of square hairline chips. */}
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filter by category">
         <CategoryChip
           label="All"
@@ -234,16 +233,20 @@ export function McpCatalogGrid({
         ))}
       </div>
 
-      <p className="mt-3 text-xs text-muted-foreground" aria-live="polite">
+      <p className="lining mt-4 text-xs italic text-muted-foreground" aria-live="polite">
         {filtered.length} of {catalog.length} MCP{catalog.length === 1 ? "" : "s"}
         {filtered.length > visible ? ` · showing ${visible}` : ""}
       </p>
 
       {filtered.length === 0 ? (
-        <div className="mt-2 rounded-md border border-dashed py-12 text-center text-sm text-muted-foreground">
-          No MCPs match your filters.
+        // Empty slot (DESIGN.md §5): dashed ink hairline, bare icon, italic line.
+        <div className="mt-4 flex flex-col items-center gap-3 border border-dashed border-foreground/40 px-4 py-12 text-center">
+          <Search aria-hidden className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm italic text-muted-foreground">No MCPs match your filters.</p>
         </div>
       ) : (
+        // Catalogue cards: bone stock, one hairline (ink on hover), the name in
+        // small capitals, runtime and version in Courier, the action under a rule.
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filtered.slice(0, visible).map((mcp) => {
             const local = mcp.hostMode === "local";
@@ -261,66 +264,56 @@ export function McpCatalogGrid({
                     setDetail(mcp);
                   }
                 }}
-                className="flex cursor-pointer flex-col transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex cursor-pointer flex-col transition-colors hover:border-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <CardHeader className="flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base">{mcp.name}</CardTitle>
+                <CardHeader className="flex-1 space-y-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-base leading-snug">{mcp.name}</CardTitle>
+                    {/* Seals stay plain hairline here; the gilt "official" is
+                        kept for the detail card (one seal per view, §4.8). */}
                     <div className="flex shrink-0 flex-wrap justify-end gap-1">
                       {isInstalled && (
-                        <Badge
-                          variant="outline"
-                          className="border-emerald-500/40 text-xs text-emerald-700 dark:text-emerald-400"
-                        >
-                          <Check aria-hidden className="mr-0.5 h-3 w-3" />
+                        <Badge variant="success">
+                          <Check aria-hidden className="h-3 w-3" />
                           installed
                         </Badge>
                       )}
-                      {local && (
-                        <Badge
-                          variant="outline"
-                          className="border-sky-500/40 text-xs text-sky-700 dark:text-sky-400"
-                        >
-                          local
-                        </Badge>
-                      )}
-                      {mcp.isOfficial && (
-                        <Badge variant="outline" className="text-xs">
-                          official
-                        </Badge>
-                      )}
+                      {local && <Badge variant="info">local</Badge>}
+                      {mcp.isOfficial && <Badge variant="outline">official</Badge>}
                     </div>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-1">
+                  {/* Meta line: category in small caps, runtime and version in
+                      Courier, set off by middle dots (DESIGN.md §3). */}
+                  <p className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                     {mcp.category && (
-                      <Badge variant="secondary" className="text-xs">
-                        {categoryLabel(mcp.category)}
-                      </Badge>
+                      <>
+                        <span className="smallcaps tracking-sc">{categoryLabel(mcp.category)}</span>
+                        <span aria-hidden>·</span>
+                      </>
                     )}
-                    <Badge variant="secondary" className="font-mono text-xs">
-                      {mcp.runtime}
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      v{mcp.version}
-                    </Badge>
-                  </div>
-                  <CardDescription className="mt-2 line-clamp-3">{mcp.description}</CardDescription>
+                    <span className="font-mono">{mcp.runtime}</span>
+                    <span aria-hidden>·</span>
+                    <span className="font-mono">v{mcp.version}</span>
+                  </p>
+                  <CardDescription className="mt-3 line-clamp-3 not-italic">
+                    {mcp.description}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="border-t border-border px-6 py-4">
                   {/* Stop card-level clicks from firing when using the footer. */}
                   <div onClick={(e) => e.stopPropagation()}>
                     {isInstalled ? (
-                      <Button asChild size="sm" variant="outline" className="w-full">
+                      <Button asChild variant="outline" className="lining w-full">
                         <Link href={`/dashboard/servers/${on[0].serverId}` as Route}>
                           {on.length > 1 ? `Installed · ${on.length} servers` : "Installed · View"}
                         </Link>
                       </Button>
                     ) : userServers.length === 0 ? (
-                      <Button asChild size="sm" variant="outline" className="w-full">
+                      <Button asChild variant="outline" className="w-full">
                         <Link href={"/dashboard/servers" as Route}>Create a server first</Link>
                       </Button>
                     ) : (
-                      <Button size="sm" className="w-full" onClick={() => setPicking(mcp)}>
+                      <Button className="w-full" onClick={() => setPicking(mcp)}>
                         Install
                       </Button>
                     )}
@@ -334,7 +327,11 @@ export function McpCatalogGrid({
 
       {filtered.length > visible && (
         <div className="mt-6 flex justify-center">
-          <Button variant="outline" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
+          <Button
+            variant="outline"
+            className="lining"
+            onClick={() => setVisible((v) => v + PAGE_SIZE)}
+          >
             Load more ({filtered.length - visible} more)
           </Button>
         </div>

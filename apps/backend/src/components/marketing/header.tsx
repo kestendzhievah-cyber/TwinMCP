@@ -55,7 +55,7 @@ export function MarketingHeader({ locale = "en" }: { locale?: Locale }) {
   const homeHref = (locale === "fr" ? "/fr" : "/") as Route;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
         <Link href={homeHref} className="shrink-0" aria-label={t.home}>
           <Logo />
@@ -107,7 +107,7 @@ export function MarketingHeader({ locale = "en" }: { locale?: Locale }) {
           type="button"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"
+          className="inline-flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"
           onClick={() => setOpen((v) => !v)}
         >
           {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -118,7 +118,7 @@ export function MarketingHeader({ locale = "en" }: { locale?: Locale }) {
         <div className="mx-auto flex max-w-6xl flex-col gap-1 px-6 py-4">
           {navLinks.map((l) => {
             const className =
-              "rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground";
+              " px-2 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground";
             if (l.kind === "external") {
               return (
                 <a

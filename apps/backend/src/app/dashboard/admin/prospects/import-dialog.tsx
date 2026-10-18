@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -162,8 +163,8 @@ export function ImportDialog({ onImported }: { onImported: () => void }) {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <Upload className="h-3.5 w-3.5" />
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <Upload className="h-4 w-4" />
         Importer
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -176,23 +177,37 @@ export function ImportDialog({ onImported }: { onImported: () => void }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {/* The native file button, set like an outline button (small caps, ink
+                hairline, inverts on hover); the chosen file name stays an italic aside. */}
             <input
               type="file"
               accept=".csv,text/csv,text/plain"
               onChange={onFile}
-              className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-transparent file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-accent"
+              className="block w-full cursor-pointer text-sm italic text-muted-foreground file:smallcaps file:tracking-sc file:mr-4 file:h-10 file:cursor-pointer file:border file:border-solid file:border-foreground/60 file:bg-transparent file:px-5 file:text-sm file:font-medium file:not-italic file:text-foreground file:transition-colors hover:file:border-foreground hover:file:bg-foreground hover:file:text-background"
             />
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={8}
-              placeholder={
-                "entreprise,contact,email,téléphone,rôle,source,valeur\nAcme SAS,Marie Dupont,marie@acme.fr,+33612345678,CTO,LinkedIn,5000"
-              }
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            />
-            <p className="text-xs text-muted-foreground">
+            {/* Typewriter block (DESIGN.md §4.6): a small-caps tab over a Courier field;
+                the whole block takes the ink hairline on focus, like an input. */}
+            <div className="border border-input transition-colors focus-within:border-foreground">
+              <p className="smallcaps tracking-sc border-b border-border bg-secondary/60 px-3 py-1.5 text-xs text-muted-foreground">
+                CSV
+              </p>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={8}
+                placeholder={
+                  "entreprise,contact,email,téléphone,rôle,source,valeur\nAcme SAS,Marie Dupont,marie@acme.fr,+33612345678,CTO,LinkedIn,5000"
+                }
+                className="block w-full resize-y border-0 bg-card px-3 py-2 font-mono text-xs leading-relaxed text-foreground shadow-inner placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-0"
+              />
+            </div>
+            <p
+              className={cn(
+                "lining text-xs italic text-muted-foreground",
+                rows.length > 0 && "not-italic text-success"
+              )}
+            >
               {rows.length > 0
                 ? `${rows.length} prospect(s) prêt(s) à importer.`
                 : "Aucune ligne valide détectée (une entreprise est requise par ligne)."}
@@ -203,7 +218,11 @@ export function ImportDialog({ onImported }: { onImported: () => void }) {
             <Button variant="outline" onClick={() => setOpen(false)} disabled={importing}>
               Annuler
             </Button>
-            <Button onClick={() => void runImport()} disabled={importing || rows.length === 0}>
+            <Button
+              className="lining"
+              onClick={() => void runImport()}
+              disabled={importing || rows.length === 0}
+            >
               {importing ? "Import…" : `Importer ${rows.length || ""}`.trim()}
             </Button>
           </DialogFooter>

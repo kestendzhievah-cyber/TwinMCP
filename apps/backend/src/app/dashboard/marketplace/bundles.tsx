@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Package } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { BUNDLES, type McpBundle } from "@/lib/mcp/bundles";
 import type { CatalogEntry, ServerOption } from "./install-dialog";
 
@@ -122,36 +121,37 @@ export function McpBundles({
   }
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Package className="h-4 w-4 text-muted-foreground" />
-        <h2 className="text-lg font-semibold tracking-tight">Starter bundles</h2>
+    <section className="space-y-4">
+      {/* Section head: the small-capital title running into a hairline, one
+          italic line beneath — the same voice as "All MCPs" below. */}
+      <div>
+        <h2 className="smallcaps tracking-sc flex items-center gap-4 text-xl font-medium after:h-px after:flex-1 after:bg-border after:content-['']">
+          Starter bundles
+        </h2>
+        <p className="mt-1 text-sm italic text-muted-foreground">
+          Install a curated set of MCPs in one click — zero setup, ready to use.
+        </p>
       </div>
-      <p className="-mt-2 text-sm text-muted-foreground">
-        Install a curated set of MCPs in one click — zero setup, ready to use.
-      </p>
 
+      {/* Bundle cards: bone stock, one hairline, the contents set as a small
+          ledger (one hairline row per MCP), the action under a rule. */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {bundles.map((b) => (
           <Card key={b.bundle.id} className="flex flex-col">
-            <CardHeader className="flex-1">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span aria-hidden>{b.bundle.emoji}</span>
-                {b.bundle.name}
-              </CardTitle>
-              <CardDescription className="mt-1">{b.bundle.tagline}</CardDescription>
-              <div className="mt-3 flex flex-wrap gap-1">
+            <CardHeader className="flex-1 space-y-0">
+              <CardTitle className="text-base leading-snug">{b.bundle.name}</CardTitle>
+              <CardDescription className="mt-2">{b.bundle.tagline}</CardDescription>
+              <ul className="mt-4 divide-y divide-border border-y border-border text-sm">
                 {b.entries.map((e) => (
-                  <Badge key={e.id} variant="secondary" className="text-xs">
+                  <li key={e.id} className="py-1.5">
                     {e.name}
-                  </Badge>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </CardHeader>
-            <CardContent>
+            <CardContent className="border-t border-border px-6 py-4">
               <Button
-                size="sm"
-                className="w-full"
+                className="lining w-full"
                 onClick={() => open(b)}
                 disabled={boxServers.length === 0}
               >
@@ -167,26 +167,32 @@ export function McpBundles({
       <Dialog open={!!picking} onOpenChange={(o) => !o && !installing && setPicking(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {picking?.bundle.emoji} Install the {picking?.bundle.name} bundle
-            </DialogTitle>
+            <DialogTitle>Install the {picking?.bundle.name} bundle</DialogTitle>
             <DialogDescription>
-              {picking?.entries.length} MCPs will be installed on your server, ready to use.
+              <span className="lining">{picking?.entries.length}</span> MCPs will be installed on
+              your server, ready to use.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-1">
+          <div className="space-y-5">
+            {/* The bundle's contents as a ledger: name, then the mono slug. */}
+            <ul className="divide-y divide-border border border-border bg-secondary/40">
               {picking?.entries.map((e) => (
-                <Badge key={e.id} variant="secondary" className="text-xs">
-                  {e.name}
-                </Badge>
+                <li
+                  key={e.id}
+                  className="flex items-baseline justify-between gap-4 px-3 py-2 text-sm"
+                >
+                  <span className="min-w-0 truncate">{e.name}</span>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">{e.slug}</span>
+                </li>
               ))}
-            </div>
+            </ul>
 
             {boxServers.length > 1 && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Target server</label>
+                <label className="smallcaps tracking-sc text-xs font-medium text-foreground/85">
+                  Target server
+                </label>
                 <Select value={serverId} onValueChange={setServerId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Pick a server" />
@@ -195,7 +201,9 @@ export function McpBundles({
                     {boxServers.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
-                        <span className="ml-2 text-xs text-muted-foreground">{s.status}</span>
+                        <span className="smallcaps tracking-sc ml-2 text-xs text-muted-foreground">
+                          {s.status}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -208,7 +216,7 @@ export function McpBundles({
             <Button variant="outline" onClick={() => setPicking(null)} disabled={installing}>
               Cancel
             </Button>
-            <Button onClick={installBundle} disabled={installing || !serverId}>
+            <Button className="lining" onClick={installBundle} disabled={installing || !serverId}>
               {installing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />

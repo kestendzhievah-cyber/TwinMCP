@@ -194,24 +194,26 @@ export function PublishMcpPanel({
     }
   }
 
+  // The textarea is set like the Input primitive: a debossed rectangle on the
+  // card, hairline turning to ink on focus, italic placeholder.
   const inputCls =
-    "flex min-h-[72px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+    "flex min-h-[72px] w-full border border-input bg-card px-3 py-2 text-sm text-foreground shadow-inner transition-colors placeholder:italic placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-0";
 
   return (
     <div className="space-y-8">
       {canPublish && (
         <Card>
-          <CardHeader>
+          <CardHeader className="border-b border-border">
             <CardTitle>New MCP</CardTitle>
             <CardDescription>
               Wrap a stdio MCP server. TwinMCP bridges it to Streamable HTTP inside your box — just
               give the commands to install and start it.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <form onSubmit={publish} className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
                   <Input
                     id="name"
@@ -221,7 +223,7 @@ export function PublishMcpPanel({
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="slug">Slug</Label>
                   <Input
                     id="slug"
@@ -231,16 +233,17 @@ export function PublishMcpPanel({
                       setSlug(e.target.value);
                       setSlugEdited(true);
                     }}
+                    className="font-mono"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs italic text-muted-foreground">
                     Lowercase, hyphens only. Used in the connection URL.
                   </p>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="runtime">Runtime</Label>
                   <Select value={runtime} onValueChange={setRuntime}>
                     <SelectTrigger id="runtime">
@@ -255,18 +258,19 @@ export function PublishMcpPanel({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="version">Version</Label>
                   <Input
                     id="version"
                     placeholder="latest"
                     value={version}
                     onChange={(e) => setVersion(e.target.value)}
+                    className="font-mono"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="startCmd">Start command</Label>
                 <Input
                   id="startCmd"
@@ -276,13 +280,13 @@ export function PublishMcpPanel({
                   className="font-mono"
                   required
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs italic text-muted-foreground">
                   The stdio command TwinMCP runs. Reference config values as{" "}
-                  <code className="font-mono">$MY_KEY</code>.
+                  <code className="font-mono not-italic">$MY_KEY</code>.
                 </p>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="installCmd">Install command</Label>
                 <Input
                   id="installCmd"
@@ -291,14 +295,14 @@ export function PublishMcpPanel({
                   onChange={(e) => setInstallCmd(e.target.value)}
                   className="font-mono"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Runs once before start. Use <code className="font-mono">true</code> if npx/uvx
-                  fetches it on demand.
+                <p className="text-xs italic text-muted-foreground">
+                  Runs once before start. Use <code className="font-mono not-italic">true</code> if
+                  npx/uvx fetches it on demand.
                 </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="repoUrl">Repository URL (optional)</Label>
                   <Input
                     id="repoUrl"
@@ -308,7 +312,7 @@ export function PublishMcpPanel({
                     onChange={(e) => setRepoUrl(e.target.value)}
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="description">Description (optional)</Label>
                   <textarea
                     id="description"
@@ -321,33 +325,34 @@ export function PublishMcpPanel({
                 </div>
               </div>
 
-              {/* Config fields editor */}
-              <div className="space-y-3 rounded-md border border-border/70 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Configuration fields</p>
-                    <p className="text-xs text-muted-foreground">
+              {/* Config fields editor: a sub-panel on a shade darker stock, its
+                  title as an eyebrow with a leading rule, one hairline row per field. */}
+              <div className="space-y-4 border border-border bg-secondary/40 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+                      Configuration fields
+                    </p>
+                    <p className="text-xs italic text-muted-foreground">
                       Values the installer must supply (API keys, paths). Mark secrets so
                       they&apos;re write-only.
                     </p>
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={addField}>
-                    <Plus className="h-3.5 w-3.5" />
+                  <Button type="button" variant="outline" onClick={addField}>
+                    <Plus className="h-4 w-4" />
                     Add field
                   </Button>
                 </div>
 
                 {fields.length > 0 && (
-                  <div className="space-y-3">
+                  <div className="divide-y divide-border border-t border-border">
                     {fields.map((f, i) => (
                       <div
                         key={i}
-                        className="grid items-end gap-2 sm:grid-cols-[1fr_7rem_1fr_auto]"
+                        className="grid items-end gap-2 py-3 sm:grid-cols-[1fr_7rem_1fr_auto]"
                       >
-                        <div className="space-y-1">
-                          <Label htmlFor={`cfg-key-${i}`} className="text-xs">
-                            Key
-                          </Label>
+                        <div className="space-y-2">
+                          <Label htmlFor={`cfg-key-${i}`}>Key</Label>
                           <Input
                             id={`cfg-key-${i}`}
                             placeholder="API_KEY"
@@ -356,17 +361,15 @@ export function PublishMcpPanel({
                             className="font-mono"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <Label htmlFor={`cfg-type-${i}`} className="text-xs">
-                            Type
-                          </Label>
+                        <div className="space-y-2">
+                          <Label htmlFor={`cfg-type-${i}`}>Type</Label>
                           <Select
                             value={f.type}
                             onValueChange={(v) =>
                               updateField(i, { type: v as ConfigField["type"] })
                             }
                           >
-                            <SelectTrigger id={`cfg-type-${i}`}>
+                            <SelectTrigger id={`cfg-type-${i}`} className="font-mono">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -376,10 +379,8 @@ export function PublishMcpPanel({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1">
-                          <Label htmlFor={`cfg-desc-${i}`} className="text-xs">
-                            Description
-                          </Label>
+                        <div className="space-y-2">
+                          <Label htmlFor={`cfg-desc-${i}`}>Description</Label>
                           <Input
                             id={`cfg-desc-${i}`}
                             placeholder="What is this?"
@@ -387,20 +388,22 @@ export function PublishMcpPanel({
                             onChange={(e) => updateField(i, { description: e.target.value })}
                           />
                         </div>
-                        <div className="flex items-center gap-3 pb-2">
-                          <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-3">
+                          <label className="smallcaps tracking-sc flex min-h-10 items-center gap-1.5 text-xs text-muted-foreground">
                             <input
                               type="checkbox"
                               checked={f.required}
                               onChange={(e) => updateField(i, { required: e.target.checked })}
+                              className="h-4 w-4 accent-foreground"
                             />
                             req
                           </label>
-                          <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <label className="smallcaps tracking-sc flex min-h-10 items-center gap-1.5 text-xs text-muted-foreground">
                             <input
                               type="checkbox"
                               checked={f.secret}
                               onChange={(e) => updateField(i, { secret: e.target.checked })}
+                              className="h-4 w-4 accent-foreground"
                             />
                             secret
                           </label>
@@ -420,21 +423,22 @@ export function PublishMcpPanel({
                 )}
               </div>
 
-              <p className="rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              {/* A memo, not a warning: the neutral info tint with a left rule. */}
+              <p className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
                 Published MCPs are <span className="font-medium">private to your account</span> —
                 only you can install them on your boxes. Listing an MCP in the public marketplace is
                 reviewed manually (it runs its install/start commands in other users&apos; boxes).
                 To request a public listing, email{" "}
                 <a
                   href="mailto:hello@twinmcp.fr?subject=Public%20MCP%20listing%20request"
-                  className="font-medium underline hover:text-foreground"
+                  className="font-medium underline decoration-info/40 underline-offset-4 transition-colors hover:decoration-info"
                 >
                   hello@twinmcp.fr
                 </a>
                 .
               </p>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end border-t border-border pt-6">
                 <Button type="submit" disabled={submitting}>
                   {submitting ? "Publishing…" : "Publish MCP"}
                 </Button>
@@ -445,22 +449,25 @@ export function PublishMcpPanel({
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-border">
           <CardTitle>Your MCPs</CardTitle>
-          <CardDescription>
+          <CardDescription className="lining">
             {mcps.length === 0
               ? "Nothing published yet."
               : `${mcps.length} published MCP${mcps.length > 1 ? "s" : ""}.`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {mcps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            // Empty slot (DESIGN.md §5): dashed ink hairline, one italic line.
+            <p className="border border-dashed border-foreground/40 px-4 py-8 text-center text-sm italic text-muted-foreground">
               Publish your first MCP with the form above — it appears here and in the marketplace
               (if public).
             </p>
           ) : (
-            <div className="rounded-md border">
+            // The ledger (§4.5): small-capital heads on a firmer rule, hairline
+            // rows, the name over its mono slug@version, the runtime in Courier.
+            <div className="border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -475,22 +482,20 @@ export function PublishMcpPanel({
                     <TableRow key={m.id}>
                       <TableCell>
                         <div className="font-medium">{m.name}</div>
-                        <div className="font-mono text-xs text-muted-foreground">
+                        <div className="mt-0.5 font-mono text-xs text-muted-foreground">
                           {m.slug}@{m.version}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{m.runtime}</Badge>
-                      </TableCell>
+                      <TableCell className="font-mono text-xs">{m.runtime}</TableCell>
                       <TableCell>
                         {m.isPublic ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Badge variant="outline">
                             <Globe className="h-3.5 w-3.5" /> Public
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Badge variant="secondary">
                             <Lock className="h-3.5 w-3.5" /> Private
-                          </span>
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell>

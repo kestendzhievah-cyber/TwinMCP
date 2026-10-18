@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { mcpServers, users } from "@/db/schema";
 import { can, minPlanFor } from "@/lib/plan-features";
 import { UpgradeCard } from "@/components/billing/upgrade-card";
+import { Separator } from "@/components/ui/separator";
 import { PublishMcpPanel } from "./panel";
 
 export const dynamic = "force-dynamic";
@@ -41,12 +42,14 @@ export default async function McpsPage() {
 
   return (
     <div className="space-y-8">
+      {/* Page header: engraved title, italic subtitle, double rule (DESIGN.md §5). */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Publish an MCP</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">Publish an MCP</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">
           Package any stdio MCP server so you can install it on your boxes — and optionally list it
           in the marketplace for everyone.
         </p>
+        <Separator variant="double" className="mt-4" />
       </div>
 
       {!canPublish && mcps.length === 0 ? (

@@ -2,50 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  TwinMCP design system — "the card".
+  A letterpress business card on bone stock: warm paper, charcoal ink pressed
+  into it, hairline rules, small capitals, and a sober 1980s accent set
+  (pinstripe navy, brass, racing green, ochre, oxblood). Dark mode is the same
+  card after hours: ink stock, bone type. Tokens are HSL triplets so Tailwind
+  can apply <alpha-value> (e.g. bg-success/10).
+  See docs/DESIGN.md for the full brief and component recipes.
+*/
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --radius: 0.5rem;
+    --background: 40 35% 93%; /* bone card stock */
+    --foreground: 30 8% 16%; /* pressed charcoal ink */
+    --card: 42 45% 96%;
+    --card-foreground: 30 8% 16%;
+    --popover: 42 45% 96%;
+    --popover-foreground: 30 8% 16%;
+    --primary: 30 8% 16%;
+    --primary-foreground: 42 45% 96%;
+    --secondary: 40 31% 89%;
+    --secondary-foreground: 30 8% 16%;
+    --muted: 40 31% 89%;
+    --muted-foreground: 35 9% 37%;
+    --accent: 40 31% 89%;
+    --accent-foreground: 30 8% 16%;
+    --destructive: 355 50% 33%; /* oxblood */
+    --destructive-foreground: 42 45% 96%;
+    --border: 40 21% 81%;
+    --input: 40 21% 81%;
+    --ring: 30 8% 16%;
+    --radius: 0rem;
+
+    /* Semantic accents — used sparingly, never as large fills. */
+    --brand: 222 37% 22%; /* pinstripe navy */
+    --brand-foreground: 42 45% 96%;
+    --gilt: 41 55% 36%; /* brass foil */
+    --gilt-foreground: 42 45% 96%;
+    --success: 150 30% 27%; /* racing green */
+    --success-foreground: 42 45% 96%;
+    --warning: 36 62% 30%; /* ochre */
+    --warning-foreground: 42 45% 96%;
+    --info: 210 32% 34%; /* steel blue */
+    --info-foreground: 42 45% 96%;
+
+    /* Paper grain: a tiled SVG noise, tinted ink, ~3% visible. */
+    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.19 0 0 0 0 0.16 0 0 0 0 0.13 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --background: 36 12% 8%;
+    --foreground: 42 31% 87%;
+    --card: 34 13% 10%;
+    --card-foreground: 42 31% 87%;
+    --popover: 34 13% 10%;
+    --popover-foreground: 42 31% 87%;
+    --primary: 42 31% 87%;
+    --primary-foreground: 36 12% 8%;
+    --secondary: 26 10% 14%;
+    --secondary-foreground: 42 31% 87%;
+    --muted: 26 10% 14%;
+    --muted-foreground: 39 11% 62%;
+    --accent: 26 10% 14%;
+    --accent-foreground: 42 31% 87%;
+    --destructive: 357 47% 62%;
+    --destructive-foreground: 36 12% 8%;
+    --border: 33 12% 19%;
+    --input: 33 12% 19%;
+    --ring: 42 31% 87%;
+
+    --brand: 219 35% 68%;
+    --brand-foreground: 36 12% 8%;
+    --gilt: 42 52% 56%;
+    --gilt-foreground: 36 12% 8%;
+    --success: 144 25% 60%;
+    --success-foreground: 36 12% 8%;
+    --warning: 35 56% 60%;
+    --warning-foreground: 36 12% 8%;
+    --info: 212 36% 66%;
+    --info-foreground: 36 12% 8%;
+
+    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.92 0 0 0 0 0.88 0 0 0 0 0.8 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
   }
 }
 
@@ -53,8 +90,108 @@
   * {
     @apply border-border;
   }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background font-serif text-foreground;
+    background-image: var(--paper-grain);
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1,
+      "onum" 1,
+      "pnum" 1;
+  }
+  ::selection {
+    background: hsl(var(--brand) / 0.18);
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif font-medium;
+    text-wrap: balance;
+  }
+  /* Data and code read in lining, tabular figures; prose keeps old-style. */
+  table,
+  code,
+  kbd,
+  pre,
+  samp,
+  input,
+  select,
+  textarea,
+  time {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+  code,
+  kbd,
+  pre,
+  samp {
+    @apply font-mono;
+  }
+  /* Thin, engraved icon strokes. */
+  svg.lucide {
+    stroke-width: 1.5;
+  }
+}
+
+@layer utilities {
+  /* Small capitals — the card's voice. Pair with tracking-sc / tracking-eyebrow. */
+  .smallcaps {
+    font-variant-caps: small-caps;
+    letter-spacing: 0.08em;
+  }
+  .no-smallcaps {
+    font-variant-caps: normal;
+    letter-spacing: normal;
+  }
+  /* Section eyebrow: tiny, wide, muted small caps ("Mergers and Acquisitions"). */
+  .eyebrow {
+    font-variant-caps: small-caps;
+    letter-spacing: 0.28em;
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+  }
+  /* Display headings: the engraved name on the card. */
+  .display {
+    font-variant-caps: small-caps;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    line-height: 1.05;
+  }
+  /* Debossed ink on light stock. */
+  .letterpress {
+    text-shadow: 0 1px 0 hsl(0 0% 100% / 0.45);
+  }
+  .dark .letterpress {
+    text-shadow: none;
+  }
+  .lining {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+  .oldstyle {
+    font-variant-numeric: oldstyle-nums proportional-nums;
+  }
+  /* Double hairline rule (section / page-title separator). */
+  .rule-double {
+    border-top-width: 3px;
+    border-top-style: double;
+    border-top-color: hsl(var(--border));
+  }
+  .rule-double-ink {
+    border-top-width: 3px;
+    border-top-style: double;
+    border-top-color: hsl(var(--foreground) / 0.7);
+  }
+  /* Pressed-button micro-interaction. */
+  .press:active {
+    transform: translateY(1px);
   }
 }

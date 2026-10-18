@@ -21,14 +21,16 @@ const TOGGLE = {
   },
 } as const;
 
+// A segmented control cut from the card: two small-caps segments inside one
+// ink hairline, the selected one stamped in ink. No pill, no sliding thumb.
 export function PricingToggle({ cadence, onChange, locale = "en" }: PricingToggleProps) {
   const t = TOGGLE[locale];
   return (
-    <div className="inline-flex items-center gap-3">
+    <div className="inline-flex flex-wrap items-center justify-center gap-3">
       <div
         role="tablist"
         aria-label={t.aria}
-        className="inline-flex rounded-full border border-border/80 bg-card p-1 text-sm"
+        className="inline-flex divide-x divide-foreground/60 border border-foreground/60 bg-card"
       >
         <ToggleButton
           active={cadence === "monthly"}
@@ -67,10 +69,8 @@ function ToggleButton({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        "rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        active
-          ? "bg-primary text-primary-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground"
+        "smallcaps tracking-sc h-10 px-5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
       )}
     >
       {label}

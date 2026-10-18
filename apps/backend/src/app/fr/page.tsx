@@ -1,9 +1,13 @@
 import type { Metadata, Route } from "next";
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, X } from "lucide-react";
 import { JsonLd } from "@/components/seo/json-ld";
 import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
 import { marketingOffers } from "@/components/pricing/pricing-data";
+import { Section } from "@/components/marketing/section";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -95,6 +99,66 @@ const benefits = [
   },
 ];
 
+const steps = [
+  {
+    n: 1,
+    title: "Créez un compte gratuit",
+    body: "Inscription en 30 secondes, sans carte bancaire. Vous obtenez un serveur et l'accès au catalogue MCP.",
+  },
+  {
+    n: 2,
+    title: "Provisionnez un serveur",
+    body: "Choisissez le runtime (Node, Python, Go, Ruby, Rust). TwinMCP démarre un sandbox Upstash Box isolé en quelques secondes.",
+  },
+  {
+    n: 3,
+    title: "Installez des MCPs",
+    body: "GitHub, Notion, Linear, Postgres, Slack et d'autres MCPs s'installent en un clic dans votre serveur. Secrets chiffrés au repos.",
+  },
+  {
+    n: 4,
+    title: "Connectez votre IDE",
+    body: "Copiez le snippet généré dans le dashboard, collez-le dans Cursor, Claude Desktop, Windsurf ou Cline. Les outils apparaissent immédiatement dans le modèle.",
+  },
+];
+
+const tiers: {
+  name: string;
+  price: string;
+  cadence?: string;
+  blurb?: string;
+  features: string[];
+  highlight: boolean;
+}[] = [
+  {
+    name: "Free",
+    price: "€0",
+    blurb: "Pour évaluer la plateforme",
+    features: ["1 serveur", "5 MCPs officiels", "Support communautaire"],
+    highlight: false,
+  },
+  {
+    name: "Pro",
+    price: "€14.99",
+    cadence: "par mois",
+    features: ["25 serveurs", "Publier vos propres MCPs", "Logs d'audit · 30 jours"],
+    highlight: true,
+  },
+  {
+    name: "Team",
+    price: "€99",
+    cadence: "par mois",
+    features: ["Serveurs illimités", "Jusqu'à 10 membres", "SLA · 99,9% uptime"],
+    highlight: false,
+  },
+];
+
+// Hero eyebrow sitting between two short hairlines (DESIGN.md §4.7). Like the
+// EN hero, the rules are hidden below `sm` so the line never wraps between them
+// on phones; section eyebrows go through <Section />.
+const HERO_EYEBROW_RULES =
+  "eyebrow flex items-center justify-center gap-4 before:hidden before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:hidden after:h-px after:w-10 after:shrink-0 after:bg-border after:content-[''] sm:before:block sm:after:block";
+
 // Skip rendering off-screen sections until scrolled near — cuts the initial
 // layout/paint work on this long page (the Lighthouse forced-reflow / render
 // item). A fixed contain-intrinsic-size reserves a stable 640px placeholder per
@@ -117,256 +181,221 @@ export default function FrHomePage() {
         ]}
       />
 
-      {/* Hero */}
-      <section className="border-b border-border/60 bg-background">
-        <div className="mx-auto max-w-5xl px-6 py-24 md:py-32">
-          <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Le MCP en tant que service
-          </p>
-          <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-            Hébergement de serveurs MCP, sans gérer l&apos;infrastructure.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl">
-            TwinMCP héberge vos serveurs Model Context Protocol dans des runtimes isolés. Installez
-            depuis un catalogue, connectez Cursor, Claude Code et Windsurf en 2 minutes. Offre
-            gratuite — sans carte bancaire.
-          </p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href={"/sign-up?plan=free" as Route}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-foreground px-6 py-3 text-sm font-medium text-background hover:bg-foreground/90"
-            >
-              Démarrer gratuitement
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href={"/fr/blog/what-is-mcp" as Route}
-              className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-accent"
-            >
-              Qu&apos;est-ce que MCP ?
-            </Link>
+      {/* Hero — the centre of the card: a dateline eyebrow between two hairlines,
+          the name engraved in letterspaced small capitals, a short rule, the lead,
+          the two buttons, and one small-caps address line of facts. */}
+      <section>
+        <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
+          <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+            <p className={HERO_EYEBROW_RULES}>Le MCP en tant que service</p>
+            <h1 className="display letterpress mt-8 hyphens-auto text-3xl sm:text-5xl md:text-6xl lg:text-7xl">
+              Hébergement de serveurs MCP, sans gérer l&apos;infrastructure.
+            </h1>
+            <div aria-hidden className="mt-8 h-px w-12 bg-foreground/40" />
+            <p className="mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
+              TwinMCP héberge vos serveurs Model Context Protocol dans des runtimes isolés.
+              Installez depuis un catalogue, connectez Cursor, Claude Code et Windsurf en 2 minutes.
+              Offre gratuite — sans carte bancaire.
+            </p>
+            <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+              <Button asChild size="lg">
+                <Link href={"/sign-up?plan=free" as Route}>
+                  Démarrer gratuitement
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href={"/fr/blog/what-is-mcp" as Route}>Qu&apos;est-ce que MCP ?</Link>
+              </Button>
+            </div>
+            <p className="smallcaps tracking-sc lining mt-8 text-xs text-muted-foreground">
+              1 serveur gratuit · 5 MCPs officiels · Sans carte bancaire
+            </p>
           </div>
         </div>
       </section>
 
       {/* Problem / solution */}
-      <section className={`border-b border-border/60 ${CV}`}>
-        <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
-          <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
-            Le problème : MCP local sur chaque ordinateur ne passe pas à l&apos;échelle.
-          </h2>
-          <p className="mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Aujourd&apos;hui, la plupart des équipes lancent leurs serveurs MCP comme processus
-            enfants stdio sur chaque ordinateur portable de développeur. Ça fonctionne pour les
-            outils personnels mais casse dès qu&apos;une équipe veut partager un MCP : les secrets
-            fuient dans l&apos;environnement shell, pas de logs centralisés, redémarrer Cursor tue
-            tout l&apos;état.
-          </p>
-          <p className="mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            TwinMCP exécute chaque serveur MCP dans son propre sandbox Upstash Box, avec secrets
-            chiffrés au repos et clé API par utilisateur. Le dashboard vous donne un snippet de
-            configuration prêt à coller dans Cursor, Claude Desktop, Windsurf ou Cline. Une URL
-            stable. Un token. Zero gestion d&apos;infrastructure.
-          </p>
+      <Section
+        bordered
+        eyebrow="Le problème"
+        title="MCP local sur chaque ordinateur ne passe pas à l'échelle."
+        className={CV}
+      >
+        {/* One sheet of card stock ruled down the middle: today on the left,
+            TwinMCP on the right. */}
+        <div className="grid divide-y divide-border border border-border bg-card shadow-sm md:grid-cols-2 md:divide-x md:divide-y-0">
+          <div className="p-6 md:p-8">
+            <div className="flex items-center gap-3 border-b border-foreground/50 pb-4">
+              <span className="grid h-9 w-9 shrink-0 place-items-center border border-destructive/40 bg-destructive/10 text-destructive">
+                <X className="h-4 w-4" />
+              </span>
+              <p className="smallcaps tracking-sc text-lg font-medium">Sans TwinMCP</p>
+            </div>
+            <p className="mt-5 text-base leading-7 text-muted-foreground">
+              Aujourd&apos;hui, la plupart des équipes lancent leurs serveurs MCP comme processus
+              enfants stdio sur chaque ordinateur portable de développeur. Ça fonctionne pour les
+              outils personnels mais casse dès qu&apos;une équipe veut partager un MCP : les secrets
+              fuient dans l&apos;environnement shell, pas de logs centralisés, redémarrer Cursor tue
+              tout l&apos;état.
+            </p>
+          </div>
+          <div className="p-6 md:p-8">
+            <div className="flex items-center gap-3 border-b border-foreground/50 pb-4">
+              <span className="grid h-9 w-9 shrink-0 place-items-center border border-success/40 bg-success/10 text-success">
+                <Check className="h-4 w-4" />
+              </span>
+              <p className="smallcaps tracking-sc text-lg font-medium">Avec TwinMCP</p>
+            </div>
+            <p className="mt-5 text-base leading-7 text-muted-foreground">
+              TwinMCP exécute chaque serveur MCP dans son propre sandbox Upstash Box, avec secrets
+              chiffrés au repos et clé API par utilisateur. Le dashboard vous donne un snippet de
+              configuration prêt à coller dans Cursor, Claude Desktop, Windsurf ou Cline. Une URL
+              stable. Un token. Zero gestion d&apos;infrastructure.
+            </p>
+          </div>
         </div>
-      </section>
+      </Section>
 
       {/* Benefits */}
-      <section id="features" className={`scroll-mt-20 border-b border-border/60 ${CV}`}>
-        <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
-          <h2 className="text-balance text-center text-3xl font-semibold tracking-tight md:text-4xl">
-            Pourquoi les développeurs choisissent TwinMCP
-          </h2>
-          <div className="mt-14 grid gap-6 md:grid-cols-3">
-            {benefits.map((b) => (
-              <div key={b.title} className="rounded-2xl border border-border bg-card p-6">
-                <h3 className="text-lg font-semibold tracking-tight">{b.title}</h3>
-                <p className="mt-3 leading-relaxed text-muted-foreground">{b.body}</p>
-              </div>
-            ))}
-          </div>
+      <Section
+        id="features"
+        bordered
+        eyebrow="Fonctionnalités"
+        title="Pourquoi les développeurs choisissent TwinMCP"
+        className={`scroll-mt-20 ${CV}`}
+      >
+        <div className="grid gap-6 md:grid-cols-3">
+          {benefits.map((b) => (
+            <div key={b.title} className="border border-border bg-card p-6 shadow-sm">
+              <h3 className="smallcaps tracking-sc text-lg font-medium">{b.title}</h3>
+              <p className="mt-2 text-base text-muted-foreground">{b.body}</p>
+            </div>
+          ))}
         </div>
-      </section>
+      </Section>
 
       {/* How it works */}
-      <section id="how-it-works" className={`scroll-mt-20 border-b border-border/60 ${CV}`}>
-        <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
-          <h2 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
-            Comment ça marche
-          </h2>
-          <ol className="mt-12 space-y-8">
-            <li className="flex gap-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-sm font-semibold">
-                1
+      <Section
+        id="how-it-works"
+        bordered
+        eyebrow="En quatre étapes"
+        title="Comment ça marche"
+        className={`scroll-mt-20 ${CV}`}
+      >
+        <ol role="list" className="grid gap-6 md:grid-cols-2">
+          {steps.map((s) => (
+            <li key={s.n} className="flex flex-col border border-border bg-card p-6 shadow-sm">
+              {/* The step number is stamped in a hairline square, lining figures. */}
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className="lining grid h-9 w-9 shrink-0 place-items-center border border-foreground/60 text-sm font-medium text-foreground"
+                >
+                  {s.n}
+                </span>
+                <h3 className="smallcaps tracking-sc text-lg font-medium">{s.title}</h3>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold tracking-tight">Créez un compte gratuit</h3>
-                <p className="mt-1 leading-relaxed text-muted-foreground">
-                  Inscription en 30 secondes, sans carte bancaire. Vous obtenez un serveur et
-                  l&apos;accès au catalogue MCP.
-                </p>
-              </div>
+              <p className="mt-4 text-base text-muted-foreground">{s.body}</p>
             </li>
-            <li className="flex gap-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-sm font-semibold">
-                2
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold tracking-tight">Provisionnez un serveur</h3>
-                <p className="mt-1 leading-relaxed text-muted-foreground">
-                  Choisissez le runtime (Node, Python, Go, Ruby, Rust). TwinMCP démarre un sandbox
-                  Upstash Box isolé en quelques secondes.
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-sm font-semibold">
-                3
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold tracking-tight">Installez des MCPs</h3>
-                <p className="mt-1 leading-relaxed text-muted-foreground">
-                  GitHub, Notion, Linear, Postgres, Slack et d&apos;autres MCPs s&apos;installent en
-                  un clic dans votre serveur. Secrets chiffrés au repos.
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-sm font-semibold">
-                4
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold tracking-tight">Connectez votre IDE</h3>
-                <p className="mt-1 leading-relaxed text-muted-foreground">
-                  Copiez le snippet généré dans le dashboard, collez-le dans Cursor, Claude Desktop,
-                  Windsurf ou Cline. Les outils apparaissent immédiatement dans le modèle.
-                </p>
-              </div>
-            </li>
-          </ol>
-        </div>
-      </section>
+          ))}
+        </ol>
+      </Section>
 
       {/* Pricing teaser */}
-      <section className={`border-b border-border/60 ${CV}`}>
-        <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
-          <h2 className="text-balance text-center text-3xl font-semibold tracking-tight md:text-4xl">
-            Tarification simple
-          </h2>
-          <p className="mt-4 text-center text-base text-muted-foreground md:text-lg">
-            Commencez gratuitement. Passez à un plan supérieur seulement quand vous dépassez le
-            quota.
-          </p>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <h3 className="text-xl font-semibold">Free</h3>
-              <p className="mt-2 text-3xl font-bold">€0</p>
-              <p className="mt-1 text-sm text-muted-foreground">Pour évaluer la plateforme</p>
-              <ul className="mt-6 space-y-2 text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>1 serveur</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>5 MCPs officiels</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>Support communautaire</span>
-                </li>
-              </ul>
-            </div>
-            <div className="rounded-2xl border-2 border-foreground bg-card p-6">
-              <h3 className="text-xl font-semibold">Pro</h3>
-              <p className="mt-2 text-3xl font-bold">€14.99</p>
-              <p className="mt-1 text-sm text-muted-foreground">par mois</p>
-              <ul className="mt-6 space-y-2 text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>25 serveurs</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>Publier vos propres MCPs</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>Logs d&apos;audit · 30 jours</span>
-                </li>
-              </ul>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <h3 className="text-xl font-semibold">Team</h3>
-              <p className="mt-2 text-3xl font-bold">€99</p>
-              <p className="mt-1 text-sm text-muted-foreground">par mois</p>
-              <ul className="mt-6 space-y-2 text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>Serveurs illimités</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>Jusqu&apos;à 10 membres</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                  <span>SLA · 99,9% uptime</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-10 text-center">
-            <Link
-              href="/plans"
-              className="inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4 hover:text-foreground"
+      <Section
+        bordered
+        eyebrow="Tarifs"
+        title="Tarification simple"
+        description="Commencez gratuitement. Passez à un plan supérieur seulement quand vous dépassez le quota."
+        className={CV}
+      >
+        <div className="grid gap-6 md:grid-cols-3">
+          {tiers.map((t) => (
+            <div
+              key={t.name}
+              className={cn(
+                "relative flex flex-col border bg-card p-6",
+                t.highlight ? "border-foreground/70 shadow-stack" : "border-border shadow-sm"
+              )}
             >
-              Voir toutes les fonctionnalités →
-            </Link>
-          </div>
+              {t.highlight && (
+                // The seal straddles the card's top rule; the bg-card wrapper keeps the
+                // hairline from showing through the badge's translucent tint.
+                <div className="absolute -top-3 left-6 bg-card">
+                  <Badge variant="gilt">Le plus populaire</Badge>
+                </div>
+              )}
+              <h3 className="smallcaps tracking-sc text-lg font-medium">{t.name}</h3>
+              <div className="mt-4 flex items-baseline gap-2">
+                <span className="lining text-4xl font-medium">{t.price}</span>
+                {t.cadence && (
+                  <span className="text-sm italic text-muted-foreground">{t.cadence}</span>
+                )}
+              </div>
+              {t.blurb && <p className="mt-3 text-sm italic text-muted-foreground">{t.blurb}</p>}
+              <ul className="lining mt-6 flex-1 space-y-2.5 border-t border-border pt-5 text-sm">
+                {t.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-      </section>
+        <div className="mt-12 flex justify-center">
+          <Link
+            href="/plans"
+            className="inline-flex items-center gap-1.5 text-sm text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+          >
+            Voir toutes les fonctionnalités
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </Section>
 
       {/* FAQ */}
-      <section id="faq" className={`scroll-mt-20 border-b border-border/60 ${CV}`}>
-        <div className="mx-auto max-w-3xl px-6 py-20 md:py-28">
-          <h2 className="text-balance text-center text-3xl font-semibold tracking-tight md:text-4xl">
-            Questions fréquentes
-          </h2>
-          <dl className="mt-12 space-y-6">
-            {faqFr.map((item, i) => (
-              <div key={i} className="rounded-xl border border-border bg-card p-6">
-                <dt className="text-base font-semibold tracking-tight">{item.q}</dt>
-                <dd className="mt-2 leading-relaxed text-muted-foreground">{item.a}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
+      <Section
+        id="faq"
+        bordered
+        eyebrow="FAQ"
+        title="Questions fréquentes"
+        className={`scroll-mt-20 ${CV}`}
+      >
+        {/* The list is a ledger: a hairline above the first question closes the ruling. */}
+        <dl className="mx-auto max-w-3xl divide-y divide-border border-t border-border">
+          {faqFr.map((item, i) => (
+            <div key={i} className="py-5">
+              <dt className="text-lg font-medium">{item.q}</dt>
+              <dd className="mt-2 text-base leading-7 text-muted-foreground">{item.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </Section>
 
       {/* Final CTA */}
-      <section className={`mx-auto max-w-5xl px-6 py-20 md:py-28 ${CV}`}>
-        <div className="rounded-2xl border border-border bg-card p-10 text-center md:p-14">
-          <h2 className="text-balance text-2xl font-semibold tracking-tight md:text-3xl">
-            Prêt à lancer votre premier serveur MCP en 2 minutes ?
-          </h2>
-          <p className="mt-3 text-muted-foreground">
-            Offre gratuite — un serveur, le catalogue MCP, sans carte bancaire.
-          </p>
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href={"/sign-up?plan=free" as Route}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-foreground px-6 py-3 text-sm font-medium text-background hover:bg-foreground/90"
-            >
-              Démarrer gratuitement
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href={"/fr/blog" as Route}
-              className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-accent"
-            >
-              Lire le blog
-            </Link>
+      <section className={`rule-double py-20 md:py-28 ${CV}`}>
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-3xl border border-foreground/60 bg-card p-10 text-center md:p-14">
+            <h2 className="text-2xl font-medium md:text-3xl">
+              Prêt à lancer votre premier serveur MCP en 2 minutes ?
+            </h2>
+            <p className="mt-3 text-base italic text-muted-foreground">
+              Offre gratuite — un serveur, le catalogue MCP, sans carte bancaire.
+            </p>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button asChild size="lg">
+                <Link href={"/sign-up?plan=free" as Route}>
+                  Démarrer gratuitement
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href={"/fr/blog" as Route}>Lire le blog</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>

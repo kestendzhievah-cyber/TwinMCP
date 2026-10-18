@@ -14,10 +14,12 @@ const SIGNALS = {
   ],
 } as const;
 
+// The pricing hero's "address line": one row of small-caps facts, each led by
+// a bare engraved pictogram. The caller frames it between two hairlines.
 export function TrustSignals({ locale = "en" }: { locale?: Locale }) {
   const signals = SIGNALS[locale];
   return (
-    <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+    <ul className="smallcaps tracking-sc flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs text-muted-foreground">
       {signals.map(({ icon: Icon, label }) => (
         <li key={label} className="inline-flex items-center gap-2">
           <Icon className="h-4 w-4 shrink-0" aria-hidden />

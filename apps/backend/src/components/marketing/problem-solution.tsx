@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { Section } from "./section";
 import { cn } from "@/lib/utils";
 
@@ -24,20 +24,21 @@ export function ProblemSolution() {
       title="Your agent is only as good as its context"
       description="Most tools either lock you into a hosted endpoint or hand you a Docker file and wish you luck. TwinMCP runs the runtime so you keep ownership of your servers — without keeping a VPS warm."
     >
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* One sheet of card stock ruled down the middle: a two-column ledger. */}
+      <div className="grid divide-y divide-border border border-border bg-card shadow-sm md:grid-cols-2 md:divide-x md:divide-y-0">
         <Column
           tone="negative"
-          icon={<XCircle className="h-4 w-4 text-destructive" />}
+          icon={<X className="h-4 w-4" />}
           title="Without TwinMCP"
           items={without}
-          itemIcon={<XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive/70" />}
+          itemIcon={<X className="mt-1 h-4 w-4 shrink-0 text-destructive" />}
         />
         <Column
           tone="positive"
-          icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+          icon={<Check className="h-4 w-4" />}
           title="With TwinMCP"
           items={withTwin}
-          itemIcon={<CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />}
+          itemIcon={<Check className="mt-1 h-4 w-4 shrink-0 text-success" />}
         />
       </div>
     </Section>
@@ -58,21 +59,23 @@ function Column({
   itemIcon: React.ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-xl border bg-card p-6 md:p-7",
-        tone === "negative"
-          ? "border-destructive/30"
-          : "border-emerald-500/30 shadow-sm shadow-emerald-500/[0.03]"
-      )}
-    >
-      <div className="mb-5 flex items-center gap-2">
-        {icon}
-        <h3 className="font-semibold tracking-tight">{title}</h3>
+    <div className="p-6 md:p-8">
+      <div className="flex items-center gap-3 border-b border-foreground/50 pb-4">
+        <span
+          className={cn(
+            "grid h-9 w-9 shrink-0 place-items-center border",
+            tone === "negative"
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : "border-success/40 bg-success/10 text-success"
+          )}
+        >
+          {icon}
+        </span>
+        <h3 className="smallcaps tracking-sc text-lg font-medium">{title}</h3>
       </div>
-      <ul className="space-y-3">
+      <ul className="divide-y divide-border">
         {items.map((item) => (
-          <li key={item} className="flex items-start gap-3 text-sm text-muted-foreground">
+          <li key={item} className="flex items-start gap-3 py-3.5 text-base text-muted-foreground">
             {itemIcon}
             <span>{item}</span>
           </li>

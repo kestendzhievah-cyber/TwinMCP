@@ -65,13 +65,13 @@ export function CookieConsent() {
       aria-live="polite"
       className="fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 sm:p-6"
     >
-      <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-4 overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/5 duration-300 motion-reduce:animate-none dark:shadow-black/40">
+      <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-4 overflow-hidden border border-border bg-card shadow-stack duration-300 motion-reduce:animate-none">
         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
-          <div className="hidden h-10 w-10 shrink-0 place-items-center rounded-lg bg-secondary text-foreground sm:grid">
+          <div className="hidden h-10 w-10 shrink-0 place-items-center bg-secondary text-foreground sm:grid">
             <Cookie className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold tracking-tight text-foreground">{t.title}</p>
+            <p className="text-sm font-medium text-foreground">{t.title}</p>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {t.lead}
               <Link

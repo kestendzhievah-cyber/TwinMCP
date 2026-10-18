@@ -31,7 +31,7 @@ export function DemoModal({ children }: { children: React.ReactNode }) {
             <Button asChild size="lg">
               <Link href={"/sign-up" as Route}>
                 <Play className="h-4 w-4" />
-                Start free → no credit card
+                Start free · no credit card
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">

@@ -24,65 +24,64 @@ const reasons = [
   },
 ];
 
+// The reverse of the card: a shade darker bone behind a left hairline, the
+// wordmark, a ruled ledger of reasons, and the card itself — the one piece of
+// "product" on the page — sitting on the stacked-card shadow.
 export function AuthPanel() {
   return (
-    <div className="relative flex h-full flex-col justify-between overflow-hidden border-l border-border/60 bg-muted/40 px-10 py-12 lg:px-12">
-      {/* subtle gradient halo, neutral */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_hsl(var(--secondary))_0%,_transparent_50%)]"
-      />
-
+    <div className="flex h-full flex-col justify-between border-l border-border bg-secondary/40 px-10 py-12 lg:px-12">
       <div>
         <Logo />
-        <h2 className="mt-12 text-balance text-2xl font-semibold tracking-tight md:text-3xl">
-          Why developers pick{" "}
-          <span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">
-            TwinMCP
-          </span>
+        <h2 className="mt-12 text-balance text-2xl font-medium md:text-3xl">
+          Why developers pick TwinMCP
         </h2>
-        <ul className="mt-8 space-y-5">
+        <ul className="mt-8 divide-y divide-border border-y border-border">
           {reasons.map(({ icon: Icon, title, body }) => (
-            <li key={title} className="flex items-start gap-4">
+            <li key={title} className="flex items-start gap-4 py-4">
               <span
                 aria-hidden
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-border/80 bg-background/80 text-foreground"
+                className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground"
               >
                 <Icon className="h-4 w-4" />
               </span>
               <div>
-                <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">{body}</p>
+                <h3 className="smallcaps tracking-sc text-base font-medium">{title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{body}</p>
               </div>
             </li>
           ))}
         </ul>
       </div>
 
-      <figure className="mt-10 rounded-xl border border-border/80 bg-background/60 p-5">
-        <blockquote className="text-sm leading-relaxed text-foreground/90">
-          <span className="text-muted-foreground" aria-hidden>
-            &ldquo;
-          </span>
-          Migrated 4 MCP servers off our VPS in one afternoon. The kind of infra you don&apos;t
-          want to be on call for.
-          <span className="text-muted-foreground" aria-hidden>
-            &rdquo;
-          </span>
-        </blockquote>
-        <figcaption className="mt-3 flex items-center gap-3 text-xs">
-          <span
-            aria-hidden
-            className="grid h-7 w-7 place-items-center rounded-full bg-secondary font-mono text-[10px] font-semibold text-foreground"
-          >
-            TB
-          </span>
-          <span>
-            <span className="block font-medium text-foreground">Tarek B.</span>
-            <span className="block text-muted-foreground">Staff engineer · infra</span>
-          </span>
-        </figcaption>
-      </figure>
+      {/* The card itself — verifiable facts only, no testimonials. */}
+      <div className="mt-10 border border-border bg-card p-6 text-center shadow-stack">
+        <p className="smallcaps text-lg font-medium tracking-[0.14em]">TwinMCP</p>
+        <p className="smallcaps mt-1 text-[0.625rem] tracking-[0.24em] text-muted-foreground">
+          Managed MCP Runtimes
+        </p>
+        <div className="rule-double my-5" />
+        <dl className="lining grid grid-cols-3 gap-4 text-center">
+          <div>
+            <dt className="smallcaps tracking-sc text-xs text-muted-foreground">Free tier</dt>
+            <dd className="mt-1 text-2xl font-medium">1</dd>
+            <dd className="text-xs italic text-muted-foreground">server</dd>
+          </div>
+          <div>
+            <dt className="smallcaps tracking-sc text-xs text-muted-foreground">Official</dt>
+            <dd className="mt-1 text-2xl font-medium">5</dd>
+            <dd className="text-xs italic text-muted-foreground">MCPs included</dd>
+          </div>
+          <div>
+            <dt className="smallcaps tracking-sc text-xs text-muted-foreground">Card</dt>
+            <dd className="mt-1 text-2xl font-medium">0</dd>
+            <dd className="text-xs italic text-muted-foreground">credit cards asked</dd>
+          </div>
+        </dl>
+        <div className="my-5 h-px bg-border" />
+        <p className="smallcaps tracking-sc text-xs text-muted-foreground">
+          twinmcp.fr · hello@twinmcp.fr · security@twinmcp.fr
+        </p>
+      </div>
     </div>
   );
 }

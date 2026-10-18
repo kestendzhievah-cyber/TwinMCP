@@ -71,45 +71,70 @@ const faq = [
   },
   {
     q: "Where is the Claude Desktop config file again?",
-    a: "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json. Windows: %APPDATA%\\Claude\\claude_desktop_config.json. Linux: ~/.config/Claude/claude_desktop_config.json. Or use Settings → Developer → Edit Config to open it directly.",
+    a: "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json. Windows: %APPDATA%\Claude\claude_desktop_config.json. Linux: ~/.config/Claude/claude_desktop_config.json. Or use Settings → Developer → Edit Config to open it directly.",
   },
 ];
 
 export default function ClaudeMcpHostingPage() {
   return (
     <UseCaseLayout useCase={useCase} benefits={benefits} steps={steps} faq={faq}>
-      <section className="mb-20">
-        <h2 className="text-3xl font-semibold tracking-tight">
-          The Claude config snippets, ready to paste
-        </h2>
-        <p className="mt-4 max-w-2xl leading-relaxed text-muted-foreground">
-          TwinMCP generates the right config for whichever Claude client you use. Pick the tab in
-          your dashboard, copy, paste. No path resolution, no environment-variable juggling.
-        </p>
-        <h3 className="mt-8 text-xl font-semibold">Claude Desktop</h3>
-        <p className="mt-3 leading-relaxed text-muted-foreground">
-          Claude Desktop does not read remote MCP URLs from{" "}
-          <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[0.875em]">
-            claude_desktop_config.json
-          </code>
-          . Add the server through the UI instead:{" "}
-          <strong>Settings &rarr; Connectors &rarr; Add custom connector</strong>, paste the
-          streamable-HTTP URL and bearer token from your TwinMCP dashboard. Claude Desktop handles
-          the connection lifecycle automatically.
-        </p>
-        <h3 className="mt-6 text-xl font-semibold">Claude Code</h3>
-        <pre className="mt-3 overflow-x-auto rounded-lg border border-border bg-secondary/40 p-4 text-sm">
-          <code>{`claude mcp add github-prod \\
-  --transport http \\
-  https://github.your-team.twinmcp.fr/mcp \\
+      <section className="rule-double py-16 md:py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+            Configuration
+          </p>
+          <h2 className="mt-4 text-balance text-3xl font-medium md:text-4xl">
+            The Claude config snippets, ready to paste
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">
+            TwinMCP generates the right config for whichever Claude client you use. Pick the tab in
+            your dashboard, copy, paste. No path resolution, no environment-variable juggling.
+          </p>
+        </div>
+        {/* Two clients, one sheet split by a hairline */}
+        <div className="mt-12 grid gap-10 md:grid-cols-2 md:gap-0 md:divide-x md:divide-border">
+          <div className="md:pr-10">
+            <h3 className="smallcaps tracking-sc text-lg font-medium">Claude Desktop</h3>
+            <p className="mt-3 text-base text-muted-foreground">
+              Claude Desktop does not read remote MCP URLs from{" "}
+              <code className="bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">
+                claude_desktop_config.json
+              </code>
+              . Add the server through the UI instead:{" "}
+              <strong className="font-medium text-foreground">
+                Settings &rarr; Connectors &rarr; Add custom connector
+              </strong>
+              , paste the streamable-HTTP URL and bearer token from your TwinMCP dashboard. Claude
+              Desktop handles the connection lifecycle automatically.
+            </p>
+          </div>
+          <div className="md:pl-10">
+            <h3 className="smallcaps tracking-sc text-lg font-medium">Claude Code</h3>
+            {/* Typewriter block: engraved tab, Courier on darker bone (DESIGN.md §4.6) */}
+            <div className="mt-3 border border-border bg-secondary/60">
+              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+                <span className="smallcaps tracking-sc text-xs text-muted-foreground">
+                  Terminal
+                </span>
+                <span className="smallcaps tracking-sc border border-border px-1.5 text-xs leading-5 text-muted-foreground">
+                  bash
+                </span>
+              </div>
+              <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
+                <code className="font-mono text-foreground">{`claude mcp add github-prod \
+  --transport http \
+  https://github.your-team.twinmcp.fr/mcp \
   --header "Authorization: Bearer tw_live_..."`}</code>
-        </pre>
-        <p className="mt-6 text-sm text-muted-foreground">
+              </pre>
+            </div>
+          </div>
+        </div>
+        <p className="mt-8 text-sm text-muted-foreground">
           For Claude Desktop quirks (path differences across OSes, why your config changes do not
           apply), read the full{" "}
           <Link
             href={"/blog/claude-desktop-mcp" as Route}
-            className="font-medium underline underline-offset-4 hover:text-foreground"
+            className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
           >
             Claude Desktop MCP installation guide
           </Link>

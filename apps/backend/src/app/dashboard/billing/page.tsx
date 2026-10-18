@@ -4,6 +4,7 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { BillingActions } from "./actions";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export default async function BillingPage() {
   const supabase = await createClient();
@@ -29,14 +30,23 @@ export default async function BillingPage() {
 
   return (
     <div className="space-y-8">
+      {/* Page header: name line top-left, the current plan in the card's top-right corner, a double rule under. */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
-        <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-          Current plan:{" "}
-          <Badge variant={plan === "free" ? "secondary" : "success"} className="capitalize">
-            {plan}
-          </Badge>
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+          <div>
+            <h1 className="smallcaps tracking-sc text-2xl font-medium">Billing</h1>
+            <p className="mt-1 text-sm italic text-muted-foreground">Your plan and subscription.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="smallcaps tracking-sc text-xs text-muted-foreground">
+              Current plan
+            </span>
+            <Badge variant={plan === "free" ? "secondary" : "success"} className="capitalize">
+              {plan}
+            </Badge>
+          </div>
+        </div>
+        <Separator variant="double" className="mt-4" />
       </div>
       <BillingActions
         plan={plan}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -31,24 +32,25 @@ export function StepWelcome({
   selectedPlan,
 }: StepWelcomeProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">
+        <h2 className="text-2xl font-medium md:text-3xl">
           Let&apos;s get you running in 2 minutes.
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-base text-muted-foreground">
           A few quick choices and you&apos;ll have a live MCP server wired into your IDE.
         </p>
         {selectedPlan && (
-          <Badge variant="secondary" className="mt-3 capitalize">
+          <Badge variant="brand" className="mt-4 capitalize">
             Selected plan: {selectedPlan}
           </Badge>
         )}
       </div>
 
       <div>
-        <p className="mb-3 text-sm font-medium">Which IDE do you use?</p>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <p className="smallcaps tracking-sc mb-3 text-sm font-medium">Which IDE do you use?</p>
+        {/* Choice tiles: hairline cards; the chosen one is pressed into the stock. */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {ides.map((ide) => {
             const active = selected === ide.id;
             return (
@@ -57,22 +59,27 @@ export function StepWelcome({
                 type="button"
                 onClick={() => onSelect(ide.id)}
                 className={cn(
-                  "flex flex-col items-start gap-1 rounded-lg border bg-card p-4 text-left transition-colors",
+                  "relative flex flex-col items-start gap-1 border bg-card p-4 pr-9 text-left transition-colors",
                   active
-                    ? "border-foreground/40 ring-1 ring-foreground/20"
-                    : "border-border/80 hover:border-foreground/20"
+                    ? "border-foreground bg-secondary/50 shadow-press"
+                    : "border-border hover:border-foreground/60"
                 )}
                 aria-pressed={active}
               >
-                <span className="text-sm font-semibold tracking-tight">{ide.label}</span>
-                <span className="font-mono text-[10px] text-muted-foreground">{ide.hint}</span>
+                <span className="smallcaps tracking-sc text-sm font-medium">{ide.label}</span>
+                <span className="break-all font-mono text-xs text-muted-foreground">
+                  {ide.hint}
+                </span>
+                {active && (
+                  <Check aria-hidden className="absolute right-3 top-3 h-4 w-4 text-foreground" />
+                )}
               </button>
             );
           })}
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-t border-border pt-6">
         {onBack ? (
           <Button variant="ghost" onClick={onBack}>
             Back

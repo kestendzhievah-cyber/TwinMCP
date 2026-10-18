@@ -160,17 +160,17 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
           <article
             key={plan.id}
             className={cn(
-              "relative flex flex-col rounded-xl border bg-card p-6 transition-colors",
+              "relative flex flex-col border bg-card p-6 transition-colors",
               activePromo
-                ? "border-emerald-500/60 shadow-md shadow-emerald-500/[0.08]"
+                ? "border-success/40 shadow-md"
                 : plan.highlighted
-                  ? "border-foreground/40 shadow-md shadow-foreground/[0.04]"
+                  ? "border-foreground/40 shadow-stack"
                   : "border-border/80"
             )}
             aria-label={c.planAria(plan.name)}
           >
             {activePromo ? (
-              <Badge className="absolute -top-2.5 left-6 bg-emerald-500 text-white hover:bg-emerald-500">
+              <Badge className="absolute -top-2.5 left-6 bg-gilt text-primary-foreground hover:bg-gilt/90">
                 {activePromo.badge}
               </Badge>
             ) : plan.highlighted ? (
@@ -178,12 +178,12 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
             ) : null}
 
             <header>
-              <h3 className="font-semibold tracking-tight">{plan.name}</h3>
+              <h3 className="font-medium">{plan.name}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{copy.blurb}</p>
             </header>
 
             <div className="mt-5 flex items-baseline gap-1.5">
-              <span className="text-3xl font-semibold tracking-tight">{price}</span>
+              <span className="text-3xl font-medium">{price}</span>
               <span className="text-sm text-muted-foreground">{cadenceSuffix}</span>
             </div>
 
@@ -199,7 +199,7 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
             <ul className="mt-5 flex-1 space-y-2 text-sm">
               {copy.bullets.map((bullet) => (
                 <li key={bullet} className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                   <span className="text-foreground/90">{bullet}</span>
                 </li>
               ))}

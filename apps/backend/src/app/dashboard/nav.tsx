@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/marketing/logo";
 import type { Plan } from "@/db/schema/core";
 import { PLAN_LABELS } from "@/lib/plan-features";
 import {
@@ -114,7 +115,9 @@ export function DashboardNav({
 
   const planBadge = (
     <Link href={"/dashboard/billing" as Route} aria-label={`Current plan: ${PLAN_LABELS[plan]}`}>
-      <Badge variant={plan === "free" ? "secondary" : "success"}>{PLAN_LABELS[plan]} plan</Badge>
+      <Badge variant={plan === "free" ? "secondary" : plan === "pro" ? "success" : "gilt"}>
+        {PLAN_LABELS[plan]} plan
+      </Badge>
     </Link>
   );
 
@@ -131,18 +134,18 @@ export function DashboardNav({
               href={l.href as Route}
               onClick={() => setOpen(false)}
               className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                "smallcaps tracking-sc flex items-center gap-2.5 border-l-2 py-2 pl-3 pr-2 text-sm transition-colors",
                 active
-                  ? "bg-secondary text-foreground font-medium"
-                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                  ? "border-foreground font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
               )}
             >
               <Icon className="h-4 w-4" />
               {l.label}
               {l.badge ? (
-                <span className="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-medium text-destructive-foreground">
+                <Badge variant="destructive" className="lining ml-auto h-5 px-1.5">
                   {l.badge}
-                </span>
+                </Badge>
               ) : null}
             </Link>
           );
@@ -159,13 +162,13 @@ export function DashboardNav({
           href="/docs"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition-colors mb-2"
+          className="smallcaps tracking-sc mb-2 flex items-center gap-2.5 border-l-2 border-transparent py-2 pl-3 text-sm text-muted-foreground transition-colors hover:border-border hover:text-foreground"
         >
           <BookOpen className="h-4 w-4" />
           API Docs
         </a>
         <Separator className="mb-3" />
-        <p className="text-xs text-muted-foreground mb-2 break-all px-2">{email}</p>
+        <p className="mb-2 break-all px-3 text-xs italic text-muted-foreground">{email}</p>
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
           <LogOut className="h-4 w-4" />
           Sign out
@@ -177,9 +180,9 @@ export function DashboardNav({
   return (
     <>
       {/* Mobile top bar */}
-      <div className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b bg-background px-4 py-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold tracking-tight">TwinMCP</h2>
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 md:hidden">
+        <div className="flex items-center gap-3">
+          <Logo tagline="Control Plane" />
           {planBadge}
         </div>
         <div className="flex items-center gap-1">
@@ -201,7 +204,7 @@ export function DashboardNav({
       {open && (
         <div className="md:hidden fixed inset-0 z-40">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-foreground/30"
             aria-hidden
             onClick={() => setOpen(false)}
           />
@@ -209,10 +212,10 @@ export function DashboardNav({
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
-            className="absolute left-0 top-0 flex h-full w-64 max-w-[80%] flex-col border-r bg-background px-4 py-6"
+            className="absolute left-0 top-0 flex h-full w-72 max-w-[85%] flex-col border-r border-border bg-background px-4 py-6"
           >
             <div className="mb-6 flex items-center justify-between px-2">
-              <h2 className="text-lg font-bold tracking-tight">TwinMCP</h2>
+              <Logo tagline="Control Plane" />
               <Button
                 ref={closeBtnRef}
                 variant="ghost"
@@ -223,7 +226,7 @@ export function DashboardNav({
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="mb-6 px-2">{planBadge}</div>
+            <div className="mb-6 border-b border-border px-2 pb-6">{planBadge}</div>
             <NavLinks />
             <NavFooter />
           </nav>
@@ -231,12 +234,12 @@ export function DashboardNav({
       )}
 
       {/* Desktop sidebar */}
-      <nav className="hidden w-60 shrink-0 flex-col border-r bg-background px-4 py-6 md:flex">
-        <div className="mb-4 flex items-center justify-between px-2">
-          <h2 className="text-lg font-bold tracking-tight">TwinMCP</h2>
+      <nav className="hidden w-64 shrink-0 flex-col border-r border-border bg-background px-4 py-6 md:flex">
+        <div className="mb-5 flex items-start justify-between px-2">
+          <Logo tagline="Control Plane" />
           <ThemeToggle />
         </div>
-        <div className="mb-6 px-2">{planBadge}</div>
+        <div className="rule-double mb-6 px-2 pt-5">{planBadge}</div>
         <NavLinks />
         <NavFooter />
       </nav>

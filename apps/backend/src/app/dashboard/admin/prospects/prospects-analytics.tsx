@@ -1,7 +1,14 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   PIPELINE_ORDER,
   STATUS_LABEL,
@@ -40,104 +47,132 @@ export function ProspectsAnalytics({ items }: { items: ProspectRow[] }) {
 
   if (items.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+      <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
+        <p className="text-sm italic text-muted-foreground">
           Ajoutez des prospects pour voir vos statistiques de conversion.
-        </CardContent>
-      </Card>
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Stat cards (DESIGN.md §5): small-caps caption, lining number, one muted line under. */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Prévision pondérée</CardDescription>
-            <CardTitle className="text-2xl">{eur.format(weighted)}</CardTitle>
+            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
+              Prévision pondérée
+            </CardDescription>
+            <CardTitle className="lining text-3xl">{eur.format(weighted)}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs italic text-muted-foreground">
               Revenu attendu (valeur × probabilité par étape).
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Taux de closing</CardDescription>
-            <CardTitle className="text-2xl">{winRate}%</CardTitle>
+            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
+              Taux de closing
+            </CardDescription>
+            <CardTitle className="lining text-3xl">{winRate}%</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">
+            <p className="lining text-xs text-muted-foreground">
               {won} gagné{won > 1 ? "s" : ""} · {lost} perdu{lost > 1 ? "s" : ""}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Deals actifs</CardDescription>
-            <CardTitle className="text-2xl">
+            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
+              Deals actifs
+            </CardDescription>
+            <CardTitle className="lining text-3xl">
               {items.filter((p) => p.status !== "won" && p.status !== "lost").length}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">Prospects encore en jeu.</p>
+            <p className="text-xs italic text-muted-foreground">Prospects encore en jeu.</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Conversion funnel */}
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-border pb-4">
           <CardTitle className="text-base">Entonnoir de conversion</CardTitle>
           <CardDescription>
             Prospects ayant atteint chaque étape, et taux de passage d'une étape à la suivante.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {funnel.map((stage, i) => {
-            const prev = i > 0 ? funnel[i - 1].count : null;
-            const conv = prev != null ? pct(stage.count, prev) : null;
-            return (
-              <div key={stage.status} className="flex items-center gap-3">
-                <div className="w-24 shrink-0 text-sm">{STATUS_LABEL[stage.status]}</div>
-                <div className="h-7 flex-1 overflow-hidden rounded bg-muted">
-                  <div
-                    className="flex h-full items-center rounded bg-primary/80 px-2 text-xs font-medium text-primary-foreground"
-                    style={{
-                      width: `${top > 0 ? Math.max((stage.count / top) * 100, stage.count > 0 ? 8 : 0) : 0}%`,
-                    }}
-                  >
-                    {stage.count > 0 ? stage.count : ""}
+        <CardContent>
+          {/* A ledger of stages: hairline rows, small-caps stage, a thin ink rule on bone
+              (the stat-card progress bar), then the lining count and the step conversion. */}
+          <div className="lining divide-y divide-border">
+            {funnel.map((stage, i) => {
+              const prev = i > 0 ? funnel[i - 1].count : null;
+              const conv = prev != null ? pct(stage.count, prev) : null;
+              return (
+                <div key={stage.status} className="flex items-center gap-4 py-3">
+                  <div className="smallcaps tracking-sc w-24 shrink-0 text-xs font-medium">
+                    {STATUS_LABEL[stage.status]}
+                  </div>
+                  <div className="h-1.5 flex-1 bg-secondary">
+                    <div
+                      className="h-full bg-foreground"
+                      style={{
+                        width: `${top > 0 ? Math.max((stage.count / top) * 100, stage.count > 0 ? 8 : 0) : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="w-10 shrink-0 text-right text-sm font-medium">
+                    {stage.count > 0 ? stage.count : "—"}
+                  </div>
+                  <div className="w-14 shrink-0 text-right text-xs text-muted-foreground">
+                    {conv != null ? `${conv}%` : "—"}
                   </div>
                 </div>
-                <div className="w-14 shrink-0 text-right text-xs text-muted-foreground">
-                  {conv != null ? `${conv}%` : "—"}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
       {/* Value by status */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="text-base">Répartition par statut</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {byStatus.map((b) => (
-            <Badge key={b.status} variant="secondary" className="gap-1.5 py-1">
-              {STATUS_LABEL[b.status]} · {b.count}
-              {b.value > 0 && (
-                <span className="text-muted-foreground">({eur.format(b.value)})</span>
-              )}
-              <span className="text-muted-foreground">
-                · {Math.round(STATUS_PROBABILITY[b.status] * 100)}%
-              </span>
-            </Badge>
-          ))}
-        </CardContent>
+        {/* A ledger table (DESIGN.md §4.5) set flush in the card, instead of a row of chips. */}
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-6">Statut</TableHead>
+              <TableHead className="text-right">Prospects</TableHead>
+              <TableHead className="text-right">Valeur</TableHead>
+              <TableHead className="pr-6 text-right">Probabilité</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {byStatus.map((b) => (
+              <TableRow key={b.status}>
+                <TableCell className="smallcaps tracking-sc pl-6 text-xs font-medium">
+                  {STATUS_LABEL[b.status]}
+                </TableCell>
+                <TableCell className="text-right">{b.count}</TableCell>
+                <TableCell className="text-right">
+                  {b.value > 0 ? eur.format(b.value) : "—"}
+                </TableCell>
+                <TableCell className="pr-6 text-right text-muted-foreground">
+                  {Math.round(STATUS_PROBABILITY[b.status] * 100)}%
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

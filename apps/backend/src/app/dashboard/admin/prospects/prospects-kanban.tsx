@@ -30,7 +30,10 @@ export function ProspectsKanban({
   const [overCol, setOverCol] = useState<Status | null>(null);
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    // The board is one sheet of stock ruled into columns (DESIGN.md §5 Kanban):
+    // hairlines between columns, small-caps titles with lining counts, plain
+    // bone cards inside. The hovered drop column darkens like a hover surface.
+    <div className="flex divide-x divide-border overflow-x-auto border border-border">
       {STATUSES.map((s) => {
         const col = items.filter((p) => p.status === s);
         const sum = col.reduce((a, p) => a + p.estimatedValueEur, 0);
@@ -49,14 +52,14 @@ export function ProspectsKanban({
               setOverCol(null);
             }}
             className={cn(
-              "flex w-64 shrink-0 flex-col rounded-lg border bg-muted/30 p-2 transition-colors",
-              overCol === s && "ring-2 ring-primary"
+              "flex w-64 shrink-0 flex-col p-3 transition-colors",
+              overCol === s && "bg-secondary/70"
             )}
           >
-            <div className="mb-2 flex items-center justify-between px-1">
-              <span className="text-sm font-medium">{STATUS_LABEL[s]}</span>
-              <span className="text-xs text-muted-foreground">
-                {col.length}
+            <div className="mb-3 flex items-baseline justify-between gap-2 border-b border-border pb-2">
+              <span className="smallcaps tracking-sc text-sm font-medium">{STATUS_LABEL[s]}</span>
+              <span className="lining text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{col.length}</span>
                 {sum > 0 ? ` · ${eur.format(sum)}` : ""}
               </span>
             </div>
@@ -73,12 +76,12 @@ export function ProspectsKanban({
                       setOverCol(null);
                     }}
                     className={cn(
-                      "group cursor-grab rounded-md border bg-background p-2.5 shadow-sm active:cursor-grabbing",
+                      "group cursor-grab border border-border bg-card p-3 transition-colors hover:border-foreground/60 active:cursor-grabbing",
                       dragId === p.id && "opacity-50"
                     )}
                   >
-                    <div className="flex items-start justify-between gap-1">
-                      <span className="text-sm font-medium leading-tight">{p.company}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-medium leading-snug">{p.company}</span>
                       {p.hasAccount && (
                         <Badge variant="success" className="shrink-0">
                           Inscrit
@@ -86,42 +89,50 @@ export function ProspectsKanban({
                       )}
                     </div>
                     {(p.contactName || p.email) && (
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                      <div
+                        className={cn(
+                          "mt-0.5 truncate text-xs text-muted-foreground",
+                          !p.contactName && "font-mono"
+                        )}
+                      >
                         {p.contactName || p.email}
                       </div>
                     )}
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs tabular-nums text-muted-foreground">
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="lining text-xs text-muted-foreground">
                         {p.estimatedValueEur ? eur.format(p.estimatedValueEur) : ""}
                       </span>
-                      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                         <button
                           type="button"
                           title="Envoyer un email"
                           disabled={!p.email}
                           onClick={() => onEmail(p)}
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                          className="grid h-10 w-10 place-items-center border border-transparent text-muted-foreground transition-colors hover:border-border hover:text-foreground disabled:opacity-40"
                         >
-                          <Mail className="h-3.5 w-3.5" />
+                          <Mail className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
                           title="Modifier"
                           onClick={() => onEdit(p)}
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                          className="grid h-10 w-10 place-items-center border border-transparent text-muted-foreground transition-colors hover:border-border hover:text-foreground"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
                     {due && (
-                      <div className="mt-1.5 text-xs font-medium text-destructive">À relancer</div>
+                      <div className="smallcaps tracking-sc mt-2 flex items-center gap-1.5 text-xs font-medium text-destructive">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />À
+                        relancer
+                      </div>
                     )}
                   </div>
                 );
               })}
               {col.length === 0 && (
-                <div className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
+                <div className="border border-dashed border-foreground/40 p-3 text-center text-xs italic text-muted-foreground">
                   Glissez une carte ici
                 </div>
               )}

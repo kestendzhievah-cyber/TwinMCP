@@ -57,7 +57,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
         prospectsDue={prospectsDue}
         attentionCount={attention}
       />
-      <main id="main-content" className="w-full max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-8">
+      {/* Bone stock beside the sidebar: 16 px gutters on mobile; min-w-0 so a wide
+          ledger table scrolls inside its card instead of widening the column. */}
+      <main
+        id="main-content"
+        className="w-full min-w-0 max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-10"
+      >
         {children}
       </main>
     </div>

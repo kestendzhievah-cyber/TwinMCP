@@ -1,15 +1,17 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { and, desc, eq, gte } from "drizzle-orm";
+import { ArrowLeft, ArrowRight, ScrollText } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { auditLogs, users } from "@/db/schema";
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { UpgradeCard } from "@/components/billing/upgrade-card";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -44,13 +46,22 @@ export default async function AuditLogsPage({
   const plan = me?.plan ?? "free";
   const retentionDays = PLAN_CAPABILITIES[plan].auditRetentionDays;
 
+  // Page header (DESIGN.md §5): engraved title, italic scope line, double rule.
   const header = (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Audit logs</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <h1 className="smallcaps tracking-sc text-2xl font-medium">Audit logs</h1>
+      <p className="mt-1 text-sm italic text-muted-foreground">
         Security-relevant actions on your account — API keys, servers, MCPs, team, and billing
-        {retentionDays > 0 ? `, retained ${retentionDays} days` : ""}.
+        {retentionDays > 0 ? (
+          <>
+            , retained <span className="lining">{retentionDays}</span> days
+          </>
+        ) : (
+          ""
+        )}
+        .
       </p>
+      <Separator variant="double" className="mt-4" />
     </div>
   );
 
@@ -90,73 +101,85 @@ export default async function AuditLogsPage({
   return (
     <div className="space-y-8">
       {header}
-      <Card>
-        <CardContent className="pt-6">
-          {rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No audit events yet. Actions like creating an API key or a server will appear here.
-            </p>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-48">When</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Target</TableHead>
-                    <TableHead className="w-32">IP</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                        {formatDateTime(r.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="font-mono text-xs">
-                          {r.action}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <span className="text-muted-foreground">{r.targetType}</span>
-                        {r.targetId && (
-                          <span className="ml-2 font-mono text-xs text-muted-foreground">
-                            {r.targetId.slice(0, 12)}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {r.ip ?? "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={ScrollText}
+          title="No audit events yet"
+          description="Actions like creating an API key or a server will appear here."
+        />
+      ) : (
+        // The ledger (DESIGN.md §4.5): lining timestamps, the action as a mono
+        // stamp, target ids and addresses in Courier.
+        <div className="border border-border bg-card shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-48">When</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Target</TableHead>
+                <TableHead className="w-32">IP</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
+                    {formatDateTime(r.createdAt)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="no-smallcaps font-mono">
+                      {r.action}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-muted-foreground">{r.targetType}</span>
+                    {r.targetId && (
+                      <span className="ml-2 font-mono text-xs text-muted-foreground">
+                        {r.targetId.slice(0, 12)}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {r.ip ?? "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {(page > 1 || hasNext) && (
-        <div className="flex items-center justify-between">
+        // Pager: hairline above, small-caps folio in the middle, square buttons either side.
+        <div className="flex items-center justify-between border-t border-border pt-4">
           {page > 1 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/dashboard/audit-logs?page=${page - 1}` as Route}>← Newer</Link>
+            <Button asChild variant="outline">
+              <Link href={`/dashboard/audit-logs?page=${page - 1}` as Route}>
+                <ArrowLeft className="h-4 w-4" />
+                Newer
+              </Link>
             </Button>
           ) : (
-            <Button variant="outline" size="sm" disabled>
-              ← Newer
+            <Button variant="outline" disabled>
+              <ArrowLeft className="h-4 w-4" />
+              Newer
             </Button>
           )}
-          <span className="text-xs text-muted-foreground">Page {page}</span>
+          <span className="smallcaps tracking-sc text-xs text-muted-foreground">
+            Page <span className="lining">{page}</span>
+          </span>
           {hasNext ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/dashboard/audit-logs?page=${page + 1}` as Route}>Older →</Link>
+            <Button asChild variant="outline">
+              <Link href={`/dashboard/audit-logs?page=${page + 1}` as Route}>
+                Older
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           ) : (
-            <Button variant="outline" size="sm" disabled>
-              Older →
+            <Button variant="outline" disabled>
+              Older
+              <ArrowRight className="h-4 w-4" />
             </Button>
           )}
         </div>

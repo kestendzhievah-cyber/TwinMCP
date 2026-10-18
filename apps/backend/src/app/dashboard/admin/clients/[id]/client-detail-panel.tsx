@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -125,10 +126,12 @@ function relTime(iso: string | null): string {
   if (h < 24) return `il y a ${h} h`;
   return `il y a ${Math.floor(h / 24)} j`;
 }
-function serverVariant(s: string): "success" | "destructive" | "secondary" | "outline" {
+// Status seals follow DESIGN.md §4.9: running / provisioning / stopped / error / destroyed.
+function serverVariant(s: string): "success" | "warning" | "destructive" | "secondary" | "outline" {
   if (s === "running") return "success";
+  if (s === "provisioning") return "warning";
   if (s === "error") return "destructive";
-  if (s === "destroyed") return "secondary";
+  if (s === "stopped") return "secondary";
   return "outline";
 }
 
@@ -225,17 +228,31 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
     }
   }
 
-  if (loading) return <Skeleton className="h-96 w-full" />;
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-72 max-w-full" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (error || !data) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <BackLink />
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            {error || "Aucune donnée."}
-          </CardContent>
-        </Card>
+        <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
+          <p className="text-sm italic text-muted-foreground">{error || "Aucune donnée."}</p>
+        </div>
       </div>
     );
   }
@@ -247,48 +264,48 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
   const maxReq = Math.max(1, ...usage14d.map((d) => d.req));
 
   return (
-    <div className="space-y-6">
-      <BackLink />
-
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{user.name || user.email}</h1>
-          {user.name && <p className="text-sm text-muted-foreground">{user.email}</p>}
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant={user.plan === "free" ? "secondary" : "success"}>
-              {PLAN_LABEL[user.plan]}
-            </Badge>
-            {user.subscriptionStatus && <Badge variant="outline">{user.subscriptionStatus}</Badge>}
-            {user.cancelAtPeriodEnd && <Badge variant="destructive">annulation prévue</Badge>}
-            <span className="text-xs text-muted-foreground">
-              Client depuis {fmtDate(user.createdAt)}
-            </span>
-          </div>
+    <div className="space-y-8">
+      {/* Header — the engraved name, its address line, then the double rule. */}
+      <div>
+        <BackLink />
+        <h1 className="smallcaps tracking-sc mt-4 break-words text-2xl font-medium">
+          {user.name || user.email}
+        </h1>
+        {user.name && <p className="mt-1 break-all text-sm text-muted-foreground">{user.email}</p>}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Badge variant={user.plan === "free" ? "secondary" : "success"}>
+            {PLAN_LABEL[user.plan]}
+          </Badge>
+          {user.subscriptionStatus && <Badge variant="outline">{user.subscriptionStatus}</Badge>}
+          {user.cancelAtPeriodEnd && <Badge variant="warning">annulation prévue</Badge>}
+          <span className="smallcaps tracking-sc lining text-xs text-muted-foreground">
+            Client depuis {fmtDate(user.createdAt)}
+          </span>
         </div>
+        <Separator variant="double" className="mt-4" />
       </div>
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
-          icon={<Boxes className="h-3.5 w-3.5" />}
+          icon={<Boxes className="h-4 w-4" />}
           label="Serveurs"
           value={`${running}/${servers.length}`}
           sub={errored > 0 ? `${errored} en erreur` : "aucune erreur"}
           danger={errored > 0}
         />
         <Kpi
-          icon={<Puzzle className="h-3.5 w-3.5" />}
+          icon={<Puzzle className="h-4 w-4" />}
           label="MCPs installés"
           value={nf.format(mcps.length)}
         />
         <Kpi
-          icon={<Activity className="h-3.5 w-3.5" />}
+          icon={<Activity className="h-4 w-4" />}
           label="Requêtes 14j"
           value={nf.format(req14)}
         />
         <Kpi
-          icon={<CreditCard className="h-3.5 w-3.5" />}
+          icon={<CreditCard className="h-4 w-4" />}
           label="Abonnement"
           value={user.subscriptionStatus ?? "—"}
           sub={user.currentPeriodEnd ? `jusqu'au ${fmtDate(user.currentPeriodEnd)}` : undefined}
@@ -297,32 +314,43 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
 
       {/* Usage */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Usage MCP · 14 jours</CardTitle>
-          <CardDescription>Requêtes traitées par les box du client (par jour).</CardDescription>
+        <CardHeader className="border-b border-border px-6 py-4">
+          <CardTitle className="lining flex items-center gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+              <Activity className="h-4 w-4" />
+            </span>
+            Usage MCP · 14 jours
+          </CardTitle>
+          <CardDescription className="pl-12">
+            Requêtes traitées par les box du client (par jour).
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           {usage14d.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
+            <p className="py-6 text-center text-sm italic text-muted-foreground">
               Aucune activité sur la période.
             </p>
           ) : (
-            <div className="flex h-28 items-end gap-1">
-              {usage14d.map((d) => (
-                <div
-                  key={d.day}
-                  className="flex h-full flex-1 flex-col justify-end"
-                  title={`${d.day} · ${d.req} req · ${d.err} err`}
-                >
+            <div>
+              {/* Ink bars on a hairline baseline — a ledger chart, no rounding, no fills. */}
+              <div className="flex h-28 items-end gap-px border-b border-foreground/50">
+                {usage14d.map((d) => (
                   <div
-                    className={cn(
-                      "w-full rounded-t-sm",
-                      d.err > 0 ? "bg-destructive/70" : "bg-primary/80"
-                    )}
-                    style={{ height: `${(d.req / maxReq) * 100}%` }}
-                  />
-                </div>
-              ))}
+                    key={d.day}
+                    className="flex h-full flex-1 flex-col justify-end"
+                    title={`${d.day} · ${d.req} req · ${d.err} err`}
+                  >
+                    <div
+                      className={cn("w-full", d.err > 0 ? "bg-destructive/80" : "bg-foreground/80")}
+                      style={{ height: `${(d.req / maxReq) * 100}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="lining mt-2 flex justify-between text-xs text-muted-foreground">
+                <span>{usage14d[0]?.day}</span>
+                <span>{usage14d[usage14d.length - 1]?.day}</span>
+              </div>
             </div>
           )}
         </CardContent>
@@ -337,113 +365,113 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
         {servers.length === 0 ? (
           <Empty>Aucun serveur. Créez-en un pour ce client.</Empty>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead className="w-24">Statut</TableHead>
-                  <TableHead className="w-24">Type</TableHead>
-                  <TableHead className="w-20">Taille</TableHead>
-                  <TableHead>Heartbeat</TableHead>
-                  <TableHead className="w-56 text-right">Actions</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-6">Nom</TableHead>
+                <TableHead className="w-28">Statut</TableHead>
+                <TableHead className="w-28">Type</TableHead>
+                <TableHead className="w-20">Taille</TableHead>
+                <TableHead>Heartbeat</TableHead>
+                <TableHead className="w-56 pr-6 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {servers.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell className="pl-6">
+                    <div className="font-medium">{s.name}</div>
+                    <div className="font-mono text-xs text-muted-foreground">{s.slug}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={serverVariant(s.status)}>{s.status}</Badge>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {s.hostType}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{s.boxSize}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {relTime(s.lastHeartbeatAt)}
+                  </TableCell>
+                  <TableCell className="pr-6 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {s.hostType !== "local_agent" && (
+                        <>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Package className="h-4 w-4" />
+                                Pack
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="max-w-xs">
+                              <DropdownMenuLabel>Déployer un pack</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {MCP_BUNDLES.map((b) => (
+                                <DropdownMenuItem
+                                  key={b.id}
+                                  onSelect={() => void installBundle(s.id, b.id)}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{b.label}</span>
+                                    <span className="text-xs italic text-muted-foreground">
+                                      {b.description}
+                                    </span>
+                                  </div>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setInstallServerId(s.id);
+                              setInstallOpen(true);
+                            }}
+                          >
+                            <Puzzle className="h-4 w-4" />
+                            MCP
+                          </Button>
+                        </>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" title="Cycle de vie">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {s.hostType !== "local_agent" &&
+                            (s.status === "stopped" || s.status === "error") && (
+                              <DropdownMenuItem onSelect={() => void serverAction(s.id, "start")}>
+                                <Play className="h-4 w-4" />
+                                Démarrer
+                              </DropdownMenuItem>
+                            )}
+                          {s.hostType !== "local_agent" &&
+                            (s.status === "running" || s.status === "provisioning") && (
+                              <DropdownMenuItem onSelect={() => void serverAction(s.id, "stop")}>
+                                <Square className="h-4 w-4" />
+                                Arrêter
+                              </DropdownMenuItem>
+                            )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onSelect={() => void deleteServer(s.id, s.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Supprimer le serveur
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {servers.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell>
-                      <div className="font-medium">{s.name}</div>
-                      <div className="font-mono text-xs text-muted-foreground">{s.slug}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={serverVariant(s.status)}>{s.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">{s.hostType}</TableCell>
-                    <TableCell className="text-xs">{s.boxSize}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {relTime(s.lastHeartbeatAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {s.hostType !== "local_agent" && (
-                          <>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  <Package className="h-3.5 w-3.5" />
-                                  Pack
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="max-w-xs">
-                                <DropdownMenuLabel>Déployer un pack</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {MCP_BUNDLES.map((b) => (
-                                  <DropdownMenuItem
-                                    key={b.id}
-                                    onSelect={() => void installBundle(s.id, b.id)}
-                                  >
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">{b.label}</span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {b.description}
-                                      </span>
-                                    </div>
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setInstallServerId(s.id);
-                                setInstallOpen(true);
-                              }}
-                            >
-                              <Puzzle className="h-3.5 w-3.5" />
-                              MCP
-                            </Button>
-                          </>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" title="Cycle de vie">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {s.hostType !== "local_agent" &&
-                              (s.status === "stopped" || s.status === "error") && (
-                                <DropdownMenuItem onSelect={() => void serverAction(s.id, "start")}>
-                                  <Play className="h-4 w-4" />
-                                  Démarrer
-                                </DropdownMenuItem>
-                              )}
-                            {s.hostType !== "local_agent" &&
-                              (s.status === "running" || s.status === "provisioning") && (
-                                <DropdownMenuItem onSelect={() => void serverAction(s.id, "stop")}>
-                                  <Square className="h-4 w-4" />
-                                  Arrêter
-                                </DropdownMenuItem>
-                              )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onSelect={() => void deleteServer(s.id, s.name)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Supprimer le serveur
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </Section>
 
@@ -452,33 +480,49 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
         {mcps.length === 0 ? (
           <Empty>Aucun MCP installé.</Empty>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <ul className="divide-y divide-border">
+            {/* One ledger row per MCP: live dot, name, mono slug, category, then the uninstall stamp. */}
             {mcps.map((m) => (
-              <span
+              <li
                 key={m.id}
-                className="inline-flex items-center gap-1.5 rounded-md border bg-secondary/50 px-2 py-1 text-sm"
+                className="flex items-center justify-between gap-3 px-6 py-2.5 text-sm"
                 title={`${m.mcpSlug}${m.category ? ` · ${m.category}` : ""}`}
               >
-                <span
-                  className={cn(
-                    "inline-block h-1.5 w-1.5 rounded-full",
-                    m.live ? "bg-emerald-500" : "bg-muted-foreground/40"
+                <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                  <span
+                    className={cn(
+                      "inline-block h-2 w-2 shrink-0 rounded-full",
+                      m.live ? "bg-success" : "bg-muted-foreground/40"
+                    )}
+                  />
+                  <span className="font-medium">{m.mcpName}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{m.mcpSlug}</span>
+                  {m.category && (
+                    <span className="smallcaps tracking-sc text-xs text-muted-foreground">
+                      {m.category}
+                    </span>
                   )}
-                />
-                {m.mcpName}
-                {m.mcpSlug !== "twinmcp-docs" && (
-                  <button
-                    type="button"
-                    title="Désinstaller"
-                    onClick={() => void uninstallMcp(m.serverId, m.id, m.mcpName)}
-                    className="ml-0.5 rounded p-0.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="smallcaps tracking-sc lining text-xs text-muted-foreground">
+                    installé {relTime(m.installedAt)}
+                  </span>
+                  {m.mcpSlug !== "twinmcp-docs" && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      title="Désinstaller"
+                      onClick={() => void uninstallMcp(m.serverId, m.id, m.mcpName)}
+                      className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </Section>
 
@@ -487,15 +531,18 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
         {apiKeys.length === 0 ? (
           <Empty>Aucune clé API.</Empty>
         ) : (
-          <ul className="space-y-2 text-sm">
+          <ul className="divide-y divide-border">
             {apiKeys.map((k) => (
-              <li key={k.prefix} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <span className="font-mono text-xs">{k.prefix}…</span>
+              <li
+                key={k.prefix}
+                className="flex items-center justify-between gap-3 px-6 py-3 text-sm"
+              >
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono">{k.prefix}…</span>
                   {k.name && <span className="text-muted-foreground">{k.name}</span>}
                   {k.revokedAt && <Badge variant="destructive">révoquée</Badge>}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="smallcaps tracking-sc lining shrink-0 text-xs text-muted-foreground">
                   utilisée {relTime(k.lastUsedAt)}
                 </span>
               </li>
@@ -509,14 +556,14 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
         {audit.length === 0 ? (
           <Empty>Aucune activité.</Empty>
         ) : (
-          <ul className="space-y-2 text-sm">
+          <ul className="divide-y divide-border">
             {audit.map((a, i) => (
-              <li key={i} className="flex items-center justify-between gap-2">
-                <span className="truncate">
-                  <span className="font-medium">{a.action}</span>{" "}
+              <li key={i} className="flex items-center justify-between gap-3 px-6 py-3 text-sm">
+                <span className="min-w-0 truncate">
+                  <span className="font-mono">{a.action}</span>{" "}
                   <span className="text-muted-foreground">{a.targetType}</span>
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className="smallcaps tracking-sc lining shrink-0 text-xs text-muted-foreground">
                   {relTime(a.createdAt)}
                 </span>
               </li>
@@ -536,11 +583,12 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
   );
 }
 
+// Breadcrumb-style back link (DESIGN.md §5): small caps, muted, ink on hover.
 function BackLink() {
   return (
     <Link
       href={"/dashboard/admin/clients" as Route}
-      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      className="smallcaps tracking-sc inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
     >
       <ArrowLeft className="h-4 w-4" />
       Tous les clients
@@ -548,6 +596,7 @@ function BackLink() {
   );
 }
 
+// Stat card (DESIGN.md §5): small-caps caption, lining number, italic footnote.
 function Kpi({
   icon,
   label,
@@ -563,21 +612,22 @@ function Kpi({
 }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardDescription className="flex items-center gap-1.5">
-          {icon} {label}
+      <CardHeader>
+        <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
+          {icon}
+          {label}
         </CardDescription>
-        <CardTitle className={cn("text-2xl", danger && "text-destructive")}>{value}</CardTitle>
+        <CardTitle className={cn("lining text-3xl", danger && "text-destructive")}>
+          {value}
+        </CardTitle>
+        {sub && <p className="lining text-xs italic text-muted-foreground">{sub}</p>}
       </CardHeader>
-      {sub && (
-        <CardContent>
-          <p className="text-xs text-muted-foreground">{sub}</p>
-        </CardContent>
-      )}
     </Card>
   );
 }
 
+// A section is a card: hairline icon square + small-caps title on a ruled header row,
+// then flush content (ledger tables and lists run edge to edge).
 function Section({
   icon,
   title,
@@ -591,19 +641,20 @@ function Section({
 }) {
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            {icon} {title}
-          </CardTitle>
-          {action}
-        </div>
+      <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b border-border px-6 py-4">
+        <CardTitle className="lining flex items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+            {icon}
+          </span>
+          {title}
+        </CardTitle>
+        {action}
       </CardHeader>
-      <CardContent>{children}</CardContent>
+      <CardContent className="p-0">{children}</CardContent>
     </Card>
   );
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-muted-foreground">{children}</p>;
+  return <p className="px-6 py-8 text-center text-sm italic text-muted-foreground">{children}</p>;
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, Sparkles } from "lucide-react";
+import { CheckCircle2, Info, XCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -114,51 +114,67 @@ export function BillingActions({
   const periodLabel = formatPeriodEnd(currentPeriodEnd);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Checkout outcome: a tinted memo line (DESIGN.md §5 callouts). */}
       {banner && (
         <div
           role="status"
-          className={`flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${
+          className={cn(
+            "flex items-start gap-3 border border-l-2 px-4 py-3 text-sm",
             banner.type === "success"
-              ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+              ? "border-success/40 border-l-success bg-success/10 text-success"
               : banner.type === "error"
-                ? "border-destructive/30 bg-destructive/5 text-destructive"
-                : "border-border bg-muted/50 text-foreground"
-          }`}
+                ? "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive"
+                : "border-info/40 border-l-info bg-info/10 text-info"
+          )}
         >
           {banner.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : banner.type === "error" ? (
+            <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
           ) : (
-            <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
           )}
           <span>{banner.message}</span>
         </div>
       )}
 
-      {plan !== "free" && periodLabel && (
-        <div className="rounded-md border border-border/60 bg-card p-4 text-sm">
-          {cancelAtPeriodEnd ? (
-            <>
-              Your subscription <Badge variant="secondary">cancels</Badge> on{" "}
-              <span className="font-medium">{periodLabel}</span>. You keep access until then.
-            </>
-          ) : subscriptionStatus === "past_due" || subscriptionStatus === "unpaid" ? (
-            <>
-              <Badge variant="destructive">Payment due</Badge> The last renewal could not be
-              charged. Update your payment method from the billing portal.
-            </>
-          ) : (
-            <>
-              Next charge on <span className="font-medium">{periodLabel}</span>.
-            </>
-          )}
-        </div>
-      )}
+      {/* Subscription memo: one ruled line about the next date, tinted when it needs attention. */}
+      {plan !== "free" &&
+        periodLabel &&
+        (cancelAtPeriodEnd ? (
+          <div className="border border-border border-l-2 border-l-warning bg-card px-4 py-3 text-sm">
+            Your subscription{" "}
+            <Badge variant="warning" className="align-middle">
+              cancels
+            </Badge>{" "}
+            on <span className="lining font-medium">{periodLabel}</span>. You keep access until
+            then.
+          </div>
+        ) : subscriptionStatus === "past_due" || subscriptionStatus === "unpaid" ? (
+          <div className="border border-border border-l-2 border-l-destructive bg-card px-4 py-3 text-sm">
+            <Badge variant="destructive" className="mr-1 align-middle">
+              Payment due
+            </Badge>{" "}
+            The last renewal could not be charged. Update your payment method from the billing
+            portal.
+          </div>
+        ) : (
+          <div className="border border-border bg-card px-4 py-3 text-sm">
+            Next charge on <span className="lining font-medium">{periodLabel}</span>.
+          </div>
+        ))}
 
       {plan === "free" && (
-        <div className="space-y-6">
-          <CadenceToggle cadence={cadence} onChange={setCadence} />
-          <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-8">
+          <div className="space-y-5">
+            {/* Eyebrow with rules (DESIGN.md §4.7) over the cadence stamps. */}
+            <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+              Choose a plan
+            </p>
+            <CadenceToggle cadence={cadence} onChange={setCadence} />
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
             <PlanUpgradeCard
               name="Pro"
               description="1,000 requests/day, publish your own MCPs, priority support."
@@ -186,7 +202,7 @@ export function BillingActions({
       )}
 
       {plan !== "free" && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Manage subscription</CardTitle>
@@ -195,7 +211,7 @@ export function BillingActions({
                 from the billing portal.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               <Button
                 variant="secondary"
                 onClick={openPortal}
@@ -204,7 +220,7 @@ export function BillingActions({
                 {loading === "portal" ? "Redirecting…" : "Billing portal"}
               </Button>
               {!hasStripeCustomer && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs italic text-muted-foreground">
                   Available once you have a subscription. If your plan was set up manually, contact
                   support to manage it.
                 </p>
@@ -219,9 +235,9 @@ export function BillingActions({
 }
 
 // Self-serve plan card (Pro or Team). The annual view is deliberately loud on
-// the `highlighted` plan (bigger price, emerald accent, savings called out) to
-// steer toward the yearly commitment. Prices are display strings — the actual
-// charge is the Stripe price STRIPE_<PLAN>_*_PRICE_ID points to. Keep in sync.
+// the `highlighted` plan (the stacked-card lift, the gilt seal, savings called
+// out) to steer toward the yearly commitment. Prices are display strings — the
+// actual charge is the Stripe price STRIPE_<PLAN>_*_PRICE_ID points to. Keep in sync.
 function PlanUpgradeCard({
   name,
   description,
@@ -251,60 +267,42 @@ function PlanUpgradeCard({
   const loud = highlighted && isYearly;
   const eur = (n: number) => `€${Number.isInteger(n) ? n : n.toFixed(2)}`;
   return (
-    <Card
-      className={cn(
-        "relative overflow-hidden transition-colors",
-        loud && "border-emerald-500/50 shadow-md shadow-emerald-500/10"
-      )}
-    >
+    // The highlighted tier is the pricing recipe (DESIGN.md §5): ink hairline,
+    // stacked-card shadow, one gilt seal in the top-left corner.
+    <Card className={cn("relative", loud && "border-foreground/70 shadow-stack")}>
       {loud && (
-        <div className="absolute right-0 top-0 flex items-center gap-1 rounded-bl-xl bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
-          <Sparkles className="h-3.5 w-3.5" />
+        <Badge variant="gilt" className="absolute -top-3 left-6">
           Best value
-        </div>
+        </Badge>
       )}
       <CardHeader>
         <CardTitle>{name}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
         {isYearly ? (
           <div>
             <div className="flex items-baseline gap-2">
-              <span
-                className={cn(
-                  "text-4xl font-bold tracking-tight",
-                  highlighted && "text-emerald-600 dark:text-emerald-400"
-                )}
-              >
-                {eur(yearly)}
-              </span>
-              <span className="text-sm text-muted-foreground">/ year</span>
+              <span className="lining text-4xl font-medium">{eur(yearly)}</span>
+              <span className="text-sm italic text-muted-foreground">/ year</span>
             </div>
-            <p className="mt-1.5 text-sm text-muted-foreground">
+            <p className="lining mt-1.5 text-sm text-muted-foreground">
               <span className="line-through">{eur(fullYear)}</span> · {eur(effMonthly)}/mo billed
-              annually ·{" "}
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                save €{savings}/yr
-              </span>
+              annually · <span className="font-medium text-success">save €{savings}/yr</span>
             </p>
           </div>
         ) : (
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold tracking-tight">{eur(monthly)}</span>
-              <span className="text-sm text-muted-foreground">/ month</span>
+              <span className="lining text-4xl font-medium">{eur(monthly)}</span>
+              <span className="text-sm italic text-muted-foreground">/ month</span>
             </div>
-            <p className="mt-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <p className="lining mt-1.5 text-sm font-medium text-success">
               Switch to yearly and save {savingsPct}% (€{savings}/yr)
             </p>
           </div>
         )}
-        <Button
-          onClick={onCheckout}
-          disabled={disabled}
-          className={cn("w-full", loud && "bg-emerald-600 text-white hover:bg-emerald-700")}
-        >
+        <Button onClick={onCheckout} disabled={disabled} className="w-full">
           {loading ? "Redirecting…" : isYearly ? `Get ${name} — yearly` : `Upgrade to ${name}`}
         </Button>
       </CardContent>
@@ -339,15 +337,21 @@ function CadenceToggle({
   onChange: (c: Cadence) => void;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="inline-flex rounded-full border border-border/80 bg-card p-1.5 text-base shadow-sm">
+    <div className="flex flex-col items-center gap-3">
+      {/* Two hairline stamps side by side; the chosen cadence is pressed in ink. No pill (DESIGN.md §3). */}
+      <div
+        role="group"
+        aria-label="Billing cadence"
+        className="inline-flex divide-x divide-border border border-border bg-card"
+      >
         <button
           type="button"
           onClick={() => onChange("monthly")}
+          aria-pressed={cadence === "monthly"}
           className={cn(
-            "rounded-full px-6 py-2.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "smallcaps tracking-sc h-10 px-6 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:translate-y-px",
             cadence === "monthly"
-              ? "bg-primary text-primary-foreground shadow-sm"
+              ? "bg-foreground text-background"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -356,32 +360,26 @@ function CadenceToggle({
         <button
           type="button"
           onClick={() => onChange("yearly")}
+          aria-pressed={cadence === "yearly"}
           className={cn(
-            "flex items-center gap-2 rounded-full px-6 py-2.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "smallcaps tracking-sc h-10 px-6 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:translate-y-px",
             cadence === "yearly"
-              ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+              ? "bg-foreground text-background"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
           Yearly
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-xs font-semibold",
-              cadence === "yearly"
-                ? "bg-white/25 text-white"
-                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-            )}
-          >
-            Save up to 25%
-          </span>
         </button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Pay yearly — like getting{" "}
-        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-          up to 3 months free
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs italic text-muted-foreground">
+        <Badge variant="success" className="lining not-italic">
+          Save up to 25%
+        </Badge>
+        <span>
+          Pay yearly — like getting{" "}
+          <span className="font-medium not-italic text-success">up to 3 months free</span>
         </span>
-      </p>
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { badgeVariants } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export interface CatalogMcp {
@@ -44,14 +44,14 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
 
   if (catalog.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">No MCPs in the catalog yet.</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h2 className="text-2xl font-medium md:text-3xl">No MCPs in the catalog yet.</h2>
+          <p className="mt-2 text-base text-muted-foreground">
             Skip ahead and install MCPs from the marketplace once it&apos;s seeded.
           </p>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-t border-border pt-6">
           <Button variant="ghost" onClick={onBack}>
             Back
           </Button>
@@ -101,38 +101,37 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Pick your first MCP.</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h2 className="text-2xl font-medium md:text-3xl">Pick your first MCP.</h2>
+        <p className="mt-2 text-base text-muted-foreground">
           Browse the official catalog. You can install more from the marketplace anytime.
         </p>
       </div>
 
-      <div className="rounded-xl border border-border/80 bg-card p-5">
-        <div className="flex items-center justify-between">
+      {/* The catalogue card: a shade darker stock, hairline-square arrows either
+          side, the MCP engraved dead-centre with its runtime and version in Courier. */}
+      <div className="border border-border bg-secondary/40 p-5 md:p-6">
+        <div className="flex items-start justify-between gap-3">
           <button
             type="button"
             onClick={() => move(-1)}
             aria-label="Previous MCP"
-            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
 
-          <div className="flex flex-col items-center text-center">
-            <div className="grid h-10 w-10 place-items-center rounded-md bg-secondary text-foreground/80">
+          <div className="flex min-w-0 flex-col items-center text-center">
+            <div className="grid h-10 w-10 place-items-center border border-border bg-card text-muted-foreground">
               <Sparkles className="h-4 w-4" />
             </div>
-            <h3 className="mt-3 font-semibold tracking-tight">{current.name}</h3>
-            <div className="mt-1 flex items-center gap-1.5">
-              <Badge variant="secondary" className="font-mono text-[10px]">
-                {current.runtime}
-              </Badge>
-              <Badge variant="secondary" className="font-mono text-[10px]">
-                v{current.version}
-              </Badge>
-            </div>
+            <h3 className="smallcaps tracking-sc mt-4 text-lg font-medium">{current.name}</h3>
+            <p className="mt-1.5 flex items-center gap-2 font-mono text-xs text-muted-foreground">
+              <span>{current.runtime}</span>
+              <span aria-hidden>·</span>
+              <span>v{current.version}</span>
+            </p>
             <p className="mt-3 max-w-md text-balance text-sm text-muted-foreground">
               {current.description}
             </p>
@@ -145,43 +144,43 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
             type="button"
             onClick={() => move(1)}
             aria-label="Next MCP"
-            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mt-4 flex justify-center gap-1.5">
+        {/* Position in the catalogue: a row of short hairline ticks, the
+            current one inked and doubled in weight. */}
+        <div className="mt-5 flex items-center justify-center gap-1.5">
           {catalog.map((_, i) => (
             <span
               key={i}
               className={cn(
-                "h-1.5 w-1.5 rounded-full transition-colors",
-                i === index ? "bg-foreground" : "bg-border"
+                "w-6 transition-colors",
+                i === index ? "h-0.5 bg-foreground" : "h-px bg-border"
               )}
             />
           ))}
         </div>
 
         {propertyKeys.length > 0 && (
-          <div className="mt-6 space-y-3 border-t border-border/60 pt-5">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="mt-6 space-y-4 border-t border-border pt-5">
+            <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
               Configuration
             </p>
             {propertyKeys.map((key) => {
               const def = properties[key];
               const value = config[key];
               return (
-                <div key={key} className="flex flex-col gap-1.5 text-left">
+                <div key={key} className="flex flex-col gap-2 text-left">
                   <Label htmlFor={`mcp-${key}`} className="flex items-center gap-2">
-                    {key}
+                    <span className="no-smallcaps font-mono text-foreground">{key}</span>
                     {def.required && (
-                      <span className="text-[10px] font-normal text-destructive">required</span>
+                      <span className={badgeVariants({ variant: "destructive" })}>required</span>
                     )}
                     {def.secret && (
-                      <Badge variant="outline" className="text-[10px]">
-                        secret
-                      </Badge>
+                      <span className={badgeVariants({ variant: "outline" })}>secret</span>
                     )}
                   </Label>
                   {def.type === "boolean" ? (
@@ -189,7 +188,7 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
                       id={`mcp-${key}`}
                       value={String(value ?? false)}
                       onChange={(e) => update(key, e.target.value === "true")}
-                      className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                      className="h-10 border border-input bg-card px-3 text-sm text-foreground shadow-inner focus-visible:border-foreground focus-visible:outline-none"
                     >
                       <option value="false">false</option>
                       <option value="true">true</option>
@@ -206,7 +205,7 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
                     />
                   )}
                   {def.description && (
-                    <p className="text-xs text-muted-foreground">{def.description}</p>
+                    <p className="text-xs italic text-muted-foreground">{def.description}</p>
                   )}
                 </div>
               );
@@ -215,14 +214,14 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
         )}
 
         {error && (
-          <p className="mt-4 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <p className="mt-5 flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {error}
           </p>
         )}
       </div>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>

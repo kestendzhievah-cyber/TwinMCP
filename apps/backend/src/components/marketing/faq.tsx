@@ -56,14 +56,13 @@ export function Faq({
 }: FaqProps = {}) {
   return (
     <Section id={id} eyebrow={eyebrow} title={title} description={description}>
-      <div className="mx-auto max-w-3xl">
+      {/* The accordion is a ledger: a hairline above the first question closes the ruling. */}
+      <div className="mx-auto max-w-3xl border-t border-border">
         <Accordion type="single" collapsible className="w-full">
           {items.map((item, i) => (
             <AccordionItem key={i} value={`item-${i}`}>
               <AccordionTrigger>{item.q}</AccordionTrigger>
-              <AccordionContent className="leading-relaxed text-muted-foreground">
-                {item.a}
-              </AccordionContent>
+              <AccordionContent className="leading-relaxed">{item.a}</AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>

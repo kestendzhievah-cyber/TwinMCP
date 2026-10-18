@@ -1,16 +1,21 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Blank card stock while the overview loads: the title block over its double
+// rule, three stat cards, the API-key ledger — the same bones as page.tsx.
 export default function DashboardLoading() {
   return (
     <div className="space-y-8" aria-busy="true" aria-live="polite">
-      <div className="space-y-2">
-        <div className="h-7 w-40 animate-pulse rounded-md bg-secondary" />
-        <div className="h-4 w-64 animate-pulse rounded-md bg-secondary/70" />
+      <div>
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="mt-2 h-4 w-64 bg-secondary/70" />
+        <div className="rule-double mt-4" />
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="h-28 animate-pulse rounded-xl bg-secondary" />
-        <div className="h-28 animate-pulse rounded-xl bg-secondary" />
-        <div className="h-28 animate-pulse rounded-xl bg-secondary" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-28" />
       </div>
-      <div className="h-64 animate-pulse rounded-xl bg-secondary" />
+      <Skeleton className="h-64" />
     </div>
   );
 }

@@ -24,23 +24,28 @@ export default function RootError({
   return (
     <main
       id="main-content"
-      className="flex min-h-screen flex-col items-center justify-center gap-5 bg-background px-6 text-center"
+      className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-16"
     >
-      <div className="grid h-14 w-14 place-items-center rounded-full bg-destructive/10 text-destructive">
-        <AlertCircle className="h-7 w-7" />
-      </div>
-      <div className="space-y-1.5">
-        <h1 className="text-xl font-semibold tracking-tight">Something went wrong</h1>
-        <p className="max-w-md text-sm text-muted-foreground">
+      <div className="w-full max-w-md border border-foreground/60 bg-card p-10 text-center shadow-stack">
+        <p className="eyebrow flex items-center justify-center gap-4 text-destructive before:h-px before:w-8 before:bg-border before:content-[''] after:h-px after:w-8 after:bg-border after:content-['']">
+          <AlertCircle className="h-3.5 w-3.5" aria-hidden />
+          Error
+        </p>
+        <h1 className="mt-5 text-3xl font-medium">Something went wrong</h1>
+        <p className="mt-3 italic text-muted-foreground">
           An unexpected error occurred. You can retry, or head back home — if it keeps happening,
           contact support.
         </p>
-      </div>
-      <div className="flex flex-wrap justify-center gap-2">
-        <Button onClick={reset}>Try again</Button>
-        <Button asChild variant="outline">
-          <Link href="/">Go home</Link>
-        </Button>
+        <div className="rule-double my-6" />
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button onClick={reset}>Try again</Button>
+          <Button asChild variant="outline">
+            <Link href="/">Go home</Link>
+          </Button>
+        </div>
+        <p className="smallcaps tracking-sc mt-6 text-xs text-muted-foreground">
+          twinmcp.fr · hello@twinmcp.fr
+        </p>
       </div>
     </main>
   );

@@ -128,8 +128,8 @@ export function AdminInstallMcpDialog({
             Choisissez un connecteur du catalogue à installer sur ce serveur (au nom du client).
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex flex-col gap-1.5">
+        <div className="space-y-5">
+          <div className="flex flex-col gap-2">
             <Label>Connecteur</Label>
             <Select value={mcpId} onValueChange={setMcpId}>
               <SelectTrigger>
@@ -145,17 +145,19 @@ export function AdminInstallMcpDialog({
               </SelectContent>
             </Select>
             {selected?.description && (
-              <p className="text-xs text-muted-foreground">{selected.description}</p>
+              <p className="text-xs italic text-muted-foreground">{selected.description}</p>
             )}
           </div>
 
           {props.length > 0 && (
-            <div className="space-y-3 rounded-md border p-3">
-              <p className="text-xs font-medium text-muted-foreground">Configuration</p>
+            <div className="space-y-4 border border-border bg-secondary/40 p-4">
+              <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+                Configuration
+              </p>
               {props.map(([key, def]) => (
-                <div key={key} className="flex flex-col gap-1.5">
+                <div key={key} className="flex flex-col gap-2">
                   <Label>
-                    {key}
+                    <code className="no-smallcaps">{key}</code>
                     {def.required ? " *" : ""}
                   </Label>
                   <Input

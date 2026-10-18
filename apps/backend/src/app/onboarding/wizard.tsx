@@ -136,21 +136,32 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
   }
 
   return (
-    <div className="space-y-10">
-      <header className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <OnboardingProgress current={step} total={STEPS.length} labels={[...STEPS]} />
+    <div className="space-y-8">
+      {/* Title block: the ledger of steps with the skip action on the same row
+          (DESIGN.md §4.5, §5). */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+        <div className="min-w-0 flex-1">
+          <OnboardingProgress current={step} total={STEPS.length} labels={[...STEPS]} />
+        </div>
         <Button
           variant="ghost"
-          size="sm"
           onClick={handleSkip}
           disabled={skipping}
-          className="self-end sm:self-auto"
+          className="shrink-0 self-end sm:self-auto"
         >
           {skipping ? "Skipping…" : "Skip onboarding"}
         </Button>
       </header>
 
-      <div className="rounded-2xl border border-border/80 bg-card p-6 md:p-8">
+      {/* The step sits on one piece of bone stock with a hairline, under a
+          running head in small caps between a rule and the step name (§4.7). */}
+      <div className="border border-border bg-card p-6 shadow-sm md:p-8">
+        <p className="eyebrow mb-6 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+          <span>
+            Step <span className="lining">{step + 1}</span> of{" "}
+            <span className="lining">{STEPS.length}</span> · {STEPS[step]}
+          </span>
+        </p>
         {step === 0 && <StepPlan initialPlan={selectedPlan} onSelectPlan={handleSelectPlan} />}
         {step === 1 && (
           <StepWelcome

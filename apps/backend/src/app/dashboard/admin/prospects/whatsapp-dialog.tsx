@@ -79,8 +79,8 @@ export function WhatsappQuickDialog({ onDone }: { onDone: () => void }) {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <MessageCircle className="h-3.5 w-3.5" />
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <MessageCircle className="h-4 w-4" />
         WhatsApp
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -94,7 +94,7 @@ export function WhatsappQuickDialog({ onDone }: { onDone: () => void }) {
           </DialogHeader>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <div className="flex flex-col gap-2 sm:col-span-2">
               <Label>Numéro de téléphone *</Label>
               <Input
                 value={phone}
@@ -102,7 +102,7 @@ export function WhatsappQuickDialog({ onDone }: { onDone: () => void }) {
                 placeholder="+33 6 12 34 56 78"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <Label>Entreprise *</Label>
               <Input
                 value={company}
@@ -110,7 +110,7 @@ export function WhatsappQuickDialog({ onDone }: { onDone: () => void }) {
                 placeholder="Acme SAS"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <Label>Contact (optionnel)</Label>
               <Input
                 value={contactName}
@@ -120,9 +120,15 @@ export function WhatsappQuickDialog({ onDone }: { onDone: () => void }) {
             </div>
           </div>
 
-          <div className="rounded-md border bg-muted/40 p-3">
-            <p className="mb-1 text-xs font-medium text-muted-foreground">Aperçu du message</p>
-            <p className="whitespace-pre-wrap text-sm">{previewMessage(contactName, company)}</p>
+          {/* The outgoing message as a memo on darker stock: a small-caps tab over the
+              text, an ink rule down the left edge. */}
+          <div className="border border-border border-l-2 border-l-foreground/40 bg-secondary/60">
+            <p className="smallcaps tracking-sc border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground">
+              Aperçu du message
+            </p>
+            <p className="whitespace-pre-wrap px-4 py-3 text-sm leading-relaxed">
+              {previewMessage(contactName, company)}
+            </p>
           </div>
 
           <DialogFooter>

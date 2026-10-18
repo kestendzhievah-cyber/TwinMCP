@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -10,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pause, Play, RefreshCw, ArrowDownToLine } from "lucide-react";
+import { AlertCircle, ArrowDownToLine, Pause, Play, RefreshCw, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LogLine {
@@ -34,11 +35,13 @@ function detectLevel(message: string): "error" | "warn" | "info" | "debug" {
   return "info";
 }
 
+// Levels on ink stock (DESIGN.md §5 logs viewer): the panel carries the `dark`
+// class so these tokens resolve to bone, ochre and oxblood on ink.
 const levelColor: Record<string, string> = {
-  error: "text-red-400",
-  warn: "text-amber-400",
-  info: "text-zinc-200",
-  debug: "text-zinc-500",
+  error: "text-destructive",
+  warn: "text-warning",
+  info: "text-foreground",
+  debug: "text-muted-foreground",
 };
 
 export function LogsViewer({
@@ -106,13 +109,22 @@ export function LogsViewer({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <CardTitle className="text-base">Logs</CardTitle>
-            <CardDescription>
+      {/* Ruled header: hairline icon square + small-caps title; the tail controls share the row. */}
+      <CardHeader className="border-b border-border px-6 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-3">
+              <CardTitle className="flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+                  <ScrollText className="h-4 w-4" />
+                </span>
+                Logs
+              </CardTitle>
+              {paused && <Badge variant="warning">Paused</Badge>}
+            </div>
+            <CardDescription className="lining pl-12">
               Live tail · refreshes every {POLL_INTERVAL_MS / 1000}s
-              {lastFetch && <span className="ml-2 text-muted-foreground">· last: {lastFetch}</span>}
+              {lastFetch && <span> · last: {lastFetch}</span>}
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -160,32 +172,42 @@ export function LogsViewer({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        {error && (
-          <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-            {error}
+      <CardContent className="p-0">
+        {(error || notice) && (
+          <div className="space-y-3 border-b border-border px-6 py-4">
+            {error && (
+              <div className="flex items-start gap-2 border border-destructive/40 border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+            {notice && (
+              <div className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+                {notice}
+              </div>
+            )}
           </div>
         )}
-        {notice && (
-          <div className="mb-3 rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground">
-            {notice}
-          </div>
-        )}
+        {/* Ink stock: `dark` flips the tokens locally so the tail reads as bone
+            type on ink, in both themes (DESIGN.md §1, §5). The panel runs flush
+            to the card's hairline, a window cut into the stock. */}
         <div
           ref={containerRef}
-          className="h-[480px] overflow-auto rounded-md bg-zinc-950 p-3 font-mono text-xs text-zinc-200"
+          className="dark h-[480px] overflow-auto bg-background p-4 font-mono text-xs text-foreground"
         >
           {loading && lines.length === 0 ? (
-            <div className="text-zinc-500">Loading logs…</div>
+            <div className="text-muted-foreground">Loading logs…</div>
           ) : lines.length === 0 ? (
-            <div className="text-zinc-500">No log lines yet.</div>
+            <div className="text-muted-foreground">No log lines yet.</div>
           ) : (
             lines.map((l, i) => {
               const level = detectLevel(l.message);
               return (
-                <div key={i} className="flex gap-2 leading-5">
-                  {l.ts && <span className="text-zinc-500 shrink-0">{l.ts.slice(11, 19)}</span>}
-                  {slug === "all" && <span className="text-cyan-400 shrink-0">[{l.source}]</span>}
+                <div key={i} className="flex gap-3 leading-5">
+                  {l.ts && (
+                    <span className="shrink-0 text-muted-foreground">{l.ts.slice(11, 19)}</span>
+                  )}
+                  {slug === "all" && <span className="shrink-0 text-info">[{l.source}]</span>}
                   <span className={cn("whitespace-pre-wrap break-all", levelColor[level])}>
                     {l.message}
                   </span>

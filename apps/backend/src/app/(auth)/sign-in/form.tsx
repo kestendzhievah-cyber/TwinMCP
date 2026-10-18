@@ -8,6 +8,7 @@ import { AlertCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/utils/supabase/client";
 import { friendlyAuthError } from "@/lib/auth/errors";
 
@@ -87,21 +88,28 @@ export function SignInForm() {
   if (magicLinkSent) {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
-          <Mail className="h-5 w-5 text-muted-foreground" />
+        {/* The stamp: a hairline icon square between two short rules. */}
+        <div className="flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+          <span
+            aria-hidden
+            className="grid h-12 w-12 place-items-center border border-border text-muted-foreground"
+          >
+            <Mail className="h-5 w-5" />
+          </span>
         </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Check your inbox</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">Check your inbox</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
           A sign-in link has been sent to{" "}
           <span className="font-medium text-foreground">{email}</span>.
         </p>
 
-        <div
-          role="status"
-          aria-live="polite"
-          className="mt-4 min-h-[1.5rem] text-xs text-destructive"
-        >
-          {error}
+        <div role="status" aria-live="polite" className="mt-4 min-h-[2.5rem] self-stretch">
+          {error && (
+            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-left text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
         </div>
 
         <div className="mt-6 flex flex-col gap-2 self-stretch">
@@ -120,7 +128,7 @@ export function SignInForm() {
               setMode("password");
               setError("");
             }}
-            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             Use a different method
           </button>
@@ -131,13 +139,17 @@ export function SignInForm() {
 
   return (
     <div>
+      {/* The engraved name: small-caps title, italic subtitle, double rule. */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in to TwinMCP</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Choose the method that works for you.</p>
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">Sign in to TwinMCP</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">
+          Choose the method that works for you.
+        </p>
+        <Separator variant="double" className="mt-4" />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        <div className="flex flex-col gap-1.5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+        <div className="flex flex-col gap-2">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
@@ -152,12 +164,12 @@ export function SignInForm() {
         </div>
 
         {mode === "password" && (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
               <Link
                 href={"/forgot-password" as Route}
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className="smallcaps tracking-sc -my-2.5 inline-flex min-h-10 items-center text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
                 Forgot?
               </Link>
@@ -178,18 +190,14 @@ export function SignInForm() {
 
         <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
           {error && (
-            <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </p>
           )}
         </div>
 
-        <Button
-          type="submit"
-          disabled={loading || !email || (mode === "password" && !password)}
-          className="h-10"
-        >
+        <Button type="submit" disabled={loading || !email || (mode === "password" && !password)}>
           {loading ? "Signing in…" : mode === "password" ? "Sign in" : "Send me a magic link"}
         </Button>
 
@@ -199,19 +207,19 @@ export function SignInForm() {
             setMode((m) => (m === "password" ? "magic-link" : "password"));
             setError("");
           }}
-          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           {mode === "password" ? "Use a magic link instead" : "Use a password instead"}
         </button>
       </form>
 
-      <p className="mt-8 text-center text-sm text-muted-foreground">
+      <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
         Don&apos;t have an account yet?{" "}
         <Link
           href={
             `/sign-up?returnTo=${encodeURIComponent(returnTo)}${email ? `&email=${encodeURIComponent(email)}` : ""}` as Route
           }
-          className="font-medium text-foreground hover:underline"
+          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
         >
           Create an account
         </Link>

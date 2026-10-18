@@ -10,6 +10,7 @@ import {
   proxyUrl,
   testMcpConnection,
 } from "@/lib/mcp/client-config";
+import { cn } from "@/lib/utils";
 import type { IdePreference } from "./step-welcome";
 
 interface StepConnectProps {
@@ -113,19 +114,20 @@ export function StepConnect({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Connect your LLM.</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h2 className="text-2xl font-medium md:text-3xl">Connect your LLM.</h2>
+        <p className="mt-2 text-base text-muted-foreground">
           Drop this block into your client config. Your API key is shown once — copy it now, you can
           rotate it later from <code className="font-mono">/dashboard</code>.
         </p>
-        <p className="mt-2 text-sm">
-          Connecting to <span className="font-medium">{serverName}</span> ·{" "}
+        <p className="mt-4 text-sm">
+          <span className="smallcaps tracking-sc text-xs text-muted-foreground">Connecting to</span>{" "}
+          <span className="font-medium">{serverName}</span> ·{" "}
           <code className="font-mono text-xs">{mcpSlug}</code>
         </p>
         {isDocsDefault && (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-3 border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
             You skipped installing an MCP, so this connects the built-in{" "}
             <span className="font-medium">TwinMCP Docs</span> MCP. Add more anytime from the{" "}
             <span className="font-medium">Marketplace</span>.
@@ -134,48 +136,47 @@ export function StepConnect({
       </div>
 
       {keyError && (
-        <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+        <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           {keyError}
         </p>
       )}
 
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      {/* Typewriter line: the endpoint in Courier on a shade darker stock, the
+          copy button a hairline square (DESIGN.md §4.6). */}
+      <div className="space-y-2">
+        <p className="smallcaps tracking-sc text-xs font-medium text-muted-foreground">
           Connection URL
         </p>
-        <div className="flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2">
-          <code className="flex-1 truncate font-mono text-xs">{url || "…"}</code>
+        <div className="flex items-center gap-3 border border-border bg-secondary/60 py-1.5 pl-3 pr-1.5">
+          <code className="min-w-0 flex-1 truncate font-mono text-xs sm:text-sm">{url || "…"}</code>
           <button
             type="button"
             onClick={copyUrl}
             aria-label="Copy URL"
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border/80 bg-background/95 text-muted-foreground transition-colors hover:text-foreground"
+            className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
           >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
+            {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
       <CodeSnippet code={cfg.code} language={cfg.language} filename={cfg.filename} />
 
-      <div className="rounded-lg border border-border/80 bg-muted/30 p-4">
+      <div className="border border-border bg-secondary/40 p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium">Test connection</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Performs a real MCP <code className="font-mono">initialize</code> handshake.
+            <p className="smallcaps tracking-sc text-sm font-medium">Test connection</p>
+            <p className="mt-1 text-xs italic text-muted-foreground">
+              Performs a real MCP <code className="font-mono not-italic">initialize</code>{" "}
+              handshake.
             </p>
           </div>
           <Button variant="outline" onClick={runTest} disabled={test === "running" || !apiKey}>
             {test === "running" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="h-4 w-4" />
             )}
             {test === "running" ? "Testing…" : "Test"}
           </Button>
@@ -183,32 +184,37 @@ export function StepConnect({
 
         {test !== "idle" && (
           <div
-            className={
-              "mt-3 flex items-start gap-2 rounded-md border px-3 py-2 text-xs " +
-              (test === "success"
-                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+            className={cn(
+              "mt-4 flex items-start gap-2 border px-3 py-2 text-sm",
+              test === "success"
+                ? "border-success/40 bg-success/10 text-success"
                 : test === "error"
-                  ? "border-destructive/30 bg-destructive/5 text-destructive"
-                  : "border-border/60 bg-background text-muted-foreground")
-            }
+                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                  : "border-border bg-card text-muted-foreground"
+            )}
           >
             {test === "success" ? (
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             ) : test === "error" ? (
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             ) : (
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+              <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
             )}
             <span>{testMsg || (test === "running" ? "Running initialize…" : "")}</span>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <Button size="lg" onClick={finish} disabled={finishing}>
+        <Button
+          size="lg"
+          className="h-auto min-h-12 whitespace-normal py-2 text-center"
+          onClick={finish}
+          disabled={finishing}
+        >
           {finishing ? "Finishing…" : "I'm done — go to dashboard"}
         </Button>
       </div>

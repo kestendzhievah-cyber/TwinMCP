@@ -128,7 +128,7 @@ const server = new McpServer(
       "TwinMCP provides up-to-date documentation and code examples for libraries and frameworks.",
     icons: [
       {
-        src: "https://twinmcp.com/twinmcp-icon-green.png",
+        src: "https://twinmcp.fr/icon-512.png",
         mimeType: "image/png",
       },
     ],

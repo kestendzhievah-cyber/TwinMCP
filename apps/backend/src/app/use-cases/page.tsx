@@ -32,46 +32,58 @@ export default function UseCasesIndexPage() {
       />
 
       <div className="mx-auto max-w-5xl px-6 py-16">
-        <nav aria-label="Breadcrumb" className="mb-8 text-sm text-muted-foreground">
-          <ol className="flex items-center gap-2">
+        <nav
+          aria-label="Breadcrumb"
+          className="smallcaps tracking-sc mb-12 text-xs text-muted-foreground"
+        >
+          <ol className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <li>
               <Link href="/" className="hover:text-foreground">
                 Home
               </Link>
             </li>
-            <li aria-hidden>/</li>
+            <li aria-hidden>·</li>
             <li aria-current="page" className="text-foreground">
               Use cases
             </li>
           </ol>
         </nav>
 
-        <header className="mb-14">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Use cases</h1>
-          <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
+        {/* The name engraved dead-centre on the card (DESIGN.md §4.2) */}
+        <header className="pb-14 text-center md:pb-16">
+          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+            By host and by connector
+          </p>
+          <h1 className="display letterpress mt-6 text-5xl md:text-6xl lg:text-7xl">Use cases</h1>
+          <div className="mx-auto mt-8 h-px w-12 bg-foreground/40" />
+          <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
             TwinMCP works with every major AI coding host and every popular MCP. Pick the shape that
             matches what you already use.
           </p>
         </header>
 
-        <ul className="grid gap-5 md:grid-cols-2">
-          {USE_CASES.map((u) => (
-            <li key={u.slug}>
-              <Link
-                href={`/use-cases/${u.slug}` as Route}
-                className="group block rounded-2xl border border-border bg-card p-7 transition-colors hover:border-foreground/40"
-              >
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  {u.heroEyebrow}
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight group-hover:underline">
-                  {u.title}
-                </h2>
-                <p className="mt-3 leading-relaxed text-muted-foreground">{u.description}</p>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {/* One sheet divided by hairlines, under the double rule */}
+        <div className="rule-double pt-12 md:pt-16">
+          <ul className="grid gap-px border border-border bg-border md:grid-cols-2">
+            {USE_CASES.map((u) => (
+              <li key={u.slug} className="bg-card">
+                <Link
+                  href={`/use-cases/${u.slug}` as Route}
+                  className="group flex h-full flex-col p-7 transition-colors hover:bg-secondary/50"
+                >
+                  <p className="eyebrow">{u.heroEyebrow}</p>
+                  <h2 className="smallcaps tracking-sc mt-3 text-2xl font-medium group-hover:text-brand">
+                    {u.title}
+                  </h2>
+                  <p className="mt-3 text-base text-muted-foreground">{u.description}</p>
+                  <span className="smallcaps tracking-sc mt-auto pt-6 text-xs text-muted-foreground group-hover:text-foreground">
+                    Read the use case →
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,34 +48,40 @@ export function ContactSalesForm() {
 
   if (done) {
     return (
-      <Card className="max-w-lg">
-        <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-          <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-          <h2 className="text-lg font-semibold">Thanks — we&apos;ll be in touch.</h2>
+      <Card className="mx-auto w-full max-w-lg">
+        <CardContent className="flex flex-col items-center gap-4 px-6 py-12 text-center">
+          {/* Success is the tint recipe: hairline square, 10% green, green ink. */}
+          <div className="grid h-12 w-12 place-items-center border border-success/40 bg-success/10 text-success">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <h2 className="smallcaps tracking-sc text-xl font-medium">
+            Thanks — we&apos;ll be in touch.
+          </h2>
           <p className="text-sm text-muted-foreground">
-            We received your request and will reply to <span className="font-medium">{email}</span>{" "}
-            shortly.
+            We received your request and will reply to{" "}
+            <span className="font-mono text-foreground">{email}</span> shortly.
           </p>
         </CardContent>
       </Card>
     );
   }
 
+  // Same debossed field as the Input primitive, grown for a few lines.
   const textareaCls =
-    "flex min-h-[96px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+    "flex min-h-[96px] w-full border border-input bg-card px-3 py-2 text-sm text-foreground shadow-inner transition-colors placeholder:italic placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-0";
 
   return (
-    <Card className="max-w-lg">
-      <CardHeader>
+    <Card className="mx-auto w-full max-w-lg">
+      <CardHeader className="border-b border-border">
         <CardTitle>Talk to us about Team</CardTitle>
         <CardDescription>
           Tell us about your team and we&apos;ll set you up with the right plan.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
+      <CardContent className="pt-6">
+        <form onSubmit={submit} className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
               <Label htmlFor="company">Company</Label>
               <Input
                 id="company"
@@ -84,13 +90,13 @@ export function ContactSalesForm() {
                 required
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="name">Your name</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
               <Label htmlFor="email">Work email</Label>
               <Input
                 id="email"
@@ -100,7 +106,7 @@ export function ContactSalesForm() {
                 required
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="users">Number of users</Label>
               <Input
                 id="users"
@@ -113,7 +119,7 @@ export function ContactSalesForm() {
               />
             </div>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="message">Anything else? (optional)</Label>
             <textarea
               id="message"
@@ -124,7 +130,12 @@ export function ContactSalesForm() {
               placeholder="Use case, timeline, questions…"
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
           <Button type="submit" disabled={submitting} className="w-full">
             {submitting ? "Sending…" : "Send inquiry"}
           </Button>

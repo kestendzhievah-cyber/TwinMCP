@@ -2,21 +2,22 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+// Badges are tiny engraved labels: square, hairline, small capitals. Semantic
+// variants use the design-system accents as a 10% tint + text, never a fill.
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "smallcaps tracking-sc inline-flex items-center gap-1 border px-2 py-px text-xs font-medium leading-5 transition-colors focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
-        success:
-          "border-transparent bg-green-100 text-green-800 hover:bg-green-100/80 dark:bg-emerald-500/15 dark:text-emerald-400",
-        warning:
-          "border-transparent bg-amber-100 text-amber-800 hover:bg-amber-100/80 dark:bg-amber-500/15 dark:text-amber-400",
+        default: "border-primary bg-primary text-primary-foreground",
+        secondary: "border-border bg-secondary text-secondary-foreground",
+        outline: "border-foreground/60 bg-transparent text-foreground",
+        destructive: "border-destructive/40 bg-destructive/10 text-destructive",
+        success: "border-success/40 bg-success/10 text-success",
+        warning: "border-warning/40 bg-warning/10 text-warning",
+        info: "border-info/40 bg-info/10 text-info",
+        brand: "border-brand/40 bg-brand/10 text-brand",
+        gilt: "border-gilt/50 bg-gilt/10 text-gilt",
       },
     },
     defaultVariants: { variant: "default" },

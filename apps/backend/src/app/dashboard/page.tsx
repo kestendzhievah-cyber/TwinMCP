@@ -4,9 +4,11 @@ import { apiKeys, usageMetrics, userServers, users, servers } from "@/db/schema"
 import { and, count, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
 import { getDailyLimit } from "@/lib/rate-limit";
 import { SERVER_QUOTAS } from "@/lib/quota";
+import { cn } from "@/lib/utils";
 import { ApiKeysPanel } from "./api-keys-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -59,16 +61,23 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Page header (DESIGN.md §5): the engraved title, one italic line, the double rule. */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your account and API keys.</p>
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">Overview</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">
+          Manage your account and API keys.
+        </p>
+        <Separator variant="double" className="mt-4" />
       </div>
 
+      {/* Stat cards (DESIGN.md §5): small-caps caption, lining figure over its limit. */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Current plan</CardDescription>
-            <CardTitle className="text-2xl capitalize flex items-center gap-2">
+          <CardHeader>
+            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
+              Current plan
+            </CardDescription>
+            <CardTitle className="flex items-center gap-3 text-3xl capitalize">
               {plan}
               {plan === "pro" && <Badge variant="success">Active</Badge>}
               {plan === "team" && <Badge variant="success">Active</Badge>}
@@ -76,9 +85,11 @@ export default async function DashboardPage() {
           </CardHeader>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>MCP requests today</CardDescription>
-            <CardTitle className="text-2xl">
+          <CardHeader>
+            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
+              MCP requests today
+            </CardDescription>
+            <CardTitle className="lining text-3xl">
               {used.toLocaleString()}{" "}
               <span className="text-sm font-normal text-muted-foreground">
                 / {limit.toLocaleString()}
@@ -86,15 +97,24 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-              <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            {/* The quota bar: a hairline of ink on stock; ochre near the limit, oxblood at it. */}
+            <div className="h-1.5 w-full overflow-hidden bg-secondary">
+              <div
+                className={cn(
+                  "h-full transition-all",
+                  pct >= 100 ? "bg-destructive" : pct >= 80 ? "bg-warning" : "bg-foreground"
+                )}
+                style={{ width: `${pct}%` }}
+              />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Servers</CardDescription>
-            <CardTitle className="text-2xl">
+          <CardHeader>
+            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
+              Servers
+            </CardDescription>
+            <CardTitle className="lining text-3xl">
               {serverCount}{" "}
               <span className="text-sm font-normal text-muted-foreground">
                 / {serverLimitLabel}

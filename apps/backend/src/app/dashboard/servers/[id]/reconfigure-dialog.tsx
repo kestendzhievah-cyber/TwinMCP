@@ -134,26 +134,29 @@ export function ReconfigureDialog({
         {loading || !data ? (
           <div className="space-y-3 py-2">
             <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-10 w-full" />
             <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         ) : fields.length === 0 ? (
-          <p className="py-4 text-sm text-muted-foreground">
-            This MCP has no configuration options.
-          </p>
+          <div className="border border-dashed border-foreground/40 px-6 py-8 text-center">
+            <p className="text-sm italic text-muted-foreground">
+              This MCP has no configuration options.
+            </p>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {fields.map(([key, def]) => {
               const isSecret = !!def.secret;
               const hasExisting = data.config[key] !== undefined && data.config[key] !== null;
               return (
-                <div key={key} className="space-y-1.5">
-                  <Label htmlFor={key}>
+                <div key={key} className="space-y-2">
+                  {/* Config keys are code: typewriter, never small capitals (DESIGN.md §2). */}
+                  <Label htmlFor={key} className="no-smallcaps font-mono">
                     {key}
-                    {def.required && <span className="text-destructive ml-1">*</span>}
+                    {def.required && <span className="ml-1 text-destructive">*</span>}
                     {isSecret && hasExisting && (
-                      <span className="text-muted-foreground text-xs ml-2">
+                      <span className="ml-2 font-serif text-xs font-normal italic text-muted-foreground">
                         (currently set — leave empty to keep)
                       </span>
                     )}
@@ -181,7 +184,7 @@ export function ReconfigureDialog({
                     />
                   )}
                   {def.description && !isSecret && (
-                    <p className="text-xs text-muted-foreground">{def.description}</p>
+                    <p className="text-xs italic text-muted-foreground">{def.description}</p>
                   )}
                 </div>
               );

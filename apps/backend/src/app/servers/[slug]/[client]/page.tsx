@@ -17,6 +17,16 @@ import {
   howToSchema,
   softwareApplicationSchema,
 } from "@/lib/seo/schema";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -120,157 +130,188 @@ export default async function ServerClientPage({
         ]}
       />
 
-      <article className="mx-auto max-w-3xl px-6 py-16">
-        <nav aria-label="Breadcrumb" className="mb-8 text-sm text-muted-foreground">
-          <ol className="flex flex-wrap items-center gap-2">
+      <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
+        <nav
+          aria-label="Breadcrumb"
+          className="smallcaps tracking-sc mb-12 text-xs text-muted-foreground"
+        >
+          <ol className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <li>
-              <Link href="/" className="hover:text-foreground">
+              <Link href="/" className="transition-colors hover:text-foreground">
                 Home
               </Link>
             </li>
-            <li aria-hidden>/</li>
+            <li aria-hidden>·</li>
             <li>
-              <Link href={"/servers" as Route} className="hover:text-foreground">
+              <Link href={"/servers" as Route} className="transition-colors hover:text-foreground">
                 MCP servers
               </Link>
             </li>
-            <li aria-hidden>/</li>
+            <li aria-hidden>·</li>
             <li>
-              <Link href={`/servers/${server.slug}` as Route} className="hover:text-foreground">
+              <Link
+                href={`/servers/${server.slug}` as Route}
+                className="transition-colors hover:text-foreground"
+              >
                 {server.name}
               </Link>
             </li>
-            <li aria-hidden>/</li>
+            <li aria-hidden>·</li>
             <li aria-current="page" className="text-foreground">
               {clientLabel}
             </li>
           </ol>
         </nav>
 
-        <header className="mb-10">
-          <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl">
+        {/* Article header: left-aligned eyebrow with a rule, serif title (a
+            sentence, so no small caps), short hairline, lead, double rule. */}
+        <header className="pb-10">
+          <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+            Setup guide
+          </p>
+          <h1 className="mt-5 text-4xl font-medium sm:text-5xl">
             Use the {server.name} with {clientLabel}
           </h1>
-          <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
+          <div className="mt-6 h-px w-12 bg-foreground/40" />
+          <p className="mt-6 text-lg text-muted-foreground md:text-xl">
             {server.tagline} Here&apos;s how to connect it to {clientLabel} — hosted on TwinMCP for
             a remote URL, or run locally.
           </p>
         </header>
+        <Separator variant="double" />
 
-        <section className="mb-12 space-y-5 text-base leading-7 text-foreground/90">
+        <section className="mt-10 space-y-5 text-lg leading-8 text-foreground/90">
           <p>{server.description[0]}</p>
         </section>
 
         {/* Hosted (recommended) */}
-        <section className="mb-12">
-          <h2 className="mb-2 text-2xl font-semibold tracking-tight">
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="text-2xl font-medium md:text-3xl">
             Connect {server.name} to {clientLabel} with TwinMCP
           </h2>
-          <p className="mb-5 text-muted-foreground">
+          <p className="mt-3 text-base text-muted-foreground">
             Host the {server.name} on TwinMCP and connect {clientLabel} to a single remote URL — no
             local install, no runtime to babysit. Generate a key in the Connect panel, then paste:
           </p>
-          <p className="mb-2 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{cfg.filename}</span>
-          </p>
-          <pre className="overflow-x-auto rounded-lg border border-border bg-card p-4 text-sm">
-            <code className="font-mono">{cfg.code}</code>
-          </pre>
-          <ol className="mt-6 space-y-3">
+          <div className="mt-6 border border-border bg-secondary/60">
+            <p className="flex items-center justify-between gap-4 border-b border-border px-4 py-2">
+              <span className="font-mono text-xs text-foreground">{cfg.filename}</span>
+              <span className="smallcaps tracking-sc text-xs text-muted-foreground">
+                {cfg.language}
+              </span>
+            </p>
+            <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
+              <code>{cfg.code}</code>
+            </pre>
+          </div>
+          <ol className="mt-8 space-y-4">
             {steps.map((s, i) => (
-              <li key={s.name} className="flex gap-3">
+              <li key={s.name} className="flex gap-4">
                 <span
                   aria-hidden
-                  className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-secondary text-xs font-semibold text-foreground"
+                  className="lining mt-0.5 grid h-8 w-8 shrink-0 place-items-center border border-border bg-card text-xs font-medium text-foreground"
                 >
                   {i + 1}
                 </span>
-                <span className="text-foreground/90">{s.text}</span>
+                <span className="min-w-0">
+                  <span className="smallcaps tracking-sc block text-sm font-medium text-foreground">
+                    {s.name}
+                  </span>
+                  <span className="mt-0.5 block text-base text-foreground/90">{s.text}</span>
+                </span>
               </li>
             ))}
           </ol>
-          <div className="mt-6">
-            <Link
-              href={"/sign-up" as Route}
-              className="inline-flex items-center rounded-lg bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-            >
-              Host {server.name} free →
-            </Link>
+          <div className="mt-8">
+            <Button asChild>
+              <Link href={"/sign-up" as Route}>Host {server.name} free →</Link>
+            </Button>
           </div>
         </section>
 
         {/* Local */}
-        <section className="mb-12">
-          <h2 className="mb-2 text-2xl font-semibold tracking-tight">
-            Or run {server.name} locally
-          </h2>
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="text-2xl font-medium md:text-3xl">Or run {server.name} locally</h2>
           {localCommand ? (
             <>
-              <p className="mb-5 text-muted-foreground">
+              <p className="mt-3 text-base text-muted-foreground">
                 Prefer to run it on your own machine? Launch the stdio server and add it to{" "}
                 {clientLabel}&apos;s MCP config:
               </p>
-              <pre className="overflow-x-auto rounded-lg border border-border bg-card p-4 text-sm">
-                <code className="font-mono">{localCommand}</code>
-              </pre>
-              <p className="mt-3 text-sm text-muted-foreground">
+              <div className="mt-6 border border-border bg-secondary/60">
+                <p className="smallcaps tracking-sc border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground">
+                  Local (stdio)
+                </p>
+                <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
+                  <code>{localCommand}</code>
+                </pre>
+              </div>
+              <p className="mt-4 text-sm text-muted-foreground">
                 Local means the server only lives as long as {clientLabel} is open, state is
                 per-session, and secrets sit in your local config. Hosting on TwinMCP keeps it
                 always reachable with encrypted config.
               </p>
             </>
           ) : (
-            <p className="text-muted-foreground">
+            <p className="mt-3 text-base text-muted-foreground">
               The {server.name} is hosted-only (no local stdio mode) — use the TwinMCP option above
               to connect it to {clientLabel}.
             </p>
           )}
         </section>
 
-        {/* Tools */}
-        <section className="mb-12">
-          <h2 className="mb-5 text-2xl font-semibold tracking-tight">
+        {/* Tools — a ledger: small-caps header on a firmer rule, hairline rows, mono names */}
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="mb-6 text-2xl font-medium md:text-3xl">
             What {server.name} adds to {clientLabel}
           </h2>
-          <ul className="space-y-3">
-            {server.tools.map((t) => (
-              <li key={t.name} className="rounded-lg border border-border bg-card p-4">
-                <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-sm text-foreground">
-                  {t.name}
-                </code>
-                <p className="mt-2 text-sm text-muted-foreground">{t.description}</p>
-              </li>
-            ))}
-          </ul>
+          <Table className="border-b border-border">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[38%]">Tool</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {server.tools.map((t) => (
+                <TableRow key={t.name}>
+                  <TableCell className="align-top">
+                    <code className="font-mono text-sm text-foreground">{t.name}</code>
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground">{t.description}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </section>
 
-        {/* FAQ */}
+        {/* FAQ — hairline-separated rows */}
         {server.faq.length > 0 && (
-          <section className="mb-12">
-            <h2 className="mb-5 text-2xl font-semibold tracking-tight">FAQ</h2>
-            <div className="space-y-5">
+          <section className="mt-14 border-t border-border pt-10">
+            <h2 className="mb-6 text-2xl font-medium md:text-3xl">FAQ</h2>
+            <div className="divide-y divide-border border-y border-border">
               {server.faq.map((f) => (
-                <div key={f.q}>
-                  <h3 className="font-semibold text-foreground">{f.q}</h3>
-                  <p className="mt-1.5 text-muted-foreground">{f.a}</p>
+                <div key={f.q} className="py-5">
+                  <h3 className="text-lg font-medium text-foreground">{f.q}</h3>
+                  <p className="mt-2 text-base text-muted-foreground">{f.a}</p>
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {/* Internal links */}
-        <section className="border-t border-border pt-8">
-          <div className="flex flex-wrap gap-x-8 gap-y-6">
+        {/* Internal links — an index block under the double rule */}
+        <section className="rule-double mt-14 pt-10">
+          <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
             <div>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="eyebrow mb-4 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
                 {server.name} elsewhere
               </h2>
-              <ul className="space-y-1.5 text-sm">
+              <ul className="space-y-2 text-sm">
                 <li>
                   <Link
                     href={`/servers/${server.slug}` as Route}
-                    className="text-foreground hover:underline"
+                    className="text-foreground underline-offset-4 transition-colors hover:text-brand hover:underline"
                   >
                     {server.name} — full guide
                   </Link>
@@ -281,7 +322,7 @@ export default async function ServerClientPage({
                     <li key={c}>
                       <Link
                         href={`/servers/${server.slug}/${c}` as Route}
-                        className="text-muted-foreground hover:text-foreground hover:underline"
+                        className="text-muted-foreground underline-offset-4 transition-colors hover:text-brand hover:underline"
                       >
                         {server.name} with {IDE_LABELS[c]}
                       </Link>
@@ -291,15 +332,15 @@ export default async function ServerClientPage({
             </div>
             {related.length > 0 && (
               <div>
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="eyebrow mb-4 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
                   Related MCPs for {clientLabel}
                 </h2>
-                <ul className="space-y-1.5 text-sm">
+                <ul className="space-y-2 text-sm">
                   {related.map((r) => (
                     <li key={r.slug}>
                       <Link
                         href={`/servers/${r.slug}/${client}` as Route}
-                        className="text-muted-foreground hover:text-foreground hover:underline"
+                        className="text-muted-foreground underline-offset-4 transition-colors hover:text-brand hover:underline"
                       >
                         {r.name} with {clientLabel}
                       </Link>

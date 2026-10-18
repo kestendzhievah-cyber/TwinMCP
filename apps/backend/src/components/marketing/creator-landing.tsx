@@ -50,33 +50,33 @@ export function CreatorLanding({ creator, locale }: Props) {
       />
 
       <Section eyebrow={hero.eyebrow} title={hero.title} description={hero.description}>
-        <div className="mx-auto mb-12 max-w-2xl">
-          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.04] p-6">
-            <div className="flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">
-                  {t.promoCode}
-                </p>
-                <p className="mt-1 font-mono text-2xl font-semibold tracking-tight">
+        {/* The voucher is a card lifted off the stack: eyebrow, the code in typewriter,
+            the offer's terms ruled on the right, the expiry as an address line. */}
+        <div className="mx-auto mb-12 max-w-2xl md:mb-16">
+          <div className="border border-foreground/70 bg-card shadow-stack">
+            <div className="grid divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
+              <div className="flex flex-col items-center p-6 text-center md:items-start md:p-8 md:text-left">
+                <p className="eyebrow">{t.promoCode}</p>
+                <p className="lining mt-3 font-mono text-3xl font-medium text-foreground">
                   {creator.humanCode}
                 </p>
                 {creator.handle && (
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-2 text-sm italic text-muted-foreground">
                     {t.broughtBy(creator.handle)}
                   </p>
                 )}
               </div>
-              <ul className="space-y-1.5 text-sm">
+              <ul className="divide-y divide-border px-6 py-4 text-base md:px-8 md:py-6">
                 {hero.bullets.map((b) => (
-                  <li key={b} className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-emerald-500" />
+                  <li key={b} className="flex items-start gap-3 py-2.5">
+                    <Check className="mt-1 h-4 w-4 shrink-0 text-success" />
                     <span>{b}</span>
                   </li>
                 ))}
               </ul>
             </div>
             {creator.expiresAt && (
-              <p className="mt-4 text-center text-xs text-muted-foreground">
+              <p className="smallcaps tracking-sc lining border-t border-border px-6 py-3 text-center text-xs text-muted-foreground">
                 {t.offerExpires(new Date(creator.expiresAt).toLocaleDateString(t.locale))}
               </p>
             )}

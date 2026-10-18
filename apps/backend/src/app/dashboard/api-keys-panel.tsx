@@ -23,7 +23,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import { Copy, Key, Trash2 } from "lucide-react";
+import { CheckCircle2, Copy, Key, Trash2 } from "lucide-react";
 import type { Plan } from "@/db/schema/core";
 import { limitFor, minPlanForLimit, PLAN_LABELS } from "@/lib/plan-features";
 
@@ -93,30 +93,39 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="border-b border-border">
         <CardTitle>API Keys</CardTitle>
         <CardDescription>
           Use these to authenticate the TwinMCP server in your IDE or scripts.{" "}
-          <span className="font-medium text-foreground">
+          <span className="lining font-medium not-italic text-foreground">
             {keys.length}/{limit}
           </span>{" "}
           used on the {PLAN_LABELS[plan]} plan.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-6">
         {revealedKey && (
-          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
-            <p className="mb-2 font-medium text-emerald-700 dark:text-emerald-400">
+          // The freshly minted key: a green-tinted memo slip with the key set
+          // typewriter-style and a hairline-square copy button (DESIGN.md §4.6).
+          <div className="border border-success/40 bg-success/10 p-3 text-sm">
+            <p className="mb-2 flex items-center gap-2 font-medium text-success">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
               New key — copy now, it won&apos;t be shown again
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 break-all rounded border border-border/80 bg-background px-2 py-1 font-mono text-xs">
+              <code className="flex-1 break-all border border-border bg-card px-2 py-1.5 font-mono text-xs">
                 {revealedKey}
               </code>
-              <Button size="sm" variant="outline" onClick={copyKey}>
-                <Copy className="h-3.5 w-3.5" />
+              <Button
+                size="icon"
+                variant="outline"
+                className="shrink-0 border-border bg-card"
+                onClick={copyKey}
+                aria-label="Copy key"
+              >
+                <Copy className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setRevealedKey(null)}>
+              <Button variant="ghost" onClick={() => setRevealedKey(null)}>
                 Dismiss
               </Button>
             </div>
@@ -135,10 +144,14 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
           </Button>
         </div>
         {atLimit && (
-          <p className="text-xs text-muted-foreground">
-            You&apos;ve reached your plan&apos;s limit of {limit} key{limit > 1 ? "s" : ""}.{" "}
+          <p className="text-xs italic text-muted-foreground">
+            You&apos;ve reached your plan&apos;s limit of <span className="lining">{limit}</span>{" "}
+            key{limit > 1 ? "s" : ""}.{" "}
             {upgradeTo && (
-              <a href="/dashboard/billing" className="underline underline-offset-2">
+              <a
+                href="/dashboard/billing"
+                className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+              >
                 Upgrade to {PLAN_LABELS[upgradeTo]}
               </a>
             )}
@@ -147,20 +160,17 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
         )}
 
         {keys.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-md border border-dashed py-10 text-center">
-            <div
-              aria-hidden
-              className="grid h-10 w-10 place-items-center rounded-full bg-secondary text-muted-foreground"
-            >
-              <Key className="h-4 w-4" />
-            </div>
-            <p className="text-sm font-medium">No API keys yet</p>
-            <p className="max-w-sm text-xs text-muted-foreground">
+          // Empty state (DESIGN.md §5): dashed ink hairline, bare icon, small-caps title, italic body.
+          <div className="flex flex-col items-center gap-2 border border-dashed border-foreground/40 bg-transparent px-6 py-10 text-center">
+            <Key aria-hidden className="h-6 w-6 text-muted-foreground" />
+            <p className="smallcaps tracking-sc mt-1 font-medium">No API keys yet</p>
+            <p className="max-w-sm text-sm italic text-muted-foreground">
               Generate one above to authenticate the TwinMCP runtime in your IDE or scripts.
             </p>
           </div>
         ) : (
-          <div className="rounded-md border">
+          // The ledger (DESIGN.md §4.5): mono prefixes, lining dates, a bare bin at the end.
+          <div className="border border-border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -175,14 +185,18 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
                 {keys.map((k) => (
                   <TableRow key={k.id}>
                     <TableCell className="font-mono text-xs">{k.prefix}…</TableCell>
-                    <TableCell>{k.name ?? "—"}</TableCell>
+                    <TableCell className="font-medium">{k.name ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {k.lastUsedAt ? formatDate(k.lastUsedAt) : "never"}
+                      {k.lastUsedAt ? (
+                        formatDate(k.lastUsedAt)
+                      ) : (
+                        <span className="italic">never</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(k.createdAt)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <Button
                         size="icon"
                         variant="ghost"
@@ -205,8 +219,10 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
               <DialogTitle>Revoke this API key?</DialogTitle>
               <DialogDescription>
                 This immediately breaks any IDE or script using{" "}
-                <code className="font-mono">{revokeTarget?.name ?? revokeTarget?.prefix}</code>. It
-                can&apos;t be undone.
+                <code className="font-mono text-xs not-italic text-foreground">
+                  {revokeTarget?.name ?? revokeTarget?.prefix}
+                </code>
+                . It can&apos;t be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

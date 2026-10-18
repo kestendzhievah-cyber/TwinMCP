@@ -130,13 +130,13 @@ export function InstallDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Install {mcp.name}</DialogTitle>
-          <DialogDescription>{mcp.description}</DialogDescription>
+          <DialogDescription className="not-italic">{mcp.description}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="server">Target server</Label>
             {compatible.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
                 {isLocalTool
                   ? "This tool runs locally — create a Local (agent) server first, then install it here."
                   : "Create a cloud-box server first to install this tool."}
@@ -150,33 +150,39 @@ export function InstallDialog({
                   {compatible.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}{" "}
-                      <span className="text-muted-foreground text-xs ml-2">{s.status}</span>
+                      <span className="smallcaps tracking-sc ml-2 text-xs text-muted-foreground">
+                        {s.status}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
             {isLocalTool && compatible.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Runs on your machine via <code className="font-mono">ctx7 connect</code>.
+              <p className="text-xs italic text-muted-foreground">
+                Runs on your machine via <code className="font-mono not-italic">ctx7 connect</code>.
               </p>
             )}
           </div>
 
           {schemaLoading && (
-            <p className="border-t pt-3 text-xs text-muted-foreground">Loading configuration…</p>
+            <p className="border-t border-border pt-4 text-xs italic text-muted-foreground">
+              Loading configuration…
+            </p>
           )}
 
           {!schemaLoading && fields.length > 0 && (
-            <div className="space-y-3 pt-2 border-t">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+            // Configuration block: eyebrow with a leading rule, then one field
+            // per key — the key in Courier, help in italic (DESIGN.md §5 forms).
+            <div className="space-y-4 border-t border-border pt-4">
+              <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
                 Configuration
               </p>
               {fields.map(([key, def]) => (
-                <div key={key} className="space-y-1.5">
-                  <Label htmlFor={key}>
-                    {key}
-                    {def.required && <span className="text-destructive ml-1">*</span>}
+                <div key={key} className="space-y-2">
+                  <Label htmlFor={key} className="flex items-center gap-1">
+                    <span className="no-smallcaps font-mono text-foreground">{key}</span>
+                    {def.required && <span className="text-destructive">*</span>}
                   </Label>
                   {def.type === "boolean" ? (
                     <Select
@@ -202,7 +208,7 @@ export function InstallDialog({
                     />
                   )}
                   {def.description && (
-                    <p className="text-xs text-muted-foreground">{def.description}</p>
+                    <p className="text-xs italic text-muted-foreground">{def.description}</p>
                   )}
                 </div>
               ))}

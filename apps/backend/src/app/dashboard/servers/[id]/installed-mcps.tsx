@@ -81,57 +81,51 @@ export function InstalledMcps({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
+      <CardHeader className="border-b border-border">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1.5">
             <CardTitle className="text-base">Installed MCPs</CardTitle>
             <CardDescription>
-              {items.length} installed · clients call them at{" "}
-              <code className="font-mono text-xs">/api/mcp/{serverSlug}/&lt;slug&gt;</code>
+              <span className="lining">{items.length}</span> installed · clients call them at{" "}
+              <code className="font-mono text-xs not-italic">
+                /api/mcp/{serverSlug}/&lt;slug&gt;
+              </code>
             </CardDescription>
           </div>
-          <Link href={"/dashboard/marketplace" as Route}>
-            <Button variant="outline" size="sm">
-              Browse marketplace
-            </Button>
-          </Link>
+          <Button asChild variant="outline">
+            <Link href={"/dashboard/marketplace" as Route}>Browse marketplace</Link>
+          </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No MCPs installed yet.</p>
+          <div className="border border-dashed border-foreground/40 px-4 py-8 text-center text-sm italic text-muted-foreground">
+            No MCPs installed yet.
+          </div>
         ) : (
-          <div className="space-y-2">
+          // A ledger of installations: hairline rows, the name with its mono
+          // slug and engraved labels, the actions bare at the end (DESIGN.md §4.5).
+          <div className="divide-y divide-border border border-border">
             {items.map((item) => {
               const isProtected = item.mcpSlug === twinmcpDocsSlug;
               const showConfigure = !isProtected && item.hasConfig;
               return (
-                <div
-                  key={item.id}
-                  className="flex items-start justify-between gap-4 rounded-md border p-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
+                <div key={item.id} className="flex items-start justify-between gap-4 px-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="font-medium">{item.mcpName}</span>
-                      {item.mcpIsOfficial && (
-                        <Badge variant="outline" className="text-xs">
-                          official
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className="text-xs">
-                        {item.mcpRuntime}
-                      </Badge>
-                      {!item.enabled && (
-                        <Badge variant="warning" className="text-xs">
-                          disabled
-                        </Badge>
-                      )}
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {item.mcpSlug}
+                      </span>
+                      {item.mcpIsOfficial && <Badge variant="outline">official</Badge>}
+                      <Badge variant="secondary">{item.mcpRuntime}</Badge>
+                      {!item.enabled && <Badge variant="warning">disabled</Badge>}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                       {item.mcpDescription}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
@@ -140,7 +134,7 @@ export function InstalledMcps({
                       aria-label={item.enabled ? "Disable" : "Enable"}
                     >
                       <Power
-                        className={`h-4 w-4 ${item.enabled ? "text-green-600" : "text-muted-foreground"}`}
+                        className={`h-4 w-4 ${item.enabled ? "text-success" : "text-muted-foreground"}`}
                       />
                     </Button>
                     {showConfigure && (

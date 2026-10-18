@@ -1,10 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Check, CheckCircle2, Copy, KeyRound, Loader2, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Copy,
+  KeyRound,
+  Loader2,
+  Plug,
+  RefreshCw,
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { CodeSnippet } from "@/components/marketing/code-snippet";
+import { cn } from "@/lib/utils";
 import {
   API_KEY_PLACEHOLDER,
   IDE_LABELS,
@@ -129,17 +141,25 @@ export function ConnectPanel({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Connect your LLM</CardTitle>
-        <CardDescription>
+      {/* Ruled header: hairline icon square + small-caps title, the brief in italic under it. */}
+      <CardHeader className="border-b border-border px-6 py-4">
+        <CardTitle className="flex items-center gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+            <Plug className="h-4 w-4" />
+          </span>
+          Connect your LLM
+        </CardTitle>
+        <CardDescription className="pl-12">
           One URL per MCP. Paste this into your client, then connect with a{" "}
-          <code className="font-mono text-xs">ctx7sk_</code> API key.
+          <code className="font-mono text-xs not-italic">ctx7sk_</code> API key.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6 p-6">
         {hostType === "local_agent" && (
-          <div className="space-y-2 rounded-md border border-sky-500/30 bg-sky-500/5 p-3 text-xs">
-            <p className="font-medium text-sky-700 dark:text-sky-400">Run the local agent</p>
+          <div className="space-y-3 border border-info/40 border-l-2 border-l-info bg-info/10 p-4 text-sm">
+            <p className="smallcaps tracking-sc text-xs font-medium text-info">
+              Run the local agent
+            </p>
             <p className="text-muted-foreground">
               This server&apos;s tools run on your machine. Start the agent so your LLM can reach
               them (keep it running):
@@ -149,33 +169,31 @@ export function ConnectPanel({
               language="bash"
               filename="Run in your terminal (needs Node)"
             />
-            <p className="text-muted-foreground">
+            <p className="text-xs italic text-muted-foreground">
               The status badge above turns <strong>running</strong> once the agent is connected.
             </p>
           </div>
         )}
         {hostType !== "local_agent" && status && status !== "running" && (
-          <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <p className="flex items-start gap-2 border border-warning/40 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-sm text-warning">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               Your server is <strong>{status}</strong> — the connection details below start working
               once it reaches <strong>running</strong>.
             </span>
           </p>
         )}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="connect-mcp"
-              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >
-              MCP
-            </label>
+
+        {/* Which MCP, which client. The MCP list is data (a select); the client is a
+            row of hairline stamps, the chosen one pressed in ink. */}
+        <div className="space-y-5">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="connect-mcp">MCP</Label>
             <select
               id="connect-mcp"
               value={mcpSlug}
               onChange={(e) => setMcpSlug(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground [&>option]:bg-background [&>option]:text-foreground"
+              className="h-10 w-full max-w-xs border border-input bg-card px-3 text-sm text-foreground shadow-inner transition-colors focus-visible:border-foreground focus-visible:outline-none [&>option]:bg-card [&>option]:text-foreground"
             >
               {enabled.map((m) => (
                 <option key={m.slug} value={m.slug}>
@@ -184,45 +202,55 @@ export function ConnectPanel({
               ))}
             </select>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="connect-client"
-              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+          <div className="flex flex-col gap-2">
+            <p
+              id="connect-client-label"
+              className="smallcaps tracking-sc text-xs font-medium leading-none text-foreground/85"
             >
               Client
-            </label>
-            <select
-              id="connect-client"
-              value={ide}
-              onChange={(e) => setIde(e.target.value as IdeKey)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground [&>option]:bg-background [&>option]:text-foreground"
+            </p>
+            <div
+              role="group"
+              aria-labelledby="connect-client-label"
+              className="flex flex-wrap gap-2"
             >
               {IDE_KEYS.map((k) => (
-                <option key={k} value={k}>
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setIde(k)}
+                  aria-pressed={ide === k}
+                  className={cn(
+                    "smallcaps tracking-sc h-10 border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card active:translate-y-px",
+                    ide === k
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-card text-muted-foreground hover:border-foreground/60 hover:text-foreground"
+                  )}
+                >
                   {IDE_LABELS[k]}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {/* The endpoint: a typewriter line on darker stock, the copy button a
+            hairline square (DESIGN.md §4.6). */}
+        <div className="space-y-2">
+          <p className="smallcaps tracking-sc text-xs font-medium leading-none text-foreground/85">
             Connection URL
           </p>
-          <div className="flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2">
-            <code className="flex-1 truncate font-mono text-xs">{url || "…"}</code>
+          <div className="flex items-center gap-3 border border-border bg-secondary/60 py-1.5 pl-3 pr-1.5">
+            <code className="min-w-0 flex-1 truncate font-mono text-xs sm:text-sm">
+              {url || "…"}
+            </code>
             <button
               type="button"
               onClick={copyUrl}
               aria-label="Copy URL"
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border/80 bg-background/95 text-muted-foreground transition-colors hover:text-foreground"
+              className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
             >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
+              {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </button>
           </div>
         </div>
@@ -230,8 +258,8 @@ export function ConnectPanel({
         <CodeSnippet code={cfg.code} language={cfg.language} filename={cfg.filename} />
 
         {!apiKey && (
-          <p className="flex items-start gap-2 rounded-md border border-sky-500/30 bg-sky-500/5 px-3 py-2 text-xs text-sky-700 dark:text-sky-400">
-            <KeyRound className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <p className="flex items-start gap-2 border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+            <KeyRound className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               The <code className="font-mono">ctx7sk_…</code> in the snippet is a{" "}
               <strong>placeholder</strong>, not your key. Click <strong>Generate API key</strong>{" "}
@@ -241,53 +269,52 @@ export function ConnectPanel({
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Mint a key, then prove the handshake. */}
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
           <Button
             variant={apiKey ? "outline" : "default"}
-            size="sm"
             onClick={generateKey}
             disabled={generating}
           >
             {generating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <KeyRound className="h-3.5 w-3.5" />
+              <KeyRound className="h-4 w-4" />
             )}
             {apiKey ? "Generate another key" : "Generate API key"}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={runTest}
-            disabled={test === "running" || !apiKey}
-          >
+          <Button variant="outline" onClick={runTest} disabled={test === "running" || !apiKey}>
             {test === "running" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="h-4 w-4" />
             )}
             {test === "running" ? "Testing…" : "Test connection"}
           </Button>
         </div>
 
         {apiKey && (
-          <div className="space-y-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-              Your API key — copy it now, it&apos;s shown only once (also embedded in the snippet
-              above).
-            </p>
-            <div className="flex items-center gap-2 rounded-md border border-border/80 bg-background px-3 py-2">
-              <code className="flex-1 truncate font-mono text-xs">{apiKey}</code>
+          <div className="space-y-3 border border-warning/40 border-l-2 border-l-warning bg-warning/10 p-4">
+            <div>
+              <p className="smallcaps tracking-sc text-xs font-medium text-warning">Your API key</p>
+              <p className="mt-1 text-xs italic text-warning">
+                Copy it now — it&apos;s shown only once (also embedded in the snippet above).
+              </p>
+            </div>
+            <div className="flex items-center gap-3 border border-border bg-card py-1.5 pl-3 pr-1.5">
+              <code className="min-w-0 flex-1 truncate font-mono text-xs text-foreground sm:text-sm">
+                {apiKey}
+              </code>
               <button
                 type="button"
                 onClick={copyKey}
                 aria-label="Copy API key"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border/80 bg-background/95 text-muted-foreground transition-colors hover:text-foreground"
+                className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
               >
                 {keyCopied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  <Check className="h-4 w-4 text-success" />
                 ) : (
-                  <Copy className="h-3.5 w-3.5" />
+                  <Copy className="h-4 w-4" />
                 )}
               </button>
             </div>
@@ -295,29 +322,29 @@ export function ConnectPanel({
         )}
 
         {keyError && (
-          <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {keyError}
           </p>
         )}
 
         {test !== "idle" && (
           <div
-            className={
-              "flex items-start gap-2 rounded-md border px-3 py-2 text-xs " +
-              (test === "success"
-                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+            className={cn(
+              "flex items-start gap-2 border px-3 py-2 text-sm",
+              test === "success"
+                ? "border-success/40 bg-success/10 text-success"
                 : test === "error"
-                  ? "border-destructive/30 bg-destructive/5 text-destructive"
-                  : "border-border/60 bg-background text-muted-foreground")
-            }
+                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                  : "border-border bg-card text-muted-foreground"
+            )}
           >
             {test === "success" ? (
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             ) : test === "error" ? (
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             ) : (
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+              <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
             )}
             <span>
               {testMsg}
@@ -328,9 +355,10 @@ export function ConnectPanel({
                     href="/docs#troubleshooting"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium underline underline-offset-2"
+                    className="inline-flex items-center gap-1 font-medium underline underline-offset-4"
                   >
-                    Troubleshooting guide →
+                    Troubleshooting guide
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </a>
                 </>
               )}

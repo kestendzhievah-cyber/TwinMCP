@@ -16,13 +16,7 @@ import {
 import { Play, Square, RotateCw, Trash2 } from "lucide-react";
 import type { ServerStatus } from "@/db/schema/platform";
 
-export function ServerControls({
-  serverId,
-  status,
-}: {
-  serverId: string;
-  status: ServerStatus;
-}) {
+export function ServerControls({ serverId, status }: { serverId: string; status: ServerStatus }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -56,32 +50,32 @@ export function ServerControls({
   const canStop = status === "running" || status === "provisioning";
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {canStart && (
-        <Button variant="outline" size="sm" onClick={() => call("start")} disabled={!!busy}>
+        <Button variant="outline" onClick={() => call("start")} disabled={!!busy}>
           <Play className="h-4 w-4" />
           {busy === "start" ? "Starting…" : "Start"}
         </Button>
       )}
       {canStop && (
-        <Button variant="outline" size="sm" onClick={() => call("stop")} disabled={!!busy}>
+        <Button variant="outline" onClick={() => call("stop")} disabled={!!busy}>
           <Square className="h-4 w-4" />
           {busy === "stop" ? "Stopping…" : "Stop"}
         </Button>
       )}
       {status === "running" && (
-        <Button variant="outline" size="sm" onClick={() => call("restart")} disabled={!!busy}>
+        <Button variant="outline" onClick={() => call("restart")} disabled={!!busy}>
           <RotateCw className="h-4 w-4" />
           {busy === "restart" ? "Restarting…" : "Restart"}
         </Button>
       )}
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        {/* Oxblood hairline; inverts to an oxblood stamp on hover like the outline variant. */}
         <Button
           variant="outline"
-          size="sm"
           onClick={() => setConfirmDelete(true)}
           disabled={!!busy}
-          className="text-destructive hover:bg-destructive/5"
+          className="border-destructive/60 text-destructive hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
         >
           <Trash2 className="h-4 w-4" />
           Delete

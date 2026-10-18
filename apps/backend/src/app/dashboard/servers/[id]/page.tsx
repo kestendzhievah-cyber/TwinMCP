@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { Route } from "next";
 import { formatDateTime } from "@/lib/format";
-import { Zap } from "lucide-react";
+import { AlertCircle, Zap } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers, users } from "@/db/schema";
@@ -17,8 +17,12 @@ import { ServerStatusBadge } from "./server-status-badge";
 // opened — split it into its own chunk instead of the server-detail bundle.
 const LogsViewer = dynamic(() => import("./logs-viewer").then((m) => m.LogsViewer));
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
+
+// Runtime facts are typeset as address lines: a small-caps label over its value.
+const factLabel = "smallcaps tracking-sc text-xs text-muted-foreground";
 
 export default async function ServerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -86,22 +90,36 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
   const installedOptions = installations.map((i) => ({ slug: i.mcpSlug, name: i.mcpName }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{srv.name}</h1>
-            <ServerStatusBadge serverId={srv.id} initialStatus={srv.status} />
+    <div className="space-y-8">
+      {/* Page header (DESIGN.md §5): a "Servers" eyebrow with its rule, the
+          engraved name with the live status beside it, the slug in Courier,
+          controls top-right, then the double rule. */}
+      <div>
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+          <div className="min-w-0">
+            <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+              Servers
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <h1 className="smallcaps tracking-sc text-2xl font-medium">{srv.name}</h1>
+              <ServerStatusBadge serverId={srv.id} initialStatus={srv.status} />
+            </div>
+            <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{srv.slug}</p>
           </div>
-          <p className="text-sm text-muted-foreground mt-1 font-mono">{srv.slug}</p>
+          <ServerControls serverId={srv.id} status={srv.status} />
         </div>
-        <ServerControls serverId={srv.id} status={srv.status} />
+        <Separator variant="double" className="mt-4" />
       </div>
 
       {srv.status === "error" && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          This server&apos;s runtime failed to start. Open the <strong>Logs</strong> tab below to
-          see why, then <strong>Restart</strong> it.
+        // An oxblood memo (DESIGN.md §5 callouts): tint, hairline, a rule down the left.
+        <div className="flex items-start gap-2 border border-destructive/40 border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            This server&apos;s runtime failed to start. Open the{" "}
+            <strong className="font-medium">Logs</strong> tab below to see why, then{" "}
+            <strong className="font-medium">Restart</strong> it.
+          </p>
         </div>
       )}
 
@@ -113,7 +131,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
 
         <TabsContent value="overview" className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="border-b border-border">
               <CardTitle className="text-base">Runtime</CardTitle>
               <CardDescription>
                 {srv.hostType === "local_agent"
@@ -121,68 +139,59 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
                   : "Upstash Box hosting this MCP server."}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-x-8 gap-y-3 text-sm md:grid-cols-2">
-              <div>
-                <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
-                  Box ID
+            <CardContent className="pt-6">
+              {/* Address lines: each fact on its own hairline, two to a row on wide stock. */}
+              <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className={factLabel}>Box ID</dt>
+                  <dd className="mt-0.5 break-all font-mono text-xs">{srv.boxId ?? "—"}</dd>
                 </div>
-                <div className="font-mono text-xs break-all">{srv.boxId ?? "—"}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
-                  Endpoint
+                <div className="border-t border-border pt-3 sm:border-t-0 sm:pt-0">
+                  <dt className={factLabel}>Endpoint</dt>
+                  <dd className="mt-0.5 break-all font-mono text-xs">{srv.endpointUrl ?? "—"}</dd>
                 </div>
-                <div className="font-mono text-xs break-all">{srv.endpointUrl ?? "—"}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
-                  Size
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Size</dt>
+                  <dd className="mt-0.5 capitalize">{srv.boxSize}</dd>
                 </div>
-                <div className="capitalize">{srv.boxSize}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
-                  Region
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Region</dt>
+                  <dd className="mt-0.5 font-mono text-xs">{srv.region ?? "—"}</dd>
                 </div>
-                <div>{srv.region ?? "—"}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
-                  Last heartbeat
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Last heartbeat</dt>
+                  <dd className="lining mt-0.5">
+                    {srv.lastHeartbeatAt ? formatDateTime(srv.lastHeartbeatAt) : "—"}
+                  </dd>
                 </div>
-                <div>{srv.lastHeartbeatAt ? formatDateTime(srv.lastHeartbeatAt) : "—"}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
-                  Created
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Created</dt>
+                  <dd className="lining mt-0.5">{formatDateTime(srv.createdAt)}</dd>
                 </div>
-                <div>{formatDateTime(srv.createdAt)}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">
-                  Mode
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Mode</dt>
+                  {warm ? (
+                    <dd className="mt-0.5 flex items-center gap-1.5">
+                      <Zap className="h-4 w-4 text-warning" />
+                      <span>Always-on</span>
+                    </dd>
+                  ) : (
+                    <dd className="mt-0.5 italic text-muted-foreground">Sleeps when idle</dd>
+                  )}
                 </div>
-                {warm ? (
-                  <div className="flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5 text-amber-500" />
-                    <span>Always-on</span>
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground">Sleeps when idle</div>
-                )}
-              </div>
+              </dl>
 
               {/* Upsell only when the feature is live (flag on) but this plan
                   doesn't have it — never advertise warm boxes before they work. */}
               {warmEnabled && !warm && (
                 <Link
                   href={"/dashboard/billing" as Route}
-                  className="md:col-span-2 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 transition-colors hover:bg-amber-500/10 dark:text-amber-400"
+                  className="mt-4 flex items-center gap-2 border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning transition-colors hover:border-warning"
                 >
-                  <Zap className="h-3.5 w-3.5 shrink-0" />
+                  <Zap className="h-4 w-4 shrink-0" />
                   <span>
-                    <span className="font-medium">Upgrade to Pro</span> for always-on servers — no
-                    cold start on the first request.
+                    <span className="smallcaps tracking-sc font-medium">Upgrade to Pro</span> for
+                    always-on servers — no cold start on the first request.
                   </span>
                 </Link>
               )}

@@ -3,6 +3,7 @@ import { libraries } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import { Library } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableHeader,
@@ -17,7 +18,7 @@ const statusVariant = {
   ready: "success",
   failed: "destructive",
   pending: "warning",
-  indexing: "secondary",
+  indexing: "warning",
 } as const;
 
 export default async function LibrariesPage() {
@@ -38,11 +39,13 @@ export default async function LibrariesPage() {
 
   return (
     <div className="space-y-8">
+      {/* Page header (DESIGN.md §5): engraved title, italic count, double rule. */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Libraries</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {libs.length} indexed libraries available for retrieval
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">Libraries</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">
+          <span className="lining">{libs.length}</span> indexed libraries available for retrieval
         </p>
+        <Separator variant="double" className="mt-4" />
       </div>
 
       {libs.length === 0 ? (
@@ -52,7 +55,9 @@ export default async function LibrariesPage() {
           description="Libraries are surfaced once the ingestion pipeline has run. Pull a few popular repos to populate this catalog."
         />
       ) : (
-        <div className="rounded-md border">
+        // The ledger (DESIGN.md §4.5): small-capital column heads on a firmer
+        // rule, hairline rows, mono ids, lining scores and counts.
+        <div className="border border-border bg-card shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
@@ -68,23 +73,23 @@ export default async function LibrariesPage() {
                 <TableRow key={l.id}>
                   <TableCell>
                     <div className="font-medium">{l.title}</div>
-                    <div className="text-xs text-muted-foreground font-mono mt-0.5">{l.id}</div>
+                    <div className="mt-0.5 font-mono text-xs text-muted-foreground">{l.id}</div>
                     {l.description && (
-                      <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                      <div className="mt-1 line-clamp-1 text-xs italic text-muted-foreground">
                         {l.description.slice(0, 100)}
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {l.trustScore.toFixed(1)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{l.totalSnippets}</TableCell>
+                  <TableCell className="text-right">{l.trustScore.toFixed(1)}</TableCell>
+                  <TableCell className="text-right">{l.totalSnippets}</TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant[l.status as keyof typeof statusVariant] ?? "outline"}>
+                    <Badge
+                      variant={statusVariant[l.status as keyof typeof statusVariant] ?? "outline"}
+                    >
                       {l.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground">
                     {l.lastIndexedAt ? l.lastIndexedAt.toLocaleDateString() : "—"}
                   </TableCell>
                 </TableRow>

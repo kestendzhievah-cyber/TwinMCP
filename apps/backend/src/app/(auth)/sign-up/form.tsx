@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { PasswordStrength, passwordScore } from "@/components/auth/password-strength";
 import { createClient } from "@/utils/supabase/client";
 import { track } from "@/lib/analytics/funnel";
@@ -23,6 +24,13 @@ const planLabels: Record<string, string> = {
   free: "Free",
   pro: "Pro",
   team: "Team",
+};
+// The plan seal follows the dashboard's plan badge (DESIGN.md §5 sidebar):
+// secondary for free, success for paid, gilt for team.
+const planSeals: Record<string, "secondary" | "success" | "gilt"> = {
+  free: "secondary",
+  pro: "success",
+  team: "gilt",
 };
 
 export function SignUpForm() {
@@ -157,20 +165,26 @@ export function SignUpForm() {
   if (done) {
     return (
       <div className="flex flex-col items-center text-center">
-        <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
-          <Mail className="h-5 w-5 text-muted-foreground" />
+        {/* The stamp: a hairline icon square between two short rules. */}
+        <div className="flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+          <span
+            aria-hidden
+            className="grid h-12 w-12 place-items-center border border-border text-muted-foreground"
+          >
+            <Mail className="h-5 w-5" />
+          </span>
         </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">Check your email</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">Check your email</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
           A confirmation link has been sent to{" "}
           <span className="font-medium text-foreground">{email}</span>. Click it to activate your
           account.
         </p>
 
-        <div role="alert" aria-live="assertive" className="mt-4 min-h-[2.5rem]">
+        <div role="alert" aria-live="assertive" className="mt-4 min-h-[2.5rem] self-stretch">
           {error && (
-            <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-left text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </p>
           )}
@@ -182,7 +196,7 @@ export function SignUpForm() {
             variant="outline"
             onClick={handleResend}
             disabled={resendCooldown > 0}
-            className="h-10"
+            className="lining"
           >
             {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend link"}
           </Button>
@@ -194,7 +208,7 @@ export function SignUpForm() {
               setPassword("");
               setError("");
             }}
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             Wrong address? Start over
           </button>
@@ -205,21 +219,24 @@ export function SignUpForm() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your TwinMCP account</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+      {/* The engraved name: small-caps title, italic subtitle, the plan seal
+          when one was picked on the pricing page, then the double rule. */}
+      <div className="mb-8">
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">Create your TwinMCP account</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">
           Free forever, no credit card. Your first server in under 2 minutes.
         </p>
         {selectedPlan && (
-          <Badge variant="secondary" className="mt-4 inline-flex items-center gap-1.5">
+          <Badge variant={planSeals[selectedPlan]} className="mt-4">
             <Sparkles className="h-3 w-3" />
             <span>Signing up for {planLabels[selectedPlan]}</span>
           </Badge>
         )}
+        <Separator variant="double" className="mt-4" />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-        <div className="flex flex-col gap-1.5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+        <div className="flex flex-col gap-2">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
@@ -233,7 +250,7 @@ export function SignUpForm() {
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <Label htmlFor="password">Password</Label>
           <Input
             id="password"
@@ -253,41 +270,43 @@ export function SignUpForm() {
 
         <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
           {error && (
-            <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </p>
           )}
         </div>
 
-        <Button
-          type="submit"
-          disabled={loading || !email || passwordScore(password) < 2}
-          className="h-10"
-        >
+        <Button type="submit" disabled={loading || !email || passwordScore(password) < 2}>
           {loading ? "Creating…" : "Create my account"}
         </Button>
       </form>
 
-      <p className="mt-6 text-xs text-muted-foreground">
+      <p className="mt-6 text-xs italic text-muted-foreground">
         By creating an account you agree to our{" "}
-        <Link href={"/legal/terms" as Route} className="underline-offset-4 hover:underline">
+        <Link
+          href={"/legal/terms" as Route}
+          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+        >
           Terms
         </Link>{" "}
         and our{" "}
-        <Link href={"/legal/privacy" as Route} className="underline-offset-4 hover:underline">
+        <Link
+          href={"/legal/privacy" as Route}
+          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+        >
           Privacy Policy
         </Link>
         .
       </p>
 
-      <p className="mt-8 text-center text-sm text-muted-foreground">
+      <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
           href={
             `/sign-in?returnTo=${encodeURIComponent(returnTo)}${email ? `&email=${encodeURIComponent(email)}` : ""}` as Route
           }
-          className="font-medium text-foreground hover:underline"
+          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
         >
           Sign in
         </Link>

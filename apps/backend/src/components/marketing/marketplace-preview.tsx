@@ -1,10 +1,18 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Package } from "lucide-react";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mcpServers } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Section } from "./section";
 
 export const revalidate = 3600;
@@ -97,40 +105,55 @@ export async function MarketplacePreview() {
       title="Curated MCPs you can install in one click"
       description="Five official MCPs ship with every account. Pro users can publish their own to the public catalog."
     >
-      <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {display.map((mcp) => (
-          <li
-            key={mcp.id}
-            className="group flex flex-col rounded-xl border border-border/80 bg-card p-5 transition-colors hover:border-foreground/20"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-md bg-secondary text-foreground/80">
-                  <Sparkles className="h-4 w-4" />
-                </span>
-                <h3 className="font-semibold tracking-tight">{mcp.name}</h3>
-              </div>
-              <Badge variant="outline" className="shrink-0 text-[10px]">
-                official
-              </Badge>
-            </div>
-            <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
-              {mcp.description}
-            </p>
-            <div className="mt-4 flex items-center gap-2 pt-2">
-              <Badge variant="secondary" className="font-mono text-[10px]">
-                {mcp.runtime}
-              </Badge>
-              <Badge variant="secondary" className="font-mono text-[10px]">
-                v{mcp.version}
-              </Badge>
-              <code className="ml-auto truncate font-mono text-[10px] text-muted-foreground">
-                {mcp.slug}
-              </code>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {/* The catalogue is a ledger: one line per package, slug and version in typewriter. */}
+      <div className="border border-border bg-card shadow-sm">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-5">Package</TableHead>
+              <TableHead className="hidden md:table-cell">Slug</TableHead>
+              <TableHead className="hidden sm:table-cell">Runtime</TableHead>
+              <TableHead className="pr-5 text-right">Version</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {display.map((mcp) => (
+              <TableRow key={mcp.id}>
+                <TableCell className="py-4 pl-5 align-top">
+                  <div className="flex items-start gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+                      <Package className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <h3 className="smallcaps tracking-sc text-base font-medium leading-5">
+                          {mcp.name}
+                        </h3>
+                        <Badge variant="outline">official</Badge>
+                      </div>
+                      <p className="mt-1 line-clamp-2 max-w-md text-sm text-muted-foreground">
+                        {mcp.description}
+                      </p>
+                      <code className="mt-1 block font-mono text-xs text-muted-foreground md:hidden">
+                        {mcp.slug}
+                      </code>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden py-4 align-top md:table-cell">
+                  <code className="font-mono text-xs text-muted-foreground">{mcp.slug}</code>
+                </TableCell>
+                <TableCell className="hidden py-4 align-top font-mono text-xs text-muted-foreground sm:table-cell">
+                  {mcp.runtime}
+                </TableCell>
+                <TableCell className="py-4 pr-5 text-right align-top font-mono text-xs">
+                  v{mcp.version}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <div className="mt-10 flex justify-center">
         <Button asChild variant="outline">

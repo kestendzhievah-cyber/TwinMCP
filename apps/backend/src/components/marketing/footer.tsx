@@ -91,7 +91,7 @@ export function MarketingFooter({ locale = "en" }: { locale?: Locale }) {
   const columns = buildColumns(locale);
   const s = STRINGS[locale];
   return (
-    <footer className="mt-24 border-t border-border/60">
+    <footer className="rule-double mt-24">
       <div className="mx-auto max-w-6xl px-6 py-14">
         <div className="grid gap-10 md:grid-cols-[1.5fr_repeat(4,1fr)]">
           <div className="flex flex-col gap-3">
@@ -100,7 +100,7 @@ export function MarketingFooter({ locale = "en" }: { locale?: Locale }) {
           </div>
           {columns.map((col) => (
             <div key={col.label}>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground">
+              <h3 className="mb-3 text-xs font-medium smallcaps tracking-sc text-foreground">
                 {col.label}
               </h3>
               <ul className="space-y-2">
@@ -121,19 +121,24 @@ export function MarketingFooter({ locale = "en" }: { locale?: Locale }) {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-border/60 pt-6 md:flex-row md:items-center">
-          <p className="text-xs text-muted-foreground">
+        {/* The card's address line: one centred row of small capitals between two rules. */}
+        <p className="smallcaps tracking-sc mt-12 border-y border-border py-4 text-center text-xs text-muted-foreground">
+          twinmcp.fr · hello@twinmcp.fr · security@twinmcp.fr · status.twinmcp.fr
+        </p>
+
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <p className="lining text-xs text-muted-foreground">
             © {new Date().getFullYear()} TwinMCP. {s.rights}
           </p>
-          <div className="flex items-center gap-2">
-            <CookieSettingsLink className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" />
+          <div className="flex flex-wrap items-center gap-2">
+            <CookieSettingsLink className=" px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" />
             <span className="mx-1 h-4 w-px bg-border" aria-hidden />
             <a
               href="https://github.com/kestendzhievah-cyber/TwinMCP"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub"
-              className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="grid h-8 w-8 place-items-center text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               <Github className="h-4 w-4" />
             </a>
@@ -142,7 +147,7 @@ export function MarketingFooter({ locale = "en" }: { locale?: Locale }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Twitter"
-              className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="grid h-8 w-8 place-items-center text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               <Twitter className="h-4 w-4" />
             </a>
@@ -151,7 +156,7 @@ export function MarketingFooter({ locale = "en" }: { locale?: Locale }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Status"
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               <ActivitySquare className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{s.status}</span>

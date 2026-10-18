@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle, Loader2, Server } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -100,22 +101,28 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
 
   if (phase === "ready" && existingServer) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">You already have a server.</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h2 className="text-2xl font-medium md:text-3xl">You already have a server.</h2>
+          <p className="mt-2 text-base text-muted-foreground">
             We&apos;ll continue the rest of the onboarding with{" "}
             <span className="font-mono text-foreground">{existingServer.name}</span>.
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm">
-          <Server className="h-4 w-4 text-emerald-500" />
-          <span>
-            <span className="font-medium text-foreground">{existingServer.name}</span>
-            <span className="text-muted-foreground"> · running</span>
+        {/* One ledger line: hairline icon square, mono name, status badge (DESIGN.md §4.5, §4.9). */}
+        <div className="flex items-center gap-4 border border-border bg-secondary/40 p-4">
+          <span
+            aria-hidden
+            className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-card text-muted-foreground"
+          >
+            <Server className="h-4 w-4" />
           </span>
+          <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
+            {existingServer.name}
+          </span>
+          <Badge variant="success">running</Badge>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-t border-border pt-6">
           <Button variant="ghost" onClick={onBack}>
             Back
           </Button>
@@ -129,40 +136,48 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
 
   if (phase === "provisioning" || phase === "stuck") {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-2xl font-medium md:text-3xl">
             {phase === "stuck" ? "Still provisioning…" : "Spinning up your runtime…"}
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-base text-muted-foreground">
             {phase === "stuck"
               ? "Upstash Box is taking longer than usual. You can move on — your server will keep provisioning in the background."
               : "Allocating an isolated micro-VM, installing TwinMCP Docs MCP, and assigning your endpoint. This usually takes ~10 seconds."}
           </p>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg border border-border/80 bg-muted/40 p-4 text-sm">
+        {/* Typewriter status line; the ochre tint once it is overdue. */}
+        <div
+          className={
+            phase === "stuck"
+              ? "flex items-center gap-3 border border-warning/40 bg-warning/10 px-4 py-3 font-mono text-xs text-warning"
+              : "flex items-center gap-3 border border-border bg-secondary/60 px-4 py-3 font-mono text-xs text-muted-foreground"
+          }
+        >
           {phase === "provisioning" ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
           ) : (
-            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertCircle className="h-4 w-4 shrink-0" />
           )}
-          <span className="font-mono text-xs text-muted-foreground">
+          <span>
             {phase === "provisioning" ? "status: provisioning" : "status: still provisioning"}
           </span>
         </div>
 
         {error && (
-          <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {error}
           </p>
         )}
 
         {serverId && (
-          <div className="flex justify-end">
+          <div className="flex justify-end border-t border-border pt-6">
             <Button
               size="lg"
+              className="h-auto min-h-12 whitespace-normal py-2 text-center"
               variant={phase === "stuck" ? "default" : "ghost"}
               onClick={() =>
                 onReady({ id: serverId, name, slug: serverSlug ?? "", endpointUrl: null })
@@ -177,15 +192,15 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Name your first server.</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h2 className="text-2xl font-medium md:text-3xl">Name your first server.</h2>
+        <p className="mt-2 text-base text-muted-foreground">
           One free server. You can rename it later. Provisioning takes around 10 seconds.
         </p>
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <Label htmlFor="server-name">Server name</Label>
         <Input
           id="server-name"
@@ -195,19 +210,19 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
           maxLength={80}
           autoFocus
         />
-        <p className="text-xs text-muted-foreground">
-          Used to derive a slug like <code className="font-mono">my-mcp</code>.
+        <p className="text-xs italic text-muted-foreground">
+          Used to derive a slug like <code className="font-mono not-italic">my-mcp</code>.
         </p>
       </div>
 
       {error && (
-        <p className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+        <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           {error}
         </p>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-t border-border pt-6">
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>

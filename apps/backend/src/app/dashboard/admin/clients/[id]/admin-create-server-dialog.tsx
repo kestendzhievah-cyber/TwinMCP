@@ -79,8 +79,8 @@ export function AdminCreateServerDialog({
               ensuite y installer des MCPs.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex flex-col gap-1.5">
+          <div className="space-y-5">
+            <div className="flex flex-col gap-2">
               <Label>Nom du serveur</Label>
               <Input
                 value={name}
@@ -88,7 +88,7 @@ export function AdminCreateServerDialog({
                 placeholder="Production, Démo…"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <Label>Taille de la box</Label>
               <Select value={boxSize} onValueChange={(v) => setBoxSize(v as BoxSize)}>
                 <SelectTrigger>

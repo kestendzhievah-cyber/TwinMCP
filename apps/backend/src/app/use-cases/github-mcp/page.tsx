@@ -75,53 +75,75 @@ const faq = [
   },
 ];
 
+// The tool catalogue is typeset as a ledger: mono slug, hairline rows (DESIGN.md §4.5).
+const ledgerRow =
+  "grid gap-1 border-b border-border py-4 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8";
+const ledgerName = "font-mono text-sm font-medium text-foreground";
+const ledgerBody = "text-base text-muted-foreground";
+
 export default function GithubMcpPage() {
   return (
     <UseCaseLayout useCase={useCase} benefits={benefits} steps={steps} faq={faq}>
-      <section className="mb-20">
-        <h2 className="text-3xl font-semibold tracking-tight">
-          What the AI can do with the GitHub MCP
-        </h2>
-        <p className="mt-4 max-w-2xl leading-relaxed text-muted-foreground">
-          A non-exhaustive list of the tools your AI host (Cursor, Claude, Windsurf) gets when you
-          connect the hosted GitHub MCP:
-        </p>
-        <ul className="mt-6 space-y-3 text-base text-muted-foreground">
-          <li>
-            <strong className="text-foreground">list_repositories</strong> &mdash; enumerate the
-            repos your PAT can see.
-          </li>
-          <li>
-            <strong className="text-foreground">get_file_contents</strong> &mdash; read any file
-            from a repo at a specific ref.
-          </li>
-          <li>
-            <strong className="text-foreground">list_pull_requests</strong> &mdash; browse open /
-            closed / merged PRs across the repos in scope.
-          </li>
-          <li>
-            <strong className="text-foreground">create_pull_request</strong> &mdash; open a PR
-            (write scope required).
-          </li>
-          <li>
-            <strong className="text-foreground">create_issue</strong> &mdash; file an issue with
-            title, body, labels, assignees.
-          </li>
-          <li>
-            <strong className="text-foreground">get_workflow_run</strong> &mdash; inspect CI runs to
-            debug failing pipelines.
-          </li>
-        </ul>
-        <p className="mt-6 text-sm text-muted-foreground">
-          Looking for the broader catalogue of MCPs worth installing?{" "}
-          <Link
-            href={"/blog/production-mcp-servers" as Route}
-            className="font-medium underline underline-offset-4 hover:text-foreground"
+      <section className="rule-double py-16 md:py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+            Tools
+          </p>
+          <h2 className="mt-4 text-balance text-3xl font-medium md:text-4xl">
+            What the AI can do with the GitHub MCP
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">
+            A non-exhaustive list of the tools your AI host (Cursor, Claude, Windsurf) gets when you
+            connect the hosted GitHub MCP:
+          </p>
+        </div>
+        <div className="mx-auto mt-12 max-w-3xl">
+          <div
+            aria-hidden
+            className="smallcaps tracking-sc hidden border-b border-foreground/50 pb-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8"
           >
-            Browse 10 production-ready MCP servers
-          </Link>
-          .
-        </p>
+            <span>Tool</span>
+            <span>What it does</span>
+          </div>
+          <ul className="border-t border-foreground/50 sm:border-t-0">
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>list_repositories</strong>
+              <span className={ledgerBody}>Enumerate the repos your PAT can see.</span>
+            </li>
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>get_file_contents</strong>
+              <span className={ledgerBody}>Read any file from a repo at a specific ref.</span>
+            </li>
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>list_pull_requests</strong>
+              <span className={ledgerBody}>
+                Browse open / closed / merged PRs across the repos in scope.
+              </span>
+            </li>
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>create_pull_request</strong>
+              <span className={ledgerBody}>Open a PR (write scope required).</span>
+            </li>
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>create_issue</strong>
+              <span className={ledgerBody}>File an issue with title, body, labels, assignees.</span>
+            </li>
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>get_workflow_run</strong>
+              <span className={ledgerBody}>Inspect CI runs to debug failing pipelines.</span>
+            </li>
+          </ul>
+          <p className="mt-8 text-sm text-muted-foreground">
+            Looking for the broader catalogue of MCPs worth installing?{" "}
+            <Link
+              href={"/blog/production-mcp-servers" as Route}
+              className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+            >
+              Browse 10 production-ready MCP servers
+            </Link>
+            .
+          </p>
+        </div>
       </section>
     </UseCaseLayout>
   );

@@ -41,23 +41,22 @@ export function HowItWorks() {
         {steps.map((s) => (
           <li
             key={s.n}
-            className="flex flex-col rounded-xl border border-border/80 bg-card p-6"
+            className="flex min-w-0 flex-col border border-border bg-card p-6 shadow-sm"
           >
-            <span
-              aria-hidden
-              className="grid h-8 w-8 place-items-center rounded-full border border-border bg-secondary text-sm font-semibold tabular-nums text-foreground"
-            >
-              {s.n}
-            </span>
-            <h3 className="mt-4 font-semibold tracking-tight">{s.title}</h3>
-            <p className="mt-2 text-sm text-muted-foreground">{s.body}</p>
+            {/* The step number is stamped in a hairline square, lining figures. */}
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="lining grid h-9 w-9 shrink-0 place-items-center border border-foreground/60 text-sm font-medium text-foreground"
+              >
+                {s.n}
+              </span>
+              <h3 className="smallcaps tracking-sc text-lg font-medium">{s.title}</h3>
+            </div>
+            <p className="mt-4 text-base text-muted-foreground">{s.body}</p>
             {s.snippet && (
-              <div className="mt-5">
-                <CodeSnippet
-                  code={mcpJsonExample}
-                  language="json"
-                  filename="~/.cursor/mcp.json"
-                />
+              <div className="mt-6 min-w-0">
+                <CodeSnippet code={mcpJsonExample} language="json" filename="~/.cursor/mcp.json" />
               </div>
             )}
           </li>

@@ -15,20 +15,25 @@ export default function DashboardError({
     console.error("[dashboard]", error);
   }, [error]);
 
+  // A card lifted off the stack (DESIGN.md §5, error pages): an "Error" eyebrow
+  // between two hairlines, the serif title, one italic line, one button.
   return (
-    <div className="flex flex-col items-center gap-4 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-16 text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-full bg-destructive/10 text-destructive">
-        <AlertCircle className="h-6 w-6" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-base font-semibold tracking-tight">Something went wrong</h2>
-        <p className="text-sm text-muted-foreground">
-          This section failed to load. You can retry — if it keeps happening, contact support.
+    <div className="flex justify-center py-10">
+      <div className="flex w-full max-w-lg flex-col items-center gap-5 border border-border bg-card p-10 text-center shadow-stack">
+        <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+          Error
         </p>
+        <AlertCircle className="h-6 w-6 text-destructive" />
+        <div className="space-y-2">
+          <h2 className="text-3xl font-medium">Something went wrong</h2>
+          <p className="text-sm italic text-muted-foreground">
+            This section failed to load. You can retry — if it keeps happening, contact support.
+          </p>
+        </div>
+        <Button onClick={reset} variant="outline">
+          Try again
+        </Button>
       </div>
-      <Button onClick={reset} variant="outline">
-        Try again
-      </Button>
     </div>
   );
 }

@@ -1,11 +1,14 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+// A card is a piece of bone stock: square corners, one hairline, no blur.
+// Titles are set in small capitals; descriptions in italic, like a subtitle
+// engraved under a name.
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}
+      className={cn("border border-border bg-card text-card-foreground shadow-sm", className)}
       {...props}
     />
   )
@@ -21,9 +24,7 @@ CardHeader.displayName = "CardHeader";
 
 // Renders a real heading (h3 by default) so pages keep a proper document
 // outline for screen-reader heading navigation. Override with `as` where a
-// different level fits (e.g. a top-level section title → as="h2"). Tailwind's
-// preflight resets heading margins/size, so this is visually identical to the
-// old <div>.
+// different level fits (e.g. a top-level section title -> as="h2").
 type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
   as?: "h1" | "h2" | "h3" | "h4";
 };
@@ -31,7 +32,7 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className, as: Comp = "h3", ...props }, ref) => (
     <Comp
       ref={ref}
-      className={cn("font-semibold leading-none tracking-tight", className)}
+      className={cn("smallcaps tracking-sc text-lg font-medium leading-none", className)}
       {...props}
     />
   )
@@ -40,7 +41,7 @@ CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
+    <div ref={ref} className={cn("text-sm italic text-muted-foreground", className)} {...props} />
   )
 );
 CardDescription.displayName = "CardDescription";

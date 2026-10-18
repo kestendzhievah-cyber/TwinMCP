@@ -30,7 +30,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-md border border-border/60 bg-background p-0.5 text-xs",
+        "inline-flex items-center border border-border/60 bg-background p-0.5 text-xs",
         className
       )}
       role="group"
@@ -45,7 +45,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
             href={target as Route}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "rounded px-2 py-1 font-medium uppercase tracking-wide transition-colors",
+              " px-2 py-1 font-medium smallcaps tracking-sc transition-colors",
               isActive
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:text-foreground"

@@ -94,9 +94,15 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
         <DialogHeader>
           <DialogTitle>Create a new server</DialogTitle>
           <DialogDescription>
-            {isLocal
-              ? "A local server hosts tools that run on your own machine (e.g. Blender) — bring it online with the `ctx7 connect` agent."
-              : "A new Upstash Box runtime will be provisioned. TwinMCP Docs is auto-installed."}
+            {isLocal ? (
+              <>
+                A local server hosts tools that run on your own machine (e.g. Blender) — bring it
+                online with the <code className="font-mono text-xs not-italic">ctx7 connect</code>{" "}
+                agent.
+              </>
+            ) : (
+              "A new Upstash Box runtime will be provisioned. TwinMCP Docs is auto-installed."
+            )}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -150,9 +156,12 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
                   </SelectContent>
                 </Select>
                 {allowedBoxSizes(plan).length < BOX_SIZES.length && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs italic text-muted-foreground">
                     Larger boxes are available on higher plans.{" "}
-                    <a href="/dashboard/billing" className="underline underline-offset-2">
+                    <a
+                      href="/dashboard/billing"
+                      className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+                    >
                       Upgrade
                     </a>
                     .

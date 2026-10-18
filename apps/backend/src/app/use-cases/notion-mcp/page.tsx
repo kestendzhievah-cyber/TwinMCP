@@ -75,44 +75,77 @@ const faq = [
   },
 ];
 
+// The tool catalogue is typeset as a ledger: mono slug, hairline rows (DESIGN.md §4.5).
+const ledgerRow =
+  "grid gap-1 border-b border-border py-4 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8";
+const ledgerName = "font-mono text-sm font-medium text-foreground";
+const ledgerBody = "text-base text-muted-foreground";
+
 export default function NotionMcpPage() {
   return (
     <UseCaseLayout useCase={useCase} benefits={benefits} steps={steps} faq={faq}>
-      <section className="mb-20">
-        <h2 className="text-3xl font-semibold tracking-tight">What the model gets access to</h2>
-        <p className="mt-4 max-w-2xl leading-relaxed text-muted-foreground">
-          The Notion MCP exposes a small, focused set of tools to your AI agent. Each one maps
-          cleanly to a Notion API endpoint, with a Zod-validated schema and explicit permission
-          boundaries.
-        </p>
-        <ul className="mt-6 space-y-3 text-base text-muted-foreground">
-          <li>
-            <strong className="text-foreground">search_pages</strong> — full-text search across
-            pages and databases the integration can see. Returns id, title, URL.
-          </li>
-          <li>
-            <strong className="text-foreground">read_page</strong> — fetches the block content of a
-            page by id. The model can quote, summarize, or rewrite it.
-          </li>
-          <li>
-            <strong className="text-foreground">create_page</strong> — creates a page under a parent
-            page or database with a title and optional content.
-          </li>
-          <li>
-            <strong className="text-foreground">append_blocks</strong> — adds blocks to an existing
-            page (paragraphs, headings, bullets).
-          </li>
-        </ul>
-        <p className="mt-6 text-sm text-muted-foreground">
-          Want to build a tailored version with custom database queries?{" "}
-          <Link
-            href={"/blog/notion-mcp-server-tutorial" as Route}
-            className="font-medium underline underline-offset-4 hover:text-foreground"
+      <section className="rule-double py-16 md:py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+            Tools
+          </p>
+          <h2 className="mt-4 text-balance text-3xl font-medium md:text-4xl">
+            What the model gets access to
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">
+            The Notion MCP exposes a small, focused set of tools to your AI agent. Each one maps
+            cleanly to a Notion API endpoint, with a Zod-validated schema and explicit permission
+            boundaries.
+          </p>
+        </div>
+        <div className="mx-auto mt-12 max-w-3xl">
+          <div
+            aria-hidden
+            className="smallcaps tracking-sc hidden border-b border-foreground/50 pb-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8"
           >
-            Follow the Notion MCP server tutorial
-          </Link>{" "}
-          — it walks through the full TypeScript code, then shows how to deploy it back to TwinMCP.
-        </p>
+            <span>Tool</span>
+            <span>What it does</span>
+          </div>
+          <ul className="border-t border-foreground/50 sm:border-t-0">
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>search_pages</strong>
+              <span className={ledgerBody}>
+                Full-text search across pages and databases the integration can see. Returns id,
+                title, URL.
+              </span>
+            </li>
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>read_page</strong>
+              <span className={ledgerBody}>
+                Fetches the block content of a page by id. The model can quote, summarize, or
+                rewrite it.
+              </span>
+            </li>
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>create_page</strong>
+              <span className={ledgerBody}>
+                Creates a page under a parent page or database with a title and optional content.
+              </span>
+            </li>
+            <li className={ledgerRow}>
+              <strong className={ledgerName}>append_blocks</strong>
+              <span className={ledgerBody}>
+                Adds blocks to an existing page (paragraphs, headings, bullets).
+              </span>
+            </li>
+          </ul>
+          <p className="mt-8 text-sm text-muted-foreground">
+            Want to build a tailored version with custom database queries?{" "}
+            <Link
+              href={"/blog/notion-mcp-server-tutorial" as Route}
+              className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+            >
+              Follow the Notion MCP server tutorial
+            </Link>{" "}
+            — it walks through the full TypeScript code, then shows how to deploy it back to
+            TwinMCP.
+          </p>
+        </div>
       </section>
     </UseCaseLayout>
   );

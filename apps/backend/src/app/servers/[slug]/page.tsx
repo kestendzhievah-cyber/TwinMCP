@@ -10,6 +10,17 @@ import {
   softwareApplicationSchema,
   howToSchema,
 } from "@/lib/seo/schema";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -42,6 +53,14 @@ const KIND_LABELS = {
   official: "Official",
   community: "Community-maintained",
   "hosted-remote": "Hosted remote",
+} as const;
+
+// Kind → badge tint. "Official" is the one brass seal on this view
+// (DESIGN.md §4.8); the other kinds are plain stamps.
+const KIND_BADGE = {
+  official: "gilt",
+  community: "secondary",
+  "hosted-remote": "info",
 } as const;
 
 const BLOG_TITLES: Record<string, string> = {
@@ -95,47 +114,57 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
         ]}
       />
 
-      <article className="mx-auto max-w-3xl px-6 py-16">
-        <nav aria-label="Breadcrumb" className="mb-8 text-sm text-muted-foreground">
-          <ol className="flex flex-wrap items-center gap-2">
+      <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
+        <nav
+          aria-label="Breadcrumb"
+          className="smallcaps tracking-sc mb-12 text-xs text-muted-foreground"
+        >
+          <ol className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <li>
-              <Link href="/" className="hover:text-foreground">
+              <Link href="/" className="transition-colors hover:text-foreground">
                 Home
               </Link>
             </li>
-            <li aria-hidden>/</li>
+            <li aria-hidden>·</li>
             <li>
-              <Link href={"/servers" as Route} className="hover:text-foreground">
+              <Link href={"/servers" as Route} className="transition-colors hover:text-foreground">
                 MCP servers
               </Link>
             </li>
-            <li aria-hidden>/</li>
+            <li aria-hidden>·</li>
             <li aria-current="page" className="line-clamp-1 text-foreground">
               {server.name}
             </li>
           </ol>
         </nav>
 
-        <header className="mb-10">
-          <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-            <span className="rounded-md bg-secondary px-2 py-0.5 font-medium text-foreground">
-              {KIND_LABELS[server.kind]}
-            </span>
-            <span className="text-muted-foreground">by {server.maintainer}</span>
-            <span aria-hidden className="text-muted-foreground">
-              ·
-            </span>
-            <span className="text-muted-foreground">{server.category}</span>
-          </div>
-          <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl">
+        {/* The card itself: category as the eyebrow line, the name engraved in
+            the centre, one address line of facts underneath. */}
+        <header className="pb-10 text-center">
+          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+            {server.category}
+          </p>
+          <h1 className="display letterpress mt-6 text-4xl sm:text-5xl md:text-6xl">
             {server.name}
           </h1>
-          <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{server.tagline}</p>
+          <div className="mx-auto mt-7 h-px w-12 bg-foreground/40" />
+          <p className="mx-auto mt-7 max-w-2xl text-lg text-muted-foreground md:text-xl">
+            {server.tagline}
+          </p>
+          <div className="smallcaps tracking-sc lining mt-7 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+            <Badge variant={KIND_BADGE[server.kind]}>{KIND_LABELS[server.kind]}</Badge>
+            <span aria-hidden>·</span>
+            <span>by {server.maintainer}</span>
+            <span aria-hidden>·</span>
+            <span>
+              {server.tools.length} tool{server.tools.length === 1 ? "" : "s"}
+            </span>
+          </div>
 
           {server.warnings && server.warnings.length > 0 && (
-            <div className="mt-6 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
-              <strong className="font-semibold text-foreground">Notes:</strong>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+            <div className="mt-8 border border-warning/40 border-l-2 border-l-warning bg-warning/10 p-4 text-left text-sm">
+              <strong className="smallcaps tracking-sc font-medium text-warning">Notes:</strong>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-foreground/90">
                 {server.warnings.map((w, i) => (
                   <li key={i}>{w}</li>
                 ))}
@@ -143,56 +172,65 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
             </div>
           )}
         </header>
+        <Separator variant="double" />
 
         {/* Description */}
-        <section className="mb-12 space-y-5 text-base leading-7 text-foreground/90">
+        <section className="mt-10 space-y-5 text-lg leading-8 text-foreground/90">
           {server.description.map((p, i) => (
             <p key={i}>{p}</p>
           ))}
         </section>
 
-        {/* Tools */}
-        <section className="mb-12">
-          <h2 className="mb-5 text-2xl font-semibold tracking-tight">What the model can do</h2>
-          <ul className="space-y-3">
-            {server.tools.map((t) => (
-              <li key={t.name} className="rounded-lg border border-border bg-card p-4">
-                <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-sm text-foreground">
-                  {t.name}
-                </code>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {t.description}
-                </p>
-              </li>
-            ))}
-          </ul>
+        {/* Tools — a ledger: small-caps header on a firmer rule, hairline rows, mono names */}
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="mb-6 text-2xl font-medium md:text-3xl">What the model can do</h2>
+          <Table className="border-b border-border">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[38%]">Tool</TableHead>
+                <TableHead>Description</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {server.tools.map((t) => (
+                <TableRow key={t.name}>
+                  <TableCell className="align-top">
+                    <code className="font-mono text-sm text-foreground">{t.name}</code>
+                  </TableCell>
+                  <TableCell className="align-top text-muted-foreground">{t.description}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </section>
 
-        {/* Install */}
-        <section className="mb-12">
-          <h2 className="mb-5 text-2xl font-semibold tracking-tight">Install</h2>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Local (stdio) — Cursor / Claude Desktop
-          </h3>
-          <pre className="mb-6 overflow-x-auto rounded-lg border border-border bg-secondary/40 p-4 text-sm">
-            <code>{server.installStdio}</code>
-          </pre>
+        {/* Install — typewriter blocks with a small-caps filename tab */}
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="mb-6 text-2xl font-medium md:text-3xl">Install</h2>
+          <div className="border border-border bg-secondary/60">
+            <h3 className="smallcaps tracking-sc border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground">
+              Local (stdio) — Cursor / Claude Desktop
+            </h3>
+            <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
+              <code>{server.installStdio}</code>
+            </pre>
+          </div>
           {server.installHttp ? (
-            <>
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mt-6 border border-border bg-secondary/60">
+              <h3 className="smallcaps tracking-sc border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground">
                 Hosted (HTTP) — Claude Code / TwinMCP
               </h3>
-              <pre className="overflow-x-auto rounded-lg border border-border bg-secondary/40 p-4 text-sm">
+              <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
                 <code>{server.installHttp}</code>
               </pre>
-            </>
+            </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-6 text-sm text-muted-foreground">
               This server is typically run as a stdio child process. To share it across a team or
               keep secrets server-side, deploy it on{" "}
               <Link
                 href="/"
-                className="font-medium underline underline-offset-4 hover:text-foreground"
+                className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
               >
                 TwinMCP
               </Link>{" "}
@@ -201,13 +239,13 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
           )}
         </section>
 
-        {/* Setup */}
-        <section className="mb-12">
-          <h2 className="mb-5 text-2xl font-semibold tracking-tight">Setup</h2>
-          <ol className="space-y-3 text-base leading-7">
+        {/* Setup — numbered steps, the number in a hairline square */}
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="mb-6 text-2xl font-medium md:text-3xl">Setup</h2>
+          <ol className="space-y-4 text-base leading-7">
             {server.setupSteps.map((s, i) => (
               <li key={i} className="flex gap-4">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-card text-xs font-semibold">
+                <span className="lining grid h-8 w-8 shrink-0 place-items-center border border-border bg-card text-xs font-medium">
                   {i + 1}
                 </span>
                 <span className="text-foreground/90">{s}</span>
@@ -217,18 +255,18 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
         </section>
 
         {/* Connect to your AI client — internal links into the per-client matrix */}
-        <section className="mb-12">
-          <h2 className="mb-5 text-2xl font-semibold tracking-tight">
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="mb-6 text-2xl font-medium md:text-3xl">
             Connect {server.name} to your AI client
           </h2>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {MATRIX_CLIENTS.map((c) => (
               <Link
                 key={c}
                 href={`/servers/${server.slug}/${c}` as Route}
-                className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-sm transition-colors hover:border-foreground/40"
+                className="smallcaps tracking-sc flex items-center justify-between gap-4 border border-border bg-card px-4 py-3 text-sm transition-colors hover:border-foreground/60"
               >
-                <span className="text-foreground/90">
+                <span>
                   {server.name} with {IDE_LABELS[c]}
                 </span>
                 <span aria-hidden className="text-muted-foreground">
@@ -240,8 +278,8 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
         </section>
 
         {/* Use cases */}
-        <section className="mb-12">
-          <h2 className="mb-5 text-2xl font-semibold tracking-tight">What people use it for</h2>
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="mb-6 text-2xl font-medium md:text-3xl">What people use it for</h2>
           <ul className="space-y-3 text-base leading-7">
             {server.useCases.map((u, i) => (
               <li key={i} className="flex gap-3">
@@ -254,24 +292,26 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
           </ul>
         </section>
 
-        {/* FAQ */}
-        <section className="mb-12">
-          <h2 className="mb-5 text-2xl font-semibold tracking-tight">FAQ</h2>
-          <dl className="space-y-5">
+        {/* FAQ — hairline-separated rows, like the accordion ledger */}
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="mb-6 text-2xl font-medium md:text-3xl">FAQ</h2>
+          <dl className="divide-y divide-border border-y border-border">
             {server.faq.map((item, i) => (
-              <div key={i} className="rounded-lg border border-border bg-card p-5">
-                <dt className="text-base font-semibold tracking-tight">{item.q}</dt>
-                <dd className="mt-2 leading-relaxed text-muted-foreground">{item.a}</dd>
+              <div key={i} className="py-5">
+                <dt className="text-lg font-medium">{item.q}</dt>
+                <dd className="mt-2 text-base text-muted-foreground">{item.a}</dd>
               </div>
             ))}
           </dl>
         </section>
 
         {/* Source */}
-        <section className="mb-12 rounded-lg border border-border bg-card p-5 text-sm text-muted-foreground">
+        <section className="mt-14 border border-border bg-card p-5 text-sm text-muted-foreground">
           <p>
-            <strong className="font-semibold text-foreground">Package / source:</strong>{" "}
-            <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[0.875em] text-foreground">
+            <strong className="smallcaps tracking-sc font-medium text-foreground">
+              Package / source:
+            </strong>{" "}
+            <code className="bg-secondary px-1.5 py-0.5 font-mono text-[0.9em] text-foreground">
               {server.packageOrImage}
             </code>
             {" — "}
@@ -279,7 +319,7 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
               href={server.source}
               rel="noopener noreferrer"
               target="_blank"
-              className="font-medium underline underline-offset-4 hover:text-foreground"
+              className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
             >
               upstream repository ↗
             </a>
@@ -287,46 +327,45 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
         </section>
 
         {/* CTA */}
-        <footer className="border-t border-border pt-10">
-          <div className="rounded-2xl border border-border/80 bg-card p-8 text-center">
-            <h2 className="text-2xl font-semibold tracking-tight">
+        <footer className="rule-double mt-14 pt-12">
+          <div className="border border-foreground/70 bg-card px-6 py-10 text-center md:px-10">
+            <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
+              Managed MCP Runtimes
+            </p>
+            <h2 className="mt-6 text-2xl font-medium md:text-3xl">
               Run {server.name} on TwinMCP in 2 minutes
             </h2>
-            <p className="mt-3 text-muted-foreground">
+            <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground">
               Isolated sandbox, encrypted secrets, one URL for Cursor / Claude / Windsurf. Free tier
               — no credit card.
             </p>
-            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href={"/sign-up?plan=free" as Route}
-                className="inline-flex items-center justify-center rounded-md bg-foreground px-6 py-3 text-sm font-medium text-background hover:bg-foreground/90"
-              >
-                Start free →
-              </Link>
-              <Link
-                href={"/plans" as Route}
-                className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-accent"
-              >
-                See pricing
-              </Link>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button asChild size="lg">
+                <Link href={"/sign-up?plan=free" as Route}>Start free →</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link href={"/plans" as Route}>See pricing</Link>
+              </Button>
             </div>
           </div>
 
           {/* Related blog posts */}
           {server.relatedBlogSlugs.length > 0 && (
-            <div className="mt-12">
-              <h2 className="mb-6 text-xl font-semibold tracking-tight">Related reading</h2>
+            <div className="mt-14">
+              <h2 className="eyebrow mb-6 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+                Related reading
+              </h2>
               <ul className="grid gap-4 sm:grid-cols-2">
                 {server.relatedBlogSlugs.map((b) => (
                   <li key={b}>
                     <Link
                       href={`/blog/${b}` as Route}
-                      className="group block rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground/40"
+                      className="group flex h-full flex-col border border-border bg-card p-5 transition-colors hover:border-foreground/60"
                     >
-                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                      <p className="smallcaps tracking-sc text-xs text-muted-foreground">
                         Blog post
                       </p>
-                      <h3 className="mt-2 text-base font-semibold leading-snug group-hover:underline">
+                      <h3 className="mt-2 text-lg font-medium leading-snug group-hover:underline group-hover:decoration-brand group-hover:underline-offset-4">
                         {BLOG_TITLES[b] ?? b}
                       </h3>
                     </Link>
@@ -338,19 +377,21 @@ export default async function ServerPage({ params }: { params: Promise<{ slug: s
 
           {/* Related servers */}
           {related.length > 0 && (
-            <div className="mt-12">
-              <h2 className="mb-6 text-xl font-semibold tracking-tight">Often paired with</h2>
+            <div className="mt-14">
+              <h2 className="eyebrow mb-6 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+                Often paired with
+              </h2>
               <ul className="grid gap-4 sm:grid-cols-2">
                 {related.map((r) => (
                   <li key={r.slug}>
                     <Link
                       href={`/servers/${r.slug}` as Route}
-                      className="group block rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground/40"
+                      className="group flex h-full flex-col border border-border bg-card p-5 transition-colors hover:border-foreground/60"
                     >
-                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                      <p className="smallcaps tracking-sc text-xs text-muted-foreground">
                         {r.category}
                       </p>
-                      <h3 className="mt-2 text-base font-semibold leading-snug group-hover:underline">
+                      <h3 className="smallcaps tracking-sc mt-2 text-lg font-medium leading-snug group-hover:underline group-hover:decoration-brand group-hover:underline-offset-[6px]">
                         {r.name}
                       </h3>
                       <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{r.tagline}</p>

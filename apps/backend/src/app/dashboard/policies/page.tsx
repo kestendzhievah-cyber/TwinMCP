@@ -8,6 +8,7 @@ import { Shield } from "lucide-react";
 import { PoliciesForm } from "./form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { EmptyState } from "@/components/dashboard/empty-state";
 
 export default async function PoliciesPage() {
@@ -26,9 +27,10 @@ export default async function PoliciesPage() {
 
   if (memberships.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Policies</h1>
+          <h1 className="smallcaps tracking-sc text-2xl font-medium">Policies</h1>
+          <Separator variant="double" className="mt-4" />
         </div>
         <EmptyState
           icon={Shield}
@@ -54,20 +56,23 @@ export default async function PoliciesPage() {
 
   return (
     <div className="space-y-8">
+      {/* Page header (DESIGN.md §5): engraved title, the teamspace as an italic line, double rule. */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Policies</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Teamspace: <strong className="text-foreground">{ts?.name ?? tsId}</strong>
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">Policies</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">
+          Teamspace:{" "}
+          <strong className="font-medium not-italic text-foreground">{ts?.name ?? tsId}</strong>
         </p>
+        <Separator variant="double" className="mt-4" />
       </div>
       <Card className="max-w-xl">
-        <CardHeader>
+        <CardHeader className="border-b border-border">
           <CardTitle>Library filters</CardTitle>
           <CardDescription>
             Restrict which libraries members of this teamspace can access.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <PoliciesForm
             teamspaceId={tsId}
             minTrustScore={filters?.minTrustScore ?? 0}

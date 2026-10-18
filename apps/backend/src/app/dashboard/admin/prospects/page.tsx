@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { isAdminEmail } from "@/lib/admin";
+import { Separator } from "@/components/ui/separator";
 import { ProspectsPanel } from "./prospects-panel";
 
 export const dynamic = "force-dynamic";
@@ -19,13 +20,17 @@ export default async function ProspectsPage() {
   if (!isAdminEmail(user.email)) redirect("/dashboard");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Prospection</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+          Administration
+        </p>
+        <h1 className="smallcaps tracking-sc mt-2 text-2xl font-medium">Prospection</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">
           Votre pipeline commercial — suivez vos prospects, relancez au bon moment et envoyez un
           email pré-rédigé en un clic. Visible par les admins uniquement.
         </p>
+        <Separator variant="double" className="mt-4" />
       </div>
       <ProspectsPanel />
     </div>

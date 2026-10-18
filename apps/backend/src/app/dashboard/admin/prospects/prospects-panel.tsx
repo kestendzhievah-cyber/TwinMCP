@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertCircle,
   BellRing,
   Clock,
   Download,
@@ -18,7 +19,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -362,7 +363,7 @@ export function ProspectsPanel() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {[0, 1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-28 w-full" />
@@ -374,31 +375,23 @@ export function ProspectsPanel() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* KPI cards */}
+    <div className="space-y-8">
+      {/* KPI cards (DESIGN.md §5 stat card): small-caps caption, lining figure. */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <Kpi icon={<Users className="h-4 w-4" />} label="Prospects" value={String(stats.total)} />
         <Kpi
-          icon={<Users className="h-3.5 w-3.5" />}
-          label="Prospects"
-          value={String(stats.total)}
-        />
-        <Kpi
-          icon={<TrendingUp className="h-3.5 w-3.5" />}
+          icon={<TrendingUp className="h-4 w-4" />}
           label="Pipeline ouvert"
           value={eur.format(stats.pipeline)}
         />
         <Kpi
-          icon={<Gauge className="h-3.5 w-3.5" />}
+          icon={<Gauge className="h-4 w-4" />}
           label="Prévision pondérée"
           value={eur.format(stats.weighted)}
         />
+        <Kpi icon={<Trophy className="h-4 w-4" />} label="Gagné" value={eur.format(stats.won)} />
         <Kpi
-          icon={<Trophy className="h-3.5 w-3.5" />}
-          label="Gagné"
-          value={eur.format(stats.won)}
-        />
-        <Kpi
-          icon={<BellRing className="h-3.5 w-3.5" />}
+          icon={<BellRing className="h-4 w-4" />}
           label="À relancer"
           value={String(stats.due)}
           highlight={stats.due > 0}
@@ -407,272 +400,305 @@ export function ProspectsPanel() {
         />
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative sm:max-w-xs">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher une entreprise, un contact…"
-              className="pl-8"
-            />
+      <div className="space-y-4">
+        {/* Toolbar: filters on the left, page actions right-aligned; every control 40px tall. */}
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher une entreprise, un contact…"
+                className="pl-9"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as "all" | Status)}
+            >
+              <SelectTrigger className="sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | Status)}>
-            <SelectTrigger className="sm:w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {STATUS_LABEL[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <WhatsappQuickDialog onDone={() => void load()} />
+            <ImportDialog onImported={() => void load()} />
+            <Button variant="outline" onClick={exportCsv} disabled={items.length === 0}>
+              <Download className="h-4 w-4" />
+              Exporter
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              title="Actualiser"
+              aria-label="Actualiser"
+              onClick={() => void load()}
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              Ajouter
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <WhatsappQuickDialog onDone={() => void load()} />
-          <ImportDialog onImported={() => void load()} />
-          <Button variant="outline" size="sm" onClick={exportCsv} disabled={items.length === 0}>
-            <Download className="h-3.5 w-3.5" />
-            Exporter
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={refreshing}>
-            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-          </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            Ajouter
-          </Button>
-        </div>
-      </div>
 
-      {error ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            {error}{" "}
-            <button className="underline" onClick={() => void load()}>
-              Réessayer
-            </button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Tabs defaultValue="list">
-          <TabsList>
-            <TabsTrigger value="list">Liste</TabsTrigger>
-            <TabsTrigger value="kanban">Kanban</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
+        {error ? (
+          <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              {error}{" "}
+              <button
+                className="smallcaps tracking-sc font-medium underline decoration-destructive/40 underline-offset-4 hover:decoration-destructive"
+                onClick={() => void load()}
+              >
+                Réessayer
+              </button>
+            </p>
+          </div>
+        ) : (
+          <Tabs defaultValue="list">
+            <TabsList>
+              <TabsTrigger value="list">Liste</TabsTrigger>
+              <TabsTrigger value="kanban">Kanban</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            </TabsList>
 
-          {/* Liste */}
-          <TabsContent value="list">
-            {items.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            {/* Liste */}
+            <TabsContent value="list">
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 border border-dashed border-foreground/40 px-6 py-12 text-center">
                   <Users className="h-8 w-8 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Aucun prospect pour l'instant</p>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="space-y-1">
+                    <p className="smallcaps tracking-sc font-medium">
+                      Aucun prospect pour l'instant
+                    </p>
+                    <p className="text-sm italic text-muted-foreground">
                       Ajoutez votre première entreprise à démarcher, ou importez une liste.
                     </p>
                   </div>
-                  <Button size="sm" onClick={openCreate}>
+                  <Button onClick={openCreate} className="mt-2">
                     <Plus className="h-4 w-4" />
                     Ajouter un prospect
                   </Button>
-                </CardContent>
-              </Card>
-            ) : filtered.length === 0 ? (
-              <Card>
-                <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                  Aucun prospect ne correspond à ces filtres.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Entreprise</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead className="w-40">Statut</TableHead>
-                      <TableHead className="text-right">Valeur est.</TableHead>
-                      <TableHead>Relance</TableHead>
-                      <TableHead className="w-32 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((p) => {
-                      const due = isDue(p, nowMs);
-                      return (
-                        <TableRow key={p.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{p.company}</span>
-                              {p.hasAccount && (
-                                <Badge
-                                  variant="success"
-                                  title="Ce prospect a déjà un compte TwinMCP"
-                                >
-                                  Inscrit
-                                </Badge>
-                              )}
-                            </div>
-                            {p.source && (
-                              <div className="text-xs text-muted-foreground">{p.source}</div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {p.contactName || p.email || p.phone ? (
-                              <div className="text-sm">
-                                <div>{p.contactName || "—"}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {[p.role, p.email, p.phone].filter(Boolean).join(" · ")}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              value={p.status}
-                              onValueChange={(v) => void changeStatus(p.id, v as Status)}
-                            >
-                              <SelectTrigger className="h-8 w-full border-0 bg-transparent px-1 shadow-none focus:ring-0">
-                                <Badge variant={STATUS_VARIANT[p.status]}>
-                                  {STATUS_LABEL[p.status]}
-                                </Badge>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {STATUSES.map((s) => (
-                                  <SelectItem key={s} value={s}>
-                                    {STATUS_LABEL[s]}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {p.estimatedValueEur ? eur.format(p.estimatedValueEur) : "—"}
-                          </TableCell>
-                          <TableCell>
-                            {p.nextActionAt ? (
-                              <span
-                                className={cn("text-sm", due && "font-medium text-destructive")}
-                              >
-                                {shortDate.format(new Date(p.nextActionAt))}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center justify-end gap-0.5">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    title="Envoyer un email"
-                                    disabled={!p.email}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
+                  <Search className="mx-auto h-5 w-5 text-muted-foreground" />
+                  <p className="mt-3 text-sm italic text-muted-foreground">
+                    Aucun prospect ne correspond à ces filtres.
+                  </p>
+                </div>
+              ) : (
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="pl-6">Entreprise</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead className="w-40">Statut</TableHead>
+                        <TableHead className="text-right">Valeur est.</TableHead>
+                        <TableHead>Relance</TableHead>
+                        <TableHead className="w-32 pr-6 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map((p) => {
+                        const due = isDue(p, nowMs);
+                        return (
+                          <TableRow key={p.id}>
+                            <TableCell className="pl-6">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{p.company}</span>
+                                {p.hasAccount && (
+                                  <Badge
+                                    variant="success"
+                                    title="Ce prospect a déjà un compte TwinMCP"
                                   >
-                                    <Mail className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Email de prospection</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  {EMAIL_TEMPLATES.map((t) => (
-                                    <DropdownMenuItem
-                                      key={t.id}
-                                      onSelect={() => emailProspect(p, t)}
-                                    >
-                                      {t.label}
-                                    </DropdownMenuItem>
+                                    Inscrit
+                                  </Badge>
+                                )}
+                              </div>
+                              {p.source && (
+                                <div className="text-xs italic text-muted-foreground">
+                                  {p.source}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {p.contactName || p.email || p.phone ? (
+                                <div className="text-sm">
+                                  <div>{p.contactName || "—"}</div>
+                                  {/* Role in the serif; email and phone typewritten, as in the cockpit's follow-up list. */}
+                                  <div className="text-xs text-muted-foreground">
+                                    {p.role}
+                                    {p.role && (p.email || p.phone) ? " · " : null}
+                                    {(p.email || p.phone) && (
+                                      <span className="font-mono">
+                                        {[p.email, p.phone].filter(Boolean).join(" · ")}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={p.status}
+                                onValueChange={(v) => void changeStatus(p.id, v as Status)}
+                              >
+                                <SelectTrigger className="h-10 w-full border-0 bg-transparent px-1 shadow-none focus-visible:ring-1 focus-visible:ring-ring">
+                                  <Badge variant={STATUS_VARIANT[p.status]}>
+                                    {STATUS_LABEL[p.status]}
+                                  </Badge>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {STATUSES.map((s) => (
+                                    <SelectItem key={s} value={s}>
+                                      {STATUS_LABEL[s]}
+                                    </SelectItem>
                                   ))}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title={p.phone ? "Envoyer un WhatsApp" : "Aucun numéro"}
-                                onClick={() => void sendWhatsapp(p)}
-                                disabled={!p.phone}
-                              >
-                                <MessageCircle className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Historique / notes"
-                                onClick={() => {
-                                  setTimelineProspect(p);
-                                  setTimelineOpen(true);
-                                }}
-                              >
-                                <Clock className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Modifier"
-                                onClick={() => openEdit(p)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Supprimer"
-                                onClick={() => void remove(p)}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {p.estimatedValueEur ? eur.format(p.estimatedValueEur) : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {p.nextActionAt ? (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 text-sm",
+                                    due && "font-medium text-destructive"
+                                  )}
+                                >
+                                  {/* Overdue: the same oxblood status dot as the kanban card. */}
+                                  {due && (
+                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+                                  )}
+                                  {shortDate.format(new Date(p.nextActionAt))}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="pr-6">
+                              <div className="flex items-center justify-end">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      title="Envoyer un email"
+                                      disabled={!p.email}
+                                    >
+                                      <Mail className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Email de prospection</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {EMAIL_TEMPLATES.map((t) => (
+                                      <DropdownMenuItem
+                                        key={t.id}
+                                        onSelect={() => emailProspect(p, t)}
+                                      >
+                                        {t.label}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title={p.phone ? "Envoyer un WhatsApp" : "Aucun numéro"}
+                                  onClick={() => void sendWhatsapp(p)}
+                                  disabled={!p.phone}
+                                >
+                                  <MessageCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Historique / notes"
+                                  onClick={() => {
+                                    setTimelineProspect(p);
+                                    setTimelineOpen(true);
+                                  }}
+                                >
+                                  <Clock className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Modifier"
+                                  onClick={() => openEdit(p)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Supprimer"
+                                  onClick={() => void remove(p)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </Card>
+              )}
+            </TabsContent>
 
-          {/* Kanban */}
-          <TabsContent value="kanban">
-            {items.length === 0 ? (
-              <Card>
-                <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                  Ajoutez des prospects pour utiliser le tableau Kanban.
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Glissez une carte d'une colonne à l'autre pour changer son statut.
-                </p>
-                <ProspectsKanban
-                  items={boardItems}
-                  nowMs={nowMs}
-                  onStatusChange={(id, s) => void changeStatus(id, s)}
-                  onEdit={openEdit}
-                  onEmail={(p) => emailProspect(p)}
-                />
-              </>
-            )}
-          </TabsContent>
+            {/* Kanban */}
+            <TabsContent value="kanban">
+              {items.length === 0 ? (
+                <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
+                  <p className="text-sm italic text-muted-foreground">
+                    Ajoutez des prospects pour utiliser le tableau Kanban.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="mb-3 text-xs italic text-muted-foreground">
+                    Glissez une carte d'une colonne à l'autre pour changer son statut.
+                  </p>
+                  <ProspectsKanban
+                    items={boardItems}
+                    nowMs={nowMs}
+                    onStatusChange={(id, s) => void changeStatus(id, s)}
+                    onEdit={openEdit}
+                    onEmail={(p) => emailProspect(p)}
+                  />
+                </>
+              )}
+            </TabsContent>
 
-          {/* Analytics */}
-          <TabsContent value="analytics">
-            <ProspectsAnalytics items={items} />
-          </TabsContent>
-        </Tabs>
-      )}
+            {/* Analytics */}
+            <TabsContent value="analytics">
+              <ProspectsAnalytics items={items} />
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
 
       {/* Add / edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -768,7 +794,7 @@ export function ProspectsPanel() {
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 placeholder="Contexte, besoins, prochaines étapes…"
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-[96px] w-full border border-input bg-card px-3 py-2 text-sm text-foreground shadow-inner transition-colors placeholder:italic placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </Field>
           </div>
@@ -808,19 +834,24 @@ function Kpi({
   active?: boolean;
   onClick?: () => void;
 }) {
+  // Stat card (DESIGN.md §5). The clickable one ("À relancer") toggles a filter:
+  // hover draws the ink hairline, the active state keeps it and darkens the stock.
   return (
     <Card
       onClick={onClick}
       className={cn(
-        onClick && "cursor-pointer transition-colors hover:border-primary/50",
-        active && "border-primary ring-1 ring-primary"
+        onClick && "cursor-pointer transition-colors hover:border-foreground/60",
+        active && "border-foreground/70 bg-secondary/60 shadow-press"
       )}
     >
-      <CardHeader className="pb-2">
-        <CardDescription className="flex items-center gap-1.5">
-          {icon} {label}
+      <CardHeader>
+        <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
+          {icon}
+          {label}
         </CardDescription>
-        <CardTitle className={cn("text-2xl", highlight && "text-destructive")}>{value}</CardTitle>
+        <CardTitle className={cn("lining text-2xl xl:text-3xl", highlight && "text-destructive")}>
+          {value}
+        </CardTitle>
       </CardHeader>
     </Card>
   );
@@ -836,7 +867,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex flex-col gap-2", className)}>
       <Label>{label}</Label>
       {children}
     </div>
