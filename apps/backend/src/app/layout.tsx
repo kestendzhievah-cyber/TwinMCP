@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
 import { CookieConsent } from "@/components/analytics/cookie-consent";
+import { GoogleAdsTag } from "@/components/analytics/google-ads-tag";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationSchema, websiteSchema } from "@/lib/seo/schema";
 
@@ -129,6 +130,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
               <Toaster />
               <CookieConsent />
+              <GoogleAdsTag />
             </ThemeProvider>
           </PostHogProvider>
         </Suspense>

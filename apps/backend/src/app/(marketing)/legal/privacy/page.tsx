@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "20 septembre 2026";
+const LAST_UPDATED = "18 octobre 2026";
 
 // Typeset as a document on the card stock (docs/DESIGN.md §4–5): a centred
 // header over the double rule, numbered sections with hanging small-caps
@@ -160,6 +160,10 @@ export default function PrivacyPage() {
                   Événements produit (PostHog) : pages vues, clics sur les boutons principaux,
                   étapes du funnel d&apos;inscription
                 </li>
+                <li>
+                  Mesure publicitaire (Google Ads), uniquement avec ton consentement : arrivée sur
+                  le site depuis une de nos annonces, inscription
+                </li>
                 <li>Erreurs applicatives (Sentry) : stack traces, navigateur, URL</li>
                 <li>Métriques d&apos;infrastructure (Axiom) : latence, codes HTTP, débit</li>
               </ul>
@@ -199,6 +203,12 @@ export default function PrivacyPage() {
                   <TableCell className={CELL}>
                     Intérêt légitime (anonymisé) / Consentement
                   </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className={CELL}>
+                    Mesure de l&apos;efficacité de nos publicités (Google Ads)
+                  </TableCell>
+                  <TableCell className={CELL}>Consentement</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className={CELL}>
@@ -276,6 +286,15 @@ export default function PrivacyPage() {
                   <TableCell className={CELL}>UE (région EU)</TableCell>
                 </TableRow>
                 <TableRow>
+                  <TableCell className={`${CELL} font-medium`}>
+                    Google (Google Ireland Ltd)
+                  </TableCell>
+                  <TableCell className={CELL}>
+                    Mesure des conversions publicitaires (Google Ads), après consentement
+                  </TableCell>
+                  <TableCell className={CELL}>UE / US</TableCell>
+                </TableRow>
+                <TableRow>
                   <TableCell className={`${CELL} font-medium`}>Axiom</TableCell>
                   <TableCell className={CELL}>Logs d&apos;infrastructure</TableCell>
                   <TableCell className={CELL}>UE</TableCell>
@@ -320,6 +339,9 @@ export default function PrivacyPage() {
               <li>
                 <strong>Cookies analytics :</strong> 13 mois maximum.
               </li>
+              <li>
+                <strong>Cookies publicitaires :</strong> 13 mois maximum.
+              </li>
             </ul>
           </div>
         </section>
@@ -336,6 +358,10 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>PostHog</strong> (analytics) : déposé uniquement après ton consentement.
+              </li>
+              <li>
+                <strong>Google Ads</strong> (publicité) : déposé uniquement après ton consentement,
+                pour mesurer les visites et inscriptions qui viennent de nos annonces.
               </li>
               <li>
                 <strong>Préférences</strong> (thème clair/sombre, langue) : stockés dans

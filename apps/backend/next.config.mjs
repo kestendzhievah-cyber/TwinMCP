@@ -32,11 +32,12 @@ const nextConfig = {
           key: "Content-Security-Policy",
           value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            // Google Ads tag (gtag.js), loaded only after advertising consent.
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: https:",
-            "connect-src 'self' https://*.supabase.co https://*.stripe.com https://*.sentry.io",
-            "frame-src https://checkout.stripe.com https://js.stripe.com",
+            "connect-src 'self' https://*.supabase.co https://*.stripe.com https://*.sentry.io https://www.googletagmanager.com https://www.google.com https://google.com https://www.google.fr https://*.doubleclick.net https://www.googleadservices.com",
+            "frame-src https://checkout.stripe.com https://js.stripe.com https://*.doubleclick.net https://www.googletagmanager.com",
             "font-src 'self'",
           ].join("; "),
         },
