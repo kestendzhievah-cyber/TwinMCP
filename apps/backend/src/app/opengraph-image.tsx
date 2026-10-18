@@ -1,6 +1,10 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
-export const runtime = "edge";
+// Node runtime on purpose: the card has no dynamic input, so Next pre-renders
+// it once at build time, when src/app/fonts is on disk (no network fetch, and
+// nothing to read at request time in the standalone image).
 export const alt = "TwinMCP — Managed MCP runtimes";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -14,20 +18,30 @@ const INK = "#2b2825";
 const MUTED = "#665f55";
 const RULE = "#d8d1c3";
 
-// In production the bundler hands back an absolute URL for the traced asset;
-// in dev it is root-relative (/_next/static/media/…), so anchor it on the
-// site origin before fetching.
-const BASE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-function font(url: URL): Promise<ArrayBuffer> {
-  const href = String(url);
-  const abs = href.startsWith("/") ? new URL(href, BASE) : url;
-  return fetch(abs).then((r) => r.arrayBuffer());
+type CardFont = { name: string; data: ArrayBuffer; weight: 400 | 500; style: "normal" };
+
+// Missing or unreadable fonts must never break the build: fall back to the
+// renderer's default face rather than throwing.
+async function loadFonts(): Promise<CardFont[]> {
+  const dir = join(process.cwd(), "src", "app", "fonts");
+  try {
+    const [garamond, courier] = await Promise.all([
+      readFile(join(dir, "EBGaramond-Medium.ttf")),
+      readFile(join(dir, "CourierPrime-Regular.ttf")),
+    ]);
+    const buf = (b: Buffer) =>
+      b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+    return [
+      { name: "Garamond", data: buf(garamond), weight: 500, style: "normal" },
+      { name: "Courier", data: buf(courier), weight: 400, style: "normal" },
+    ];
+  } catch {
+    return [];
+  }
 }
-const garamond = font(new URL("./fonts/EBGaramond-Medium.ttf", import.meta.url));
-const courier = font(new URL("./fonts/CourierPrime-Regular.ttf", import.meta.url));
 
 export default async function OpengraphImage() {
-  const [garamondData, courierData] = await Promise.all([garamond, courier]);
+  const fonts = await loadFonts();
 
   return new ImageResponse(
     (
@@ -114,10 +128,7 @@ export default async function OpengraphImage() {
     ),
     {
       ...size,
-      fonts: [
-        { name: "Garamond", data: garamondData, weight: 500, style: "normal" },
-        { name: "Courier", data: courierData, weight: 400, style: "normal" },
-      ],
+      fonts,
     }
   );
 }
