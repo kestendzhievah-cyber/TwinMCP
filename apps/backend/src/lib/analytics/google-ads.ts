@@ -89,3 +89,41 @@ export function trackAdsPageview(path: string): void {
   if (!loaded || !window.gtag) return;
   window.gtag("event", "page_view", { page_path: path, send_to: GOOGLE_ADS_ID });
 }
+
+/** "Abonnement" conversion action (a paid or trialing subscription). */
+export const SUBSCRIPTION_CONVERSION =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_SUBSCRIPTION_SEND_TO || "AW-18520591061/Kp_qCIyKsKEdENWVp_9E";
+
+/**
+ * Sends a conversion once advertising consent is granted. Loads the tag first
+ * if needed (gtag queues the event behind config). Returns whether it was sent.
+ * transaction_id lets Google drop duplicates; a per-transaction flag in
+ * localStorage also avoids re-sending on every reload of the page.
+ */
+export function trackAdsConversion(conv: {
+  sendTo: string;
+  value: number;
+  currency: string;
+  transactionId: string;
+}): boolean {
+  if (typeof window === "undefined" || !hasAdsConsent()) return false;
+  const flag = `twinmcp_ads_conv_${conv.transactionId}`;
+  try {
+    if (window.localStorage.getItem(flag)) return false;
+  } catch {
+    /* storage disabled — rely on Google's transaction_id dedupe */
+  }
+  loadGoogleAds();
+  gtagFn()("event", "conversion", {
+    send_to: conv.sendTo,
+    value: conv.value,
+    currency: conv.currency,
+    transaction_id: conv.transactionId,
+  });
+  try {
+    window.localStorage.setItem(flag, "1");
+  } catch {
+    /* ignore */
+  }
+  return true;
+}

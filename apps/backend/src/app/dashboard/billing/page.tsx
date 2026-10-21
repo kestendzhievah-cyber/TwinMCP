@@ -5,8 +5,14 @@ import { eq } from "drizzle-orm";
 import { BillingActions } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { SubscriptionConversion } from "@/components/analytics/ads-conversion";
+import { getCheckoutConversion } from "@/lib/billing/checkout-conversion";
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; session_id?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -28,6 +34,12 @@ export default async function BillingPage() {
 
   const plan = userRow?.plan ?? "free";
 
+  // Stripe returns here after a successful checkout (success_url). Verify the
+  // session server-side, then report the Google Ads conversion client-side.
+  const { status, session_id: sessionId } = await searchParams;
+  const conversion =
+    status === "success" && sessionId ? await getCheckoutConversion(sessionId, user.id) : null;
+
   return (
     <div className="space-y-8">
       {/* Page header: name line top-left, the current plan in the card's top-right corner, a double rule under. */}
@@ -48,6 +60,7 @@ export default async function BillingPage() {
         </div>
         <Separator variant="double" className="mt-4" />
       </div>
+      {conversion && <SubscriptionConversion {...conversion} />}
       <BillingActions
         plan={plan}
         currentPeriodEnd={userRow?.currentPeriodEnd?.toISOString() ?? null}
