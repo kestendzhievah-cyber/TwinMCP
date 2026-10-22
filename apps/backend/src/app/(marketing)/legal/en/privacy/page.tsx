@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "October 18, 2026";
+const LAST_UPDATED = "October 22, 2026";
 
 // Typeset as a document on the card stock (docs/DESIGN.md §4–5): a centred
 // header over the double rule, numbered sections with hanging small-caps
@@ -162,7 +162,8 @@ export default function PrivacyPageEn() {
                 </li>
                 <li>
                   Advertising measurement (Google Ads), only with your consent: arrival on the site
-                  from one of our ads, sign-up
+                  from one of our ads, sign-up, demo request, subscription. To match these actions
+                  to the ad, your email address is sent to Google as a SHA-256 hash, never in clear
                 </li>
                 <li>Application errors (Sentry): stack traces, browser, URL</li>
                 <li>Infrastructure metrics (Axiom): latency, HTTP codes, throughput</li>

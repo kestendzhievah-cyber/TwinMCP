@@ -33,10 +33,12 @@ const nextConfig = {
           value: [
             "default-src 'self'",
             // Google Ads tag (gtag.js), loaded only after advertising consent.
+            // connect-src lists Google country domains too: conversion pings
+            // redirect from www.google.com to the visitor's local Google site.
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: https:",
-            "connect-src 'self' https://*.supabase.co https://*.stripe.com https://*.sentry.io https://www.googletagmanager.com https://www.google.com https://google.com https://www.google.fr https://*.doubleclick.net https://www.googleadservices.com",
+            "connect-src 'self' https://*.supabase.co https://*.stripe.com https://*.sentry.io https://www.googletagmanager.com https://www.google.com https://google.com https://www.google.fr https://www.google.bg https://www.google.be https://www.google.ch https://www.google.lu https://www.google.ca https://www.google.co.uk https://www.google.de https://www.google.nl https://*.doubleclick.net https://www.googleadservices.com",
             "frame-src https://checkout.stripe.com https://js.stripe.com https://*.doubleclick.net https://www.googletagmanager.com",
             "font-src 'self'",
           ].join("; "),

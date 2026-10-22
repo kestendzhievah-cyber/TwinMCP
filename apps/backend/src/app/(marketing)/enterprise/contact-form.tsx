@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { trackDemoConversion } from "@/lib/analytics/google-ads";
 
 export function ContactSalesForm() {
   const [company, setCompany] = useState("");
@@ -34,6 +35,7 @@ export function ContactSalesForm() {
         }),
       });
       if (res.ok) {
+        trackDemoConversion(email);
         setDone(true);
         return;
       }

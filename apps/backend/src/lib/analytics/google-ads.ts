@@ -90,40 +90,89 @@ export function trackAdsPageview(path: string): void {
   window.gtag("event", "page_view", { page_path: path, send_to: GOOGLE_ADS_ID });
 }
 
-/** "Abonnement" conversion action (a paid or trialing subscription). */
+// Conversion actions (Google Ads > Objectifs > Conversions). An empty send_to
+// makes the matching tracker a no-op, so a conversion can ship before its
+// action exists in Google Ads.
+/** "Abonnement": a paid or trialing subscription (value = amount paid). */
 export const SUBSCRIPTION_CONVERSION =
   process.env.NEXT_PUBLIC_GOOGLE_ADS_SUBSCRIPTION_SEND_TO || "AW-18520591061/Kp_qCIyKsKEdENWVp_9E";
+/** "Inscription": a confirmed sign-up (value set in Google Ads). */
+export const SIGNUP_CONVERSION = process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_SEND_TO || "";
+/** "Demande de démo": an enterprise demo or sales request (value set in Google Ads). */
+export const DEMO_CONVERSION = process.env.NEXT_PUBLIC_GOOGLE_ADS_DEMO_SEND_TO || "";
+
+/**
+ * Normalizes an email the way Google's enhanced conversions expect before
+ * hashing: trimmed, lower-cased, and with the dots of the local part removed
+ * for gmail.com / googlemail.com addresses.
+ */
+export function normalizeEmailForAds(email: string): string {
+  const e = email.trim().toLowerCase();
+  const at = e.lastIndexOf("@");
+  if (at < 1) return e;
+  const local = e.slice(0, at);
+  const domain = e.slice(at + 1);
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    return `${local.replace(/\./g, "")}@${domain}`;
+  }
+  return e;
+}
+
+/** Hex SHA-256 of a string (Web Crypto: browsers and Node 20+). */
+export async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export interface AdsConversionInput {
+  sendTo: string;
+  /** Dedupe key: Google drops repeats with the same transaction_id. */
+  transactionId: string;
+  /** Omit to use the default value configured on the conversion action. */
+  value?: number;
+  currency?: string;
+  /** Enhanced conversions: sent only as a SHA-256 hash, never in clear. */
+  email?: string | null;
+}
 
 /**
  * Sends a conversion once advertising consent is granted. Loads the tag first
- * if needed (gtag queues the event behind config). Returns whether it was sent.
- * transaction_id lets Google drop duplicates; a per-transaction flag in
- * localStorage also avoids re-sending on every reload of the page.
+ * if needed (gtag queues the event behind config). Resolves to whether it was
+ * sent. A per-transaction flag in localStorage avoids re-sending on reloads.
  */
-export function trackAdsConversion(conv: {
-  sendTo: string;
-  value: number;
-  currency: string;
-  transactionId: string;
-}): boolean {
-  if (typeof window === "undefined" || !hasAdsConsent()) return false;
+export async function trackAdsConversion(conv: AdsConversionInput): Promise<boolean> {
+  if (typeof window === "undefined" || !conv.sendTo || !hasAdsConsent()) return false;
   const flag = `twinmcp_ads_conv_${conv.transactionId}`;
   try {
     if (window.localStorage.getItem(flag)) return false;
+    // Claim the flag before the async hash so a double effect can't send twice.
+    window.localStorage.setItem(flag, "1");
   } catch {
     /* storage disabled — rely on Google's transaction_id dedupe */
   }
   loadGoogleAds();
-  gtagFn()("event", "conversion", {
-    send_to: conv.sendTo,
-    value: conv.value,
-    currency: conv.currency,
-    transaction_id: conv.transactionId,
-  });
-  try {
-    window.localStorage.setItem(flag, "1");
-  } catch {
-    /* ignore */
+  const gtag = gtagFn();
+  if (conv.email) {
+    try {
+      const hashed = await sha256Hex(normalizeEmailForAds(conv.email));
+      gtag("set", "user_data", { sha256_email_address: hashed });
+    } catch {
+      /* no Web Crypto (very old browser): send the conversion without it */
+    }
   }
+  gtag("event", "conversion", {
+    send_to: conv.sendTo,
+    transaction_id: conv.transactionId,
+    ...(conv.value !== undefined ? { value: conv.value, currency: conv.currency ?? "EUR" } : {}),
+  });
   return true;
+}
+
+/** Fires the "Demande de démo" conversion after a successful enterprise form. */
+export function trackDemoConversion(email: string): void {
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  void trackAdsConversion({ sendTo: DEMO_CONVERSION, transactionId: `demo-${id}`, email });
 }

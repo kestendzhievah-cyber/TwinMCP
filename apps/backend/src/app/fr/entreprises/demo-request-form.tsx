@@ -5,6 +5,7 @@ import { AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { trackDemoConversion } from "@/lib/analytics/google-ads";
 
 // Same debossed field as the Input primitive, grown for a few lines.
 const TEXTAREA =
@@ -33,6 +34,7 @@ export function DemoRequestForm() {
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error(String(res.status));
+      trackDemoConversion(form.email);
       setStatus("done");
     } catch {
       setStatus("error");

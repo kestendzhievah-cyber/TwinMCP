@@ -60,7 +60,7 @@ export default async function BillingPage({
         </div>
         <Separator variant="double" className="mt-4" />
       </div>
-      {conversion && <SubscriptionConversion {...conversion} />}
+      {conversion && <SubscriptionConversion {...conversion} email={user.email} />}
       <BillingActions
         plan={plan}
         currentPeriodEnd={userRow?.currentPeriodEnd?.toISOString() ?? null}

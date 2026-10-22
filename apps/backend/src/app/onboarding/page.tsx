@@ -4,6 +4,11 @@ import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { mcpServers, servers, users } from "@/db/schema";
 import { OnboardingWizard } from "./wizard";
+import { SignupConversion } from "@/components/analytics/ads-conversion";
+
+// New accounts land here right after confirming their email (auth/callback).
+// Only count accounts created recently, so a returning user is never counted.
+const SIGNUP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const dynamic = "force-dynamic";
 
@@ -81,13 +86,19 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
       }
     : null;
 
+  const createdAt = user.created_at ? Date.parse(user.created_at) : NaN;
+  const isNewSignup = Number.isFinite(createdAt) && Date.now() - createdAt < SIGNUP_WINDOW_MS;
+
   return (
-    <OnboardingWizard
-      catalog={catalog.map((mcp) => ({
-        ...mcp,
-        configSchema: (mcp.configSchema ?? {}) as { properties?: Record<string, never> },
-      }))}
-      existingServer={existingServer}
-    />
+    <>
+      {isNewSignup && <SignupConversion userId={user.id} email={user.email} />}
+      <OnboardingWizard
+        catalog={catalog.map((mcp) => ({
+          ...mcp,
+          configSchema: (mcp.configSchema ?? {}) as { properties?: Record<string, never> },
+        }))}
+        existingServer={existingServer}
+      />
+    </>
   );
 }
