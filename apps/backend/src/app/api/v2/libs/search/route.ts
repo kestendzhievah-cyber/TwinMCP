@@ -25,11 +25,18 @@ export async function GET(req: NextRequest) {
     logUsage({
       endpoint,
       userId: auth.userId,
-      apiKeyId: auth.apiKeyId,
+      // OAuth token ids are not api_keys rows (usage_events.api_key_id has an FK).
+      apiKeyId: auth.via === "oauth" ? undefined : auth.apiKeyId,
       latencyMs: Date.now() - start,
       statusCode: 429,
     });
-    return rateLimited(true);
+    return rateLimited(true, {
+      plan: auth.plan,
+      limit: rl.limit,
+      remaining: rl.remaining,
+      reset: rl.reset,
+      trialEligible: auth.plan === "free" && !auth.hasStripeCustomer,
+    });
   }
 
   const url = new URL(req.url);
@@ -91,7 +98,8 @@ export async function GET(req: NextRequest) {
     logUsage({
       endpoint,
       userId: auth.userId,
-      apiKeyId: auth.apiKeyId,
+      // OAuth token ids are not api_keys rows (usage_events.api_key_id has an FK).
+      apiKeyId: auth.via === "oauth" ? undefined : auth.apiKeyId,
       latencyMs: Date.now() - start,
       statusCode: 200,
     });
@@ -106,7 +114,8 @@ export async function GET(req: NextRequest) {
     logUsage({
       endpoint,
       userId: auth.userId,
-      apiKeyId: auth.apiKeyId,
+      // OAuth token ids are not api_keys rows (usage_events.api_key_id has an FK).
+      apiKeyId: auth.via === "oauth" ? undefined : auth.apiKeyId,
       latencyMs: Date.now() - start,
       statusCode: 500,
     });

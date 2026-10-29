@@ -3,17 +3,20 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { apiKeys } from "@/db/schema";
 import { clearAuthCache } from "@/lib/auth";
-import { jsonError, notFound, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { jsonError, notFound, serverError } from "@/lib/errors";
+import { requireKeyManager } from "@/lib/session";
 import { checkAuthWriteLimit } from "@/lib/auth/rate-limit";
 import { audit, auditCtxFromRequest } from "@/lib/audit";
+import { dropAgentsForKey } from "@/lib/agent/registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Revoke is immediate, including for a replaced key still in its rotation
+// overlap (unlike rotate, which leaves the old key working for 24 h).
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireKeyManager(req);
+  if (session instanceof NextResponse) return session;
 
   const rl = await checkAuthWriteLimit(session.userId, "key_revoke");
   if (!rl.ok) {
@@ -37,6 +40,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       .returning({ id: apiKeys.id });
     if (result.length === 0) return notFound("Key not found");
     clearAuthCache(); // a revoked key must stop working immediately
+    dropAgentsForKey(id); // …including a local-agent link it holds open
     {
       const ctx = auditCtxFromRequest(req);
       audit({

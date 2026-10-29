@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/marketing/logo";
+import { STATUS_URL, displayHost } from "@/lib/site-links";
 
 // The onboarding screen is the card laid flat: the wordmark and its tagline on
 // a bone bar with one hairline under it (DESIGN.md §4.1), the wizard on the
@@ -38,15 +39,19 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
           >
             hello@twinmcp.fr
           </a>
-          <span aria-hidden>·</span>
-          <a
-            href="https://status.twinmcp.fr"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-10 items-center transition-colors hover:text-foreground"
-          >
-            status.twinmcp.fr
-          </a>
+          {STATUS_URL && (
+            <>
+              <span aria-hidden>·</span>
+              <a
+                href={STATUS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-10 items-center transition-colors hover:text-foreground"
+              >
+                {displayHost(STATUS_URL)}
+              </a>
+            </>
+          )}
         </p>
       </footer>
     </div>

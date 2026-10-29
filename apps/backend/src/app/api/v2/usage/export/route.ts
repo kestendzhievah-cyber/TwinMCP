@@ -2,9 +2,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users, usageMetrics, userServers, mcpServers } from "@/db/schema";
-import { forbidden, serverError, unauthorized } from "@/lib/errors";
+import { forbidden, serverError } from "@/lib/errors";
 import { can, minPlanFor, PLAN_LABELS } from "@/lib/plan-features";
-import { requireSessionUser } from "@/lib/session";
+import { requireManagementUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,8 +22,8 @@ function csv(value: string | number): string {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   const url = new URL(req.url);
   const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 30, 1), MAX_DAYS);

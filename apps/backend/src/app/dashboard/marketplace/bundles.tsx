@@ -22,7 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import type { Plan } from "@/db/schema/core";
 import { BUNDLES, type McpBundle } from "@/lib/mcp/bundles";
+import { isSmallBoxFull, toastBoxFull } from "@/components/billing/upgrade-inline";
 import type { CatalogEntry, ServerOption } from "./install-dialog";
 
 interface ResolvedBundle {
@@ -33,9 +35,12 @@ interface ResolvedBundle {
 export function McpBundles({
   catalog,
   userServers,
+  plan,
 }: {
   catalog: CatalogEntry[];
   userServers: ServerOption[];
+  /** The account's plan: only Free gets the Pro toast when a small box is full. */
+  plan: Plan;
 }) {
   const router = useRouter();
 
@@ -73,6 +78,9 @@ export function McpBundles({
     let already = 0;
     let failed = 0;
     let capacityHit = false;
+    // The small box (the only size Free runs) is full: a plan limit for Free
+    // accounts; paid plans get the server's own "use a larger box" message.
+    let smallBoxFull = false;
 
     // Install sequentially so we respect the per-box capacity guard and can
     // report exactly what landed vs. what was already there or didn't fit.
@@ -92,7 +100,10 @@ export function McpBundles({
         if (msg.includes("already installed")) already++;
         else {
           failed++;
-          if (res.status === 403 && msg.includes("box can run")) capacityHit = true;
+          if (res.status === 403 && msg.includes("box can run")) {
+            capacityHit = true;
+            if (isSmallBoxFull(msg)) smallBoxFull = true;
+          }
         }
       } catch {
         failed++;
@@ -111,6 +122,8 @@ export function McpBundles({
       router.push(`/dashboard/servers/${target}` as Route);
     } else if (already > 0 && failed === 0) {
       toast.info(`${picking.bundle.name}: everything was already installed.`);
+    } else if (smallBoxFull && plan === "free") {
+      toastBoxFull();
     } else {
       toast.error(
         capacityHit

@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import type { Route } from "next";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, Info, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Info, XCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
+import { PLAN_CAPABILITIES, PRO_TRIAL_DAYS } from "@/lib/plan-features";
+import { track } from "@/lib/analytics/funnel";
+import { normalizePromo } from "@/lib/auth/return-to";
+import {
+  isCheckoutErrorReason,
+  isCheckoutFrom,
+  type CheckoutErrorReason,
+  type CheckoutFrom,
+} from "@/lib/billing/checkout-helpers";
 
 interface Props {
   plan: string;
@@ -17,9 +24,36 @@ interface Props {
   cancelAtPeriodEnd: boolean;
   subscriptionStatus: string | null;
   hasStripeCustomer: boolean;
+  /** The Pro daily tool-call quota actually enforced (lib/rate-limit.ts, env-overridable). */
+  proDailyLimit: number;
 }
 
 type Cadence = "monthly" | "yearly";
+
+// Fixed copy per checkout/start failure code (never server text from the URL).
+const CHECKOUT_ERROR_COPY: Record<CheckoutErrorReason, string> = {
+  price: "Pro checkout is not available right now. Please contact support.",
+  stripe: "Could not reach our payment provider. Please try again in a moment.",
+  unknown: "Could not start checkout. Please try again.",
+};
+
+// What Pro includes — the one paid plan. Every line is enforced by the code
+// (lib/plan-features.ts PLAN_CAPABILITIES.pro, lib/rate-limit.ts daily quota —
+// passed in from the server so this card always shows the enforced figure);
+// keep it in sync with the marketing bullets in components/pricing/pricing-data.ts.
+const PRO = PLAN_CAPABILITIES.pro;
+function proBullets(dailyLimit: number): string[] {
+  return [
+    `${PRO.servers} servers`,
+    `All box sizes (${PRO.boxSizes.join(", ")})`,
+    `${dailyLimit.toLocaleString("en-US")} tool calls / day`,
+    "Publish your own MCPs",
+    `${PRO.apiKeys} API keys`,
+    `Audit logs · ${PRO.auditRetentionDays} days`,
+    "Usage export",
+    "Priority email support",
+  ];
+}
 
 function formatPeriodEnd(iso: string | null): string | null {
   if (!iso) return null;
@@ -35,16 +69,25 @@ export function BillingActions({
   cancelAtPeriodEnd,
   subscriptionStatus,
   hasStripeCustomer,
+  proDailyLimit,
 }: Props) {
+  const proFeatures = proBullets(proDailyLimit);
   const router = useRouter();
   const params = useSearchParams();
   const [loading, setLoading] = useState("");
-  // Default to yearly so the best-value plan is what visitors see first.
-  const [cadence, setCadence] = useState<Cadence>("yearly");
+  // A Pro intent on the URL (sign-up / sign-in with plan=pro) picks the cadence
+  // the visitor chose; otherwise default to yearly, the best-value view.
+  const [cadence, setCadence] = useState<Cadence>(() => {
+    const c = params.get("cadence");
+    if (c === "monthly") return "monthly";
+    return "yearly";
+  });
   const [banner, setBanner] = useState<{
     type: "success" | "info" | "error";
     message: string;
   } | null>(null);
+  // The free month is for a first subscription only (lib/billing/checkout.ts).
+  const trialEligible = !hasStripeCustomer;
 
   // Surface the checkout outcome from the Stripe redirect, then strip the query
   // so a refresh doesn't re-trigger it. Runs once on mount: reading `status` here
@@ -56,7 +99,7 @@ export function BillingActions({
     if (status === "success") {
       setBanner({
         type: "success",
-        message: "Payment confirmed! Your plan is activating — this page updates automatically.",
+        message: "Checkout complete. Your Pro plan is activating; this page updates automatically.",
       });
       router.replace("/dashboard/billing");
       // The plan flips when Stripe's webhook lands (usually a few seconds). Poll
@@ -68,20 +111,105 @@ export function BillingActions({
       }, 2500);
       return () => clearInterval(poll);
     } else if (status === "canceled") {
-      setBanner({ type: "info", message: "Checkout canceled. You were not charged." });
+      track({ name: "checkout_canceled", properties: { from: "billing" } });
+      setBanner({
+        type: "info",
+        message:
+          plan === "free" && trialEligible
+            ? "Checkout canceled. You were not charged. Your free month is still available."
+            : "Checkout canceled. You were not charged.",
+      });
+      router.replace("/dashboard/billing");
+    } else if (params.get("checkout") === "error") {
+      // GET /api/v2/billing/checkout/start could not open Stripe. Only a fixed
+      // reason code is read: any free-text `message` param is ignored, so a
+      // crafted link cannot put its own words inside this trusted banner.
+      const reason = params.get("reason");
+      setBanner({
+        type: "error",
+        message: isCheckoutErrorReason(reason)
+          ? CHECKOUT_ERROR_COPY[reason]
+          : CHECKOUT_ERROR_COPY.unknown,
+      });
       router.replace("/dashboard/billing");
     }
     // Mount-only on purpose: reading `params`/`router` here must NOT re-run this
     // effect, or router.replace (which changes params) would tear down the poll.
   }, []);
 
-  async function checkout(target: "pro" | "team") {
-    setLoading(target);
+  // plan=pro on the URL: the visitor asked for Pro before signing in (pricing
+  // page, sign-up, sign-in). A Free account goes straight to the checkout, once;
+  // the ref survives React's dev double-invoke and a re-render.
+  const autoCheckoutStarted = useRef(false);
+  useEffect(() => {
+    if (autoCheckoutStarted.current) return;
+    const intent = params.get("plan");
+    if (intent !== "pro" && intent !== "team") return;
+    autoCheckoutStarted.current = true;
+    if (plan !== "free") {
+      // Already on a paid plan: nothing to buy, just drop the intent.
+      router.replace("/dashboard/billing");
+      return;
+    }
+    const c: Cadence =
+      params.get("cadence") === "yearly" || params.get("cadence") === "annual"
+        ? "yearly"
+        : "monthly";
+    const promo = normalizePromo(params.get("promo"));
+    // The surface that asked for Pro (sign-up confirmation bounced here by
+    // checkout/start): keeps Stripe's return URLs pointing at onboarding.
+    const fromParam = params.get("from");
+    const from: CheckoutFrom = isCheckoutFrom(fromParam) ? fromParam : "billing";
+    // Drop the intent from the history entry first, so the browser's Back
+    // button from Stripe lands on a plain Billing page instead of reopening
+    // the checkout.
+    window.history.replaceState(null, "", "/dashboard/billing");
+    setCadence(c);
+    setBanner({ type: "info", message: "Opening secure checkout…" });
+    void checkout({
+      cadence: c,
+      from,
+      ...(promo?.startsWith("promo_")
+        ? { promotionCodeId: promo }
+        : promo
+          ? { creatorSlug: promo }
+          : {}),
+    });
+    // Mount-only, like the status effect above.
+  }, []);
+
+  // Pro is the only plan sold; Team subscribers are grandfathered and manage
+  // their subscription from the billing portal below.
+  async function checkout(
+    opts: {
+      cadence?: Cadence;
+      promotionCodeId?: string;
+      creatorSlug?: string;
+      from?: CheckoutFrom;
+    } = {}
+  ) {
+    const chosen = opts.cadence ?? cadence;
+    setLoading("pro");
+    // Same funnel step the marketing pricing page fires (lib/analytics/funnel.ts).
+    track({
+      name: "checkout_started",
+      properties: {
+        plan: "pro",
+        cadence: chosen === "yearly" ? "annual" : "monthly",
+        ...(opts.creatorSlug ? { creatorSlug: opts.creatorSlug } : {}),
+      },
+    });
     try {
       const res = await fetch("/api/v2/billing/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ plan: target, cadence }),
+        body: JSON.stringify({
+          plan: "pro",
+          cadence: chosen,
+          from: opts.from ?? "billing",
+          ...(opts.promotionCodeId ? { promotionCodeId: opts.promotionCodeId } : {}),
+          ...(opts.creatorSlug ? { creatorSlug: opts.creatorSlug } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
@@ -97,6 +225,7 @@ export function BillingActions({
 
   async function openPortal() {
     setLoading("portal");
+    track({ name: "portal_opened" });
     try {
       const res = await fetch("/api/v2/billing/portal", { method: "POST" });
       const data = await res.json().catch(() => ({}));
@@ -159,6 +288,18 @@ export function BillingActions({
             The last renewal could not be charged. Update your payment method from the billing
             portal.
           </div>
+        ) : subscriptionStatus === "trialing" ? (
+          // The free month: Stripe's current_period_end is the trial end, so
+          // the first charge lands on that date. The cadence chosen at checkout
+          // is not mirrored on the user row, hence no amount here.
+          <div className="border border-border border-l-2 border-l-info bg-card px-4 py-3 text-sm">
+            <Badge variant="info" className="mr-1 align-middle">
+              Free month
+            </Badge>{" "}
+            in progress — your first charge is on{" "}
+            <span className="lining font-medium">{periodLabel}</span>. Cancel anytime before then
+            from the billing portal.
+          </div>
         ) : (
           <div className="border border-border bg-card px-4 py-3 text-sm">
             Next charge on <span className="lining font-medium">{periodLabel}</span>.
@@ -170,45 +311,46 @@ export function BillingActions({
           <div className="space-y-5">
             {/* Eyebrow with rules (DESIGN.md §4.7) over the cadence stamps. */}
             <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-              Choose a plan
+              Upgrade to Pro
             </p>
-            <CadenceToggle cadence={cadence} onChange={setCadence} />
+            <CadenceToggle
+              cadence={cadence}
+              onChange={(c) => {
+                if (c !== cadence) {
+                  track({
+                    name: "cadence_toggled",
+                    properties: { cadence: c, surface: "billing" },
+                  });
+                }
+                setCadence(c);
+              }}
+            />
           </div>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="mx-auto max-w-md">
             <PlanUpgradeCard
               name="Pro"
-              description="1,000 requests/day, publish your own MCPs, priority support."
+              description="Everything we offer, for developers shipping with AI every day."
+              bullets={proFeatures}
               monthly={14.99}
               yearly={135}
+              trialDays={trialEligible ? PRO_TRIAL_DAYS : 0}
               highlighted
               cadence={cadence}
-              onCheckout={() => checkout("pro")}
+              onCheckout={() => void checkout()}
               loading={loading === "pro"}
               disabled={!!loading}
             />
-            <PlanUpgradeCard
-              name="Team"
-              description="Unlimited servers, member management, audit logs · 90 days, 99.9% SLA."
-              monthly={99}
-              yearly={990}
-              cadence={cadence}
-              onCheckout={() => checkout("team")}
-              loading={loading === "team"}
-              disabled={!!loading}
-            />
           </div>
-          <EnterpriseCard />
         </div>
       )}
 
       {plan !== "free" && (
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
+        <div className={cn("grid gap-6", plan === "pro" && "md:grid-cols-2")}>
+          <Card className={cn(plan !== "pro" && "max-w-xl")}>
             <CardHeader>
               <CardTitle>Manage subscription</CardTitle>
               <CardDescription>
-                Update payment method, switch between Pro and Team, view invoices, or cancel — all
-                from the billing portal.
+                Update your payment method, view invoices, or cancel — all from the billing portal.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -227,22 +369,48 @@ export function BillingActions({
               )}
             </CardContent>
           </Card>
-          <EnterpriseCard />
+          {plan === "pro" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Included in Pro</CardTitle>
+                <CardDescription>What your plan unlocks on your account.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PlanBullets bullets={proFeatures} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-// Self-serve plan card (Pro or Team). The annual view is deliberately loud on
-// the `highlighted` plan (the stacked-card lift, the gilt seal, savings called
-// out) to steer toward the yearly commitment. Prices are display strings — the
-// actual charge is the Stripe price STRIPE_<PLAN>_*_PRICE_ID points to. Keep in sync.
+// The pricing-tier check list (DESIGN.md §5): success check marks, lining figures.
+function PlanBullets({ bullets }: { bullets: readonly string[] }) {
+  return (
+    <ul className="lining space-y-2 text-sm">
+      {bullets.map((b) => (
+        <li key={b} className="flex items-start gap-2">
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+          <span>{b}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Self-serve plan card (Pro — the only plan sold). The annual view is deliberately
+// loud on the `highlighted` plan (the stacked-card lift, the gilt seal, savings
+// called out) to steer toward the yearly commitment. Prices are display strings —
+// the actual charge is the Stripe price STRIPE_<PLAN>_*_PRICE_ID points to. Keep in sync.
 function PlanUpgradeCard({
   name,
   description,
+  bullets,
   monthly,
   yearly,
+  trialDays = 0,
   highlighted = false,
   cadence,
   onCheckout,
@@ -251,8 +419,11 @@ function PlanUpgradeCard({
 }: {
   name: string;
   description: string;
+  bullets: readonly string[];
   monthly: number;
   yearly: number;
+  /** Free days on a first subscription (0 = not eligible). */
+  trialDays?: number;
   highlighted?: boolean;
   cadence: Cadence;
   onCheckout: () => void;
@@ -302,27 +473,20 @@ function PlanUpgradeCard({
             </p>
           </div>
         )}
+        {trialDays > 0 && (
+          <p className="lining text-sm font-medium text-success">
+            Your first month is free · card required · cancel anytime during the trial
+          </p>
+        )}
+        <PlanBullets bullets={bullets} />
         <Button onClick={onCheckout} disabled={disabled} className="w-full">
-          {loading ? "Redirecting…" : isYearly ? `Get ${name} — yearly` : `Upgrade to ${name}`}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function EnterpriseCard() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Enterprise</CardTitle>
-        <CardDescription>
-          SSO/SAML, private deployment, custom audit retention, and a dedicated Slack channel.
-          Custom pricing for your organization.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button asChild variant="secondary">
-          <Link href={"/enterprise" as Route}>Talk to sales</Link>
+          {loading
+            ? "Redirecting…"
+            : trialDays > 0
+              ? `Start my free month of ${name}`
+              : isYearly
+                ? `Get ${name} — yearly`
+                : `Upgrade to ${name}`}
         </Button>
       </CardContent>
     </Card>

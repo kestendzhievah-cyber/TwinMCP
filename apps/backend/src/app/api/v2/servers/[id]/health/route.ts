@@ -2,20 +2,17 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servers } from "@/db/schema/platform";
-import { forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { forbidden, notFound, serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
 import { getBoxClient } from "@/lib/upstash/box-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id } = await params;
 
   try {

@@ -1,5 +1,7 @@
 import { Separator } from "@/components/ui/separator";
+import { getDailyLimit } from "@/lib/rate-limit";
 import { UsagePanel } from "./panel";
+import { CustomersSection } from "./customers-section";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +11,14 @@ export default function UsagePage() {
       <div>
         <h1 className="smallcaps tracking-sc text-2xl font-medium">Usage</h1>
         <p className="mt-1 text-sm italic text-muted-foreground">
-          MCP requests handled by your boxes, error rate over time, and API activity.
+          Tool calls handled by your MCPs, error rate over time, and API activity.
         </p>
         <Separator variant="double" className="mt-4" />
       </div>
-      <UsagePanel />
+      {/* Pro's enforced quota (server only) so the near-limit prompt can name it. */}
+      <UsagePanel proDailyLimit={getDailyLimit("pro")} />
+      {/* Agencies: tool calls per end customer (the id set on an MCP-proxy key). */}
+      <CustomersSection />
     </div>
   );
 }

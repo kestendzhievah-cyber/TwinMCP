@@ -1,13 +1,17 @@
 import { randomUUID } from "crypto";
 import { getDb } from "@/db";
 import { auditLogs } from "@/db/schema";
+import { trustedClientIp } from "@/lib/net/client-ip";
 
 export type AuditAction =
   | "api_key.create"
   | "api_key.revoke"
+  | "api_key.rotate"
   | "plan.upgrade"
   | "plan.downgrade"
   | "plan.cancel"
+  | "subscription.cancel_scheduled"
+  | "trial.converted"
   | "payment.failed"
   | "session.signin"
   | "session.signup"
@@ -57,10 +61,7 @@ export function auditCtxFromRequest(req: Request): {
   userAgent: string | null;
 } {
   return {
-    ip:
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      req.headers.get("x-real-ip") ??
-      null,
+    ip: trustedClientIp(req),
     userAgent: req.headers.get("user-agent"),
   };
 }

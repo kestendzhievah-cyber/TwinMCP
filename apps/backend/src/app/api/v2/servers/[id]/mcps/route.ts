@@ -3,8 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, count, eq, ne } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mcpServers, userServers } from "@/db/schema";
-import { badRequest, forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
 import {
   installMcpSchema,
@@ -16,13 +16,15 @@ import { logAudit, clientIp } from "@/lib/audit/log";
 import { enqueue } from "@/lib/queue/qstash";
 import { maxMcpsForBoxSize } from "@/lib/plan-features";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
+import { trackServer } from "@/lib/analytics/server";
+import { emitWebhookEvent } from "@/lib/webhooks/emit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id: serverId } = await params;
 
   try {
@@ -51,8 +53,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id: serverId } = await params;
 
   let body: unknown;
@@ -142,6 +144,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       targetId: id,
       metadata: { serverId, mcpServerId: mcp.id, slug: mcp.slug },
       ip: clientIp(req),
+    });
+
+    // Outbound webhook (fire-and-forget, never throws). Metadata only — never
+    // the config values.
+    emitWebhookEvent(session.userId, "mcp.installed", {
+      serverId,
+      serverSlug: server.slug,
+      userServerId: id,
+      mcpServerId: mcp.id,
+      mcpSlug: mcp.slug,
+      mcpName: mcp.name,
+    });
+
+    // Activation funnel (fire-and-forget; trackServer never throws).
+    trackServer({
+      event: "mcp_installed",
+      distinctId: session.userId,
+      properties: {
+        mcpSlug: mcp.slug,
+        serverId,
+        hostMode: mcp.hostMode,
+        isOfficial: mcp.isOfficial,
+        configKeys: Object.keys(parsed.data.config).length,
+      },
     });
 
     // Box tools install into the box (no-op if not running yet). Local-agent

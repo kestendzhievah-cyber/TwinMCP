@@ -54,15 +54,23 @@ export interface CardEmail {
   /** Body HTML (compose with p(), link(), table()). */
   body: string;
   cta?: { label: string; href: string };
+  /**
+   * One quiet line under the address footer (compose with esc()/link()), e.g.
+   * why the recipient gets this email and where to manage preferences.
+   */
+  footerNote?: string;
 }
 
 /** Wraps content in the card chrome and returns the full HTML body. */
-export function cardEmail({ eyebrow, title, body, cta }: CardEmail): string {
+export function cardEmail({ eyebrow, title, body, cta, footerNote }: CardEmail): string {
   const button = cta
     ? `<p style="margin:24px 0 0"><a href="${cta.href}" style="display:inline-block;background:${INK};color:${BONE};text-decoration:none;padding:12px 22px;font-size:12px;${CAPS}font-family:${SERIF}">${esc(cta.label)}</a></p>`
     : "";
   const eyebrowHtml = eyebrow
     ? `<p style="margin:0 0 8px;font-size:11px;${CAPS}color:${MUTED}">${esc(eyebrow)}</p>`
+    : "";
+  const footerNoteHtml = footerNote
+    ? `<p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:${MUTED};text-align:center">${footerNote}</p>`
     : "";
   return `<div style="background:${BONE};padding:32px 16px;font-family:${SERIF};color:${INK}">
   <div style="max-width:560px;margin:0 auto;background:${CARD};border:1px solid ${RULE};padding:40px 40px 32px">
@@ -75,6 +83,7 @@ export function cardEmail({ eyebrow, title, body, cta }: CardEmail): string {
     ${button}
     <hr style="border:0;border-top:1px solid ${RULE};margin:32px 0 16px">
     <p style="margin:0;font-size:11px;${CAPS}color:${MUTED};text-align:center">twinmcp.fr &middot; hello@twinmcp.fr</p>
+    ${footerNoteHtml}
   </div>
 </div>`;
 }

@@ -29,7 +29,7 @@ const FR_POSTS = [
     slug: "smithery-alternatives",
     title: "Les meilleures alternatives à Smithery pour héberger un serveur MCP (2026)",
     description:
-      "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, accès équipe.",
+      "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, clés API.",
     publishedAt: "2026-10-01",
     readingTimeMinutes: 10,
     tags: ["mcp", "smithery", "alternatives", "hébergement", "comparaison"],

@@ -16,8 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Power, Settings, Trash2 } from "lucide-react";
+import { ListChecks, Power, Settings, Trash2 } from "lucide-react";
 import { ReconfigureDialog } from "./reconfigure-dialog";
+import { ToolPolicyDialog } from "./tool-policy-dialog";
 
 interface Item {
   id: string;
@@ -47,6 +48,7 @@ export function InstalledMcps({
   const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [reconfigureId, setReconfigureId] = useState<string | null>(null);
+  const [policyItem, setPolicyItem] = useState<Item | null>(null);
 
   async function toggle(item: Item) {
     setBusy(item.id);
@@ -137,6 +139,16 @@ export function InstalledMcps({
                         className={`h-4 w-4 ${item.enabled ? "text-success" : "text-muted-foreground"}`}
                       />
                     </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setPolicyItem(item)}
+                      disabled={busy === item.id}
+                      aria-label="Tool access"
+                      title="Tool access"
+                    >
+                      <ListChecks className="h-4 w-4 text-muted-foreground" />
+                    </Button>
                     {showConfigure && (
                       <Button
                         size="icon"
@@ -199,6 +211,17 @@ export function InstalledMcps({
           onOpenChange={(open) => !open && setReconfigureId(null)}
           serverId={serverId}
           userServerId={reconfigureId}
+        />
+      )}
+
+      {policyItem && (
+        <ToolPolicyDialog
+          open={!!policyItem}
+          onOpenChange={(open) => !open && setPolicyItem(null)}
+          serverId={serverId}
+          userServerId={policyItem.id}
+          mcpSlug={policyItem.mcpSlug}
+          mcpName={policyItem.mcpName}
         />
       )}
     </Card>

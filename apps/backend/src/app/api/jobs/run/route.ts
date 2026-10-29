@@ -24,6 +24,9 @@ const jobSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("disable-mcp"), userServerId: z.string() }),
   z.object({ type: z.literal("reconfigure-mcp"), userServerId: z.string() }),
   z.object({ type: z.literal("reconcile-health") }),
+  z.object({ type: z.literal("upgrade-nudges") }),
+  z.object({ type: z.literal("purge-retention") }),
+  z.object({ type: z.literal("webhook-deliver"), deliveryId: z.string() }),
 ]);
 
 export async function POST(req: NextRequest) {

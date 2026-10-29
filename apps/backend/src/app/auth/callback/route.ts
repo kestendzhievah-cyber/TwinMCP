@@ -1,138 +1,99 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { eq, sql } from "drizzle-orm";
+import type { EmailOtpType, User } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
-import { getDb } from "@/db";
-import { users } from "@/db/schema";
-import { trackServer } from "@/lib/analytics/server";
-import { audit, auditCtxFromRequest } from "@/lib/audit";
-import { sendWelcomeEmail } from "@/lib/email";
+import {
+  completePostAuth,
+  postAuthRedirect,
+  proIntentQuery,
+  readFreeIntent,
+  readProIntent,
+  safeReturnTo,
+} from "@/lib/auth/post-auth";
+import { authFailurePath, authLocaleParam } from "@/lib/i18n/auth-paths";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_RETURN_TO = "/dashboard";
+const OTP_TYPES = new Set<string>([
+  "signup",
+  "invite",
+  "magiclink",
+  "recovery",
+  "email_change",
+  "email",
+]);
 
-// Tolerance to treat created_at ≈ last_sign_in_at as "first authenticated
-// session" (Supabase sets both during the same exchange).
-const FRESH_SIGNUP_WINDOW_MS = 30_000;
-
-function inferMethod(provider: string | undefined): "oauth" | "password" | "magic-link" {
-  if (!provider || provider === "email") return "password";
-  return "oauth";
-}
-
+// PKCE code exchange: OAuth, magic links, password-reset links and email
+// confirmations opened in the SAME browser as the sign-up (the code verifier
+// lives in that browser's cookies). A confirmation opened elsewhere goes
+// through /auth/confirm (token_hash) instead.
+//
+// The paid intent travels in the URL (plan=pro&cadence=…&promo=…), set by the
+// sign-up / sign-in forms on emailRedirectTo, so it survives the email round
+// trip on any device. plan=free rides the same way and lands on
+// /onboarding?plan=free, past the wizard's Plan step.
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const returnTo = url.searchParams.get("returnTo") ?? DEFAULT_RETURN_TO;
+  const returnTo = safeReturnTo(url.searchParams.get("returnTo"));
+  const intent = readProIntent(url.searchParams);
+  const localeParam = url.searchParams.get("locale");
+  const locale = localeParam === "fr" || localeParam === "en" ? localeParam : undefined;
 
   // Supabase reports OAuth denials and expired / already-used links via `error`.
   // Never redirect a failed auth onto a protected or action page (e.g. the reset
-  // form) with no session — send the user to sign-in with a friendly error.
-  const errorParam = url.searchParams.get("error_code") ?? url.searchParams.get("error");
-  if (errorParam) {
-    return NextResponse.redirect(
-      new URL(`/sign-in?error=${encodeURIComponent(errorParam)}`, url.origin)
+  // form) with no session: send the user to sign-in with a friendly error, and
+  // keep the paid intent so signing in from there still reaches checkout.
+  // A French auth form (locale=fr) gets the French sign-in screen back.
+  const failTo = (errorCode: string) =>
+    NextResponse.redirect(
+      new URL(
+        authFailurePath({
+          errorCode,
+          locale: authLocaleParam(localeParam),
+          returnTo: returnTo !== "/dashboard" ? returnTo : null,
+          intentQuery: intent ? proIntentQuery(intent) : "",
+        }),
+        url.origin
+      ),
+      303
     );
-  }
-  if (!code) {
-    return NextResponse.redirect(new URL("/sign-in?error=auth_failed", url.origin));
-  }
 
-  let userId: string | undefined;
-  let userEmail: string | undefined;
-  {
-    const supabase = await createClient();
+  const errorParam = url.searchParams.get("error_code") ?? url.searchParams.get("error");
+  if (errorParam) return failTo(errorParam);
+
+  // A template link built as `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`
+  // lands here with a token hash instead of a code: verify it like
+  // /auth/confirm does, so the cross-device confirmation keeps the Pro intent
+  // carried by emailRedirectTo.
+  const tokenHash = url.searchParams.get("token_hash");
+  const otpType = url.searchParams.get("type");
+  if (!code && !(tokenHash && otpType && OTP_TYPES.has(otpType))) return failTo("auth_failed");
+
+  const supabase = await createClient();
+  let user: User | null = null;
+  let errorCode: string | undefined;
+  if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    const u = data?.user;
-    if (error || !u) {
-      return NextResponse.redirect(
-        new URL(`/sign-in?error=${encodeURIComponent(error?.code ?? "auth_failed")}`, url.origin)
-      );
-    }
-    userId = u.id;
-    userEmail = u.email;
-
-    // Fire signup_completed once per user, server-side. Client-side signup
-    // form fires its own copy with via:"client" — we tag this one with
-    // via:"server" so PostHog can dedupe in the funnel.
-    if (u?.id && u.created_at && u.last_sign_in_at) {
-      const created = Date.parse(u.created_at);
-      const lastSignIn = Date.parse(u.last_sign_in_at);
-      const ctx = auditCtxFromRequest(req);
-      const provider = u.app_metadata?.provider ?? null;
-      const method = inferMethod(u.app_metadata?.provider);
-
-      const isFreshSignup =
-        Number.isFinite(created) &&
-        Number.isFinite(lastSignIn) &&
-        Math.abs(lastSignIn - created) < FRESH_SIGNUP_WINDOW_MS;
-
-      if (isFreshSignup) {
-        trackServer({
-          event: "signup_completed",
-          distinctId: u.id,
-          properties: { method, via: "server", provider },
-        });
-        audit({
-          userId: u.id,
-          action: "session.signup",
-          targetType: provider ? "oauth_provider" : "none",
-          targetId: provider,
-          ip: ctx.ip,
-          metadata: { method, userAgent: ctx.userAgent },
-        });
-        if (u.email) {
-          // Fire-and-forget: Resend may be unconfigured — never block the
-          // post-signup redirect on a lifecycle email.
-          sendWelcomeEmail(u.email).catch((err) => {
-            console.warn("[auth callback] welcome email failed:", err);
-          });
-        }
-      } else {
-        audit({
-          userId: u.id,
-          action: "session.signin",
-          targetType: provider ? "oauth_provider" : "none",
-          targetId: provider,
-          ip: ctx.ip,
-          metadata: { method, userAgent: ctx.userAgent },
-        });
-      }
-    }
+    user = data?.user ?? null;
+    errorCode = error?.code;
+    if (error && !errorCode) errorCode = "auth_failed";
+  } else {
+    const { data, error } = await supabase.auth.verifyOtp({
+      type: otpType as EmailOtpType,
+      token_hash: tokenHash!,
+    });
+    user = data?.user ?? data?.session?.user ?? null;
+    errorCode = error ? (error.code ?? "otp_expired") : undefined;
   }
+  if (errorCode || !user) return failTo(errorCode ?? "auth_failed");
 
-  // Send unfinished users through onboarding the first time they hit the
-  // post-auth redirect. Any explicit returnTo other than the default is
-  // honoured (e.g. password reset → /reset-password).
-  if (userId && returnTo === DEFAULT_RETURN_TO) {
-    try {
-      await getDb()
-        .insert(users)
-        .values({ id: userId, email: userEmail ?? "" })
-        .onConflictDoUpdate({
-          target: users.id,
-          // Backfill the email if an earlier insert left it empty (OAuth signups
-          // used to land here with email=""). Never overwrite a real address.
-          set: {
-            email: sql`CASE WHEN ${users.email} = '' OR ${users.email} IS NULL THEN excluded.email ELSE ${users.email} END`,
-          },
-        });
-
-      const [row] = await getDb()
-        .select({ completedAt: users.onboardingCompletedAt })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      if (!row?.completedAt) {
-        return NextResponse.redirect(new URL("/onboarding", url.origin));
-      }
-    } catch (err) {
-      console.error("[auth callback] onboarding lookup failed:", err);
-      // Fall through to the default redirect rather than blocking the user.
-    }
-  }
-
-  return NextResponse.redirect(new URL(returnTo, url.origin));
+  const state = await completePostAuth({ user, locale, request: req });
+  const destination = postAuthRedirect({
+    returnTo,
+    intent,
+    state,
+    freeIntent: readFreeIntent(url.searchParams),
+  });
+  return NextResponse.redirect(new URL(destination, url.origin), 303);
 }

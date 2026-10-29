@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,12 +21,48 @@ import { IDE_LABELS, type IdeKey } from "@/lib/mcp/client-config";
 
 const IDE_KEYS = Object.keys(IDE_LABELS) as IdeKey[];
 
-export function SettingsPanel({ email, idePreference }: { email: string; idePreference: string }) {
+export function SettingsPanel({
+  email,
+  idePreference,
+  emailNudges: initialEmailNudges = true,
+}: {
+  email: string;
+  idePreference: string;
+  /** users.metadata.emailNudges !== false (absent means on). */
+  emailNudges?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [ide, setIde] = useState(idePreference);
   const [savingIde, setSavingIde] = useState(false);
+  const [emailNudges, setEmailNudges] = useState(initialEmailNudges);
+  const [savingNudges, setSavingNudges] = useState(false);
+
+  // PATCH /api/v2/users/me/preferences merges { emailNudges } into
+  // users.metadata; the lifecycle emails skip anyone who turned it off.
+  async function saveEmailNudges(next: boolean) {
+    const previous = emailNudges;
+    setEmailNudges(next);
+    setSavingNudges(true);
+    try {
+      const res = await fetch("/api/v2/users/me/preferences", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ emailNudges: next }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      toast.success(
+        next
+          ? "Pro offers, plan-limit and trial emails turned on"
+          : "Pro offers, plan-limit and trial emails turned off"
+      );
+    } catch {
+      setEmailNudges(previous);
+      toast.error("Could not save preference");
+    }
+    setSavingNudges(false);
+  }
 
   async function saveIde(next: string) {
     setIde(next);
@@ -99,6 +136,38 @@ export function SettingsPanel({ email, idePreference }: { email: string; idePref
               ))}
             </select>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Email notifications: the one preference the lifecycle emails honour
+          (every nudge email links here under "Manage email preferences"). */}
+      <Card id="email-notifications" className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Email notifications</CardTitle>
+          <CardDescription>Receipts and subscription changes are always sent.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* A native checkbox kept for the keyboard and screen readers (sr-only),
+              drawn as a debossed hairline square that fills with ink when checked. */}
+          <label htmlFor="email-nudges" className="flex cursor-pointer items-start gap-3 text-sm">
+            <input
+              id="email-nudges"
+              type="checkbox"
+              className="peer sr-only"
+              checked={emailNudges}
+              disabled={savingNudges}
+              onChange={(e) => saveEmailNudges(e.target.checked)}
+            />
+            <span
+              aria-hidden
+              className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center border border-input bg-card text-transparent shadow-inner transition-colors peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-1 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background peer-disabled:opacity-50"
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </span>
+            <span>
+              Email me about Pro offers, when I hit a plan limit, or before my free month ends
+            </span>
+          </label>
         </CardContent>
       </Card>
 

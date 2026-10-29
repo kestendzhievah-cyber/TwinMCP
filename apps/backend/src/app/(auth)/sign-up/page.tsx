@@ -8,7 +8,11 @@ export const metadata: Metadata = {
   title: "Get started free — TwinMCP",
   description:
     "Create your TwinMCP account and run your first MCP server in 2 minutes. Free tier — no credit card required.",
-  alternates: { canonical: "/sign-up" },
+  // Reciprocal hreflang with /fr/inscription (Google ignores one-way pairs).
+  alternates: {
+    canonical: "/sign-up",
+    languages: { en: "/sign-up", fr: "/fr/inscription", "x-default": "/sign-up" },
+  },
 };
 
 export default function SignUpPage() {

@@ -66,12 +66,30 @@ const GROUPS: Group[] = [
     required_for_boot: true,
   },
   {
-    // OAuth is opt-in (OAUTH_ENABLED=1). Default MCP auth is the ctx7sk_ API key,
-    // so these are not required for launch.
-    name: "OAuth 2.1 (optional — only if OAUTH_ENABLED=1)",
+    // OAuth is ON by default and needs no keys (random tokens stored hashed).
+    // OAUTH_DISABLED=1 is the kill switch; OAUTH_ISSUER is optional.
+    name: "OAuth 2.1 for MCP connectors — optional",
     required: [],
-    optional: ["OAUTH_ENABLED", "OAUTH_JWT_PRIVATE_KEY", "OAUTH_JWT_PUBLIC_KEY", "OAUTH_ISSUER"],
-    breaks: ["OAuth MCP transport (disabled by default — clients use the ctx7sk_ Bearer key)"],
+    optional: ["OAUTH_DISABLED", "OAUTH_ISSUER"],
+    breaks: [
+      "OAUTH_DISABLED=1: claude.ai / ChatGPT custom connectors can't sign in (ctx7sk_ keys keep working)",
+    ],
+  },
+  {
+    name: "Scheduled jobs + activity log — optional",
+    required: [],
+    optional: [
+      "CRON_SECRET",
+      "ACTIVITY_LOG_DISABLED",
+      "ACTIVITY_FLUSH_MS",
+      "ACTIVITY_FLUSH_BATCH",
+      "WEBHOOKS_ALLOW_PRIVATE",
+      "WEBHOOKS_DENY_CIDRS",
+      "WEBHOOKS_DENY_SELF",
+    ],
+    breaks: [
+      "CRON_SECRET: /api/cron/{digest,churn,nudges,purge} only callable from an admin session — no retention purge from a scheduler",
+    ],
   },
   {
     name: "Security",

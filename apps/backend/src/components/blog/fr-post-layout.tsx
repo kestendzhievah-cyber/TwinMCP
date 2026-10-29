@@ -132,10 +132,10 @@ export function FrPostLayout({
             </p>
             <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button asChild size="lg">
-                <Link href={"/sign-up?plan=free" as Route}>Démarrer gratuitement →</Link>
+                <Link href={"/fr/inscription?plan=free" as Route}>Démarrer gratuitement →</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href={"/plans" as Route}>Voir les tarifs</Link>
+                <Link href={"/fr/tarifs" as Route}>Voir les tarifs</Link>
               </Button>
             </div>
           </div>
@@ -144,7 +144,7 @@ export function FrPostLayout({
             <div className={RUNNING_HEAD}>
               <h2 className="text-2xl font-medium">Serveurs MCP associés</h2>
               <Link
-                href={"/servers" as Route}
+                href={"/fr/serveurs" as Route}
                 className="smallcaps tracking-sc inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 Voir tous les serveurs
@@ -154,7 +154,11 @@ export function FrPostLayout({
             {relatedServers.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {relatedServers.map((s) => (
-                  <Link key={s.slug} href={`/servers/${s.slug}` as Route} className={RELATED_CARD}>
+                  <Link
+                    key={s.slug}
+                    href={`/fr/serveurs/${s.slug}` as Route}
+                    className={RELATED_CARD}
+                  >
                     <h3 className="smallcaps tracking-sc text-lg font-medium leading-snug">
                       {s.name}
                     </h3>
@@ -166,7 +170,7 @@ export function FrPostLayout({
               <p className="text-sm italic text-muted-foreground">
                 Explorez le{" "}
                 <Link
-                  href={"/servers" as Route}
+                  href={"/fr/serveurs" as Route}
                   className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
                 >
                   catalogue de serveurs MCP

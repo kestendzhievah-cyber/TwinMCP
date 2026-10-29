@@ -8,6 +8,7 @@ import {
   reconfigureMcp,
 } from "@/lib/provisioning";
 import { reconcileServerHealth } from "@/lib/health";
+import { runUpgradeNudges } from "@/lib/billing/nudge-job";
 
 export type Job =
   | { type: "provision-server"; serverId: string }
@@ -22,7 +23,14 @@ export type Job =
     }
   | { type: "disable-mcp"; userServerId: string }
   | { type: "reconfigure-mcp"; userServerId: string }
-  | { type: "reconcile-health" };
+  | { type: "reconcile-health" }
+  // Daily Free → Pro nudge emails (schedule it once a day, see TODO.md).
+  | { type: "upgrade-nudges" }
+  // Daily retention purge: tool-call activity + audit log (lib/activity/purge.ts).
+  | { type: "purge-retention" }
+  // One outbound webhook delivery attempt (lib/webhooks/deliver.ts). Retries
+  // are scheduled by deliver.ts itself (enqueue with delaySeconds).
+  | { type: "webhook-deliver"; deliveryId: string };
 
 const JOB_PATH = "/api/jobs/run";
 
@@ -57,24 +65,32 @@ export function isQueueEnabled(): boolean {
  *   where the lambda may be killed before the job completes.
  */
 export async function enqueue(
-  job: Job
+  job: Job,
+  // Optional: run the job no sooner than this many seconds from now (QStash
+  // `delay`; a process-local timer in inline mode, lost on restart).
+  opts: { delaySeconds?: number } = {}
 ): Promise<{ mode: "queued" | "inline"; messageId?: string }> {
   const client = getClient();
   const appUrl = process.env.APP_URL;
+  const delaySeconds = Math.max(0, Math.round(opts.delaySeconds ?? 0));
 
   if (client && appUrl) {
     const res = await client.publishJSON({
       url: `${appUrl.replace(/\/$/, "")}${JOB_PATH}`,
       body: job,
       retries: 3,
+      ...(delaySeconds > 0 ? { delay: delaySeconds } : {}),
     });
     return { mode: "queued", messageId: res.messageId };
   }
 
   // Inline fallback — fire and forget
-  void runJob(job).catch((err) => {
-    console.error(`[queue] inline job ${job.type} failed:`, err);
-  });
+  const run = () =>
+    void runJob(job).catch((err) => {
+      console.error(`[queue] inline job ${job.type} failed:`, err);
+    });
+  if (delaySeconds > 0) setTimeout(run, delaySeconds * 1000).unref?.();
+  else run();
   return { mode: "inline" };
 }
 
@@ -106,6 +122,24 @@ export async function runJob(job: Job): Promise<void> {
     case "reconcile-health":
       await reconcileServerHealth();
       return;
+    case "upgrade-nudges":
+      await runUpgradeNudges();
+      return;
+    case "purge-retention": {
+      const { purgeExpiredRecords } = await import("@/lib/activity/purge");
+      const r = await purgeExpiredRecords();
+      console.info(
+        `[queue] purge-retention: ${r.toolCalls} tool call(s), ${r.auditLogs} audit row(s), ${r.webhookDeliveries} webhook deliver(ies)${r.truncated ? " (truncated)" : ""}`
+      );
+      return;
+    }
+    case "webhook-deliver": {
+      // Never throws: a failed attempt schedules its own retry, so a QStash
+      // retry on top would double-send.
+      const { deliverWebhook } = await import("@/lib/webhooks/deliver");
+      await deliverWebhook(job.deliveryId);
+      return;
+    }
     default: {
       const exhaustive: never = job;
       throw new Error(`Unknown job type: ${JSON.stringify(exhaustive)}`);

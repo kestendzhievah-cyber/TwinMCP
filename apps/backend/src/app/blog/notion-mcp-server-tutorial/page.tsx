@@ -61,8 +61,8 @@ export default function Post() {
         <strong>TL;DR.</strong> In about 30 minutes you can have a working Notion MCP server that
         lets an AI agent search pages, read their content, and create new ones. We use the official
         Notion API client and the MCP TypeScript SDK. The result is a small, focused server you can
-        drop into Cursor or Claude Desktop, or deploy to a managed runtime so your whole team uses
-        the same instance.
+        drop into Cursor or Claude Desktop, or deploy to a managed runtime so it is reachable from
+        any machine.
       </p>
 
       <h2 id="prerequisites">Prerequisites</h2>
@@ -277,7 +277,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
       <h2 id="deploy">Optional: deploy with HTTP transport</h2>
       <p>
-        stdio is great for one developer. For the rest of your team to use the same server, swap
+        stdio is great for one developer. For the server to be reachable from other machines, swap
         stdio for HTTP (a small refactor &mdash; the{" "}
         <Link href={"/blog/build-mcp-server" as Route}>main tutorial</Link> shows the full code) and
         host it. Two clean options:
@@ -287,7 +287,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         <li>
           Push to a managed runtime: <Link href="/">TwinMCP</Link> takes a package or Git URL plus
           install/start commands, runs it in an isolated sandbox, and gives you a stable HTTPS URL
-          plus per-user API keys. Same code, no operational tax.
+          plus revocable API keys. Same code, no operational tax.
         </li>
       </ul>
 

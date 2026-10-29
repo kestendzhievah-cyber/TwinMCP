@@ -11,10 +11,10 @@ import {
   KeyRound,
   MoreHorizontal,
   Package,
+  Pause,
   Play,
   Puzzle,
   ScrollText,
-  Square,
   Trash2,
   X,
 } from "lucide-react";
@@ -42,6 +42,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MCP_BUNDLES } from "@/lib/mcp-bundles";
+import { lifecycleLabel } from "@/lib/server-lifecycle-label";
+import { lifecycleActions } from "@/lib/server-lifecycle";
+import { countsTowardKeyLimit, isKeyUsable, type KeyScope } from "@/lib/auth/key-scope";
+import type { HostType, ServerStatus } from "@/db/schema/platform";
 import { AdminCreateServerDialog } from "./admin-create-server-dialog";
 import { AdminInstallMcpDialog } from "./admin-install-mcp-dialog";
 
@@ -63,10 +67,11 @@ interface ServerRow {
   id: string;
   name: string;
   slug: string;
-  hostType: string;
+  hostType: HostType;
   boxSize: string;
   region: string | null;
-  status: string;
+  status: ServerStatus;
+  boxId: string | null;
   endpointUrl: string | null;
   lastHeartbeatAt: string | null;
   createdAt: string;
@@ -87,6 +92,9 @@ interface KeyRow {
   name: string | null;
   lastUsedAt: string | null;
   revokedAt: string | null;
+  expiresAt: string | null;
+  scope: KeyScope;
+  serverId: string | null;
   createdAt: string;
 }
 interface AuditRow {
@@ -126,13 +134,14 @@ function relTime(iso: string | null): string {
   if (h < 24) return `il y a ${h} h`;
   return `il y a ${Math.floor(h / 24)} j`;
 }
-// Status seals follow DESIGN.md §4.9: running / provisioning / stopped / error / destroyed.
-function serverVariant(s: string): "success" | "warning" | "destructive" | "secondary" | "outline" {
-  if (s === "running") return "success";
-  if (s === "provisioning") return "warning";
-  if (s === "error") return "destructive";
-  if (s === "stopped") return "secondary";
-  return "outline";
+// The key's state as of now: revoked, expired (past its rotation overlap),
+// retiring (still works, no longer holds a plan slot) or active
+// (lib/auth/key-scope.ts).
+function keyState(k: KeyRow, now: number): "revoked" | "expired" | "retiring" | "active" {
+  if (k.revokedAt) return "revoked";
+  const key = { revokedAt: null, expiresAt: k.expiresAt ? new Date(k.expiresAt) : null };
+  if (!isKeyUsable(key, now)) return "expired";
+  return countsTowardKeyLimit(key, now) ? "active" : "retiring";
 }
 
 export function ClientDetailPanel({ clientId }: { clientId: string }) {
@@ -191,7 +200,14 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
       body: JSON.stringify({ action }),
     });
     if (res.ok) {
-      toast.success(action === "stop" ? "Serveur arrêté." : "Serveur démarré.");
+      const d = (await res.json().catch(() => ({}))) as { status?: string };
+      toast.success(
+        action === "stop"
+          ? "Serveur mis en pause (données conservées)."
+          : d.status === "provisioning"
+            ? "Provisionnement lancé."
+            : "Serveur repris."
+      );
       void load();
     } else {
       const d = (await res.json().catch(() => ({}))) as { message?: string };
@@ -259,6 +275,8 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
 
   const { user, servers, mcps, apiKeys, audit, usage14d } = data;
   const running = servers.filter((s) => s.status === "running").length;
+  const nowMs = Date.now();
+  const keysInPlan = apiKeys.filter((k) => keyState(k, nowMs) === "active").length;
   const errored = servers.filter((s) => s.status === "error").length;
   const req14 = usage14d.reduce((a, d) => a + d.req, 0);
   const maxReq = Math.max(1, ...usage14d.map((d) => d.req));
@@ -301,7 +319,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
         />
         <Kpi
           icon={<Activity className="h-4 w-4" />}
-          label="Requêtes 14j"
+          label="Appels d’outils 14j"
           value={nf.format(req14)}
         />
         <Kpi
@@ -322,7 +340,8 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
             Usage MCP · 14 jours
           </CardTitle>
           <CardDescription className="pl-12">
-            Requêtes traitées par les box du client (par jour).
+            Appels d’outils (tools/call) traités pour le client, par jour. Seuls ces appels comptent
+            dans le quota journalier.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
@@ -338,7 +357,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                   <div
                     key={d.day}
                     className="flex h-full flex-1 flex-col justify-end"
-                    title={`${d.day} · ${d.req} req · ${d.err} err`}
+                    title={`${d.day} · ${d.req} appels d’outils · ${d.err} en erreur`}
                   >
                     <div
                       className={cn("w-full", d.err > 0 ? "bg-destructive/80" : "bg-foreground/80")}
@@ -384,7 +403,16 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                     <div className="font-mono text-xs text-muted-foreground">{s.slug}</div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={serverVariant(s.status)}>{s.status}</Badge>
+                    {/* Derived lifecycle (DESIGN.md §4.9 tints): `stopped` reads as
+                        paused (box kept) or no runtime, never the raw enum. */}
+                    {(() => {
+                      const view = lifecycleLabel(s, "fr");
+                      return (
+                        <Badge variant={view.variant} title={view.help}>
+                          {view.label}
+                        </Badge>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">
                     {s.hostType}
@@ -442,20 +470,39 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {s.hostType !== "local_agent" &&
-                            (s.status === "stopped" || s.status === "error") && (
-                              <DropdownMenuItem onSelect={() => void serverAction(s.id, "start")}>
-                                <Play className="h-4 w-4" />
-                                Démarrer
-                              </DropdownMenuItem>
-                            )}
-                          {s.hostType !== "local_agent" &&
-                            (s.status === "running" || s.status === "provisioning") && (
-                              <DropdownMenuItem onSelect={() => void serverAction(s.id, "stop")}>
-                                <Square className="h-4 w-4" />
-                                Arrêter
-                              </DropdownMenuItem>
-                            )}
+                          {/* Derived lifecycle (lib/server-lifecycle.ts): a paused box is
+                              resumed in place (data kept); Start creates a runtime. */}
+                          {(() => {
+                            const actions = lifecycleActions(s);
+                            return (
+                              <>
+                                {actions.resume && (
+                                  <DropdownMenuItem
+                                    onSelect={() => void serverAction(s.id, "start")}
+                                  >
+                                    <Play className="h-4 w-4" />
+                                    Reprendre
+                                  </DropdownMenuItem>
+                                )}
+                                {actions.start && (
+                                  <DropdownMenuItem
+                                    onSelect={() => void serverAction(s.id, "start")}
+                                  >
+                                    <Play className="h-4 w-4" />
+                                    Démarrer
+                                  </DropdownMenuItem>
+                                )}
+                                {actions.pause && (
+                                  <DropdownMenuItem
+                                    onSelect={() => void serverAction(s.id, "stop")}
+                                  >
+                                    <Pause className="h-4 w-4" />
+                                    Mettre en pause
+                                  </DropdownMenuItem>
+                                )}
+                              </>
+                            );
+                          })()}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
@@ -527,26 +574,49 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
       </Section>
 
       {/* API keys */}
-      <Section icon={<KeyRound className="h-4 w-4" />} title={`Clés API (${apiKeys.length})`}>
+      {/* The count is the keys holding a plan slot (countsTowardKeyLimit): not
+          revoked, not expired, not a replaced key in its rotation overlap. */}
+      <Section
+        icon={<KeyRound className="h-4 w-4" />}
+        title={`Clés API (${keysInPlan} actives · ${apiKeys.length} au total)`}
+      >
         {apiKeys.length === 0 ? (
           <Empty>Aucune clé API.</Empty>
         ) : (
           <ul className="divide-y divide-border">
-            {apiKeys.map((k) => (
-              <li
-                key={k.prefix}
-                className="flex items-center justify-between gap-3 px-6 py-3 text-sm"
-              >
-                <span className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono">{k.prefix}…</span>
-                  {k.name && <span className="text-muted-foreground">{k.name}</span>}
-                  {k.revokedAt && <Badge variant="destructive">révoquée</Badge>}
-                </span>
-                <span className="smallcaps tracking-sc lining shrink-0 text-xs text-muted-foreground">
-                  utilisée {relTime(k.lastUsedAt)}
-                </span>
-              </li>
-            ))}
+            {apiKeys.map((k) => {
+              const state = keyState(k, nowMs);
+              const boundTo = k.serverId
+                ? (servers.find((sv) => sv.id === k.serverId)?.name ?? "serveur supprimé")
+                : "tous les serveurs";
+              return (
+                <li
+                  key={k.prefix}
+                  className="flex items-center justify-between gap-3 px-6 py-3 text-sm"
+                >
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono">{k.prefix}…</span>
+                    {k.name && <span className="text-muted-foreground">{k.name}</span>}
+                    <Badge variant={k.scope === "full" ? "warning" : "secondary"}>
+                      {k.scope === "full" ? "Accès complet" : `Proxy · ${boundTo}`}
+                    </Badge>
+                    {state === "revoked" && <Badge variant="destructive">révoquée</Badge>}
+                    {state === "expired" && <Badge variant="outline">expirée</Badge>}
+                    {state === "retiring" && k.expiresAt && (
+                      <Badge
+                        variant="info"
+                        title="Remplacée par rotation : marche encore, ne compte plus dans le quota."
+                      >
+                        expire {fmtDate(k.expiresAt)}
+                      </Badge>
+                    )}
+                  </span>
+                  <span className="smallcaps tracking-sc lining shrink-0 text-xs text-muted-foreground">
+                    utilisée {relTime(k.lastUsedAt)}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </Section>

@@ -3,14 +3,20 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { badRequest, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { badRequest, serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { logAudit, clientIp } from "@/lib/audit/log";
+import { IDE_LABELS, type IdeKey } from "@/lib/mcp/client-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const idePreferences = ["cursor", "claude-code", "windsurf", "cline", "zed", "other"] as const;
+// The IDE tiles of the onboarding wizard are the clients the config generator
+// knows (cursor, claude-desktop, claude-code, vscode, windsurf, cline, zed,
+// other); deriving the enum keeps the API and the tiles in step. The choice is
+// stored in users.metadata.ide_preference and preselects the server page's
+// Connect panel.
+const idePreferences = Object.keys(IDE_LABELS) as [IdeKey, ...IdeKey[]];
 
 const onboardingPatchSchema = z.object({
   idePreference: z.enum(idePreferences).optional(),
@@ -19,8 +25,8 @@ const onboardingPatchSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   try {
     const [row] = await getDb()
@@ -44,8 +50,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   let body: unknown;
   try {

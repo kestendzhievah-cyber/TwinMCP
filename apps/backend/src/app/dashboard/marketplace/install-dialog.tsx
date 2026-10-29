@@ -5,6 +5,9 @@ import type { Route } from "next";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useMcpConfigSchema } from "./use-config-schema";
+import { cliCommand } from "@/lib/cli";
+import type { Plan } from "@/db/schema/core";
+import { isSmallBoxFull, toastBoxFull } from "@/components/billing/upgrade-inline";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SecretField } from "@/components/vault/secret-field";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -66,16 +70,21 @@ export function parseSchema(raw: unknown): ConfigSchema {
 export function InstallDialog({
   mcp,
   userServers,
+  plan,
   onClose,
 }: {
   mcp: CatalogEntry | null;
   userServers: ServerOption[];
+  /** The account's plan: only Free gets the Pro toast when a small box is full. */
+  plan: Plan;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [serverId, setServerId] = useState<string>("");
   const [config, setConfig] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  // Optional: install with a read-only tool policy (lib/mcp/tool-policy.ts).
+  const [startReadOnly, setStartReadOnly] = useState(false);
   // Config schema loaded on demand + cached across opens.
   const { schema: rawSchema, loading: schemaLoading } = useMcpConfigSchema(mcp?.id ?? null);
 
@@ -85,6 +94,7 @@ export function InstallDialog({
     const compat = userServers.filter((s) => (s.hostType === "local_agent") === localTool);
     setServerId(compat[0]?.id ?? "");
     setConfig({});
+    setStartReadOnly(false);
   }, [mcp, userServers]);
 
   if (!mcp) return null;
@@ -98,6 +108,12 @@ export function InstallDialog({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!mcp || !serverId) return;
+    // SecretField has no native `required`: check required secrets here.
+    const missingSecret = fields.find(([k, def]) => def.secret && def.required && !config[k]);
+    if (missingSecret) {
+      toast.error(`${missingSecret[0]} is required.`);
+      return;
+    }
     setSubmitting(true);
 
     const typedConfig: Record<string, string | number | boolean> = {};
@@ -114,14 +130,43 @@ export function InstallDialog({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mcpServerId: mcp.id, config: typedConfig }),
     });
+    let readOnlyApplied = false;
+    if (res.ok && startReadOnly) {
+      // The install itself succeeded; a failed policy write must not read as
+      // a failed install, so it only warns.
+      const created = (await res
+        .clone()
+        .json()
+        .catch(() => ({}))) as { id?: unknown };
+      readOnlyApplied =
+        typeof created.id === "string" &&
+        (await fetch(`/api/v2/servers/${serverId}/mcps/${created.id}/policy`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ policy: { mode: "read_only" } }),
+        })
+          .then((r) => r.ok)
+          .catch(() => false));
+      if (!readOnlyApplied) {
+        toast.warning(
+          "Installed, but read-only mode could not be set. Use Tool access on the server page."
+        );
+      }
+    }
     setSubmitting(false);
     if (res.ok) {
-      toast.success(`Installed ${mcp.name}`);
+      toast.success(`Installed ${mcp.name}${readOnlyApplied ? " (read-only)" : ""}`);
       onClose();
       router.push(`/dashboard/servers/${serverId}` as Route);
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.message ?? "Failed to install");
+      // For a Free account a small box at its MCP cap is a plan limit, not an
+      // error: point at Pro's larger boxes instead of echoing the 403. Paid
+      // plans keep the server's own message, which already names the real cap
+      // and suggests a larger box.
+      if (plan === "free" && res.status === 403 && isSmallBoxFull(String(err.message ?? ""))) {
+        toastBoxFull();
+      } else toast.error(err.message ?? "Failed to install");
     }
   }
 
@@ -160,7 +205,9 @@ export function InstallDialog({
             )}
             {isLocalTool && compatible.length > 0 && (
               <p className="text-xs italic text-muted-foreground">
-                Runs on your machine via <code className="font-mono not-italic">ctx7 connect</code>.
+                Runs on your machine via the TwinMCP local agent (
+                <code className="font-mono not-italic">{cliCommand("connect")}</code>); the
+                server&apos;s Connect panel has the exact command.
               </p>
             )}
           </div>
@@ -197,10 +244,20 @@ export function InstallDialog({
                         <SelectItem value="false">false</SelectItem>
                       </SelectContent>
                     </Select>
+                  ) : def.secret ? (
+                    // Paste the value or pick a saved secret ({{secret:NAME}},
+                    // resolved server-side at provisioning — contract D6).
+                    <SecretField
+                      id={key}
+                      value={config[key] ?? ""}
+                      onChange={(v) => setConfig((c) => ({ ...c, [key]: v }))}
+                      suggestedName={key}
+                      placeholder={def.description ?? ""}
+                    />
                   ) : (
                     <Input
                       id={key}
-                      type={def.secret ? "password" : def.type === "number" ? "number" : "text"}
+                      type={def.type === "number" ? "number" : "text"}
                       required={def.required}
                       value={config[key] ?? ""}
                       onChange={(e) => setConfig((c) => ({ ...c, [key]: e.target.value }))}
@@ -214,6 +271,21 @@ export function InstallDialog({
               ))}
             </div>
           )}
+
+          <label className="flex cursor-pointer items-start gap-3 border-t border-border pt-4 text-sm">
+            <input
+              type="checkbox"
+              checked={startReadOnly}
+              onChange={(e) => setStartReadOnly(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-foreground"
+            />
+            <span className="space-y-1">
+              <span className="block font-medium">Start read-only</span>
+              <span className="block text-xs italic text-muted-foreground">
+                Expose only the tools the MCP marks read-only. Change it later under Tool access.
+              </span>
+            </span>
+          </label>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

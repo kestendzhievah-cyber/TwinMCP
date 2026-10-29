@@ -159,7 +159,7 @@ export default function Post() {
       <p>
         <strong>Go managed</strong> when you want MCP servers running today without owning the
         sandbox, the TLS, the secrets, and the monitoring &mdash; which is most teams, most of the
-        time. It is also the faster path to private, team-shared servers: provision, install, share
+        time. It is also the faster path to private servers: provision, install, then connect with
         one URL and key.
       </p>
 

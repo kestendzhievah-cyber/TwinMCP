@@ -19,12 +19,15 @@ export default async function SettingsPage() {
     .where(eq(users.id, user.id))
     .limit(1);
 
-  const meta = (row?.metadata ?? {}) as { ide_preference?: string };
+  const meta = (row?.metadata ?? {}) as { ide_preference?: string; emailNudges?: boolean };
 
   return (
     <SettingsPanel
       email={row?.email ?? user.email ?? ""}
       idePreference={meta.ide_preference ?? ""}
+      // Pro-offer, plan-limit and trial-ending emails are on unless explicitly
+      // turned off (users.metadata.emailNudges === false — absent means on).
+      emailNudges={meta.emailNudges !== false}
     />
   );
 }

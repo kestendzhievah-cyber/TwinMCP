@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/analytics/funnel";
 import type { BillingCadence } from "./pricing-data";
 import type { Locale } from "@/lib/i18n/locales";
 
@@ -25,6 +26,12 @@ const TOGGLE = {
 // ink hairline, the selected one stamped in ink. No pill, no sliding thumb.
 export function PricingToggle({ cadence, onChange, locale = "en" }: PricingToggleProps) {
   const t = TOGGLE[locale];
+  // Only real switches are measured (a click on the selected segment is not).
+  function select(next: BillingCadence) {
+    if (next === cadence) return;
+    track({ name: "cadence_toggled", properties: { cadence: next, surface: "pricing" } });
+    onChange(next);
+  }
   return (
     <div className="inline-flex flex-wrap items-center justify-center gap-3">
       <div
@@ -34,12 +41,12 @@ export function PricingToggle({ cadence, onChange, locale = "en" }: PricingToggl
       >
         <ToggleButton
           active={cadence === "monthly"}
-          onClick={() => onChange("monthly")}
+          onClick={() => select("monthly")}
           label={t.monthly}
         />
         <ToggleButton
           active={cadence === "annual"}
-          onClick={() => onChange("annual")}
+          onClick={() => select("annual")}
           label={t.annual}
         />
       </div>

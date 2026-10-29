@@ -1,10 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, gte, like } from "drizzle-orm";
 import { getDb } from "@/db";
-import { servers, userServers, mcpServers } from "@/db/schema/platform";
+import { userServers, mcpServers } from "@/db/schema/platform";
 import { usageEvents } from "@/db/schema/core";
-import { forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { forbidden, notFound, serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
 import { getBoxClient } from "@/lib/upstash/box-client";
 import { logFileForMcp, TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
@@ -33,12 +33,9 @@ function parseLines(raw: string, source: string): LogLine[] {
     });
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id } = await params;
 
   const url = new URL(req.url);
@@ -110,7 +107,11 @@ export async function GET(
       const allLines: LogLine[] = [];
       for (const m of installed) {
         if (m.slug === TWINMCP_DOCS_SLUG) continue;
-        const raw = await client.tail(srv.boxId, logFileForMcp(m.slug), Math.ceil(lines / Math.max(installed.length, 1)));
+        const raw = await client.tail(
+          srv.boxId,
+          logFileForMcp(m.slug),
+          Math.ceil(lines / Math.max(installed.length, 1))
+        );
         allLines.push(...parseLines(raw, m.slug));
       }
       // Sort by timestamp when present, keep insertion order otherwise

@@ -144,7 +144,7 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
           <p className="mt-2 text-base text-muted-foreground">
             {phase === "stuck"
               ? "Upstash Box is taking longer than usual. You can move on — your server will keep provisioning in the background."
-              : "Allocating an isolated micro-VM, installing TwinMCP Docs MCP, and assigning your endpoint. This usually takes ~10 seconds."}
+              : "Allocating an isolated micro-VM, installing the TwinMCP Docs MCP and assigning your endpoint. This takes about 15 seconds."}
           </p>
         </div>
 
@@ -196,7 +196,8 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
       <div>
         <h2 className="text-2xl font-medium md:text-3xl">Name your first server.</h2>
         <p className="mt-2 text-base text-muted-foreground">
-          One free server. You can rename it later. Provisioning takes around 10 seconds.
+          One free server. You can rename it later. Provisioning takes about 15 seconds; each MCP
+          you add then installs in about a minute.
         </p>
       </div>
 

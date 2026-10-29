@@ -9,9 +9,9 @@ const PROTECTED_PREFIXES = ["/dashboard", "/onboarding"];
 
 // Routes an authenticated user should not see (sign-in, sign-up, etc.) —
 // they bounce straight to the dashboard.
-const GUEST_ONLY_PREFIXES = ["/sign-in", "/sign-up"];
+export const GUEST_ONLY_PREFIXES = ["/sign-in", "/sign-up", "/fr/inscription", "/fr/connexion"];
 
-function startsWithAny(pathname: string, prefixes: string[]) {
+export function startsWithAny(pathname: string, prefixes: readonly string[]) {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
@@ -51,6 +51,25 @@ export const updateSession = async (request: NextRequest) => {
 
   if (user && startsWithAny(pathname, GUEST_ONLY_PREFIXES)) {
     const url = request.nextUrl.clone();
+    const params = request.nextUrl.searchParams;
+    const plan = params.get("plan");
+    if (plan === "pro" || plan === "team") {
+      // A signed-in visitor clicking "Start Pro" on the pricing page lands on
+      // sign-up: keep the paid intent and let Billing open the checkout
+      // (dashboard/billing/actions.tsx auto-starts it for a Free account).
+      const cadenceParam = params.get("cadence");
+      const promo = params.get("promo");
+      const next = new URLSearchParams({
+        plan: "pro",
+        cadence: cadenceParam === "yearly" || cadenceParam === "annual" ? "yearly" : "monthly",
+      });
+      if (promo && /^(promo_[A-Za-z0-9]{1,64}|[a-z0-9-]{1,64})$/.test(promo)) {
+        next.set("promo", promo);
+      }
+      url.pathname = "/dashboard/billing";
+      url.search = `?${next.toString()}`;
+      return NextResponse.redirect(url);
+    }
     url.pathname = "/dashboard";
     url.search = "";
     return NextResponse.redirect(url);

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getDb } from "@/db";
 import { prospects } from "@/db/schema";
 import { badRequest, jsonError } from "@/lib/errors";
+import { trustedClientIp } from "@/lib/net/client-ip";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,10 +43,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "unknown";
+  const ip = trustedClientIp(req) ?? "unknown";
   if (tooMany(ip)) return jsonError(429, "Trop de demandes. Réessayez dans une heure.");
 
   const company = clip(body.company, 200);

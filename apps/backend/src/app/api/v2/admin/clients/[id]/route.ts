@@ -56,6 +56,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         boxSize: servers.boxSize,
         region: servers.region,
         status: servers.status,
+        // With hostType + status: the derived lifecycle (paused vs no runtime).
+        boxId: servers.boxId,
         endpointUrl: servers.endpointUrl,
         lastHeartbeatAt: servers.lastHeartbeatAt,
         createdAt: servers.createdAt,
@@ -85,6 +87,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         name: apiKeys.name,
         lastUsedAt: apiKeys.lastUsedAt,
         revokedAt: apiKeys.revokedAt,
+        expiresAt: apiKeys.expiresAt,
+        scope: apiKeys.scope,
+        serverId: apiKeys.serverId,
         createdAt: apiKeys.createdAt,
       })
       .from(apiKeys)

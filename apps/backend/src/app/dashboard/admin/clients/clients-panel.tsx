@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { Activity, AlertCircle, Boxes, CreditCard, RefreshCw, Search, Users } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  Boxes,
+  CreditCard,
+  Download,
+  RefreshCw,
+  Search,
+  Users,
+} from "lucide-react";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -168,9 +177,25 @@ export function ClientsPanel() {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="icon" onClick={() => void load()} disabled={refreshing}>
-            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* CSV of Free users for an upgrade campaign (merge fields of the email). */}
+            <Button asChild variant="outline">
+              <a href="/api/v2/admin/clients/export?plan=free" download>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Exporter les Free</span>
+                <span className="sm:hidden">CSV</span>
+              </a>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => void load()}
+              disabled={refreshing}
+              aria-label="Rafraîchir"
+            >
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+            </Button>
+          </div>
         </div>
 
         {filtered.length === 0 ? (
@@ -187,7 +212,12 @@ export function ClientsPanel() {
                   <TableHead className="w-20">Plan</TableHead>
                   <TableHead className="w-28 text-right">Serveurs</TableHead>
                   <TableHead className="w-20 text-right">MCPs</TableHead>
-                  <TableHead className="w-28 text-right">Req. 30j</TableHead>
+                  <TableHead
+                    className="w-28 text-right"
+                    title="Appels d’outils (tools/call) sur 30 jours"
+                  >
+                    Appels 30j
+                  </TableHead>
                   <TableHead className="w-24 pr-6 text-right">MRR</TableHead>
                 </TableRow>
               </TableHeader>

@@ -3,21 +3,97 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AlertCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/utils/supabase/client";
+import { track } from "@/lib/analytics/funnel";
 import { friendlyAuthError } from "@/lib/auth/errors";
+import { readProIntent, safeReturnTo } from "@/lib/auth/return-to";
+import { authPath } from "@/lib/i18n/auth-paths";
+import type { Locale } from "@/lib/i18n/locales";
 
 type Mode = "password" | "magic-link";
 
-export function SignInForm() {
+const RESEND_COOLDOWN_S = 60;
+
+// Every visible string, per locale. French uses "vous", like the French sign-up
+// and landing pages. The Supabase calls, redirects and analytics are shared;
+// after sign-in the dashboard is English for everyone (by design).
+const COPY = {
+  en: {
+    checkTitle: "Check your inbox",
+    checkLead: "A sign-in link has been sent to",
+    sending: "Sending…",
+    resendLink: "Resend link",
+    otherMethod: "Use a different method",
+    title: "Sign in to TwinMCP",
+    subtitle: "Choose the method that works for you.",
+    email: "Email",
+    emailPlaceholder: "you@company.com",
+    password: "Password",
+    forgot: "Forgot?",
+    resendIn: (s: number) => `Resend in ${s}s`,
+    resendConfirmation: "Resend confirmation email",
+    confirmationSent: (email: string) => `A new confirmation link is on its way to ${email}.`,
+    spamHint:
+      "Nothing in your inbox? Check your spam or promotions folder, then open the most recent link.",
+    signingIn: "Signing in…",
+    signIn: "Sign in",
+    sendMagicLink: "Send me a magic link",
+    useMagicLink: "Use a magic link instead",
+    usePassword: "Use a password instead",
+    noAccount: "Don’t have an account yet?",
+    createAccount: "Create an account",
+  },
+  fr: {
+    checkTitle: "Vérifiez votre boîte mail",
+    checkLead: "Un lien de connexion a été envoyé à",
+    sending: "Envoi…",
+    resendLink: "Renvoyer le lien",
+    otherMethod: "Utiliser une autre méthode",
+    title: "Connexion à TwinMCP",
+    subtitle: "Choisissez la méthode qui vous convient.",
+    email: "E-mail",
+    emailPlaceholder: "vous@entreprise.fr",
+    password: "Mot de passe",
+    forgot: "Oublié ?",
+    resendIn: (s: number) => `Renvoyer dans ${s} s`,
+    resendConfirmation: "Renvoyer l’e-mail de confirmation",
+    confirmationSent: (email: string) =>
+      `Un nouveau lien de confirmation est en route vers ${email}.`,
+    spamHint:
+      "Rien reçu ? Regardez dans vos spams ou l’onglet Promotions, puis ouvrez le lien le plus récent.",
+    signingIn: "Connexion…",
+    signIn: "Se connecter",
+    sendMagicLink: "Recevoir un lien de connexion",
+    useMagicLink: "Recevoir plutôt un lien par e-mail",
+    usePassword: "Utiliser plutôt un mot de passe",
+    noAccount: "Pas encore de compte ?",
+    createAccount: "Créer un compte",
+  },
+} as const;
+
+export function SignInForm({ locale = "en" }: { locale?: Locale }) {
+  const t = COPY[locale];
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get("returnTo") ?? "/dashboard";
+  // Never trust returnTo outside the site (router.push, links, emailRedirectTo).
+  const returnTo = safeReturnTo(searchParams.get("returnTo"));
+  // A Pro intent (pricing page to sign-in, or an auth link that failed) is kept
+  // through every path: email links carry it to /auth/callback, a password
+  // sign-in lands on Billing, which opens the checkout.
+  const proIntent = readProIntent(searchParams);
+  const intentQuery = proIntent
+    ? `plan=pro&cadence=${proIntent.cadence}${proIntent.promo ? `&promo=${encodeURIComponent(proIntent.promo)}` : ""}`
+    : "";
+  // locale=fr: a link that fails comes back to the French sign-in, and the
+  // first session records the language (lib/auth/post-auth.ts).
+  const callbackUrl = () =>
+    `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}${intentQuery ? `&${intentQuery}` : ""}${locale !== "en" ? `&locale=${locale}` : ""}`;
 
   const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
@@ -26,14 +102,58 @@ export function SignInForm() {
   // expired reset/magic link, failed exchange).
   const [error, setError] = useState(() => {
     const code = searchParams.get("error");
-    return code ? friendlyAuthError({ message: "", code }) : "";
+    return code ? friendlyAuthError({ message: "", code }, locale) : "";
   });
+  // The Supabase error code behind `error`: email_not_confirmed offers a
+  // resend of the confirmation email right here.
+  const [errorCode, setErrorCode] = useState<string | null>(() => searchParams.get("error"));
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendSent, setResendSent] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  // An auth link that bounced here (expired, already used, denied OAuth).
+  const callbackFailureTracked = useRef(false);
+  useEffect(() => {
+    const code = searchParams.get("error");
+    if (!code || callbackFailureTracked.current) return;
+    callbackFailureTracked.current = true;
+    track({ name: "auth_callback_failed", properties: { code } });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [resendCooldown]);
+
+  async function handleResendConfirmation() {
+    if (resendCooldown > 0 || resending || !email) return;
+    setResending(true);
+    track({ name: "resend_confirmation_clicked", properties: { locale } });
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: callbackUrl() },
+    });
+    setResending(false);
+    if (err) {
+      setError(friendlyAuthError(err, locale));
+      setErrorCode(err.code ?? null);
+      setResendSent(false);
+      return;
+    }
+    setResendSent(true);
+    setResendCooldown(RESEND_COOLDOWN_S);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    setErrorCode(null);
+    setResendSent(false);
     setLoading(true);
 
     const supabase = createClient();
@@ -41,11 +161,30 @@ export function SignInForm() {
     if (mode === "password") {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password });
       if (err) {
-        setError(friendlyAuthError(err));
+        setError(friendlyAuthError(err, locale));
+        setErrorCode(
+          err.code ?? (/email not confirmed/i.test(err.message) ? "email_not_confirmed" : null)
+        );
         setLoading(false);
         return;
       }
-      router.push(returnTo as Route);
+      // A password sign-in never goes through /auth/callback, which is where
+      // unfinished accounts are sent to the wizard. Route the default landing
+      // through /onboarding instead: it redirects straight to /dashboard once
+      // onboarding is complete, so finished accounts only pay one redirect.
+      // A Pro intent goes to Billing, which opens the checkout for a Free account.
+      const destination = proIntent
+        ? `/dashboard/billing?${intentQuery}`
+        : returnTo === "/dashboard"
+          ? "/onboarding"
+          : returnTo;
+      // /oauth/authorize is a route handler (sets a CSRF cookie, redirects to
+      // the consent page): it needs a full page load, not a client navigation.
+      if (destination.startsWith("/oauth/")) {
+        window.location.assign(destination);
+        return;
+      }
+      router.push(destination as Route);
       router.refresh();
       return;
     }
@@ -56,12 +195,13 @@ export function SignInForm() {
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`,
+        emailRedirectTo: callbackUrl(),
         shouldCreateUser: true,
       },
     });
     if (err) {
-      setError(friendlyAuthError(err));
+      setError(friendlyAuthError(err, locale));
+      setErrorCode(err.code ?? null);
       setLoading(false);
       return;
     }
@@ -77,11 +217,11 @@ export function SignInForm() {
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`,
+        emailRedirectTo: callbackUrl(),
         shouldCreateUser: true,
       },
     });
-    if (err) setError(friendlyAuthError(err));
+    if (err) setError(friendlyAuthError(err, locale));
     setLoading(false);
   }
 
@@ -97,10 +237,9 @@ export function SignInForm() {
             <Mail className="h-5 w-5" />
           </span>
         </div>
-        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">Check your inbox</h1>
+        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">{t.checkTitle}</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          A sign-in link has been sent to{" "}
-          <span className="font-medium text-foreground">{email}</span>.
+          {t.checkLead} <span className="font-medium text-foreground">{email}</span>.
         </p>
 
         <div role="status" aria-live="polite" className="mt-4 min-h-[2.5rem] self-stretch">
@@ -119,7 +258,7 @@ export function SignInForm() {
             onClick={handleResendMagicLink}
             disabled={loading}
           >
-            {loading ? "Sending…" : "Resend link"}
+            {loading ? t.sending : t.resendLink}
           </Button>
           <button
             type="button"
@@ -130,7 +269,7 @@ export function SignInForm() {
             }}
             className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            Use a different method
+            {t.otherMethod}
           </button>
         </div>
       </div>
@@ -141,21 +280,19 @@ export function SignInForm() {
     <div>
       {/* The engraved name: small-caps title, italic subtitle, double rule. */}
       <div className="mb-8">
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">Sign in to TwinMCP</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          Choose the method that works for you.
-        </p>
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">{t.title}</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">{t.subtitle}</p>
         <Separator variant="double" className="mt-4" />
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t.email}</Label>
           <Input
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="you@company.com"
+            placeholder={t.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -166,12 +303,12 @@ export function SignInForm() {
         {mode === "password" && (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t.password}</Label>
               <Link
-                href={"/forgot-password" as Route}
+                href={authPath("forgotPassword", locale, { email }) as Route}
                 className="smallcaps tracking-sc -my-2.5 inline-flex min-h-10 items-center text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
-                Forgot?
+                {t.forgot}
               </Link>
             </div>
             <Input
@@ -195,10 +332,35 @@ export function SignInForm() {
               <span>{error}</span>
             </p>
           )}
+          {errorCode === "email_not_confirmed" && (
+            // Unconfirmed account: resend the confirmation email from here
+            // instead of leaving the user stuck on an error.
+            <div className="mt-3 flex flex-col gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResendConfirmation}
+                disabled={resending || resendCooldown > 0 || !email}
+                className="lining"
+              >
+                {resending
+                  ? t.sending
+                  : resendCooldown > 0
+                    ? t.resendIn(resendCooldown)
+                    : t.resendConfirmation}
+              </Button>
+              {resendSent && (
+                <p className="border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
+                  {t.confirmationSent(email)}
+                </p>
+              )}
+              <p className="text-xs italic text-muted-foreground">{t.spamHint}</p>
+            </div>
+          )}
         </div>
 
         <Button type="submit" disabled={loading || !email || (mode === "password" && !password)}>
-          {loading ? "Signing in…" : mode === "password" ? "Sign in" : "Send me a magic link"}
+          {loading ? t.signingIn : mode === "password" ? t.signIn : t.sendMagicLink}
         </Button>
 
         <button
@@ -209,19 +371,23 @@ export function SignInForm() {
           }}
           className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          {mode === "password" ? "Use a magic link instead" : "Use a password instead"}
+          {mode === "password" ? t.useMagicLink : t.usePassword}
         </button>
       </form>
 
       <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account yet?{" "}
+        {t.noAccount}{" "}
         <Link
           href={
-            `/sign-up?returnTo=${encodeURIComponent(returnTo)}${email ? `&email=${encodeURIComponent(email)}` : ""}` as Route
+            authPath("signUp", locale, {
+              returnTo,
+              email,
+              ...Object.fromEntries(new URLSearchParams(intentQuery)),
+            }) as Route
           }
           className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
         >
-          Create an account
+          {t.createAccount}
         </Link>
       </p>
     </div>

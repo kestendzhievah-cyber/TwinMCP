@@ -102,7 +102,7 @@ export const BLOG_POSTS: BlogPost[] = [
     slug: "smithery-vs-twinmcp",
     title: "MCP catalog comparison: Smithery vs TwinMCP vs self-host",
     description:
-      "Smithery, TwinMCP, and self-hosting cover three very different use cases. Decision matrix with cost, isolation, private code, secrets, and team-sharing.",
+      "Smithery, TwinMCP, and self-hosting cover three very different use cases. Decision matrix with cost, isolation, private code, secrets, and key management.",
     publishedAt: "2026-05-10",
     readingTimeMinutes: 9,
     tags: ["mcp", "smithery", "twinmcp", "comparison"],
@@ -129,7 +129,7 @@ export const BLOG_POSTS: BlogPost[] = [
     slug: "smithery-alternatives",
     title: "The best Smithery alternatives for hosting MCP servers (2026)",
     description:
-      "Looking for a Smithery alternative? Compare managed MCP runtimes, public registries, self-hosting, and serverless — with a decision table for private code, isolation, secrets, and team access.",
+      "Looking for a Smithery alternative? Compare managed MCP runtimes, public registries, self-hosting, and serverless — with a decision table for private code, isolation, secrets, and API keys.",
     publishedAt: "2026-10-01",
     readingTimeMinutes: 10,
     tags: ["mcp", "smithery", "alternatives", "hosting", "comparison"],

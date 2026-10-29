@@ -4,14 +4,26 @@ import { getDb } from "@/db";
 import { servers } from "@/db/schema";
 import { badRequest, notFound, serverError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin/prospects-lib";
-import { destroyServerRuntime, resumeServer } from "@/lib/provisioning";
+import {
+  RuntimeGoneError,
+  claimProvision,
+  claimReprovision,
+  destroyServerRuntime,
+  pauseServerRuntime,
+  resumeServer,
+} from "@/lib/provisioning";
+import { isPausedRuntime, lifecycleActions } from "@/lib/server-lifecycle";
+import { enqueue } from "@/lib/queue/qstash";
 import { logAudit, clientIp } from "@/lib/audit/log";
+import { clearAuthCache } from "@/lib/auth";
+import { localAgentCommand } from "@/lib/cli";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Lifecycle for a CLIENT's server, admin-side. PATCH {action:"stop"|"start"}
-// tears down / wakes the box (keeps the row); DELETE destroys the box and
+// pauses (box and data kept, contract K4) / resumes or provisions the box,
+// exactly like the user's own Pause and Start routes; DELETE destroys the box and
 // removes the row (cascade removes its MCP installs). Ownership check is "server
 // belongs to this client"; audited with the acting admin.
 export async function PATCH(
@@ -37,15 +49,26 @@ export async function PATCH(
 
   try {
     if (action === "stop") {
-      if (server.status === "stopped") return badRequest("Serveur déjà arrêté.");
+      if (server.hostType === "local_agent") {
+        return badRequest(
+          "Serveur agent local : rien à mettre en pause (il tourne chez le client)."
+        );
+      }
+      if (server.status === "stopped") return badRequest("Serveur déjà en pause.");
       if (server.status === "destroyed") return badRequest("Serveur détruit.");
-      await destroyServerRuntime(serverId);
+      if (server.status === "provisioning") {
+        return badRequest("Provisionnement en cours : attendez la fin avant de mettre en pause.");
+      }
+      if (!lifecycleActions(server).pause) {
+        return badRequest(`Pause impossible (statut : ${server.status}).`);
+      }
+      const outcome = await pauseServerRuntime(serverId);
       logAudit({
         userId: clientId,
-        action: "admin.server.stop",
+        action: "admin.server.pause",
         targetType: "server",
         targetId: serverId,
-        metadata: { actorAdminId: admin.userId },
+        metadata: { actorAdminId: admin.userId, mode: "pause", outcome },
         ip: clientIp(req),
       });
       return NextResponse.json({ ok: true, status: "stopped" });
@@ -53,16 +76,50 @@ export async function PATCH(
 
     if (action === "start") {
       if (server.status === "destroyed") return badRequest("Serveur détruit.");
-      await resumeServer(serverId);
+      if (server.status === "running") return badRequest("Serveur déjà démarré.");
+      if (server.hostType === "local_agent") {
+        return badRequest(
+          `Serveur agent local : il démarre avec ${localAgentCommand(server.slug)} chez le client.`
+        );
+      }
+      const actions = lifecycleActions(server);
+      if (!actions.start && !actions.resume) {
+        return badRequest(`Démarrage impossible (statut : ${server.status}).`);
+      }
+      // Same logic as POST /api/v2/servers/:id/start: wake a paused box in
+      // place; otherwise (or if the box was reaped) provision a fresh one from
+      // the saved configs.
+      let mode: "resume" | "provision" | "reprovision" = "provision";
+      if (isPausedRuntime(server)) {
+        try {
+          await resumeServer(serverId);
+          mode = "resume";
+        } catch (err) {
+          if (!(err instanceof RuntimeGoneError)) throw err;
+          mode = "reprovision";
+        }
+      }
+      // Conditional claims: a double click enqueues one provision job only.
+      if (
+        mode !== "resume" &&
+        (mode === "provision" ? await claimProvision(serverId) : await claimReprovision(serverId))
+      ) {
+        await enqueue({ type: "provision-server", serverId }).catch((e) =>
+          console.error(`[admin server start] enqueue provision ${serverId} failed:`, e)
+        );
+      }
       logAudit({
         userId: clientId,
         action: "admin.server.start",
         targetType: "server",
         targetId: serverId,
-        metadata: { actorAdminId: admin.userId },
+        metadata: { actorAdminId: admin.userId, mode },
         ip: clientIp(req),
       });
-      return NextResponse.json({ ok: true, status: "running" });
+      return NextResponse.json({
+        ok: true,
+        status: mode === "resume" ? "running" : "provisioning",
+      });
     }
 
     return badRequest("Action inconnue (attendu: stop | start).");
@@ -88,6 +145,9 @@ export async function DELETE(
   try {
     await destroyServerRuntime(serverId);
     await db.delete(servers).where(eq(servers.id, serverId));
+    // The FK cascade removed the API keys bound to this server: drop them from
+    // the auth cache too, or they keep authenticating until its TTL.
+    clearAuthCache();
     logAudit({
       userId: clientId,
       action: "admin.server.delete",

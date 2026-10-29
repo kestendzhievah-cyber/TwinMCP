@@ -1,10 +1,11 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, inArray, notInArray, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
-import { servers, userServers, mcpServers } from "@/db/schema/platform";
+import { servers, userServers, mcpServers, type ServerStatus } from "@/db/schema/platform";
 import { users } from "@/db/schema/core";
 import { getBoxClient } from "@/lib/upstash/box-client";
 import { keepWarm } from "@/lib/plan-features";
+import { isRuntimeGone, pauseFailureAction } from "@/lib/server-lifecycle";
 import {
   BRIDGE_BASE_PORT,
   INIT_SCRIPT_PATH,
@@ -21,6 +22,8 @@ import {
   encryptConfig,
   type EncryptedPayload,
 } from "@/lib/crypto/config-encryption";
+import { MissingSecretError, resolveSecretRefs } from "@/lib/vault/resolve";
+import { emitWebhookEvent } from "@/lib/webhooks/emit";
 
 export const TWINMCP_DOCS_SLUG = "twinmcp-docs";
 
@@ -51,6 +54,62 @@ function decryptMcpConfig(row: {
     iv: row.configIv,
     tag: row.configTag,
   });
+}
+
+/**
+ * The env an MCP starts with: its decrypted config with every
+ * `{{secret:NAME}}` resolved from the owner's vault (contract D6). Throws
+ * MissingSecretError rather than ever launching with a literal placeholder.
+ */
+async function buildMcpConfig(
+  userId: string,
+  row: { configCiphertext: string; configIv: string; configTag: string }
+): Promise<Record<string, unknown>> {
+  const { config, missing } = await resolveSecretRefs(userId, decryptMcpConfig(row));
+  if (missing.length > 0) throw new MissingSecretError(missing);
+  return config;
+}
+
+/** POSIX single-quote a string for a shell command. */
+function shQuote(s: string): string {
+  return `'${s.replace(/'/g, "'\\''")}'`;
+}
+
+/**
+ * Surface a missing secret where the user looks when an MCP is down: append
+ * "Missing secret NAME" to the MCP's box log (the Logs tab reads it). Appends
+ * rather than rewrites so a still-running bridge keeps its log. Best-effort.
+ */
+async function reportMissingSecrets(
+  boxId: string,
+  slug: string,
+  err: MissingSecretError
+): Promise<void> {
+  const line = `${new Date().toISOString()} [twinmcp] ${err.message}. Add it in Settings > Secrets, then restart this MCP.`;
+  try {
+    await getBoxClient().exec(boxId, `printf '%s\n' ${shQuote(line)} >> ${logFileForMcp(slug)}`);
+  } catch (e) {
+    console.error(`[provision] could not write missing-secret notice for ${slug}:`, e);
+  }
+}
+
+/**
+ * Webhook (contract D5) for a server status transition. Fire-and-forget and
+ * never throws: a webhook problem must not break provisioning. No-op when the
+ * status did not change or the owner is unknown.
+ */
+function notifyStatusChange(
+  userId: string | null | undefined,
+  serverId: string,
+  from: ServerStatus | null | undefined,
+  to: ServerStatus
+): void {
+  if (!userId || from === to) return;
+  try {
+    emitWebhookEvent(userId, "server.status_changed", { serverId, from: from ?? null, to });
+  } catch (err) {
+    console.error(`[provision] status webhook failed for ${serverId}:`, err);
+  }
 }
 
 /**
@@ -187,11 +246,15 @@ export async function provisionServer(serverId: string): Promise<void> {
     return;
   }
 
+  // Last status written, for the status_changed webhook (D5).
+  let current: ServerStatus = srv.status;
   try {
     await db
       .update(servers)
       .set({ status: "provisioning", updatedAt: new Date() })
       .where(eq(servers.id, serverId));
+    notifyStatusChange(srv.userId, serverId, current, "provisioning");
+    current = "provisioning";
 
     const client = getBoxClient();
 
@@ -292,16 +355,26 @@ export async function provisionServer(serverId: string): Promise<void> {
 
     const installOne = async ({ inst, port }: (typeof toLaunch)[number]): Promise<void> => {
       try {
+        // Vault references resolved first: a missing secret fails this MCP
+        // before anything is installed, never starts it with a placeholder.
+        const config = await buildMcpConfig(srv.userId, inst);
         const { endpointUrl, token } = await setupMcpBridge(boxId, {
           slug: inst.mcpSlug,
           installCmd: inst.installCmd,
           startCmd: inst.startCmd,
           port,
-          config: decryptMcpConfig(inst),
+          config,
         });
         await persistEndpoint(inst.usId, port, endpointUrl, token);
         launchedSlugs.push(inst.mcpSlug);
       } catch (err) {
+        if (err instanceof MissingSecretError) {
+          // The user's config, not a platform bug: no Sentry, a clear log line.
+          console.warn(`[provision] MCP ${inst.mcpSlug} on ${serverId}: ${err.message}`);
+          await reportMissingSecrets(boxId, inst.mcpSlug, err);
+          failedSlugs.push(inst.mcpSlug);
+          return;
+        }
         console.error(`[provision] MCP ${inst.mcpSlug} failed on server ${serverId}:`, err);
         Sentry.captureException(err, {
           tags: { area: "provision", mcp: inst.mcpSlug },
@@ -333,23 +406,33 @@ export async function provisionServer(serverId: string): Promise<void> {
     // by the control plane, so it alone doesn't count as a working box runtime).
     const boxMcpCount = installations.filter((i) => i.mcpSlug !== TWINMCP_DOCS_SLUG).length;
     const allBoxMcpsFailed = boxMcpCount > 0 && launchedSlugs.length === 0;
+    const finalStatus: ServerStatus = allBoxMcpsFailed ? "error" : "running";
     await db
       .update(servers)
       .set({
-        status: allBoxMcpsFailed ? "error" : "running",
+        status: finalStatus,
         lastHeartbeatAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(servers.id, serverId));
+    notifyStatusChange(srv.userId, serverId, current, finalStatus);
   } catch (err) {
     console.error(`[provision] failed for server ${serverId}:`, err);
     await db
       .update(servers)
       .set({ status: "error", updatedAt: new Date() })
       .where(eq(servers.id, serverId));
+    notifyStatusChange(srv.userId, serverId, current, "error");
   }
 }
 
+/**
+ * "Delete runtime": destroy the server's box and everything on its disk
+ * (installed packages, files the MCPs wrote, logs). The server row, its MCP
+ * list and their encrypted configs are kept; status becomes `stopped` with no
+ * box (lib/server-lifecycle.ts: "no runtime"), and Start provisions a fresh box.
+ * Also the first half of Restart and of deleting the server.
+ */
 export async function destroyServerRuntime(serverId: string): Promise<void> {
   const db = getDb();
   const [srv] = await db.select().from(servers).where(eq(servers.id, serverId)).limit(1);
@@ -364,6 +447,20 @@ export async function destroyServerRuntime(serverId: string): Promise<void> {
     }
   }
 
+  await forgetRuntime(serverId, { userId: srv.userId, from: srv.status });
+}
+
+/**
+ * Forget a server's runtime in the DB only — box id, endpoints and tokens —
+ * WITHOUT calling the box API. For a box already gone upstream: a box that was
+ * misclassified as gone must never be destroyed by a Pause.
+ */
+export async function forgetRuntime(
+  serverId: string,
+  /** Owner and status before, for the status_changed webhook (omit to skip it). */
+  prev?: { userId: string | null | undefined; from: ServerStatus | null | undefined }
+): Promise<void> {
+  const db = getDb();
   // Clear stale per-MCP endpoints (the public URLs died with the box).
   await db
     .update(userServers)
@@ -385,6 +482,163 @@ export async function destroyServerRuntime(serverId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(servers.id, serverId));
+  if (prev) notifyStatusChange(prev.userId, serverId, prev.from, "stopped");
+}
+
+/** The box behind a server no longer exists (reaped or deleted upstream). */
+export class RuntimeGoneError extends Error {
+  constructor(serverId: string) {
+    super(`The runtime of server ${serverId} no longer exists`);
+    this.name = "RuntimeGoneError";
+  }
+}
+
+export type PauseOutcome =
+  /** The box is paused: compute released, disk kept. */
+  | "paused"
+  /** The box refused to pause (keep-alive): its bridges and public URLs are
+   *  stopped instead; the box and its disk are kept. */
+  | "bridges_stopped"
+  /** There was no box (or it was already gone): nothing left to pause. */
+  | "no_runtime";
+
+/**
+ * "Pause" (contract K4): stop serving without losing anything. The box is
+ * paused through the Upstash API, so installed packages, files and logs stay
+ * on its disk. Status becomes `stopped` while the box id is KEPT — that pair
+ * reads as "paused" (lib/server-lifecycle.ts). The proxy wakes it on the next
+ * MCP request (resumeServer), as does the Resume button.
+ */
+export async function pauseServerRuntime(serverId: string): Promise<PauseOutcome> {
+  const db = getDb();
+  const [srv] = await db
+    .select({
+      boxId: servers.boxId,
+      hostType: servers.hostType,
+      userId: servers.userId,
+      status: servers.status,
+    })
+    .from(servers)
+    .where(eq(servers.id, serverId))
+    .limit(1);
+  if (!srv) return "no_runtime";
+  if (srv.hostType === "local_agent") {
+    throw new Error("A local-agent server has no runtime to pause");
+  }
+
+  let outcome: PauseOutcome = "paused";
+  if (!srv.boxId) {
+    outcome = "no_runtime";
+  } else {
+    const boxId = srv.boxId;
+    const client = getBoxClient();
+    // A resume racing with this pause would relaunch the bridges after it.
+    await resuming.get(serverId)?.catch(() => {});
+    try {
+      await client.pause(boxId);
+    } catch (err) {
+      // Decide from the status probe only, never from the pause error: an
+      // unsupported or misrouted pause call can answer 404 / "not found" for a
+      // box that is alive, and Pause must never cost the user their data.
+      const status = await client.getStatus(boxId).catch((e: unknown) => e);
+      const next = pauseFailureAction(status);
+      if (next === "already_paused") {
+        // Already paused by the idle lifecycle: nothing to do.
+      } else if (next === "forget") {
+        // Provably gone upstream: forget it in the DB, no deleteBox call.
+        await forgetRuntime(serverId, { userId: srv.userId, from: srv.status });
+        return "no_runtime";
+      } else {
+        // Keep-alive boxes cannot be paused (SDK rule): stop serving instead,
+        // keeping the box and its disk. resumeServer relaunches the bridges.
+        console.warn(`[pause] box ${boxId} refused to pause, stopping its bridges:`, err);
+        await stopAllBridges(serverId, boxId);
+        outcome = "bridges_stopped";
+      }
+    }
+  }
+
+  // Box id and per-MCP endpoint rows are kept: resumeServer re-exposes the
+  // ports (deterministic URLs) and refreshes the tokens.
+  await db
+    .update(servers)
+    .set({ status: "stopped", updatedAt: new Date() })
+    .where(eq(servers.id, serverId));
+  notifyStatusChange(srv.userId, serverId, srv.status, "stopped");
+  return outcome;
+}
+
+/** Stop every enabled MCP bridge of a server and tear down its public URLs. */
+async function stopAllBridges(serverId: string, boxId: string): Promise<void> {
+  const rows = await getDb()
+    .select({ slug: mcpServers.slug, port: userServers.bridgePort })
+    .from(userServers)
+    .innerJoin(mcpServers, eq(mcpServers.id, userServers.mcpServerId))
+    .where(and(eq(userServers.serverId, serverId), eq(userServers.enabled, true)));
+  await Promise.all(
+    rows
+      .filter((r) => r.slug !== TWINMCP_DOCS_SLUG)
+      .map((r) => stopMcpBridge(boxId, r.slug, r.port))
+  );
+}
+
+/**
+ * Claim the right to provision a server that has no live runtime (`stopped`
+ * without a box, or `error`). Conditional, so of two concurrent Start clicks
+ * only one enqueues provision-server: two jobs could both see boxId null and
+ * each create (and bill) a box. The box id is kept: provisionServer reuses it
+ * when it is still alive.
+ */
+export async function claimProvision(serverId: string): Promise<boolean> {
+  const db = getDb();
+  // Read first only to know the `from` of the status webhook; the conditional
+  // update below stays the single source of truth for who wins.
+  const [before] = await db
+    .select({ userId: servers.userId, status: servers.status })
+    .from(servers)
+    .where(eq(servers.id, serverId))
+    .limit(1);
+  const won = await db
+    .update(servers)
+    .set({ status: "provisioning", updatedAt: new Date() })
+    .where(and(eq(servers.id, serverId), inArray(servers.status, ["stopped", "error"])))
+    .returning({ id: servers.id });
+  if (won.length === 0) return false;
+  notifyStatusChange(before?.userId, serverId, before?.status, "provisioning");
+  return true;
+}
+
+/**
+ * The box is gone for good: forget it and claim the right to reprovision.
+ * Conditional, so of many concurrent callers (a burst of proxy requests) only
+ * one gets `true` and enqueues the provision job — never two new boxes.
+ */
+export async function claimReprovision(serverId: string): Promise<boolean> {
+  const db = getDb();
+  // `from` for the status webhook only (see claimProvision).
+  const [before] = await db
+    .select({ userId: servers.userId, status: servers.status })
+    .from(servers)
+    .where(eq(servers.id, serverId))
+    .limit(1);
+  const won = await db
+    .update(servers)
+    .set({ status: "provisioning", boxId: null, endpointUrl: null, updatedAt: new Date() })
+    .where(and(eq(servers.id, serverId), notInArray(servers.status, ["provisioning", "destroyed"])))
+    .returning({ id: servers.id });
+  if (won.length === 0) return false;
+  notifyStatusChange(before?.userId, serverId, before?.status, "provisioning");
+  await db
+    .update(userServers)
+    .set({
+      endpointUrl: null,
+      bridgePort: null,
+      endpointTokenCiphertext: "",
+      endpointTokenIv: "",
+      endpointTokenTag: "",
+    })
+    .where(eq(userServers.serverId, serverId));
+  return true;
 }
 
 /**
@@ -397,6 +651,7 @@ export async function installMcpInBox(userServerId: string): Promise<void> {
   const [row] = await db
     .select({
       usId: userServers.id,
+      userId: userServers.userId,
       bridgePort: userServers.bridgePort,
       configCiphertext: userServers.configCiphertext,
       configIv: userServers.configIv,
@@ -418,6 +673,18 @@ export async function installMcpInBox(userServerId: string): Promise<void> {
   if (row.mcpSlug === TWINMCP_DOCS_SLUG) return; // proxy-handled
   if (row.serverStatus !== "running" || !row.serverBoxId) return; // deferred to next start
 
+  // Missing vault secret: leave the MCP down with a clear log line. Not thrown:
+  // a retry (QStash) cannot fix the user's config.
+  let config: Record<string, unknown>;
+  try {
+    config = await buildMcpConfig(row.userId, row);
+  } catch (err) {
+    if (!(err instanceof MissingSecretError)) throw err;
+    console.warn(`[install] MCP ${row.mcpSlug} on ${row.serverId}: ${err.message}`);
+    await reportMissingSecrets(row.serverBoxId, row.mcpSlug, err);
+    return;
+  }
+
   const port = row.bridgePort ?? (await reserveBridgePort(row.serverId, row.usId));
 
   const { endpointUrl, token } = await setupMcpBridge(row.serverBoxId, {
@@ -425,7 +692,7 @@ export async function installMcpInBox(userServerId: string): Promise<void> {
     installCmd: row.installCmd,
     startCmd: row.startCmd,
     port,
-    config: decryptMcpConfig(row),
+    config,
   });
   await persistEndpoint(row.usId, port, endpointUrl, token);
 
@@ -483,6 +750,7 @@ export async function reconfigureMcp(userServerId: string): Promise<void> {
   const [row] = await db
     .select({
       usId: userServers.id,
+      userId: userServers.userId,
       bridgePort: userServers.bridgePort,
       configCiphertext: userServers.configCiphertext,
       configIv: userServers.configIv,
@@ -504,6 +772,19 @@ export async function reconfigureMcp(userServerId: string): Promise<void> {
   if (row.mcpSlug === TWINMCP_DOCS_SLUG) return;
   if (row.serverStatus !== "running" || !row.serverBoxId) return; // deferred to next start
 
+  // Resolve vault references BEFORE stopping the running bridge: with a
+  // missing secret the old process keeps serving with its previous env and
+  // the log says why the new config was not applied.
+  let config: Record<string, unknown>;
+  try {
+    config = await buildMcpConfig(row.userId, row);
+  } catch (err) {
+    if (!(err instanceof MissingSecretError)) throw err;
+    console.warn(`[reconfigure] MCP ${row.mcpSlug} on ${row.serverId}: ${err.message}`);
+    await reportMissingSecrets(row.serverBoxId, row.mcpSlug, err);
+    return;
+  }
+
   const port = row.bridgePort ?? (await reserveBridgePort(row.serverId, row.usId));
   // Stop the old process and release its URL before relaunching on the same port.
   await stopMcpBridge(row.serverBoxId, row.mcpSlug, row.bridgePort);
@@ -513,7 +794,7 @@ export async function reconfigureMcp(userServerId: string): Promise<void> {
     installCmd: row.installCmd,
     startCmd: row.startCmd,
     port,
-    config: decryptMcpConfig(row),
+    config,
   });
   await persistEndpoint(row.usId, port, endpointUrl, token);
   await syncInitScript(row.serverId, row.serverBoxId);
@@ -538,12 +819,28 @@ async function syncInitScript(serverId: string, boxId: string): Promise<void> {
  * boxes release their processes AND their port exposure on pause, so: resume →
  * re-run the launcher init script → re-expose each MCP port (the URL is
  * deterministic, so it returns the same) → refresh the stored token (it may
- * rotate). Called by the proxy on the first request after an idle pause.
+ * rotate). Called by the proxy on the first request after an idle pause or a
+ * user Pause, and by the Resume button.
+ *
+ * Single-flight per server (per process): a burst of requests hitting a paused
+ * box shares one wake-up instead of re-running the init script N times.
+ * Throws RuntimeGoneError when the box provably no longer exists, so callers
+ * can reprovision instead of marking a dead box `running`.
  */
-export async function resumeServer(serverId: string): Promise<void> {
+const resuming = new Map<string, Promise<void>>();
+
+export function resumeServer(serverId: string): Promise<void> {
+  const inflight = resuming.get(serverId);
+  if (inflight) return inflight;
+  const p = doResumeServer(serverId).finally(() => resuming.delete(serverId));
+  resuming.set(serverId, p);
+  return p;
+}
+
+async function doResumeServer(serverId: string): Promise<void> {
   const db = getDb();
   const [srv] = await db
-    .select({ boxId: servers.boxId })
+    .select({ boxId: servers.boxId, userId: servers.userId, status: servers.status })
     .from(servers)
     .where(eq(servers.id, serverId))
     .limit(1);
@@ -551,9 +848,22 @@ export async function resumeServer(serverId: string): Promise<void> {
   const boxId = srv.boxId;
   const client = getBoxClient();
 
-  await client.resume(boxId).catch(() => {});
+  let resumeErr: unknown = null;
+  await client.resume(boxId).catch((err: unknown) => {
+    resumeErr = err;
+  });
+  // Like Pause: never conclude "gone" from the resume error itself (a 404 from
+  // the resume endpoint is not proof) — the status probe below decides.
+  if (resumeErr) console.warn(`[resume] resume call failed for ${serverId}:`, resumeErr);
   for (let i = 0; i < 20; i++) {
-    const s = await client.getStatus(boxId).catch(() => "unknown");
+    let s: string;
+    try {
+      s = await client.getStatus(boxId);
+    } catch (err) {
+      if (isRuntimeGone(err)) throw new RuntimeGoneError(serverId);
+      s = "unknown"; // transient: keep polling
+    }
+    if (isRuntimeGone(s)) throw new RuntimeGoneError(serverId);
     if (s === "running" || s === "idle") break;
     await new Promise((r) => setTimeout(r, 1500));
   }
@@ -591,4 +901,5 @@ export async function resumeServer(serverId: string): Promise<void> {
     .update(servers)
     .set({ status: "running", lastHeartbeatAt: new Date(), updatedAt: new Date() })
     .where(eq(servers.id, serverId));
+  notifyStatusChange(srv.userId, serverId, srv.status, "running");
 }

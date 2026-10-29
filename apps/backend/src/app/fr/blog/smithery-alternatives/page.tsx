@@ -9,7 +9,7 @@ const post = {
   slug: "smithery-alternatives",
   title: "Les meilleures alternatives à Smithery pour héberger un serveur MCP (2026)",
   description:
-    "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, accès équipe.",
+    "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, clés API.",
   publishedAt: "2026-10-01",
   readingTimeMinutes: 10,
   tags: ["mcp", "smithery", "alternatives", "hébergement", "comparaison"],
@@ -58,10 +58,19 @@ export default function Post() {
         <strong>En bref.</strong> Smithery est un excellent choix quand tous les MCP dont vous avez
         besoin sont publics et open-source, et que l&apos;infrastructure partagée ne vous dérange
         pas. Dès que vous avez besoin de <em>code privé</em>, d&apos;une vraie <em>isolation</em>,
-        de <em>secrets</em> par serveur ou de <em>contrôles d&apos;accès équipe</em>, il vous faut
-        un autre outil. Ce guide couvre les quatre familles d&apos;alternative à Smithery &mdash;
-        runtimes gérés, autres registres publics, auto-hébergement et serverless &mdash; et comment
-        choisir.
+        de <em>secrets</em> par serveur ou de <em>journaux d&apos;audit et de rotation des clés</em>
+        , il vous faut un autre outil. Ce guide couvre les quatre familles d&apos;alternative à
+        Smithery &mdash; runtimes gérés, autres registres publics, auto-hébergement et serverless
+        &mdash; et comment choisir.
+      </p>
+      <p>
+        <strong>Mise à jour, octobre 2026.</strong> Smithery a annoncé l&apos;arrêt de son proxy
+        hébergé, des URL de serveurs, de son API et des comptes le 31 octobre 2026 (
+        <a href="https://smithery.ai/future" target="_blank" rel="noopener noreferrer">
+          smithery.ai/future
+        </a>
+        ). Si vos MCP tournent encore chez Smithery, la marche à suivre pas à pas est dans{" "}
+        <Link href={"/fr/migrer-depuis-smithery" as Route}>Migrer depuis Smithery</Link>.
       </p>
 
       <h2 id="why-alternative">Pourquoi chercher une alternative à Smithery</h2>
@@ -85,9 +94,8 @@ export default function Post() {
           accès en écriture réel, vous voulez généralement un bac à sable qui est le vôtre.
         </li>
         <li>
-          <strong>Contrôles d&apos;équipe.</strong> Clés par utilisateur, journaux d&apos;audit et
-          rotation des clés deviennent des besoins de premier plan dès que plus d&apos;une personne
-          est impliquée.
+          <strong>Contrôle des accès.</strong> Plusieurs clés API, journaux d&apos;audit et rotation
+          des clés deviennent indispensables dès qu&apos;un serveur détient de vrais identifiants.
         </li>
       </ul>
       <p>
@@ -139,8 +147,8 @@ export default function Post() {
         Il garde ce qui rend Smithery agréable &mdash; aucun déploiement, un seul token, un
         catalogue installable &mdash; et retire le plafond : code privé, isolation par serveur,
         journaux d&apos;audit et rotation des clés en fonctionnalités de premier plan. L&apos;
-        <Link href={"/plans" as Route}>offre gratuite</Link> vous donne un serveur et le catalogue
-        complet sans carte bancaire, donc le changement ne coûte rien à essayer.
+        <Link href={"/fr/tarifs" as Route}>offre gratuite</Link> vous donne un serveur et le
+        catalogue complet sans carte bancaire, donc le changement ne coûte rien à essayer.
       </p>
 
       <h2 id="registries">2. Les autres registres et annuaires publics</h2>
@@ -214,7 +222,7 @@ export default function Post() {
             <td>Serverless</td>
           </tr>
           <tr>
-            <td>Clés d&apos;équipe, journaux d&apos;audit, rotation</td>
+            <td>Plusieurs clés API, journaux d&apos;audit, rotation</td>
             <td>Runtime géré ou auto-hébergement</td>
           </tr>
         </tbody>
@@ -231,9 +239,17 @@ export default function Post() {
           serveur MCP géré vs auto-hébergé
         </Link>
         . Et pour essayer la voie gérée sans vous engager, le{" "}
-        <Link href={"/servers" as Route}>catalogue MCP</Link> et l&apos;
-        <Link href={"/plans" as Route}>offre gratuite</Link> vous donnent un serveur isolé et tous
-        les MCP populaires en quelques minutes.
+        <Link href={"/fr/serveurs" as Route}>catalogue MCP</Link> et l&apos;
+        <Link href={"/fr/tarifs" as Route}>offre gratuite</Link> vous donnent un serveur isolé et
+        tous les MCP populaires en quelques minutes.
+      </p>
+      <p>
+        Le comparatif sourcé{" "}
+        <Link href={"/fr/comparer/smithery" as Route}>
+          TwinMCP ou Smithery après la fermeture du 31 octobre
+        </Link>{" "}
+        détaille ce qui s&apos;arrête et comment migrer. Pour TwinMCP face à Composio et à
+        l&apos;auto-hébergement, voir <Link href={"/fr/comparer" as Route}>Comparer TwinMCP</Link>.
       </p>
     </FrPostLayout>
   );

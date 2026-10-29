@@ -12,7 +12,9 @@ describe("checkRateLimit — fail-open without Redis", () => {
     delete process.env.UPSTASH_REDIS_REST_URL;
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
     ({ checkRateLimit } = await import("../lib/rate-limit"));
-  });
+    // The dynamic import pulls @upstash/ratelimit + @sentry/nextjs; a cold
+    // collect under a full-suite run can take well over the 10 s default.
+  }, 30_000);
 
   it("returns ok:true (does not throw) when Redis is unavailable", async () => {
     const res = await checkRateLimit("user_test", "free");

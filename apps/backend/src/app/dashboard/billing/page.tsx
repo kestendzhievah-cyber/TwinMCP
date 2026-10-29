@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SubscriptionConversion } from "@/components/analytics/ads-conversion";
 import { getCheckoutConversion } from "@/lib/billing/checkout-conversion";
+import { getDailyLimit } from "@/lib/rate-limit";
 
 export default async function BillingPage({
   searchParams,
@@ -67,6 +68,7 @@ export default async function BillingPage({
         cancelAtPeriodEnd={userRow?.cancelAtPeriodEnd ?? false}
         subscriptionStatus={userRow?.subscriptionStatus ?? null}
         hasStripeCustomer={Boolean(userRow?.stripeCustomerId)}
+        proDailyLimit={getDailyLimit("pro")}
       />
     </div>
   );

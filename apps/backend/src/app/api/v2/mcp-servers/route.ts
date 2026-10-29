@@ -4,7 +4,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mcpServers, users } from "@/db/schema";
 import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { requireManagementUser } from "@/lib/session";
 import { createMcpServerSchema } from "@/lib/validation/platform";
 import { can, minPlanFor, PLAN_LABELS } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
@@ -16,8 +16,8 @@ const PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 
 export async function GET(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim();
@@ -73,8 +73,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   let body: unknown;
   try {

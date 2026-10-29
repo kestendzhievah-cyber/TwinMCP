@@ -67,7 +67,7 @@ const faq = [
   },
   {
     q: "Can multiple teammates share the same hosted Notion MCP?",
-    a: "The Team plan supports up to 10 members on shared servers; Pro is single-user; Free gives you one server slot total. Exact key-distribution semantics (one key per member vs shared) are documented in your dashboard.",
+    a: "Not as a team feature today: every TwinMCP account is single-user, with no member management. Free gives you one server; Pro gives you up to 50 servers and 20 API keys on your own account.",
   },
   {
     q: "How do I keep my integration scoped to a single workspace database?",

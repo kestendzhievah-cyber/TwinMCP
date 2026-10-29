@@ -175,8 +175,8 @@ export default function Post() {
         <strong>Prenez le géré</strong> quand vous voulez des serveurs MCP qui tournent dès
         aujourd&apos;hui sans assumer le bac à sable, le TLS, les secrets et la supervision &mdash;
         ce qui est le cas de la plupart des équipes, la plupart du temps. C&apos;est aussi la voie
-        la plus rapide vers des serveurs privés partagés en équipe : provisionner, installer,
-        partager une URL et une clé.
+        la plus rapide vers des serveurs privés : provisionner, installer, puis vous connecter avec
+        une URL et une clé.
       </p>
 
       <h2 id="migration">La migration va dans les deux sens</h2>
@@ -198,9 +198,9 @@ export default function Post() {
         </Link>
         , et si vous hésitez entre un catalogue public et faire tourner le vôtre, voyez les{" "}
         <Link href={"/fr/blog/smithery-alternatives" as Route}>alternatives à Smithery</Link>. Pour
-        essayer la voie gérée, l&apos;<Link href={"/plans" as Route}>offre gratuite</Link> vous
-        donne un serveur isolé et le <Link href={"/servers" as Route}>catalogue MCP</Link> complet
-        en quelques minutes.
+        essayer la voie gérée, l&apos;<Link href={"/fr/tarifs" as Route}>offre gratuite</Link> vous
+        donne un serveur isolé et le <Link href={"/fr/serveurs" as Route}>catalogue MCP</Link>{" "}
+        complet en quelques minutes.
       </p>
     </FrPostLayout>
   );

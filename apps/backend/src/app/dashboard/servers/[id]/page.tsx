@@ -3,7 +3,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { Route } from "next";
 import { formatDateTime } from "@/lib/format";
-import { AlertCircle, Zap } from "lucide-react";
+import { AlertCircle, PauseCircle, ServerOff, Zap } from "lucide-react";
+import { lifecycleState } from "@/lib/server-lifecycle";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers, users } from "@/db/schema";
@@ -13,6 +14,7 @@ import { ServerControls } from "./controls";
 import { InstalledMcps } from "./installed-mcps";
 import { ConnectPanel } from "./connect-panel";
 import { ServerStatusBadge } from "./server-status-badge";
+import { ServerNav } from "./activity/server-nav";
 // Lazy: the logs viewer (and its 2s polling) only mounts when the Logs tab is
 // opened — split it into its own chunk instead of the server-detail bundle.
 const LogsViewer = dynamic(() => import("./logs-viewer").then((m) => m.LogsViewer));
@@ -20,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
+import { IDE_LABELS, type IdeKey } from "@/lib/mcp/client-config";
 
 // Runtime facts are typeset as address lines: a small-caps label over its value.
 const factLabel = "smallcaps tracking-sc text-xs text-muted-foreground";
@@ -55,7 +58,11 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
       .from(servers)
       .where(and(eq(servers.id, id), eq(servers.userId, user.id)))
       .limit(1),
-    db.select({ plan: users.plan }).from(users).where(eq(users.id, user.id)).limit(1),
+    db
+      .select({ plan: users.plan, metadata: users.metadata })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1),
     db
       .select({
         id: userServers.id,
@@ -74,6 +81,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
       .where(eq(userServers.serverId, id)),
   ]);
   if (!srv) notFound();
+  const lifecycle = lifecycleState(srv);
 
   // Runtime mode: warm (always-on, no cold start) vs pause-when-idle. Gated by
   // plan + the WARM_BOXES_ENABLED ops switch — same decision as provisioning.
@@ -86,6 +94,13 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
     const props = (schema as { properties?: Record<string, unknown> }).properties ?? {};
     return Object.keys(props).length > 0;
   }
+
+  // The IDE picked during onboarding preselects the Connect panel's client.
+  const idePref = (me?.metadata as Record<string, unknown> | undefined)?.ide_preference;
+  const initialIde =
+    typeof idePref === "string" && Object.prototype.hasOwnProperty.call(IDE_LABELS, idePref)
+      ? (idePref as IdeKey)
+      : null;
 
   const installedOptions = installations.map((i) => ({ slug: i.mcpSlug, name: i.mcpName }));
 
@@ -102,14 +117,52 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <h1 className="smallcaps tracking-sc text-2xl font-medium">{srv.name}</h1>
-              <ServerStatusBadge serverId={srv.id} initialStatus={srv.status} />
+              <ServerStatusBadge
+                serverId={srv.id}
+                initialStatus={srv.status}
+                hostType={srv.hostType}
+                initialBoxId={srv.boxId}
+              />
             </div>
             <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{srv.slug}</p>
           </div>
-          <ServerControls serverId={srv.id} status={srv.status} />
+          <ServerControls
+            serverId={srv.id}
+            serverName={srv.name}
+            status={srv.status}
+            hostType={srv.hostType}
+            boxId={srv.boxId}
+          />
         </div>
         <Separator variant="double" className="mt-4" />
+        {/* Page-level sections (real routes): Overview · Try it · Activity. */}
+        <div className="mt-4">
+          <ServerNav serverId={srv.id} />
+        </div>
       </div>
+
+      {/* `stopped` reads two ways (lib/server-lifecycle.ts): paused with its
+          box kept, or no runtime at all. Say which, in plain words. */}
+      {lifecycle === "paused" && (
+        <div className="flex items-start gap-2 border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+          <PauseCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            <strong className="font-medium">Paused.</strong> The box and its data are kept. The next
+            MCP request wakes it after a short delay, or press{" "}
+            <strong className="font-medium">Resume</strong>.
+          </p>
+        </div>
+      )}
+      {lifecycle === "no_runtime" && (
+        <div className="flex items-start gap-2 border border-border border-l-2 border-l-foreground/40 bg-secondary px-3 py-2 text-sm text-muted-foreground">
+          <ServerOff className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            <strong className="font-medium text-foreground">No runtime.</strong> Your MCPs and their
+            configuration are saved. <strong className="font-medium text-foreground">Start</strong>{" "}
+            creates a fresh box and installs them.
+          </p>
+        </div>
+      )}
 
       {srv.status === "error" && (
         // An oxblood memo (DESIGN.md §5 callouts): tint, hairline, a rule down the left.
@@ -200,6 +253,8 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
 
           <ConnectPanel
             serverSlug={srv.slug}
+            serverName={srv.name}
+            initialIde={initialIde}
             hostType={srv.hostType}
             status={srv.status}
             mcps={installations.map((i) => ({

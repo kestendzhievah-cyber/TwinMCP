@@ -1,4 +1,5 @@
 import { Ratelimit } from "@upstash/ratelimit";
+import * as Sentry from "@sentry/nextjs";
 import { getRedis } from "@/lib/redis";
 
 // Rate limits applied to authenticated dashboard operations (API key
@@ -56,19 +57,29 @@ export async function checkAuthWriteLimit(
 
   const key = `${userId}:${action}`;
 
-  const burst = await limiters.burst.limit(key);
-  if (!burst.success) {
-    return { ok: false, window: "burst", reset: burst.reset, limit: burst.limit };
-  }
+  // Fail-open on a network/DNS failure too. `.limit()` throws (e.g. "fetch
+  // failed — getaddrinfo ENOTFOUND <host>.upstash.io") when the Redis REST host
+  // is unreachable or no longer exists. That must not turn API-key creation or
+  // billing into a 500: a missing abuse limit is far less bad than a locked-out
+  // dashboard. Mirrors lib/rate-limit.ts. Surfaced via warn + Sentry.
+  try {
+    const burst = await limiters.burst.limit(key);
+    if (!burst.success) {
+      return { ok: false, window: "burst", reset: burst.reset, limit: burst.limit };
+    }
 
-  const sustained = await limiters.sustained.limit(key);
-  if (!sustained.success) {
-    return {
-      ok: false,
-      window: "sustained",
-      reset: sustained.reset,
-      limit: sustained.limit,
-    };
+    const sustained = await limiters.sustained.limit(key);
+    if (!sustained.success) {
+      return {
+        ok: false,
+        window: "sustained",
+        reset: sustained.reset,
+        limit: sustained.limit,
+      };
+    }
+  } catch (err) {
+    console.warn("[auth rate-limit] disabled — Upstash Redis unreachable:", err);
+    Sentry.captureException(err, { tags: { area: "auth-rate-limit", action } });
   }
 
   return { ok: true };

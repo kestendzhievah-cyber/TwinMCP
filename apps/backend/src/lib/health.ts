@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers } from "@/db/schema/platform";
 import { getBoxClient } from "@/lib/upstash/box-client";
+import { emitWebhookEvent } from "@/lib/webhooks/emit";
 
 // Box statuses that mean "gone for good" → the server should flip to `error`.
 // getStatus() THROWS ("Box has been deleted") when a box is reaped, which we
@@ -35,12 +36,14 @@ export async function reconcileServerHealth(): Promise<{
 }> {
   const db = getDb();
   const running = await db
-    .select({ id: servers.id, boxId: servers.boxId })
+    .select({ id: servers.id, boxId: servers.boxId, userId: servers.userId, slug: servers.slug })
     .from(servers)
     .where(eq(servers.status, "running"));
 
   const client = getBoxClient();
-  const withBox = running.filter((s): s is { id: string; boxId: string } => !!s.boxId);
+  const withBox = running.filter(
+    (s): s is (typeof running)[number] & { boxId: string } => !!s.boxId
+  );
 
   // Check box status concurrently (getStatus is a read-only metadata call that
   // does NOT resume a paused box), bounded so a large fleet doesn't hammer the
@@ -76,6 +79,23 @@ export async function reconcileServerHealth(): Promise<{
   }
   const errored = deadIds.length;
 
+  // Webhooks (fire-and-forget): the health check failed, and the server went
+  // running → error. Metadata only.
+  if (deadIds.length > 0) {
+    const dead = new Set(deadIds);
+    for (const s of running) {
+      if (!dead.has(s.id)) continue;
+      const base = { serverId: s.id, serverSlug: s.slug };
+      emitWebhookEvent(s.userId, "server.health_failed", { ...base, reason: "box_gone" });
+      emitWebhookEvent(s.userId, "server.status_changed", {
+        ...base,
+        from: "running",
+        to: "error",
+        reason: "health_check_failed",
+      });
+    }
+  }
+
   // Rescue servers wedged in `provisioning` — a provisioning job that died and,
   // in inline queue mode, never retried. Flip them to `error` so the dashboard
   // stops showing a misleading "provisioning" badge and the user can retry.
@@ -84,7 +104,16 @@ export async function reconcileServerHealth(): Promise<{
     .update(servers)
     .set({ status: "error", updatedAt: new Date() })
     .where(and(eq(servers.status, "provisioning"), lt(servers.updatedAt, cutoff)))
-    .returning({ id: servers.id });
+    .returning({ id: servers.id, userId: servers.userId, slug: servers.slug });
+  for (const s of stuck) {
+    emitWebhookEvent(s.userId, "server.status_changed", {
+      serverId: s.id,
+      serverSlug: s.slug,
+      from: "provisioning",
+      to: "error",
+      reason: "provisioning_timed_out",
+    });
+  }
   if (stuck.length > 0) {
     console.warn(
       `[reconcile] ${stuck.length} server(s) stuck in provisioning past ${Math.round(
@@ -96,6 +125,12 @@ export async function reconcileServerHealth(): Promise<{
       "warning"
     );
   }
+
+  // Webhook retries whose in-memory timer was lost (inline queue + restart).
+  // Rides on this scheduled job; never blocks or fails it.
+  void import("@/lib/webhooks/deliver")
+    .then(({ retryDueDeliveries }) => retryDueDeliveries())
+    .catch((err) => console.warn("[reconcile] webhook retry sweep failed:", err));
 
   return { checked: running.length, errored, stuckProvisioning: stuck.length };
 }

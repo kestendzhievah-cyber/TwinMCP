@@ -1,14 +1,30 @@
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { UseCaseLayout } from "@/components/use-cases/use-case-layout";
-import { getUseCaseBySlug } from "@/lib/use-cases/registry";
+import { getUseCaseBySlug, type UseCase } from "@/lib/use-cases/registry";
 
 const SLUG = "github-mcp";
-const useCase = getUseCaseBySlug(SLUG)!;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
+// Honesty note: TwinMCP does NOT host GitHub's MCP server. GitHub's official
+// github-mcp-server ships as a Go binary / Docker image, which has no viable
+// runtime in a TwinMCP box, so the catalogue entry is retired (RETIRED_SLUGS in
+// scripts/seed-mcps.ts, NOT_ON_TWINMCP in lib/servers/catalog.ts). This page
+// says what works today instead. The hero copy is overridden here so the page
+// never promises a hosted GitHub MCP, whatever the registry entry says.
+const useCase: UseCase = {
+  ...getUseCaseBySlug(SLUG)!,
+  metaTitle: "GitHub MCP: what works today, and how to bring your own — TwinMCP",
+  description:
+    "TwinMCP does not host GitHub's official MCP server. Here is what works today: GitHub's own remote MCP server, your own npm or PyPI GitHub MCP published on TwinMCP Pro, and the GitLab and Git MCPs from the catalogue.",
+  heroEyebrow: "GitHub connector",
+  heroHeadline: "GitHub MCP: what works today",
+  heroSubheadline:
+    "TwinMCP does not host GitHub's official MCP server. You can still give your AI agent GitHub context: connect GitHub's own remote server, or bring a Node or Python GitHub MCP and run it on your TwinMCP server.",
+};
+
 export const metadata: Metadata = {
-  title: useCase.metaTitle,
+  title: { absolute: useCase.metaTitle },
   description: useCase.description,
   alternates: { canonical: `/use-cases/${SLUG}` },
   openGraph: {
@@ -20,66 +36,67 @@ export const metadata: Metadata = {
 
 const benefits = [
   {
-    title: "GitHub's official MCP server, hosted",
-    body: "Runs GitHub's own github-mcp-server (the maintained successor to Anthropic's deprecated @modelcontextprotocol/server-github) in an isolated sandbox. Same tools, none of the laptop-token risk.",
+    title: "Bring your own GitHub MCP",
+    body: "On Pro, publish a GitHub MCP that ships as an npm or PyPI package as your own MCP: TwinMCP installs and starts it in your isolated server. It stays private to your account. You choose the package and keep it up to date; TwinMCP does not maintain it.",
   },
   {
-    title: "Per-user personal access tokens",
-    body: "Each TwinMCP user provides their own scoped GitHub PAT. The model sees what you can see — no shared bot account, no permission ambiguity.",
+    title: "Your token, encrypted per server",
+    body: "Declare the GitHub token as a secret config field when you publish. The value you paste is encrypted at rest (AES-256-GCM) and only used by that server, never by another account.",
   },
   {
-    title: "Tool-call audit logs",
-    body: "Tool invocations are captured in audit logs (30-day retention on Pro, 90-day on Team) with timestamps. Compliance-friendly out of the box.",
+    title: "Git and GitLab from the catalogue",
+    body: "If you need repository context rather than GitHub's API, the official catalogue has a Git MCP (status, log, diff, branches of a repo in your box) and a GitLab MCP (projects, files, issues, merge requests).",
   },
 ];
 
 const steps = [
   {
-    title: "Generate a scoped GitHub PAT",
-    body: "From GitHub Settings → Developer settings → Personal access tokens, create a fine-grained PAT scoped to the repositories the AI should see. Read-only contents + read-only pull requests covers most use cases.",
+    title: "Pick the route that fits",
+    body: "Need GitHub's full official toolset? Connect GitHub's own remote MCP server directly from your AI client; TwinMCP is not involved. Need it next to your other MCPs, behind one API key? Bring a Node or Python GitHub MCP to TwinMCP.",
   },
   {
-    title: "Install the GitHub MCP from the TwinMCP marketplace",
-    body: "One click in the dashboard. Paste the PAT into the encrypted secret field; TwinMCP stores it hashed and only decrypts at runtime.",
+    title: "Create a scoped GitHub token",
+    body: "From GitHub Settings → Developer settings → Personal access tokens, create a fine-grained token limited to the repositories the AI should see. Read-only contents and pull requests cover most uses.",
   },
   {
-    title: "Connect Cursor, Claude, or Windsurf",
-    body: "Copy the host-specific snippet from your dashboard. URL plus Authorization bearer is all your AI client needs.",
+    title: "Publish the MCP on your TwinMCP server (Pro)",
+    body: "In the dashboard, publish your own MCP: the npm or PyPI start command (run with npx or uvx) and a secret field for the token. Install it on a server and paste the token.",
   },
   {
-    title: "Ask the model to look at your repos",
-    body: 'Triggers like "summarize the open PRs on repo X" or "find issues mentioning rate limit" make the AI call the GitHub MCP automatically.',
+    title: "Connect Cursor, Claude Code, Windsurf or VS Code",
+    body: "Copy the block from the server's Connect panel: one URL for the whole server (recommended), plus an MCP-proxy ctx7sk_ key bound to that server in the Authorization header.",
   },
 ];
 
 const faq = [
   {
-    q: "What can the GitHub MCP do, exactly?",
-    a: "List repositories, read file contents, browse and comment on pull requests, list and create issues, create branches, inspect GitHub Actions runs. The full tool list is documented at github.com/github/github-mcp-server (GitHub's official server) and visible in your TwinMCP dashboard once installed.",
+    q: "Does TwinMCP host GitHub's official MCP server?",
+    a: "No. GitHub's official server (github.com/github/github-mcp-server) ships as a Go binary and a Docker image, and neither runs in a TwinMCP sandbox today, so it is not in the catalogue. GitHub documents its own hosted (remote) version of that server; see that repository for the current endpoint and setup.",
   },
   {
-    q: "How scoped should my GitHub PAT be?",
-    a: "Use a fine-grained PAT, restrict it to the specific repositories the AI should access, and grant read-only scopes by default. Add write scopes (issues, pull requests) only if you specifically want the model to create them.",
+    q: "Can I run a GitHub MCP on TwinMCP at all?",
+    a: "Yes, on Pro, if the server you want ships as an npm or PyPI package: publish it as your own MCP with its npx or uvx start command. It runs in your isolated server and stays private to your account. You pick and maintain the package; check that it is still maintained before you rely on it.",
   },
   {
-    q: "Can the AI accept its own pull requests?",
-    a: "Only if your PAT has the merge scope and the repository allows it. By default, the AI can comment and request reviews but not merge. We strongly recommend leaving merging to humans.",
+    q: "How scoped should my GitHub token be?",
+    a: "Use a fine-grained personal access token, restrict it to the repositories the AI should access, and grant read-only permissions by default. Add write permissions (issues, pull requests) only if you specifically want the model to create them.",
   },
   {
-    q: "Does the GitHub MCP work with GitHub Enterprise?",
-    a: "Yes. The upstream server accepts a custom API base URL. In your TwinMCP install dialog, set the GITHUB_API_URL field to your Enterprise endpoint (https://github.your-company.com/api/v3).",
+    q: "What works on the Free plan?",
+    a: "The official catalogue on one small server, with 50 tool calls a day. That includes the Git MCP (inspect a repository inside your box) and the GitLab MCP. Publishing your own MCP, which a GitHub MCP needs, is a Pro feature; your first Pro subscription starts with 30 days free.",
   },
   {
-    q: "What happens if my GitHub PAT expires?",
-    a: "GitHub returns 401 on every tool call. The AI host shows a red dot next to the server. Update the PAT in your TwinMCP dashboard — once you replace the upstream GitHub token, the new value takes effect on the next request. (Your TwinMCP API key — the one Cursor or Claude uses to reach the server — is separate; rotating that one uses a short grace period to avoid downtime.)",
+    q: "What happens if my GitHub token expires?",
+    a: "GitHub rejects the calls and the MCP's tools return errors to your AI client. Paste a new token into the MCP's config in your TwinMCP dashboard; the new value is used on the next request. Your TwinMCP API key, the one your client uses to reach the server, is separate.",
   },
 ];
 
-// The tool catalogue is typeset as a ledger: mono slug, hairline rows (DESIGN.md §4.5).
+// The routes are typeset as a ledger: name, where it runs, hairline rows (DESIGN.md §4.5).
 const ledgerRow =
   "grid gap-1 border-b border-border py-4 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8";
-const ledgerName = "font-mono text-sm font-medium text-foreground";
+const ledgerName = "text-base font-medium text-foreground";
 const ledgerBody = "text-base text-muted-foreground";
+const LINK = "text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand";
 
 export default function GithubMcpPage() {
   return (
@@ -87,14 +104,13 @@ export default function GithubMcpPage() {
       <section className="rule-double py-16 md:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-            Tools
+            Routes
           </p>
           <h2 className="mt-4 text-balance text-3xl font-medium md:text-4xl">
-            What the AI can do with the GitHub MCP
+            Four ways to give your agent GitHub or Git context
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            A non-exhaustive list of the tools your AI host (Cursor, Claude, Windsurf) gets when you
-            connect the hosted GitHub MCP:
+            What each route needs and where it runs. Only the last three involve TwinMCP.
           </p>
         </div>
         <div className="mx-auto mt-12 max-w-3xl">
@@ -102,44 +118,47 @@ export default function GithubMcpPage() {
             aria-hidden
             className="smallcaps tracking-sc hidden border-b border-foreground/50 pb-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8"
           >
-            <span>Tool</span>
-            <span>What it does</span>
+            <span>Route</span>
+            <span>What it involves</span>
           </div>
           <ul className="border-t border-foreground/50 sm:border-t-0">
             <li className={ledgerRow}>
-              <strong className={ledgerName}>list_repositories</strong>
-              <span className={ledgerBody}>Enumerate the repos your PAT can see.</span>
-            </li>
-            <li className={ledgerRow}>
-              <strong className={ledgerName}>get_file_contents</strong>
-              <span className={ledgerBody}>Read any file from a repo at a specific ref.</span>
-            </li>
-            <li className={ledgerRow}>
-              <strong className={ledgerName}>list_pull_requests</strong>
+              <strong className={ledgerName}>GitHub&apos;s remote server</strong>
               <span className={ledgerBody}>
-                Browse open / closed / merged PRs across the repos in scope.
+                Run by GitHub. Your AI client connects to it directly with GitHub credentials; see{" "}
+                <span className="font-mono text-sm">github.com/github/github-mcp-server</span>.
               </span>
             </li>
             <li className={ledgerRow}>
-              <strong className={ledgerName}>create_pull_request</strong>
-              <span className={ledgerBody}>Open a PR (write scope required).</span>
+              <strong className={ledgerName}>Your own GitHub MCP</strong>
+              <span className={ledgerBody}>
+                On TwinMCP Pro: an npm or PyPI GitHub MCP published as your own MCP, with your token
+                as an encrypted secret.
+              </span>
             </li>
             <li className={ledgerRow}>
-              <strong className={ledgerName}>create_issue</strong>
-              <span className={ledgerBody}>File an issue with title, body, labels, assignees.</span>
+              <strong className={ledgerName}>Git MCP</strong>
+              <span className={ledgerBody}>
+                Official catalogue, any plan: status, log, diff, show and branches of a repository
+                inside your box.
+              </span>
             </li>
             <li className={ledgerRow}>
-              <strong className={ledgerName}>get_workflow_run</strong>
-              <span className={ledgerBody}>Inspect CI runs to debug failing pipelines.</span>
+              <strong className={ledgerName}>GitLab MCP</strong>
+              <span className={ledgerBody}>
+                Official catalogue, any plan: projects, files, issues and merge requests, with a
+                GitLab access token.
+              </span>
             </li>
           </ul>
           <p className="mt-8 text-sm text-muted-foreground">
-            Looking for the broader catalogue of MCPs worth installing?{" "}
-            <Link
-              href={"/blog/production-mcp-servers" as Route}
-              className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
-            >
-              Browse 10 production-ready MCP servers
+            Moving off Smithery?{" "}
+            <Link href={"/migrate-from-smithery" as Route} className={LINK}>
+              See the migration guide
+            </Link>
+            . Looking for other MCPs worth installing?{" "}
+            <Link href={"/blog/production-mcp-servers" as Route} className={LINK}>
+              Browse production-ready MCP servers
             </Link>
             .
           </p>

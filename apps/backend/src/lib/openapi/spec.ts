@@ -9,6 +9,10 @@ import {
   updateUserServerSchema,
   configSchemaShape,
 } from "@/lib/validation/platform";
+// Enums straight from the schema, so the docs page can't drift from the DB.
+import { boxSizes, hostTypes, mcpRuntimes, serverStatuses } from "@/db/schema/platform";
+import { KEY_SCOPES, ROTATION_OVERLAP_MS } from "@/lib/auth/key-scope";
+import { cliCommand } from "@/lib/cli";
 
 const VERSION = "1.0.0";
 
@@ -20,20 +24,58 @@ const ErrorResponse = z
   .object({ message: z.string() })
   .openapi("ErrorResponse", { description: "Standard error envelope" });
 
+// 429s from the API-key routes (MCP proxy, context, libs/search) carry the
+// window details from lib/errors.ts rateLimited() next to the message.
+const RateLimitError = z
+  .object({
+    message: z.string(),
+    limit: z.number().int().describe("Requests allowed per window (the plan's daily quota)"),
+    remaining: z.number().int().describe("Requests left in the window (0 once rejected)"),
+    resetsAt: z.string().datetime().describe("When the window resets (next UTC midnight)"),
+    plan: z.enum(["free", "pro", "team"]).optional(),
+    upgradeUrl: z.string().url().optional().describe("Where to raise the limit (Free accounts)"),
+  })
+  .openapi("RateLimitError", {
+    description: "Rate-limit error envelope: the message plus the window details when known",
+  });
+
+const RATE_LIMIT_HEADERS = {
+  "Retry-After": {
+    description: "Seconds until the window resets",
+    schema: { type: "integer" as const },
+  },
+  "X-RateLimit-Limit": {
+    description: "Requests allowed per window",
+    schema: { type: "integer" as const },
+  },
+  "X-RateLimit-Remaining": {
+    description: "Requests left in the window",
+    schema: { type: "integer" as const },
+  },
+  "X-RateLimit-Reset": {
+    description: "When the window resets, as epoch seconds",
+    schema: { type: "integer" as const },
+  },
+};
+
 const OkResponse = z.object({ ok: z.literal(true) }).openapi("OkResponse");
 
-const ServerStatus = z
-  .enum(["provisioning", "running", "stopped", "error", "destroyed"])
-  .openapi("ServerStatus");
+const ServerStatus = z.enum(serverStatuses).openapi("ServerStatus");
 
 const Server = z
   .object({
     id: z.string(),
     name: z.string(),
     slug: z.string(),
-    hostType: z.enum(["upstash_box", "external_url"]),
+    hostType: z
+      .enum(hostTypes)
+      .describe(
+        "upstash_box: an isolated Upstash Box runs the MCPs; external_url: an MCP you host yourself; local_agent: tools run on your machine via `" +
+          cliCommand("connect", "--server", "<slug>") +
+          "`"
+      ),
     boxId: z.string().nullable(),
-    boxSize: z.enum(["small", "medium", "large"]),
+    boxSize: z.enum(boxSizes),
     region: z.string().nullable(),
     endpointUrl: z.string().nullable(),
     status: ServerStatus,
@@ -49,7 +91,7 @@ const McpServer = z
     slug: z.string(),
     name: z.string(),
     description: z.string(),
-    runtime: z.enum(["node", "node-alpine", "python", "python-alpine", "go", "golang-alpine", "ruby", "rust"]),
+    runtime: z.enum(mcpRuntimes),
     version: z.string(),
     repoUrl: z.string().nullable(),
     isOfficial: z.boolean(),
@@ -76,12 +118,35 @@ const UserServer = z
   })
   .openapi("UserServer");
 
+const ApiKeyScope = z.enum(KEY_SCOPES).openapi("ApiKeyScope", {
+  description:
+    "full: the management API (servers, keys, billing, account) and every MCP of the account. mcp_proxy: only the MCP proxy (/api/mcp/…), optionally bound to one server; any other route answers 403.",
+});
+
 const ApiKey = z
   .object({
     id: z.string(),
     prefix: z.string(),
     name: z.string().nullable(),
+    scope: ApiKeyScope,
+    serverId: z
+      .string()
+      .nullable()
+      .describe("mcp_proxy only: the one server the key may call (null = any of your servers)"),
+    serverName: z.string().nullable(),
+    serverSlug: z.string().nullable(),
+    scopeLabel: z.string().describe('"Full access", "Proxy · <server>" or "Proxy · all servers"'),
     lastUsedAt: z.string().datetime().nullable(),
+    expiresAt: z
+      .string()
+      .datetime()
+      .nullable()
+      .describe(
+        "When the key stops working (set on a key replaced by a rotation, 24 h later); null = no expiry"
+      ),
+    countsTowardLimit: z
+      .boolean()
+      .describe("False for a replaced key in its rotation overlap: it no longer holds a plan slot"),
     createdAt: z.string().datetime(),
   })
   .openapi("ApiKey");
@@ -105,7 +170,7 @@ registry.registerComponent("securitySchemes", "bearerAuth", {
   scheme: "bearer",
   bearerFormat: "ctx7sk_…",
   description:
-    "API key authentication. Create one at /dashboard. Used by MCP clients and SDK.",
+    "API key authentication (create one at /dashboard). A key has a scope: `mcp_proxy` keys (the dashboard default, meant for IDE configs) only reach the MCP proxy, optionally for one server; `full` keys also reach the management API. A management route called with an `mcp_proxy` key answers 403. Revoked and expired keys answer 401.",
 });
 
 registry.registerComponent("securitySchemes", "cookieAuth", {
@@ -115,16 +180,24 @@ registry.registerComponent("securitySchemes", "cookieAuth", {
   description: "Supabase session cookie. Used by the dashboard.",
 });
 
-const sessionAuth = [{ cookieAuth: [] }];
+// Management routes: the dashboard cookie, or a `full`-scope API key.
+const sessionAuth: Array<Record<string, string[]>> = [{ cookieAuth: [] }, { bearerAuth: [] }];
 const apiKeyAuth = [{ bearerAuth: [] }];
-const eitherAuth = [{ cookieAuth: [] }, { bearerAuth: [] }];
 
 const errorResponses = {
   400: { description: "Bad request", content: { "application/json": { schema: ErrorResponse } } },
   401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponse } } },
-  403: { description: "Forbidden / quota exceeded", content: { "application/json": { schema: ErrorResponse } } },
+  403: {
+    description:
+      "Forbidden: quota exceeded, plan limit, or an `mcp_proxy` API key on a management route",
+    content: { "application/json": { schema: ErrorResponse } },
+  },
   404: { description: "Not found", content: { "application/json": { schema: ErrorResponse } } },
-  429: { description: "Rate limited", content: { "application/json": { schema: ErrorResponse } } },
+  429: {
+    description: "Rate limited (daily quota exhausted)",
+    headers: RATE_LIMIT_HEADERS,
+    content: { "application/json": { schema: RateLimitError } },
+  },
   500: { description: "Server error", content: { "application/json": { schema: ErrorResponse } } },
 };
 
@@ -141,9 +214,14 @@ registry.registerPath({
   path: "/api/v2/auth/keys",
   tags: ["API Keys"],
   summary: "List active API keys",
+  description:
+    "Keys that still work: not revoked and not expired. A key replaced by a rotation is listed with its `expiresAt` until it stops working.",
   security: sessionAuth,
   responses: {
-    200: { description: "OK", content: { "application/json": { schema: z.object({ keys: z.array(ApiKey) }) } } },
+    200: {
+      description: "OK",
+      content: { "application/json": { schema: z.object({ keys: z.array(ApiKey) }) } },
+    },
     ...errorResponses,
   },
 });
@@ -153,14 +231,66 @@ registry.registerPath({
   path: "/api/v2/auth/keys",
   tags: ["API Keys"],
   summary: "Create an API key (raw value returned once)",
+  description:
+    'Without `scope` the key is `full` (backward compatible). For a key that goes into an IDE config, send `scope: "mcp_proxy"` and, to bind it to one server, that server\'s `serverId` (one of your servers; only allowed with `mcp_proxy`).',
   security: sessionAuth,
-  request: { body: jsonBody(z.object({ name: z.string().min(1).max(80).optional() })) },
+  request: {
+    body: jsonBody(
+      z.object({
+        name: z.string().min(1).max(80).optional(),
+        scope: ApiKeyScope.optional().describe('Defaults to "full"'),
+        serverId: z.string().optional().describe('Only with scope "mcp_proxy"'),
+      })
+    ),
+  },
   responses: {
     201: {
       description: "Key created",
       content: {
         "application/json": {
-          schema: z.object({ id: z.string(), key: z.string(), prefix: z.string() }),
+          schema: z.object({
+            id: z.string(),
+            key: z.string().describe("The raw key, shown once"),
+            prefix: z.string(),
+            name: z.string().nullable(),
+            scope: ApiKeyScope,
+            serverId: z.string().nullable(),
+            serverName: z.string().nullable(),
+            scopeLabel: z.string(),
+            expiresAt: z.null(),
+          }),
+        },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/v2/auth/keys/{id}/rotate",
+  tags: ["API Keys"],
+  summary: "Rotate an API key",
+  description: `Mints a replacement key with the same name, scope and server binding. The old key keeps working for an overlap window (${ROTATION_OVERLAP_MS / 3_600_000} h, returned as \`oldKeyExpiresAt\`), then stops; it no longer holds a plan slot meanwhile, so rotation works at the plan limit. A key already replaced answers 409. Need the old key dead now? Revoke it (DELETE). The new key is returned once.`,
+  security: sessionAuth,
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    201: {
+      description: "Rotated",
+      content: {
+        "application/json": {
+          schema: z.object({
+            id: z.string(),
+            key: z.string().describe("The raw replacement key, shown once"),
+            prefix: z.string(),
+            name: z.string().nullable(),
+            scope: ApiKeyScope,
+            serverId: z.string().nullable(),
+            replacedKeyId: z.string(),
+            oldKeyExpiresAt: z.string().datetime().describe("When the replaced key stops working"),
+            overlapHours: z.number(),
+            message: z.string(),
+          }),
         },
       },
     },
@@ -173,9 +303,13 @@ registry.registerPath({
   path: "/api/v2/auth/keys/{id}",
   tags: ["API Keys"],
   summary: "Revoke an API key",
+  description: "Immediate, including for a key in its rotation overlap.",
   security: sessionAuth,
   request: { params: z.object({ id: z.string() }) },
-  responses: { 200: { description: "Revoked", content: { "application/json": { schema: OkResponse } } }, ...errorResponses },
+  responses: {
+    200: { description: "Revoked", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -189,7 +323,14 @@ registry.registerPath({
   summary: "Get current account info",
   security: sessionAuth,
   responses: {
-    200: { description: "OK", content: { "application/json": { schema: z.object({ id: z.string(), email: z.string(), plan: z.string() }) } } },
+    200: {
+      description: "OK",
+      content: {
+        "application/json": {
+          schema: z.object({ id: z.string(), email: z.string(), plan: z.string() }),
+        },
+      },
+    },
     ...errorResponses,
   },
 });
@@ -200,7 +341,54 @@ registry.registerPath({
   tags: ["Account"],
   summary: "Permanently delete the account (GDPR)",
   security: sessionAuth,
-  responses: { 200: { description: "Deleted", content: { "application/json": { schema: OkResponse } } }, ...errorResponses },
+  responses: {
+    200: { description: "Deleted", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// /api/v2/users/me/preferences
+// ---------------------------------------------------------------------------
+
+const EmailPreferences = z
+  .object({
+    emailNudges: z
+      .boolean()
+      .describe("Receive upgrade offers, daily-quota and trial-ending emails (default true)"),
+  })
+  .openapi("EmailPreferences");
+
+registry.registerPath({
+  method: "get",
+  path: "/api/v2/users/me/preferences",
+  tags: ["Account"],
+  summary: "Get email preferences",
+  security: sessionAuth,
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: EmailPreferences } } },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/api/v2/users/me/preferences",
+  tags: ["Account"],
+  summary: "Update email preferences",
+  security: sessionAuth,
+  request: { body: jsonBody(EmailPreferences) },
+  responses: {
+    200: {
+      description: "Updated",
+      content: {
+        "application/json": {
+          schema: z.object({ ok: z.literal(true), emailNudges: z.boolean() }),
+        },
+      },
+    },
+    ...errorResponses,
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -214,7 +402,10 @@ registry.registerPath({
   summary: "List servers owned by the current user",
   security: sessionAuth,
   responses: {
-    200: { description: "OK", content: { "application/json": { schema: z.object({ items: z.array(Server) }) } } },
+    200: {
+      description: "OK",
+      content: { "application/json": { schema: z.object({ items: z.array(Server) }) } },
+    },
     ...errorResponses,
   },
 });
@@ -224,12 +415,18 @@ registry.registerPath({
   path: "/api/v2/servers",
   tags: ["Servers"],
   summary: "Create a new server (provisions an Upstash Box async)",
-  description:
-    "Auto-installs the official `twinmcp-docs` MCP. Quota: free=1, pro=25.",
+  description: "Auto-installs the official `twinmcp-docs` MCP. Quota: free=1, pro=50.",
   security: sessionAuth,
   request: { body: jsonBody(createServerSchema) },
   responses: {
-    201: { description: "Created", content: { "application/json": { schema: z.object({ id: z.string(), slug: z.string(), status: ServerStatus }) } } },
+    201: {
+      description: "Created",
+      content: {
+        "application/json": {
+          schema: z.object({ id: z.string(), slug: z.string(), status: ServerStatus }),
+        },
+      },
+    },
     ...errorResponses,
   },
 });
@@ -241,7 +438,10 @@ registry.registerPath({
   summary: "Get a server by ID",
   security: sessionAuth,
   request: { params: z.object({ id: z.string() }) },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: Server } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: Server } } },
+    ...errorResponses,
+  },
 });
 
 registry.registerPath({
@@ -251,7 +451,10 @@ registry.registerPath({
   summary: "Update a server (rename, resize)",
   security: sessionAuth,
   request: { params: z.object({ id: z.string() }), body: jsonBody(updateServerSchema) },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: OkResponse } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
 });
 
 registry.registerPath({
@@ -261,23 +464,88 @@ registry.registerPath({
   summary: "Delete a server (and its Upstash Box runtime)",
   security: sessionAuth,
   request: { params: z.object({ id: z.string() }) },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: OkResponse } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
 });
 
-for (const action of ["start", "stop", "restart"] as const) {
+// Lifecycle (contract K4). Pause keeps the box and its data; Delete runtime and
+// Restart destroy the box and require the server's exact name as confirmation.
+const ConfirmNameBody = z.object({
+  confirmName: z.string().describe("The server's exact name, as typed confirmation"),
+});
+const lifecycleOps: Array<{
+  action: "start" | "resume" | "pause" | "stop" | "restart";
+  summary: string;
+  description: string;
+  confirm?: boolean;
+}> = [
+  {
+    action: "start",
+    summary: "Start a server",
+    description:
+      "Wakes a paused server in place (data kept), or provisions a fresh runtime from the saved configs when it has none.",
+  },
+  { action: "resume", summary: "Resume a paused server", description: "Same handler as /start." },
+  {
+    action: "pause",
+    summary: "Pause a server (data kept)",
+    description:
+      "Pauses the box: installed packages, files and logs are kept. The next MCP request or /resume wakes it.",
+  },
+  {
+    action: "stop",
+    summary: "Pause a server (legacy alias)",
+    description: "Kept for API compatibility: same handler as /pause, nothing is deleted.",
+  },
+  {
+    action: "restart",
+    summary: "Restart on a fresh runtime (destructive)",
+    description:
+      "Deletes the box and every file on it, then provisions a fresh one from the saved configs. Requires { confirmName }. To stop serving without losing data, use /pause.",
+    confirm: true,
+  },
+];
+for (const op of lifecycleOps) {
   registry.registerPath({
     method: "post",
-    path: `/api/v2/servers/{id}/${action}`,
+    path: `/api/v2/servers/{id}/${op.action}`,
     tags: ["Servers"],
-    summary: `${action[0].toUpperCase()}${action.slice(1)} a server`,
+    summary: op.summary,
+    description: op.description,
     security: sessionAuth,
-    request: { params: z.object({ id: z.string() }) },
+    request: op.confirm
+      ? { params: z.object({ id: z.string() }), body: jsonBody(ConfirmNameBody) }
+      : { params: z.object({ id: z.string() }) },
     responses: {
-      200: { description: "OK", content: { "application/json": { schema: z.object({ ok: z.literal(true), status: ServerStatus }) } } },
+      200: {
+        description: "OK",
+        content: {
+          "application/json": {
+            schema: z.object({ ok: z.literal(true), status: z.string() }),
+          },
+        },
+      },
       ...errorResponses,
     },
   });
 }
+
+registry.registerPath({
+  method: "delete",
+  path: "/api/v2/servers/{id}/runtime",
+  tags: ["Servers"],
+  summary: "Delete a server's runtime (destructive)",
+  description:
+    "Destroys the box and everything on its disk. The server, its MCP list, their configs and the API keys are kept; /start provisions a fresh box. Requires { confirmName }.",
+  security: sessionAuth,
+  request: { params: z.object({ id: z.string() }), body: jsonBody(ConfirmNameBody) },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
+});
 
 registry.registerPath({
   method: "get",
@@ -386,7 +654,12 @@ registry.registerPath({
   security: sessionAuth,
   request: { params: z.object({ id: z.string() }), body: jsonBody(installMcpSchema) },
   responses: {
-    201: { description: "Installed", content: { "application/json": { schema: z.object({ id: z.string(), mcpServerId: z.string() }) } } },
+    201: {
+      description: "Installed",
+      content: {
+        "application/json": { schema: z.object({ id: z.string(), mcpServerId: z.string() }) },
+      },
+    },
     ...errorResponses,
   },
 });
@@ -398,7 +671,10 @@ registry.registerPath({
   summary: "Get an installation (config returned with secrets masked as null)",
   security: sessionAuth,
   request: { params: z.object({ id: z.string(), userServerId: z.string() }) },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: UserServer } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: UserServer } } },
+    ...errorResponses,
+  },
 });
 
 registry.registerPath({
@@ -406,13 +682,17 @@ registry.registerPath({
   path: "/api/v2/servers/{id}/mcps/{userServerId}",
   tags: ["MCP installations"],
   summary: "Toggle / reconfigure an installation (config uses MERGE semantics)",
-  description: "Missing or empty fields in `config` keep their existing value, useful for not re-sending secrets.",
+  description:
+    "Missing or empty fields in `config` keep their existing value, useful for not re-sending secrets.",
   security: sessionAuth,
   request: {
     params: z.object({ id: z.string(), userServerId: z.string() }),
     body: jsonBody(updateUserServerSchema),
   },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: OkResponse } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
 });
 
 registry.registerPath({
@@ -422,7 +702,10 @@ registry.registerPath({
   summary: "Uninstall an MCP",
   security: sessionAuth,
   request: { params: z.object({ id: z.string(), userServerId: z.string() }) },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: OkResponse } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -464,11 +747,14 @@ registry.registerPath({
   method: "post",
   path: "/api/v2/mcp-servers",
   tags: ["Catalog"],
-  summary: "Publish an MCP to the catalog (Pro/Team only)",
+  summary: "Publish an MCP to the catalog (Pro only)",
   security: sessionAuth,
   request: { body: jsonBody(createMcpServerSchema) },
   responses: {
-    201: { description: "Created", content: { "application/json": { schema: z.object({ id: z.string(), slug: z.string() }) } } },
+    201: {
+      description: "Created",
+      content: { "application/json": { schema: z.object({ id: z.string(), slug: z.string() }) } },
+    },
     ...errorResponses,
   },
 });
@@ -480,7 +766,10 @@ registry.registerPath({
   summary: "Get a catalog entry by slug",
   security: sessionAuth,
   request: { params: z.object({ slug: z.string() }) },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: McpServer } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: McpServer } } },
+    ...errorResponses,
+  },
 });
 
 registry.registerPath({
@@ -490,7 +779,10 @@ registry.registerPath({
   summary: "Delete a catalog entry (publisher only, non-official)",
   security: sessionAuth,
   request: { params: z.object({ slug: z.string() }) },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: OkResponse } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -505,7 +797,10 @@ registry.registerPath({
   security: sessionAuth,
   request: { body: jsonBody(z.object({ name: z.string().min(1).max(80) })) },
   responses: {
-    201: { description: "Created", content: { "application/json": { schema: z.object({ id: z.string(), name: z.string() }) } } },
+    201: {
+      description: "Created",
+      content: { "application/json": { schema: z.object({ id: z.string(), name: z.string() }) } },
+    },
     ...errorResponses,
   },
 });
@@ -525,7 +820,10 @@ registry.registerPath({
       })
     ),
   },
-  responses: { 200: { description: "OK", content: { "application/json": { schema: OkResponse } } }, ...errorResponses },
+  responses: {
+    200: { description: "OK", content: { "application/json": { schema: OkResponse } } },
+    ...errorResponses,
+  },
 });
 
 registry.registerPath({
@@ -552,15 +850,61 @@ registry.registerPath({
 });
 
 registry.registerPath({
-  method: "get",
+  method: "post",
   path: "/api/v2/billing/checkout",
   tags: ["Billing"],
   summary: "Create a Stripe checkout session",
+  description:
+    'Pro is the only plan sold. plan "team" is no longer available and returns 400. An account with an active, trialing or past-due subscription gets a Customer Portal URL instead of a new checkout.',
   security: sessionAuth,
-  request: { query: z.object({ plan: z.enum(["pro", "team"]) }) },
+  request: {
+    body: jsonBody(
+      z.object({
+        plan: z.enum(["pro"]),
+        cadence: z.enum(["monthly", "yearly"]).default("monthly"),
+        promotionCodeId: z.string().optional().describe("Stripe promotion code id (promo_…)"),
+        creatorSlug: z.string().optional().describe("Creator landing slug, for attribution"),
+        from: z
+          .enum(["billing", "onboarding", "pricing", "signup"])
+          .optional()
+          .describe("Surface that opened the checkout; decides the success / cancel URLs"),
+      })
+    ),
+  },
   responses: {
-    200: { description: "OK", content: { "application/json": { schema: z.object({ checkoutUrl: z.string().url() }) } } },
+    200: {
+      description: "OK",
+      content: {
+        "application/json": {
+          schema: z.object({
+            url: z.string().url(),
+            kind: z.enum(["checkout", "portal"]),
+          }),
+        },
+      },
+    },
     ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/v2/billing/checkout/start",
+  tags: ["Billing"],
+  summary: "Open a Pro checkout by navigation (303 to Stripe)",
+  description:
+    "Browser navigation twin of POST /api/v2/billing/checkout, used after an email confirmation that carries a Pro intent. Redirects (303) to Stripe Checkout, or to the Customer Portal for a subscribed account; without a session, to sign-in; on failure, to /dashboard/billing?checkout=error&reason=price|stripe|unknown. Only plan=pro (or the legacy team alias) is accepted; a cross-site navigation is bounced to /dashboard/billing, which reopens the checkout itself.",
+  security: sessionAuth,
+  request: {
+    query: z.object({
+      plan: z.enum(["pro"]).optional(),
+      cadence: z.enum(["monthly", "yearly"]).optional(),
+      promo: z.string().optional().describe("Creator slug or Stripe promotion code id"),
+      from: z.enum(["billing", "onboarding", "pricing", "signup"]).optional(),
+    }),
+  },
+  responses: {
+    303: { description: "Redirect to Stripe Checkout, the portal, sign-in or Billing" },
   },
 });
 
@@ -571,7 +915,10 @@ registry.registerPath({
   summary: "Open the Stripe customer billing portal",
   security: sessionAuth,
   responses: {
-    200: { description: "OK", content: { "application/json": { schema: z.object({ url: z.string().url() }) } } },
+    200: {
+      description: "OK",
+      content: { "application/json": { schema: z.object({ url: z.string().url() }) } },
+    },
     ...errorResponses,
   },
 });
@@ -591,7 +938,10 @@ registry.registerPath({
     }),
   },
   responses: {
-    200: { description: "Plain text documentation", content: { "text/plain": { schema: z.string() } } },
+    200: {
+      description: "Plain text documentation",
+      content: { "text/plain": { schema: z.string() } },
+    },
     ...errorResponses,
   },
 });
@@ -609,7 +959,10 @@ registry.registerPath({
     }),
   },
   responses: {
-    200: { description: "OK", content: { "application/json": { schema: z.object({ libraries: z.array(z.unknown()) }) } } },
+    200: {
+      description: "OK",
+      content: { "application/json": { schema: z.object({ libraries: z.array(z.unknown()) }) } },
+    },
     ...errorResponses,
   },
 });
@@ -624,7 +977,7 @@ registry.registerPath({
   tags: ["MCP proxy"],
   summary: "Proxy MCP JSON-RPC requests to a user's installed MCP",
   description:
-    "Authenticated by API key. The control plane resolves the server + installation and either handles it locally (twinmcp-docs) or forwards to the box endpoint.",
+    "Authenticated by API key (`full`, or `mcp_proxy` bound to this server or unbound). The control plane resolves the server + installation and either handles it locally (twinmcp-docs) or forwards to the box endpoint. A key bound to another server answers HTTP 403 with JSON-RPC error code -32003.",
   security: apiKeyAuth,
   request: {
     params: z.object({ serverSlug: z.string(), mcpSlug: z.string() }),

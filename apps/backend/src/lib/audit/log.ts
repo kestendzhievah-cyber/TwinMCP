@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "@/db";
 import { auditLogs } from "@/db/schema/platform";
+import { trustedClientIp } from "@/lib/net/client-ip";
 
 export type AuditAction =
   | "server.create"
@@ -8,27 +9,37 @@ export type AuditAction =
   | "server.delete"
   | "server.start"
   | "server.stop"
+  | "server.pause"
+  | "server.resume"
+  | "server.runtime.delete"
   | "server.restart"
   | "mcp.install"
   | "mcp.uninstall"
   | "mcp.toggle"
   | "mcp.reconfigure"
+  | "mcp.tool_policy"
   | "admin.server.create"
   | "admin.server.stop"
+  | "admin.server.pause"
   | "admin.server.start"
   | "admin.server.delete"
   | "admin.mcp.install"
   | "admin.mcp.uninstall"
   | "admin.churn.alert"
+  | "admin.clients.export"
   | "mcp_server.publish"
   | "mcp_server.update"
   | "mcp_server.delete"
   | "api_key.create"
   | "api_key.revoke"
+  | "api_key.rotate"
   | "team.member.add"
   | "team.member.remove"
   | "user.delete"
-  | "user.onboarding.complete";
+  | "user.onboarding.complete"
+  | "secret.create"
+  | "secret.update"
+  | "secret.delete";
 
 export type AuditTargetType =
   | "server"
@@ -36,7 +47,8 @@ export type AuditTargetType =
   | "mcp_server"
   | "api_key"
   | "teamspace"
-  | "user";
+  | "user"
+  | "secret";
 
 export interface AuditEntry {
   userId: string | null;
@@ -66,9 +78,5 @@ export function logAudit(entry: AuditEntry): void {
 }
 
 export function clientIp(req: Request): string | null {
-  return (
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    null
-  );
+  return trustedClientIp(req);
 }

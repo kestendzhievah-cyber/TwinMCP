@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { teamspaceFilters, teamspaceMembers, teamspaces } from "@/db/schema";
+import { teamspaceFilters, teamspaceMembers, teamspaces, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { type Route } from "next";
@@ -20,12 +20,32 @@ export default async function PoliciesPage() {
 
   const db = getDb();
 
-  const memberships = await db
-    .select({ teamspaceId: teamspaceMembers.teamspaceId, role: teamspaceMembers.role })
-    .from(teamspaceMembers)
-    .where(eq(teamspaceMembers.userId, user.id));
+  const [memberships, [me]] = await Promise.all([
+    db
+      .select({ teamspaceId: teamspaceMembers.teamspaceId, role: teamspaceMembers.role })
+      .from(teamspaceMembers)
+      .where(eq(teamspaceMembers.userId, user.id)),
+    db.select({ plan: users.plan }).from(users).where(eq(users.id, user.id)).limit(1),
+  ]);
 
   if (memberships.length === 0) {
+    // Team workspaces are no longer sold: only grandfathered Team subscribers are
+    // pointed at the Team page to create one. Everyone else gets a neutral notice.
+    if ((me?.plan ?? "free") !== "team") {
+      return (
+        <div className="space-y-8">
+          <div>
+            <h1 className="smallcaps tracking-sc text-2xl font-medium">Policies</h1>
+            <Separator variant="double" className="mt-4" />
+          </div>
+          <EmptyState
+            icon={Shield}
+            title="Policies are not available"
+            description="Policies apply to team workspaces, which are not available."
+          />
+        </div>
+      );
+    }
     return (
       <div className="space-y-8">
         <div>

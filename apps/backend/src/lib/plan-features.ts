@@ -9,6 +9,12 @@ import type { BoxSize } from "@/db/schema/platform";
  * marketing pricing page, and the gating UI. Keep the numbers in sync with
  * `components/pricing/pricing-data.ts` (the marketing-facing copy).
  *
+ * Only Free and Pro are sold (SELLABLE_PLANS). Team is grandfathered: existing
+ * Team subscribers keep their capabilities, label, Stripe mapping and webhook
+ * handling, but no page, upsell or new checkout offers it any more. The upsell
+ * helpers below (minPlanFor*) therefore point at a plan you can buy whenever one
+ * grants the capability (see minPlanFor for the one exception).
+ *
  * ENFORCEMENT IS NOT AUTOMATIC. The helpers below are pure predicates. Defining
  * a capability here gates nothing on its own — each one must be enforced where
  * it is used by calling the matching assertion in the relevant API route. As of
@@ -18,6 +24,13 @@ import type { BoxSize } from "@/db/schema/platform";
  * This module imports types only — it is safe to import from both Server and
  * Client Components.
  */
+
+/**
+ * Free trial granted on a FIRST Pro subscription (see api/v2/billing/checkout).
+ * Shared by the marketing copy and the server; the TRIAL_DAYS env var can
+ * override the server side, so keep both in sync if you change it.
+ */
+export const PRO_TRIAL_DAYS = 30;
 
 const UNLIMITED = Number.POSITIVE_INFINITY;
 
@@ -36,6 +49,10 @@ export interface PlanCapabilities {
   regionSelection: boolean;
   /** Audit-log retention in days (0 = not retained / not surfaced). */
   auditRetentionDays: number;
+  /** Tool-call activity log retention in days (metadata only — never arguments
+   *  or results). Shown on the server's Activity page and enforced by the
+   *  /api/cron/purge job (lib/activity/retention.ts). Available on every plan. */
+  activityRetentionDays: number;
   /** May export usage metrics. */
   usageExport: boolean;
   /** May run always-on ("warm") servers that never pause — no cold start on the
@@ -48,25 +65,32 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
   free: {
     servers: 1,
     boxSizes: ["small"],
-    apiKeys: 1,
+    apiKeys: 3,
     members: 1,
     publishMcp: false,
     regionSelection: false,
     auditRetentionDays: 0,
+    activityRetentionDays: 7,
     usageExport: false,
     warmServers: false,
   },
+  // Pro is the one paid plan: the maximum, with reasonable-use caps. Members
+  // stay at 1 (team sharing isn't sold) and regionSelection stays off (the
+  // runtime doesn't apply a region yet). warmServers is additionally gated by
+  // the WARM_BOXES_ENABLED ops switch (see keepWarm) — never advertise it.
   pro: {
-    servers: 25,
-    boxSizes: ["small", "medium"],
-    apiKeys: 5,
+    servers: 50,
+    boxSizes: ["small", "medium", "large"],
+    apiKeys: 20,
     members: 1,
     publishMcp: true,
     regionSelection: false,
-    auditRetentionDays: 30,
+    auditRetentionDays: 90,
+    activityRetentionDays: 90,
     usageExport: true,
     warmServers: true,
   },
+  // Grandfathered: no longer sold, kept so existing Team subscribers keep working.
   team: {
     servers: UNLIMITED,
     boxSizes: ["small", "medium", "large"],
@@ -75,6 +99,7 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
     publishMcp: true,
     regionSelection: true,
     auditRetentionDays: 90,
+    activityRetentionDays: 90,
     usageExport: true,
     warmServers: true,
   },
@@ -83,8 +108,19 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
 /** Plan ordering, lowest → highest, for "requires at least X" gating. */
 export const PLAN_RANK: Record<Plan, number> = { free: 0, pro: 1, team: 2 };
 
-/** Display labels for the three plans. */
+/** Display labels for the three plans (Team included, for grandfathered subscribers). */
 export const PLAN_LABELS: Record<Plan, string> = { free: "Free", pro: "Pro", team: "Team" };
+
+/**
+ * Plans that can be bought today, lowest → highest. Upsell copy and new
+ * checkouts only ever target these. Team is deliberately absent (grandfathered).
+ */
+export const SELLABLE_PLANS: readonly Plan[] = ["free", "pro"];
+
+/** Whether a plan is still sold (Free or Pro). False for the grandfathered Team plan. */
+export function isSellablePlan(plan: Plan): boolean {
+  return SELLABLE_PLANS.includes(plan);
+}
 
 /** True when `plan` sits at or above `required` in the upgrade ladder. */
 export function meetsPlan(plan: Plan, required: Plan): boolean {
@@ -123,7 +159,8 @@ export function allowedBoxSizes(plan: Plan): readonly BoxSize[] {
  * Pure so provisioning (the money path) and the dashboard UI make the SAME
  * decision. `enabled` is the WARM_BOXES_ENABLED ops switch: keep-alive boxes
  * require a paid Upstash plan, so warm boxes stay OFF until that's turned on —
- * even for Pro/Team. Read the switch with `process.env.WARM_BOXES_ENABLED === "true"`.
+ * even for Pro/Team. Because of that switch, never advertise always-on servers.
+ * Read the switch with `process.env.WARM_BOXES_ENABLED === "true"`.
  */
 export function keepWarm(plan: Plan, enabled: boolean): boolean {
   return enabled && can(plan, "warmServers");
@@ -134,10 +171,9 @@ export function isBoxSizeAllowed(plan: Plan, size: BoxSize): boolean {
   return PLAN_CAPABILITIES[plan].boxSizes.includes(size);
 }
 
-/** Lowest plan that may provision a given box size, or null if none can. */
+/** Lowest sellable plan that may provision a given box size, or null if none can. */
 export function minPlanForBoxSize(size: BoxSize): Plan | null {
-  const ladder: Plan[] = ["free", "pro", "team"];
-  return ladder.find((p) => PLAN_CAPABILITIES[p].boxSizes.includes(size)) ?? null;
+  return SELLABLE_PLANS.find((p) => PLAN_CAPABILITIES[p].boxSizes.includes(size)) ?? null;
 }
 
 // Max concurrent MCP bridges a box of each size can run before it risks OOM.
@@ -155,16 +191,27 @@ export function maxMcpsForBoxSize(size: BoxSize): number {
   return MCP_CAPACITY[size] ?? 4;
 }
 
-/** Lowest plan that grants a boolean capability — used for upsell copy. */
+/**
+ * Lowest plan that grants a boolean capability — used for upsell copy.
+ * Prefers a sellable plan; only a capability no sellable plan has (today:
+ * regionSelection) falls back to the grandfathered ladder, so the return type
+ * stays a Plan for existing callers. Check isSellablePlan() before offering it.
+ */
 export function minPlanFor(capability: BooleanCapability): Plan {
   const ladder: Plan[] = ["free", "pro", "team"];
-  return ladder.find((p) => PLAN_CAPABILITIES[p][capability]) ?? "team";
+  return (
+    SELLABLE_PLANS.find((p) => PLAN_CAPABILITIES[p][capability]) ??
+    ladder.find((p) => PLAN_CAPABILITIES[p][capability]) ??
+    "team"
+  );
 }
 
-/** Lowest plan whose numeric limit reaches at least `needed`, or null if no plan does. */
+/**
+ * Lowest sellable plan whose numeric limit reaches at least `needed`, or null if
+ * no plan you can buy does (e.g. members > 1) — callers then show no upsell.
+ */
 export function minPlanForLimit(capability: NumericCapability, needed: number): Plan | null {
-  const ladder: Plan[] = ["free", "pro", "team"];
-  return ladder.find((p) => PLAN_CAPABILITIES[p][capability] >= needed) ?? null;
+  return SELLABLE_PLANS.find((p) => PLAN_CAPABILITIES[p][capability] >= needed) ?? null;
 }
 
 /**

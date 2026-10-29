@@ -8,6 +8,10 @@
 import type { BillablePlan, Cadence } from "@/lib/stripe";
 import type { Locale } from "@/lib/i18n/locales";
 
+/** Promos only ever discount Pro: it is the one paid plan on sale. Team stays a
+ *  BillablePlan for grandfathered subscribers but can't be promoted. */
+export type PromoPlan = Extract<BillablePlan, "pro">;
+
 export interface HeroContent {
   eyebrow: string;
   title: string;
@@ -24,7 +28,7 @@ export interface CreatorCampaign {
   promotionCodeId: string;
   /** The human-readable code we show on the landing page (e.g. YT-NOM-1MOIS). */
   humanCode: string;
-  plan: BillablePlan;
+  plan: PromoPlan;
   cadence: Cadence;
   /** Per-locale marketing copy. Both locales are required so the language
    *  switcher always has somewhere to go. */
@@ -53,24 +57,24 @@ export const CREATORS: CreatorCampaign[] = [
         eyebrow: "Partner offer",
         title: "1 month of TwinMCP Pro, on us.",
         description:
-          "Spin up to 25 MCP servers, publish your own MCPs, and ship with your AI agent in production — first month free, cancel anytime.",
+          "Spin up to 50 MCP servers on any box size, publish your own MCPs, and ship with your AI agent in production — first month free, cancel anytime.",
         bullets: [
-          "25 hosted MCP servers",
-          "Publish private MCPs",
-          "Audit logs · 30 days",
-          "Priority email support",
+          "50 servers",
+          "All box sizes (small, medium, large)",
+          "5,000 MCP requests / day",
+          "Publish your own MCPs",
         ],
       },
       fr: {
         eyebrow: "Offre partenaire",
         title: "1 mois de TwinMCP Pro offert.",
         description:
-          "Provisionne jusqu'à 25 serveurs MCP, publie tes propres MCPs et passe en prod avec ton agent IA — premier mois gratuit, sans engagement.",
+          "Lancez jusqu’à 50 serveurs MCP sur toutes les tailles de box, publiez vos propres MCP et passez en production avec votre agent IA. Premier mois offert, sans engagement.",
         bullets: [
-          "25 serveurs MCP hébergés",
-          "Publie tes propres MCPs",
-          "Audit logs · 30 jours",
-          "Support email prioritaire",
+          "50 serveurs",
+          "Toutes les tailles de box (small, medium, large)",
+          "5 000 requêtes MCP par jour",
+          "Publiez vos propres MCP",
         ],
       },
     },

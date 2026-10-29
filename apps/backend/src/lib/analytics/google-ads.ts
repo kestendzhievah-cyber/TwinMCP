@@ -60,6 +60,13 @@ export function loadGoogleAds(): void {
   loaded = true;
   gtag("consent", "default", DENIED);
   gtag("consent", "update", GRANTED);
+  // Both must be set before 'config'. url_passthrough keeps the click ids
+  // (gclid…) on internal links should consent be withdrawn later in the visit,
+  // so a conversion can still be attributed without cookies;
+  // ads_data_redaction strips ad identifiers from pings sent while ad_storage
+  // is denied.
+  gtag("set", "url_passthrough", true);
+  gtag("set", "ads_data_redaction", true);
   gtag("js", new Date());
   gtag("config", GOOGLE_ADS_ID);
 
@@ -98,7 +105,11 @@ export const SUBSCRIPTION_CONVERSION =
   process.env.NEXT_PUBLIC_GOOGLE_ADS_SUBSCRIPTION_SEND_TO || "AW-18520591061/Kp_qCIyKsKEdENWVp_9E";
 /** "Inscription": a confirmed sign-up (value set in Google Ads). */
 export const SIGNUP_CONVERSION = process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_SEND_TO || "";
-/** "Demande de démo": an enterprise demo or sales request (value set in Google Ads). */
+/**
+ * "Demande de démo": a guided-setup request sent from /demo or /fr/demo (value
+ * set in Google Ads). Empty until NEXT_PUBLIC_GOOGLE_ADS_DEMO_SEND_TO is passed
+ * at build time, which keeps trackDemoConversion a no-op.
+ */
 export const DEMO_CONVERSION = process.env.NEXT_PUBLIC_GOOGLE_ADS_DEMO_SEND_TO || "";
 
 /**
@@ -168,11 +179,21 @@ export async function trackAdsConversion(conv: AdsConversionInput): Promise<bool
   return true;
 }
 
-/** Fires the "Demande de démo" conversion after a successful enterprise form. */
-export function trackDemoConversion(email: string): void {
+/** Dedupe key for one demo request (Google drops repeats of a transaction_id). */
+export function demoTransactionId(): string {
   const id =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  void trackAdsConversion({ sendTo: DEMO_CONVERSION, transactionId: `demo-${id}`, email });
+  return `demo-${id}`;
+}
+
+/**
+ * Fires the "Demande de démo" conversion after a successful /demo form. Same
+ * gates as every conversion: advertising consent, and a no-op while
+ * DEMO_CONVERSION is empty. Sent WITHOUT an enhanced-conversion email: the
+ * form's consent limits the details to answering the request.
+ */
+export function trackDemoConversion(sendTo: string = DEMO_CONVERSION): void {
+  void trackAdsConversion({ sendTo, transactionId: demoTransactionId() });
 }

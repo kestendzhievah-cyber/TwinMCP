@@ -8,7 +8,8 @@ function utcDayStart(d: Date): Date {
 }
 
 // In-process aggregation of per-(user_server, UTC day) request/error counters.
-// The MCP proxy calls recordMcpUsage on every JSON-RPC message; accumulating and
+// The MCP proxy calls recordMcpUsage for every billable message (a `tools/call`,
+// see lib/mcp/billable.ts — protocol overhead is not counted); accumulating and
 // flushing in batches turns one DB upsert per request into one upsert per
 // user_server/day every FLUSH_INTERVAL_MS. Trades a small window of counter loss
 // on a hard crash for a large drop in write volume.

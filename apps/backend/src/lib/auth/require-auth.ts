@@ -1,13 +1,14 @@
-import { requireSessionUser, type SessionUser } from "@/lib/session";
-import { unauthorized, forbidden, notFound, serverError } from "@/lib/errors";
+import { NextResponse } from "next/server";
+import { requireManagementUser, type SessionUser } from "@/lib/session";
+import { forbidden, notFound, serverError } from "@/lib/errors";
 import { ForbiddenError, NotFoundError } from "./rbac";
 
 type Handler = (req: Request, user: SessionUser) => Promise<Response> | Response;
 
 export function withAuth(handler: Handler) {
   return async (req: Request): Promise<Response> => {
-    const user = await requireSessionUser(req);
-    if (!user) return unauthorized("Authentication required");
+    const user = await requireManagementUser(req, "Authentication required");
+    if (user instanceof NextResponse) return user;
     try {
       return await handler(req, user);
     } catch (err) {

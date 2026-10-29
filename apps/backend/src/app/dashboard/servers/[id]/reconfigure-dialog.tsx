@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SecretField } from "@/components/vault/secret-field";
+import { parseSecretRef } from "@/lib/vault/refs";
 
 interface SchemaField {
   type: "string" | "number" | "boolean";
@@ -67,7 +69,10 @@ export function ReconfigureDialog({
         const initial: Record<string, string> = {};
         for (const [k, def] of Object.entries(d.configSchema.properties ?? {})) {
           if (def.secret) {
-            initial[k] = ""; // never prefill secrets
+            // Never prefill a secret value; a vault reference ({{secret:NAME}},
+            // not a secret itself) comes back as-is so the field opens on it.
+            const v = d.config[k];
+            initial[k] = parseSecretRef(v) ? String(v) : "";
           } else {
             const v = d.config[k];
             initial[k] = v === null || v === undefined ? "" : String(v);
@@ -97,6 +102,7 @@ export function ReconfigureDialog({
     for (const [k, def] of fields) {
       const raw = values[k];
       if (raw === undefined || raw === "") continue; // skip → keep existing
+      if (def.secret && raw === data.config[k]) continue; // same vault reference
       if (def.type === "number") patch[k] = Number(raw);
       else if (def.type === "boolean") patch[k] = raw === "true";
       else patch[k] = raw;
@@ -174,10 +180,19 @@ export function ReconfigureDialog({
                         <SelectItem value="false">false</SelectItem>
                       </SelectContent>
                     </Select>
+                  ) : isSecret ? (
+                    <SecretField
+                      id={key}
+                      value={values[key] ?? ""}
+                      onChange={(v) => setValues((vs) => ({ ...vs, [key]: v }))}
+                      suggestedName={key}
+                      keepExistingHint={hasExisting}
+                      placeholder={hasExisting ? "••••••••" : (def.description ?? "")}
+                    />
                   ) : (
                     <Input
                       id={key}
-                      type={isSecret ? "password" : def.type === "number" ? "number" : "text"}
+                      type={def.type === "number" ? "number" : "text"}
                       value={values[key] ?? ""}
                       onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
                       placeholder={isSecret && hasExisting ? "••••••••" : (def.description ?? "")}

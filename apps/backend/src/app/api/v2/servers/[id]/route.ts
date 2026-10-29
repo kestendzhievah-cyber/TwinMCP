@@ -2,14 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servers, users } from "@/db/schema";
-import { badRequest, forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { updateServerSchema } from "@/lib/validation/platform";
-import {
-  assertServerOwnership,
-  ForbiddenError,
-  NotFoundError,
-} from "@/lib/auth/rbac";
+import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
 import {
   isBoxSizeAllowed,
   minPlanForBoxSize,
@@ -17,17 +13,15 @@ import {
   PLAN_LABELS,
 } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
+import { clearAuthCache } from "@/lib/auth";
 import { destroyServerRuntime } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id } = await params;
 
   try {
@@ -41,12 +35,9 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id } = await params;
 
   let body: unknown;
@@ -78,7 +69,7 @@ export async function PATCH(
         throw new PlanRestrictionError(
           "box-size",
           required,
-          `The ${parsed.data.boxSize} box size requires the ${PLAN_LABELS[required]} plan.`,
+          `The ${parsed.data.boxSize} box size requires the ${PLAN_LABELS[required]} plan.`
         );
       }
     }
@@ -108,18 +99,18 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id } = await params;
 
   try {
     await assertServerOwnership(session.userId, id);
     await destroyServerRuntime(id);
     await getDb().delete(servers).where(eq(servers.id, id));
+    // The FK cascade removed the API keys bound to this server: drop them from
+    // the auth cache too, or they keep authenticating until its TTL.
+    clearAuthCache();
 
     logAudit({
       userId: session.userId,

@@ -2,27 +2,20 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mcpServers } from "@/db/schema";
-import { forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { forbidden, notFound, serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { logAudit, clientIp } from "@/lib/audit/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { slug } = await params;
 
   try {
-    const [row] = await getDb()
-      .select()
-      .from(mcpServers)
-      .where(eq(mcpServers.slug, slug))
-      .limit(1);
+    const [row] = await getDb().select().from(mcpServers).where(eq(mcpServers.slug, slug)).limit(1);
     if (!row) return notFound("MCP server not found");
     if (!row.isPublic && row.publishedByUserId !== session.userId) {
       return notFound("MCP server not found");
@@ -34,20 +27,13 @@ export async function GET(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { slug } = await params;
 
   try {
-    const [row] = await getDb()
-      .select()
-      .from(mcpServers)
-      .where(eq(mcpServers.slug, slug))
-      .limit(1);
+    const [row] = await getDb().select().from(mcpServers).where(eq(mcpServers.slug, slug)).limit(1);
     if (!row) return notFound("MCP server not found");
     if (row.publishedByUserId !== session.userId) {
       return forbidden("Only the publisher can delete this MCP server");

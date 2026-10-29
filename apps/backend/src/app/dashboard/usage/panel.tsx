@@ -15,6 +15,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { WARN_PCT } from "@/lib/billing/upgrade-state";
+import { UpgradeInline } from "@/components/billing/upgrade-inline";
 
 interface DailyPoint {
   date: string;
@@ -51,7 +53,11 @@ const fmt = (n: number) => n.toLocaleString();
 const ROW_CAP = 15;
 const pctOf = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
-export function UsagePanel() {
+/**
+ * @param proDailyLimit The enforced Pro quota (getDailyLimit("pro"), server
+ *   only) for the near-limit prompt; without it the prompt omits the number.
+ */
+export function UsagePanel({ proDailyLimit }: { proDailyLimit?: number } = {}) {
   const [days, setDays] = useState<number>(30);
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -129,6 +135,20 @@ export function UsagePanel() {
   const limitPct = Math.min(100, pctOf(todayReq, data.dailyLimit));
   const errRate = pctOf(runtime.totals.errors, runtime.totals.requests);
   const empty = runtime.totals.requests === 0 && data.last24h === 0;
+  // Near or at the Free quota: the same thresholds as the layout strip
+  // (lib/billing/upgrade-state.ts). The panel does not know whether the free
+  // month is still available, so the label stays neutral.
+  const quotaLevel =
+    data.plan !== "free"
+      ? null
+      : limitPct >= 100
+        ? "limit"
+        : limitPct >= WARN_PCT
+          ? "warning"
+          : null;
+  const proLine = proDailyLimit
+    ? `Pro: ${fmt(proDailyLimit)} a day.`
+    : "Pro raises the daily limit.";
 
   return (
     <div className="space-y-6">
@@ -179,7 +199,7 @@ export function UsagePanel() {
           <CardHeader className="pb-3">
             <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
               <Gauge className="h-4 w-4" />
-              MCP requests today
+              Tool calls today
             </CardDescription>
             <CardTitle className="lining text-3xl">
               {fmt(todayReq)}{" "}
@@ -195,7 +215,7 @@ export function UsagePanel() {
                   "h-full transition-all",
                   limitPct >= 100
                     ? "bg-destructive"
-                    : limitPct >= 80
+                    : limitPct >= WARN_PCT
                       ? "bg-warning"
                       : "bg-foreground"
                 )}
@@ -203,8 +223,22 @@ export function UsagePanel() {
               />
             </div>
             <p className="lining mt-2 text-xs italic text-muted-foreground">
-              {limitPct}% of your daily limit used
+              {limitPct}% of your daily limit used · Resets at midnight UTC
             </p>
+            {quotaLevel && (
+              <UpgradeInline
+                source="usage"
+                level={quotaLevel}
+                reason={quotaLevel === "limit" ? "quota_limit" : "quota_warning"}
+                label="Upgrade to Pro"
+                description={
+                  quotaLevel === "limit"
+                    ? `Limit reached: tool calls are rejected until midnight UTC. ${proLine}`
+                    : proLine
+                }
+                className="lining mt-3 text-xs"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -212,7 +246,7 @@ export function UsagePanel() {
           <CardHeader className="pb-3">
             <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
               <Activity className="h-4 w-4" />
-              MCP requests · {data.days}d
+              Tool calls · {data.days}d
             </CardDescription>
             <CardTitle className="lining text-3xl">{fmt(runtime.totals.requests)}</CardTitle>
           </CardHeader>
@@ -246,17 +280,17 @@ export function UsagePanel() {
             <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
               <Activity className="h-4 w-4" />
             </span>
-            Requests per day
+            Tool calls per day
           </CardTitle>
           <CardDescription className="pl-12">
-            Bar height is total requests; the red portion is errors.
+            Bar height is total tool calls; the red portion is errors.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           {empty ? (
             <div className="border border-dashed border-foreground/40 px-6 py-8 text-center">
               <p className="text-sm italic text-muted-foreground">
-                No requests yet. Connect an MCP from the{" "}
+                No tool calls yet. Connect an MCP from the{" "}
                 <span className="font-medium not-italic">Marketplace</span> and make a call to see
                 it here.
               </p>
@@ -280,7 +314,7 @@ export function UsagePanel() {
         <CardContent className="p-0">
           {runtime.perMcp.length === 0 ? (
             <p className="px-6 py-8 text-center text-sm italic text-muted-foreground">
-              No MCP traffic in this window.
+              No tool calls in this window.
             </p>
           ) : (
             <>
@@ -288,7 +322,7 @@ export function UsagePanel() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="pl-6">MCP</TableHead>
-                    <TableHead className="w-28 text-right">Requests</TableHead>
+                    <TableHead className="w-28 text-right">Tool calls</TableHead>
                     <TableHead className="w-24 text-right">Errors</TableHead>
                     <TableHead className="w-28 pr-6 text-right">Error rate</TableHead>
                   </TableRow>
@@ -399,7 +433,7 @@ function DailyChart({ daily }: { daily: DailyPoint[] }) {
             <div
               key={d.date}
               className="flex h-full flex-1 flex-col justify-end"
-              title={`${d.date} · ${d.requests} requests, ${d.errors} errors`}
+              title={`${d.date} · ${d.requests} tool calls, ${d.errors} errors`}
             >
               <div className="w-full overflow-hidden bg-foreground/80" style={{ height: `${h}%` }}>
                 {errPct > 0 && (

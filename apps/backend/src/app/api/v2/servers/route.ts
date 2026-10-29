@@ -4,7 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servers, users, mcpServers, userServers } from "@/db/schema";
 import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { requireManagementUser } from "@/lib/session";
 import { createServerSchema, slugify } from "@/lib/validation/platform";
 import { assertServerQuota, QuotaExceededError } from "@/lib/quota";
 import {
@@ -19,13 +19,28 @@ import { logAudit, clientIp } from "@/lib/audit/log";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { encryptConfig } from "@/lib/crypto/config-encryption";
 import { enqueue } from "@/lib/queue/qstash";
+import { trackServer } from "@/lib/analytics/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Which surface created the server, for the activation funnel. The body has
+ * no such field, so read it off the Referer: /onboarding → "onboarding",
+ * anything else (the dashboard, a script) → "dashboard".
+ */
+function creationSource(req: NextRequest): "dashboard" | "onboarding" {
+  const referer = req.headers.get("referer") ?? "";
+  try {
+    return new URL(referer).pathname.startsWith("/onboarding") ? "onboarding" : "dashboard";
+  } catch {
+    return "dashboard";
+  }
+}
+
 export async function GET(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   try {
     const rows = await getDb()
@@ -52,8 +67,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   let body: unknown;
   try {
@@ -162,6 +177,19 @@ export async function POST(req: NextRequest) {
       targetId: id,
       metadata: { slug, hostType, ...(isLocal ? {} : { boxSize }) },
       ip: clientIp(req),
+    });
+
+    // Activation funnel (fire-and-forget; trackServer never throws).
+    trackServer({
+      event: "server_created",
+      distinctId: session.userId,
+      properties: {
+        serverId: id,
+        hostType,
+        boxSize: isLocal ? null : boxSize,
+        plan: me.plan,
+        source: creationSource(req),
+      },
     });
 
     if (!isLocal) {

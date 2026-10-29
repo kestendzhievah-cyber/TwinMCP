@@ -65,14 +65,14 @@ export default async function AuditLogsPage({
     </div>
   );
 
-  // Free plan has 0-day retention — the feature is Pro+.
+  // Free plan has 0-day retention — the feature is Pro (the only plan sold).
   if (retentionDays === 0) {
     return (
       <div className="space-y-8">
         {header}
         <UpgradeCard
           title="Audit logs are a paid feature"
-          description="See who did what on your account — API-key creation, server changes, billing events — retained for 30 (Pro) or 90 (Team) days."
+          description={`See who did what on your account — API-key creation, server changes, billing events — retained for ${PLAN_CAPABILITIES.pro.auditRetentionDays} days on Pro.`}
           requiredPlan="pro"
         />
       </div>

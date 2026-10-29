@@ -191,8 +191,8 @@ const hash = createHash("sha256").update(token).digest("hex");
         the broader threat model and how MCP slots into existing AI security practices, the{" "}
         <Link href={"/blog/what-is-mcp" as Route}>complete guide to MCP</Link> covers the
         protocol-level guarantees. And if you would rather not run any of this yourself,{" "}
-        <Link href="/">TwinMCP</Link> ships per-server sandboxes, encrypted secrets, rate limits,
-        and audit logs as defaults.
+        <Link href="/">TwinMCP</Link> ships per-server sandboxes, encrypted secrets, and rate limits
+        as defaults, plus 90-day audit logs on Pro.
       </p>
     </PostLayout>
   );

@@ -3,19 +3,21 @@ import { eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { users, apiKeys, usageEvents, teamspaceMembers, servers, auditLogs } from "@/db/schema";
-import { serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { createClient } from "@/utils/supabase/server";
 import { getSupabaseAdmin } from "@/utils/supabase/admin";
 import { getBoxClient } from "@/lib/upstash/box-client";
 import { getStripe } from "@/lib/stripe";
+import { clearAuthCache } from "@/lib/auth";
+import { dropAgentsForUser } from "@/lib/agent/registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function DELETE(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   try {
     const db = getDb();
@@ -62,6 +64,10 @@ export async function DELETE(req: NextRequest) {
       db.update(auditLogs).set({ ip: null }).where(eq(auditLogs.userId, session.userId)),
     ]);
     await db.delete(users).where(eq(users.id, session.userId));
+    // The deleted keys must stop authenticating now, not after the auth cache
+    // TTL, and any local-agent link they opened must close.
+    clearAuthCache();
+    dropAgentsForUser(session.userId);
 
     // GDPR right-to-erasure: deleting our own rows isn't enough — the Supabase
     // Auth identity (email, hashed password, OAuth links) lives in auth.users

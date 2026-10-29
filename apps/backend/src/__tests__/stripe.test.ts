@@ -94,3 +94,173 @@ describe("planActionForSubscription", () => {
     );
   });
 });
+
+// Pure helpers behind the trial → paid measurement, cancellation tracking and
+// the /api/health billing probe (lib/stripe.ts). Env ids as set above.
+describe("webhook + health helpers", () => {
+  let lib: typeof import("../lib/stripe");
+
+  beforeAll(async () => {
+    process.env.STRIPE_PRO_MONTHLY_PRICE_ID = "price_pro_m";
+    process.env.STRIPE_PRO_YEARLY_PRICE_ID = "price_pro_y";
+    lib = await import("../lib/stripe");
+  });
+
+  it("cadenceFromPriceId maps configured ids and rejects the rest", () => {
+    expect(lib.cadenceFromPriceId("price_pro_m")).toBe("monthly");
+    expect(lib.cadenceFromPriceId("price_pro_y")).toBe("yearly");
+    expect(lib.cadenceFromPriceId("price_other")).toBeNull();
+    expect(lib.cadenceFromPriceId("")).toBeNull();
+    expect(lib.cadenceFromPriceId(null)).toBeNull();
+  });
+
+  it("cadenceFromInterval maps Stripe intervals", () => {
+    expect(lib.cadenceFromInterval("year")).toBe("yearly");
+    expect(lib.cadenceFromInterval("month")).toBe("monthly");
+    expect(lib.cadenceFromInterval("week")).toBeNull();
+    expect(lib.cadenceFromInterval(undefined)).toBeNull();
+  });
+
+  it("invoiceSubscriptionId reads the dahlia parent shape and the legacy field", () => {
+    expect(
+      lib.invoiceSubscriptionId({ parent: { subscription_details: { subscription: "sub_1" } } })
+    ).toBe("sub_1");
+    expect(
+      lib.invoiceSubscriptionId({
+        parent: { subscription_details: { subscription: { id: "sub_2" } } },
+      })
+    ).toBe("sub_2");
+    expect(lib.invoiceSubscriptionId({ subscription: "sub_3" })).toBe("sub_3");
+    expect(lib.invoiceSubscriptionId({ parent: null })).toBeNull();
+    expect(lib.invoiceSubscriptionId(null)).toBeNull();
+  });
+
+  it("invoicePriceId reads lines[].pricing.price_details.price (string or object)", () => {
+    expect(
+      lib.invoicePriceId({
+        lines: { data: [{ pricing: { price_details: { price: "price_pro_y" } } }] },
+      })
+    ).toBe("price_pro_y");
+    expect(
+      lib.invoicePriceId({
+        lines: { data: [{ pricing: { price_details: { price: { id: "price_pro_m" } } } }] },
+      })
+    ).toBe("price_pro_m");
+    expect(lib.invoicePriceId({ lines: { data: [{ price: { id: "price_legacy" } }] } })).toBe(
+      "price_legacy"
+    );
+    expect(lib.invoicePriceId({ lines: { data: [] } })).toBeNull();
+    expect(lib.invoicePriceId({})).toBeNull();
+  });
+
+  describe("isTrialConversion", () => {
+    const base = {
+      amountPaid: 1499,
+      billingReason: "subscription_cycle",
+      storedStatus: "active",
+      trialStarted: false,
+      alreadyConverted: false,
+    };
+
+    it("counts the first paid invoice while the account is still mirrored as trialing", () => {
+      expect(lib.isTrialConversion({ ...base, storedStatus: "trialing" })).toBe(true);
+    });
+
+    it("counts a renewal of a subscription known to have started on a trial", () => {
+      expect(lib.isTrialConversion({ ...base, trialStarted: true })).toBe(true);
+    });
+
+    it("ignores plain renewals, the €0 trial invoice and repeat conversions", () => {
+      expect(lib.isTrialConversion(base)).toBe(false);
+      expect(lib.isTrialConversion({ ...base, storedStatus: "trialing", amountPaid: 0 })).toBe(
+        false
+      );
+      expect(
+        lib.isTrialConversion({ ...base, storedStatus: "trialing", alreadyConverted: true })
+      ).toBe(false);
+      expect(
+        lib.isTrialConversion({
+          ...base,
+          trialStarted: true,
+          billingReason: "subscription_create",
+        })
+      ).toBe(false);
+    });
+  });
+
+  it("cancellationScheduled detects a cancel_at_period_end or cancel_at flip only", () => {
+    expect(
+      lib.cancellationScheduled({ cancel_at_period_end: false }, { cancel_at_period_end: true })
+    ).toBe(true);
+    expect(lib.cancellationScheduled({ cancel_at: null }, { cancel_at: 1_900_000_000 })).toBe(true);
+    // Reactivation, unrelated updates and missing previous attributes are not cancellations.
+    expect(
+      lib.cancellationScheduled({ cancel_at_period_end: true }, { cancel_at_period_end: false })
+    ).toBe(false);
+    expect(lib.cancellationScheduled({}, { cancel_at_period_end: true })).toBe(false);
+    expect(lib.cancellationScheduled(undefined, { cancel_at_period_end: true })).toBe(false);
+  });
+
+  it("cancellationReason prefers customer feedback, then Stripe's reason", () => {
+    expect(
+      lib.cancellationReason({ feedback: "too_expensive", reason: "cancellation_requested" }, "x")
+    ).toBe("too_expensive");
+    expect(lib.cancellationReason({ feedback: null, reason: "payment_failed" }, "x")).toBe(
+      "payment_failed"
+    );
+    expect(lib.cancellationReason(null, "subscription_deleted")).toBe("subscription_deleted");
+  });
+
+  it("classifyPrice flags archived, one-off and wrong-interval prices", () => {
+    expect(lib.classifyPrice({ active: true, recurring: { interval: "month" } }, "monthly")).toBe(
+      "configured"
+    );
+    expect(lib.classifyPrice({ active: true, recurring: { interval: "year" } }, "yearly")).toBe(
+      "configured"
+    );
+    expect(lib.classifyPrice({ active: true, recurring: { interval: "month" } }, "yearly")).toBe(
+      "invalid"
+    );
+    expect(lib.classifyPrice({ active: false, recurring: { interval: "month" } }, "monthly")).toBe(
+      "invalid"
+    );
+    expect(lib.classifyPrice({ active: true, recurring: null }, "monthly")).toBe("invalid");
+    expect(lib.classifyPrice(null, "monthly")).toBe("invalid");
+  });
+
+  it("probePrice reports unconfigured without a secret key (no network)", async () => {
+    const saved = process.env.STRIPE_SECRET_KEY;
+    delete process.env.STRIPE_SECRET_KEY;
+    try {
+      await expect(lib.probePrice("monthly")).resolves.toBe("unconfigured");
+    } finally {
+      if (saved !== undefined) process.env.STRIPE_SECRET_KEY = saved;
+    }
+  });
+});
+
+// The annual line on /plans and the home teaser, from the shared pricing table.
+describe("annual pricing copy", () => {
+  it("states the yearly charge, with and without the free month", async () => {
+    const { PLANS, annualBillingNote, annualMonthlyHint, formatPrice } = await import(
+      "../components/pricing/pricing-data"
+    );
+    const pro = PLANS.find((p) => p.id === "pro")!;
+    const free = PLANS.find((p) => p.id === "free")!;
+    expect(annualBillingNote(pro, "en")).toBe(
+      "€135 billed yearly after your free month · €11.25/mo"
+    );
+    expect(annualBillingNote(pro, "en", { trial: false })).toBe("€135 billed yearly · €11.25/mo");
+    expect(annualBillingNote(pro, "fr")).toBe(
+      "135 € facturés à l’année après votre mois offert · 11,25 €/mois"
+    );
+    expect(annualBillingNote(free, "en")).toBeNull();
+    expect(annualMonthlyHint(pro, "en")).toBe("€11.25/mo billed yearly");
+    // formatPrice output is unchanged by the formatEur refactor.
+    expect(formatPrice(pro, "monthly", "en")).toBe("€14.99");
+    expect(formatPrice(pro, "annual", "fr")).toBe("11,25 €");
+    expect(formatPrice(free, "monthly", "en")).toBe("€0");
+    // €135 a year really is 12 × the advertised monthly equivalent.
+    expect(pro.annualMonthlyUsd * 12).toBe(pro.annualTotalEur);
+  });
+});

@@ -46,6 +46,15 @@ export default function Post() {
         runtime where you provision your own (public or private). Self-hosting is
         everything-yourself. This post compares them on the six criteria that actually matter.
       </p>
+      <p>
+        <strong>Update, October 2026.</strong> Smithery has announced that its hosted proxy, server
+        URLs, API and accounts stop on 31 October 2026 (
+        <a href="https://smithery.ai/future" target="_blank" rel="noopener noreferrer">
+          smithery.ai/future
+        </a>
+        ). If you run MCPs there today, the step-by-step move is in{" "}
+        <Link href={"/migrate-from-smithery" as Route}>Migrate from Smithery</Link>.
+      </p>
 
       <h2 id="what-they-are">What each one actually is</h2>
       <p>
@@ -93,7 +102,7 @@ export default function Post() {
           <tr>
             <td>Private MCPs</td>
             <td>No</td>
-            <td>Yes (Pro+)</td>
+            <td>Yes (Pro)</td>
             <td>Yes</td>
           </tr>
           <tr>
@@ -144,7 +153,7 @@ export default function Post() {
       <p>
         Where it stops working: anything that holds your credentials with write access (the operator
         can read them), anything you wrote yourself (the catalog does not host private code),
-        anything that needs team-level access controls.
+        anything that needs audit logs and key management.
       </p>
 
       <h2 id="when-twinmcp">When TwinMCP wins</h2>
@@ -155,12 +164,12 @@ export default function Post() {
       </p>
       <ul>
         <li>
-          You publish a private MCP for your team and want it usable from Cursor without everyone
-          running it locally.
+          You publish your own private MCP and want it usable from Cursor without running it
+          locally.
         </li>
         <li>
           You operate multiple MCPs with different blast radii (read-only Postgres, write-scope
-          GitHub, internal admin tool) and want them in separate sandboxes.
+          GitLab, internal admin tool) and want them in separate sandboxes.
         </li>
         <li>You need audit logs and key rotation as first-class features, not afterthoughts.</li>
       </ul>
@@ -214,6 +223,10 @@ export default function Post() {
         </Link>
         . And to start on the TwinMCP side without committing, <Link href="/">the free tier</Link>{" "}
         gives you one server and the full catalog.
+      </p>
+      <p>
+        For the sourced, side-by-side versions (TwinMCP against Composio, Smithery and
+        self-hosting), see <Link href={"/compare" as Route}>Compare TwinMCP</Link>.
       </p>
     </PostLayout>
   );

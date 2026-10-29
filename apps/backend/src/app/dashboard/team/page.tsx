@@ -2,8 +2,8 @@ import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { teamspaceMembers, teamspaces, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { meetsPlan } from "@/lib/plan-features";
-import { UpgradeCard } from "@/components/billing/upgrade-card";
+import { Users } from "lucide-react";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { TeamPanel } from "./panel";
 
@@ -57,9 +57,11 @@ export default async function TeamPage() {
     }));
   }
 
-  // Team collaboration is a Team-plan feature. Users who already belong to a
-  // teamspace (e.g. granted earlier) keep access even if their plan changed.
-  const locked = !meetsPlan(plan, "team") && memberships.length === 0;
+  // Team workspaces are no longer sold. Grandfathered Team subscribers keep the
+  // full page, and users who already belong to a teamspace (e.g. invited by a
+  // Team subscriber) keep seeing it. Everyone else gets a neutral notice — never
+  // an upgrade prompt, since there is no plan to buy that adds members.
+  const unavailable = plan !== "team" && memberships.length === 0;
 
   return (
     <div className="space-y-8">
@@ -70,11 +72,11 @@ export default async function TeamPage() {
         </p>
         <Separator variant="double" className="mt-4" />
       </div>
-      {locked ? (
-        <UpgradeCard
-          title="Team collaboration"
-          description="Invite teammates and share servers, policies and context across your squad."
-          requiredPlan="team"
+      {unavailable ? (
+        <EmptyState
+          icon={Users}
+          title="Team workspaces are not available"
+          description="Your servers, MCPs and API keys are managed from your own account."
         />
       ) : (
         <TeamPanel

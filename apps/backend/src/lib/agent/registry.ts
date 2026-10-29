@@ -20,6 +20,35 @@ export interface AgentConn {
   /** Push an SSE event to the connected agent. */
   send: (event: RelayEvent) => void;
   connectedAt: number;
+  /** The API key that opened the link (so a revoke can find and drop it). */
+  apiKeyId?: string;
+  /** Close the link's stream (and unregister it). */
+  close?: () => void;
+}
+
+/**
+ * Longest an agent link may stay open before the server closes it; the CLI
+ * reconnects (and is re-authenticated) on its own.
+ */
+export const AGENT_LINK_MAX_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * May a new link opened with `apiKeyId` replace `existing`? Only when nothing is
+ * connected or the live link was opened with the same key: a different key
+ * (e.g. a leaked IDE key) must not silently take over a running local agent,
+ * receive its decrypted env and answer its tool calls.
+ */
+export function mayReplaceAgent(
+  existing: AgentConn | undefined,
+  apiKeyId: string | undefined
+): boolean {
+  if (!existing) return true;
+  return Boolean(apiKeyId) && existing.apiKeyId === apiKeyId;
+}
+
+/** Is a link opened at `connectedAt` past its maximum lifetime? */
+export function agentLinkExpired(connectedAt: number, now: number = Date.now()): boolean {
+  return now - connectedAt >= AGENT_LINK_MAX_MS;
 }
 
 export interface RelayResult {
@@ -46,13 +75,65 @@ export function connKey(userId: string, serverSlug: string): string {
   return `${userId}:${serverSlug}`;
 }
 
-export function registerAgent(key: string, conn: AgentConn): void {
-  conns.set(key, conn);
+export function getAgent(key: string): AgentConn | undefined {
+  return conns.get(key);
 }
 
-/** Remove a connection only if it is still the current one (don't clobber a reconnect). */
-export function unregisterAgent(key: string, conn: AgentConn): void {
-  if (conns.get(key) === conn) conns.delete(key);
+/**
+ * Register `conn` for `key`, closing the link it replaces (same key: a
+ * reconnect). Returns false, registering nothing, when another key holds the
+ * live link (see mayReplaceAgent).
+ */
+export function registerAgent(key: string, conn: AgentConn): boolean {
+  const existing = conns.get(key);
+  if (!mayReplaceAgent(existing, conn.apiKeyId)) return false;
+  conns.set(key, conn);
+  if (existing && existing !== conn) {
+    try {
+      existing.close?.();
+    } catch {
+      /* already closed */
+    }
+  }
+  return true;
+}
+
+/**
+ * Remove a connection only if it is still the current one (don't clobber a
+ * reconnect). Returns whether it was removed.
+ */
+export function unregisterAgent(key: string, conn: AgentConn): boolean {
+  if (conns.get(key) !== conn) return false;
+  conns.delete(key);
+  return true;
+}
+
+/** Close every agent link opened with `apiKeyId` (call on revoke). */
+export function dropAgentsForKey(apiKeyId: string): number {
+  let dropped = 0;
+  for (const conn of [...conns.values()]) {
+    if (conn.apiKeyId !== apiKeyId) continue;
+    dropped++;
+    try {
+      conn.close?.();
+    } catch {
+      /* already closed */
+    }
+  }
+  return dropped;
+}
+
+/** Close every agent link of `userId` (account deletion). */
+export function dropAgentsForUser(userId: string): void {
+  for (const [key, conn] of [...conns.entries()]) {
+    if (!key.startsWith(`${userId}:`)) continue;
+    try {
+      conn.close?.();
+    } catch {
+      /* already closed */
+    }
+    if (conns.get(key) === conn) conns.delete(key);
+  }
 }
 
 export function isAgentOnline(key: string): boolean {

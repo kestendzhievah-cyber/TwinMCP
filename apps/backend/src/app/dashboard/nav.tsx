@@ -13,6 +13,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/marketing/logo";
 import type { Plan } from "@/db/schema/core";
 import { PLAN_LABELS } from "@/lib/plan-features";
+import { BILLING_HREF } from "@/lib/billing/upgrade-state";
+import { track } from "@/lib/analytics/funnel";
 import {
   Activity,
   BarChart3,
@@ -48,25 +50,40 @@ const links = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
+// Team workspaces are no longer sold. The Team link follows the same rule as
+// app/dashboard/team/page.tsx: grandfathered Team subscribers, plus users who
+// already belong to a teamspace (e.g. invited by a Team subscriber). The layout
+// knows the membership and passes `showTeam`; without it, only the plan counts.
+function visibleLinks(showTeam: boolean) {
+  return showTeam ? links : links.filter((l) => l.href !== "/dashboard/team");
+}
+
 export function DashboardNav({
   email,
   plan,
   isAdmin = false,
   prospectsDue = 0,
   attentionCount = 0,
+  showTeam = plan === "team",
+  trialEligible = false,
 }: {
   email: string;
   plan: Plan;
   isAdmin?: boolean;
   prospectsDue?: number;
   attentionCount?: number;
+  /** Team plan OR an existing teamspace membership (computed by the layout). */
+  showTeam?: boolean;
+  /** Free account with no Stripe customer yet: the first month of Pro is free. */
+  trialEligible?: boolean;
 }) {
   const pathname = usePathname();
+  const planLinks = visibleLinks(showTeam);
   // The Admin analytics link is only shown to allowlisted admins. This is a UI
   // convenience only — the page and its API are gated server-side regardless.
   const navLinks: NavItem[] = isAdmin
     ? [
-        ...links,
+        ...planLinks,
         { href: "/dashboard/admin", label: "Admin", icon: BarChart3 },
         {
           href: "/dashboard/admin/cockpit",
@@ -82,11 +99,23 @@ export function DashboardNav({
           badge: prospectsDue,
         },
       ]
-    : links;
+    : planLinks;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
+
+  // The nav link is a nudge surface too: fire the viewed event once per mount
+  // so the per-source viewed → clicked ratio is defined for "nav".
+  const navViewed = useRef(false);
+  useEffect(() => {
+    if (plan !== "free" || navViewed.current) return;
+    navViewed.current = true;
+    track({
+      name: "upgrade_nudge_viewed",
+      properties: { source: "nav", level: "offer", reason: "offer" },
+    });
+  }, [plan]);
 
   // Make the mobile drawer behave like a modal dialog: Escape closes it, the
   // page behind is scroll-locked, focus moves into the drawer on open and back
@@ -120,6 +149,26 @@ export function DashboardNav({
       </Badge>
     </Link>
   );
+
+  // Free accounts: one small-caps link under the plan badge (sidebar and
+  // drawer; the mobile top bar stays one row), trial-aware. The label is the
+  // only thing that changes; the decision lives in the layout.
+  const upgradeLink =
+    plan === "free" ? (
+      <Link
+        href={BILLING_HREF as Route}
+        onClick={() => {
+          setOpen(false);
+          track({
+            name: "upgrade_cta_clicked",
+            properties: { source: "nav", level: "offer", reason: "offer" },
+          });
+        }}
+        className="smallcaps tracking-sc whitespace-nowrap text-xs text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+      >
+        {trialEligible ? "Start free month" : "Upgrade to Pro"}
+      </Link>
+    ) : null;
 
   function NavLinks() {
     return (
@@ -181,7 +230,7 @@ export function DashboardNav({
     <>
       {/* Mobile top bar */}
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 md:hidden">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Logo tagline="Control Plane" />
           {planBadge}
         </div>
@@ -226,7 +275,10 @@ export function DashboardNav({
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="mb-6 border-b border-border px-2 pb-6">{planBadge}</div>
+            <div className="mb-6 flex flex-col items-start gap-2 border-b border-border px-2 pb-6">
+              {planBadge}
+              {upgradeLink}
+            </div>
             <NavLinks />
             <NavFooter />
           </nav>
@@ -239,7 +291,10 @@ export function DashboardNav({
           <Logo tagline="Control Plane" />
           <ThemeToggle />
         </div>
-        <div className="rule-double mb-6 px-2 pt-5">{planBadge}</div>
+        <div className="rule-double mb-6 flex flex-col items-start gap-2 px-2 pt-5">
+          {planBadge}
+          {upgradeLink}
+        </div>
         <NavLinks />
         <NavFooter />
       </nav>

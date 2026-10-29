@@ -11,8 +11,8 @@ import {
   usageMetrics,
   auditLogs,
 } from "@/db/schema";
-import { forbidden, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { forbidden, serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { isAdminEmail } from "@/lib/admin";
 import type { Plan } from "@/db/schema";
 
@@ -46,8 +46,8 @@ function zeroFill(
 }
 
 export async function GET(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   if (!isAdminEmail(session.email)) return forbidden("Admins only");
 
   try {

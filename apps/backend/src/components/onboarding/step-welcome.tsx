@@ -4,12 +4,18 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { PRO_TRIAL_DAYS } from "@/lib/plan-features";
+import type { IdeKey } from "@/lib/mcp/client-config";
 
-export type IdePreference = "cursor" | "claude-code" | "windsurf" | "cline" | "zed" | "other";
+// The IDE choice is the same set the config generator knows (lib/mcp/client-
+// config.ts), so every tile has a working snippet on the Connect step.
+export type IdePreference = IdeKey;
 
 const ides: Array<{ id: IdePreference; label: string; hint: string }> = [
   { id: "cursor", label: "Cursor", hint: "~/.cursor/mcp.json" },
-  { id: "claude-code", label: "Claude Code", hint: "settings.json" },
+  { id: "claude-code", label: "Claude Code", hint: "claude mcp add" },
+  { id: "claude-desktop", label: "Claude Desktop", hint: "claude_desktop_config.json" },
+  { id: "vscode", label: "VS Code", hint: "Copilot · .vscode/mcp.json" },
   { id: "windsurf", label: "Windsurf", hint: "mcp_config.json" },
   { id: "cline", label: "Cline", hint: "VS Code extension" },
   { id: "zed", label: "Zed", hint: "settings.json" },
@@ -22,6 +28,8 @@ interface StepWelcomeProps {
   onContinue: () => void;
   onBack?: () => void;
   selectedPlan?: string | null;
+  /** The user just came back from a Pro checkout: say so instead of "selected plan". */
+  proTrial?: boolean;
 }
 
 export function StepWelcome({
@@ -30,6 +38,7 @@ export function StepWelcome({
   onContinue,
   onBack,
   selectedPlan,
+  proTrial = false,
 }: StepWelcomeProps) {
   return (
     <div className="space-y-8">
@@ -40,17 +49,26 @@ export function StepWelcome({
         <p className="mt-2 text-base text-muted-foreground">
           A few quick choices and you&apos;ll have a live MCP server wired into your IDE.
         </p>
-        {selectedPlan && (
-          <Badge variant="brand" className="mt-4 capitalize">
-            Selected plan: {selectedPlan}
-          </Badge>
+        {proTrial ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Badge variant="success">Pro trial active</Badge>
+            <span className="lining text-sm italic text-muted-foreground">
+              Nothing is charged for {PRO_TRIAL_DAYS} days — cancel anytime from Billing.
+            </span>
+          </div>
+        ) : (
+          selectedPlan && (
+            <Badge variant="brand" className="mt-4 capitalize">
+              Selected plan: {selectedPlan}
+            </Badge>
+          )
         )}
       </div>
 
       <div>
         <p className="smallcaps tracking-sc mb-3 text-sm font-medium">Which IDE do you use?</p>
         {/* Choice tiles: hairline cards; the chosen one is pressed into the stock. */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {ides.map((ide) => {
             const active = selected === ide.id;
             return (

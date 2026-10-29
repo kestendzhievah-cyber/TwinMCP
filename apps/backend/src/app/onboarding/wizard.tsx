@@ -1,47 +1,91 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { OnboardingProgress } from "@/components/onboarding/progress";
-import { StepPlan, type SelectablePlan } from "@/components/onboarding/step-plan";
+import {
+  StepPlan,
+  type CheckoutCadence,
+  type SelectablePlan,
+} from "@/components/onboarding/step-plan";
 import { StepWelcome, type IdePreference } from "@/components/onboarding/step-welcome";
 import { StepServer } from "@/components/onboarding/step-server";
 import { StepMcp, type CatalogMcp } from "@/components/onboarding/step-mcp";
 import { StepConnect } from "@/components/onboarding/step-connect";
 import { track } from "@/lib/analytics/funnel";
+import { readProIntent } from "@/lib/auth/return-to";
 
 const STEPS = ["Plan", "IDE", "Server", "MCP", "Connect"] as const;
-const SELECTED_PLAN_KEY = "tmcp_signup_plan";
 
-interface WizardProps {
-  catalog: CatalogMcp[];
-  existingServer: { id: string; name: string; slug: string; endpointUrl: string | null } | null;
-}
+/** The funnel's cadence vocabulary ("annual") from the checkout API's ("yearly"). */
+const funnelCadence = (c: CheckoutCadence): "monthly" | "annual" =>
+  c === "yearly" ? "annual" : "monthly";
 
 type WizardServer = { id: string; name: string; slug: string; endpointUrl: string | null };
 
-export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
-  const router = useRouter();
+interface WizardProps {
+  catalog: CatalogMcp[];
+  existingServer: WizardServer | null;
+  /** Step to open on (0-4), already clamped by the page. */
+  initialStep?: number;
+  /** Back from a successful Pro checkout: the trial is running. */
+  proTrial?: boolean;
+  /** A trialing or active Pro subscription (not just back from checkout): no plan to pick. */
+  subscribedPro?: boolean;
+  /** Back from a canceled Pro checkout (nothing was charged). */
+  checkoutCanceled?: boolean;
+  /** users.metadata.ide_preference, when the user picked one before. */
+  initialIde?: IdePreference | null;
+}
 
-  const [step, setStep] = useState(0);
-  const [ide, setIde] = useState<IdePreference | null>(null);
+export function OnboardingWizard({
+  catalog,
+  existingServer,
+  initialStep = 0,
+  proTrial = false,
+  subscribedPro = false,
+  checkoutCanceled = false,
+  initialIde = null,
+}: WizardProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // The plan step preselects the intent the URL carries (plan=pro, or the
+  // retired plan=team, from the pricing page; plan=free), unless the checkout
+  // round trip already settled it. Nothing is read from browser storage: the
+  // paid intent travels in the URL through sign-up and the auth callback.
+  const urlPlan = readProIntent(searchParams)
+    ? "pro"
+    : searchParams.get("plan") === "free"
+      ? "free"
+      : null;
+
+  const [step, setStep] = useState(initialStep);
+  const [ide, setIde] = useState<IdePreference | null>(initialIde);
   const [server, setServer] = useState<WizardServer | null>(existingServer);
   const [mcpSlug, setMcpSlug] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(
+    proTrial || subscribedPro ? "pro" : urlPlan
+  );
   const [skipping, setSkipping] = useState(false);
+  const viewed = useRef(false);
 
-  // Pull plan from localStorage (set during sign-up).
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(SELECTED_PLAN_KEY);
-    if (stored) setSelectedPlan(stored);
-  }, []);
+    if (viewed.current) return;
+    viewed.current = true;
+    track({ name: "onboarding_viewed", properties: { step: STEPS[initialStep].toLowerCase() } });
+    if (checkoutCanceled) {
+      track({ name: "checkout_canceled", properties: { from: "onboarding" } });
+    }
+  }, [initialStep, checkoutCanceled]);
 
-  const handleSelectPlan = useCallback(async (plan: SelectablePlan) => {
+  const handleSelectPlan = useCallback(async (plan: SelectablePlan, cadence: CheckoutCadence) => {
     setSelectedPlan(plan);
-    track({ name: "plan_selected", properties: { plan, step: "onboarding" } });
+    track({
+      name: "plan_selected",
+      properties: { plan, step: "onboarding", cadence: funnelCadence(cadence) },
+    });
     // Persist the choice (best-effort) so it survives a checkout round-trip.
     void fetch("/api/v2/users/me/onboarding", {
       method: "POST",
@@ -54,16 +98,17 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
       return;
     }
 
-    // Paid plan → straight to Stripe checkout for max conversion.
-    track({ name: "checkout_started", properties: { plan, cadence: "monthly" } });
+    // Pro → straight to Stripe checkout. Stripe sends the user back to
+    // /onboarding?status=success&step=1 (trial started) or ?checkout=canceled.
+    track({ name: "checkout_started", properties: { plan, cadence: funnelCadence(cadence) } });
     try {
       const res = await fetch("/api/v2/billing/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ plan, cadence: "monthly" }),
+        body: JSON.stringify({ plan, cadence, from: "onboarding" }),
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as { url?: string };
         if (data.url) {
           window.location.href = data.url;
           return;
@@ -81,31 +126,32 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
   const handleSelectIde = useCallback(
     async (next: IdePreference) => {
       setIde(next);
-      // Best-effort persist; we don't block the UI on it.
+      // Best-effort persist; it also preselects the server page's Connect panel.
       void fetch("/api/v2/users/me/onboarding", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           idePreference: next,
-          ...(selectedPlan ? { selectedPlan } : {}),
+          ...(selectedPlan === "free" || selectedPlan === "pro" ? { selectedPlan } : {}),
         }),
       }).catch(() => {});
     },
     [selectedPlan]
   );
 
-  const handleServerReady = useCallback((s: WizardServer) => {
-    setServer((prev) => {
-      if (!prev) {
+  const handleServerReady = useCallback(
+    (s: WizardServer) => {
+      if (!existingServer || existingServer.id !== s.id) {
         // First time we're seeing this server in the wizard — fire the
         // funnel event. Skipped if the user already had a server (existing).
         track({ name: "first_server_created", properties: { serverId: s.id } });
       }
-      return s;
-    });
-    track({ name: "onboarding_step_completed", properties: { step: "server" } });
-    setStep(3);
-  }, []);
+      setServer(s);
+      track({ name: "onboarding_step_completed", properties: { step: "server" } });
+      setStep(3);
+    },
+    [existingServer]
+  );
 
   async function handleSkip() {
     setSkipping(true);
@@ -116,9 +162,6 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ markCompleted: true }),
       });
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(SELECTED_PLAN_KEY);
-      }
       router.push("/dashboard");
     } catch (err) {
       console.error("[onboarding skip]", err);
@@ -129,11 +172,12 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
 
   function handleFinish() {
     track({ name: "onboarding_step_completed", properties: { step: "connect" } });
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(SELECTED_PLAN_KEY);
-    }
-    router.push("/dashboard");
+    router.push(server ? `/dashboard/servers/${server.id}` : "/dashboard");
   }
+
+  const mcpName = mcpSlug
+    ? (catalog.find((m) => m.slug === mcpSlug)?.name ?? mcpSlug)
+    : "TwinMCP Docs";
 
   return (
     <div className="space-y-8">
@@ -153,6 +197,12 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
         </Button>
       </header>
 
+      {checkoutCanceled && step === 0 && (
+        <p className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+          Checkout canceled — nothing was charged. Start free, or try Pro again below.
+        </p>
+      )}
+
       {/* The step sits on one piece of bone stock with a hairline, under a
           running head in small caps between a rule and the step name (§4.7). */}
       <div className="border border-border bg-card p-6 shadow-sm md:p-8">
@@ -171,8 +221,12 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
               track({ name: "onboarding_step_completed", properties: { step: "ide" } });
               setStep(2);
             }}
-            onBack={() => setStep(0)}
+            // A Pro trial or subscribed user has already chosen: no way back to
+            // the plan step. A Free choice made before sign-up can still be
+            // changed there.
+            onBack={proTrial || subscribedPro ? undefined : () => setStep(0)}
             selectedPlan={selectedPlan}
+            proTrial={proTrial}
           />
         )}
         {step === 2 && (
@@ -208,11 +262,21 @@ export function OnboardingWizard({ catalog, existingServer }: WizardProps) {
             // working default when the user skipped the marketplace step. Flag it
             // so Connect labels it honestly instead of silently substituting.
             mcpSlug={mcpSlug ?? "twinmcp-docs"}
+            mcpName={mcpName}
             isDocsDefault={!mcpSlug}
+            justInstalled={Boolean(mcpSlug)}
             ide={ide ?? "other"}
             onFinish={handleFinish}
             onBack={() => setStep(3)}
           />
+        )}
+        {/* A deep link past the server step without a server (should not
+            happen — the page clamps it) falls back to the server step. */}
+        {step >= 3 && !server && (
+          <div className="space-y-4">
+            <p className="text-base text-muted-foreground">Create your server first.</p>
+            <Button onClick={() => setStep(2)}>Go to the server step</Button>
+          </div>
         )}
       </div>
     </div>

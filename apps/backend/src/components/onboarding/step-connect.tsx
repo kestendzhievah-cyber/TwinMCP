@@ -1,45 +1,66 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Check, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, Copy, KeyRound, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CodeSnippet } from "@/components/marketing/code-snippet";
 import {
   API_KEY_PLACEHOLDER,
+  IDE_LABELS,
   buildClientConfig,
-  proxyUrl,
-  testMcpConnection,
+  buildServerUrl,
+  serverConfigLabel,
 } from "@/lib/mcp/client-config";
+import { sampleToolPrompt } from "@/lib/mcp/onboarding-catalog";
+import { connectKeyName } from "@/lib/auth/key-scope";
+import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { IdePreference } from "./step-welcome";
+import { useApiKey } from "./use-api-key";
+import { useConnectionTest } from "./use-connection-test";
 
 interface StepConnectProps {
   serverId: string;
   serverName: string;
   serverSlug: string;
   mcpSlug: string;
+  /** Display name of the MCP ("Fetch"), for the "still installing" line. */
+  mcpName: string;
   /** True when the user skipped installing an MCP and we default to twinmcp-docs. */
   isDocsDefault?: boolean;
+  /** True when the MCP was installed a moment ago in this wizard (it is still warming up). */
+  justInstalled?: boolean;
   ide: IdePreference;
   onFinish: () => void;
   onBack: () => void;
 }
 
-type TestState = "idle" | "running" | "success" | "error";
+/** "Cursor", "Claude Desktop"… or "your MCP client" for the generic tile. */
+export function ideName(ide: IdePreference): string {
+  return ide === "other" ? "your MCP client" : IDE_LABELS[ide];
+}
 
 export function StepConnect({
+  serverId,
   serverName,
   serverSlug,
   mcpSlug,
+  mcpName,
   isDocsDefault = false,
+  justInstalled = false,
   ide,
   onFinish,
   onBack,
 }: StepConnectProps) {
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [keyError, setKeyError] = useState("");
-  const [test, setTest] = useState<TestState>("idle");
-  const [testMsg, setTestMsg] = useState("");
+  // An MCP-proxy-only key bound to this server: it lands in plain text in the
+  // IDE config, so it must not be able to manage the account.
+  const key = useApiKey({
+    keyName: connectKeyName(serverName, IDE_LABELS[ide]),
+    preferNamePrefix: serverName,
+    serverId,
+    autoMint: true,
+  });
+  const test = useConnectionTest("onboarding");
   const [finishing, setFinishing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState("");
@@ -48,36 +69,15 @@ export function StepConnect({
     if (typeof window !== "undefined") setOrigin(window.location.origin);
   }, []);
 
-  // Auto-mint an API key on mount, once.
-  useEffect(() => {
-    let cancelled = false;
-    async function mint() {
-      try {
-        const res = await fetch("/api/v2/auth/keys", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: `${serverName} · onboarding` }),
-        });
-        if (!res.ok) throw new Error("key creation failed");
-        const data = (await res.json()) as { key: string };
-        if (!cancelled) setApiKey(data.key);
-      } catch (err) {
-        console.error("[onboarding mint key]", err);
-        if (!cancelled) {
-          setKeyError("Could not auto-create an API key. Generate one from /dashboard.");
-        }
-      }
-    }
-    void mint();
-    return () => {
-      cancelled = true;
-    };
-  }, [serverName]);
-
-  const url = origin ? proxyUrl(origin, serverSlug, mcpSlug) : "";
+  const apiKey = key.apiKey;
+  // One URL for the whole server (contract D3): every MCP installed on it now
+  // or later, tools named <mcp>__<tool>. Per-MCP URLs stay on the server page.
+  const url = origin ? buildServerUrl(origin, serverSlug) : "";
+  const configLabel = serverConfigLabel(serverSlug);
   const cfg = useMemo(
-    () => buildClientConfig(ide, { url, apiKey: apiKey ?? API_KEY_PLACEHOLDER, label: mcpSlug }),
-    [ide, url, apiKey, mcpSlug]
+    () =>
+      buildClientConfig(ide, { url, apiKey: apiKey ?? API_KEY_PLACEHOLDER, label: configLabel }),
+    [ide, url, apiKey, configLabel]
   );
 
   async function copyUrl() {
@@ -90,17 +90,14 @@ export function StepConnect({
     }
   }
 
-  async function runTest() {
+  function runTest() {
     if (!apiKey || !url) return;
-    setTest("running");
-    setTestMsg("");
-    const result = await testMcpConnection(url, apiKey);
-    setTest(result.ok ? "success" : "error");
-    setTestMsg(result.message);
+    void test.run(url, apiKey, mcpName);
   }
 
   async function finish() {
     setFinishing(true);
+    test.cancel();
     try {
       await fetch("/api/v2/users/me/onboarding", {
         method: "POST",
@@ -113,18 +110,24 @@ export function StepConnect({
     onFinish();
   }
 
+  const testing = test.phase === "running" || test.phase === "installing";
+
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-medium md:text-3xl">Connect your LLM.</h2>
         <p className="mt-2 text-base text-muted-foreground">
-          Drop this block into your client config. Your API key is shown once — copy it now, you can
-          rotate it later from <code className="font-mono">/dashboard</code>.
+          Drop this block into {ideName(ide)}. Your API key is shown once — copy it now; you can
+          rotate it later from the dashboard.
+        </p>
+        <p className="mt-2 text-sm italic text-muted-foreground">
+          This key can only call MCPs on {serverName}. It cannot manage your account, so a leaked
+          IDE config exposes this server&apos;s tools, nothing else.
         </p>
         <p className="mt-4 text-sm">
           <span className="smallcaps tracking-sc text-xs text-muted-foreground">Connecting to</span>{" "}
-          <span className="font-medium">{serverName}</span> ·{" "}
-          <code className="font-mono text-xs">{mcpSlug}</code>
+          <span className="font-medium">{serverName}</span>, every MCP on it (
+          <code className="font-mono text-xs">{mcpSlug}</code> included) behind one URL
         </p>
         {isDocsDefault && (
           <p className="mt-3 border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
@@ -133,12 +136,67 @@ export function StepConnect({
             <span className="font-medium">Marketplace</span>.
           </p>
         )}
+        {justInstalled && !isDocsDefault && (
+          <p className="mt-3 text-sm italic text-muted-foreground">
+            {mcpName} installs in about a minute. Paste the config meanwhile — the test below waits
+            for it by itself.
+          </p>
+        )}
       </div>
 
-      {keyError && (
+      {/* The key: an MCP-proxy key bound to this server, minted when none
+          exists; when one does, it is rotated so repeat visits don't consume
+          the plan's key slots. */}
+      {!apiKey && key.phase !== "loading" && key.phase !== "working" && (
+        <div className="space-y-3 border border-border bg-secondary/40 p-4 text-sm">
+          <p className="smallcaps tracking-sc text-xs font-medium text-muted-foreground">API key</p>
+          {key.existing ? (
+            <p className="text-muted-foreground">
+              You already have a key for this server. Its secret is shown only once, so rotate it to
+              reveal a fresh one here. The old secret keeps working for 24 hours, then stops —
+              update any client that uses it.
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              Create a key for this connection (MCP calls to {serverName} only).
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {key.existing && (
+              <Button size="sm" onClick={() => key.existing && void key.rotate(key.existing)}>
+                <RefreshCw className="h-4 w-4" />
+                Use {key.existing.name ?? key.existing.prefix} (rotate to reveal)
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={key.existing ? "outline" : "default"}
+              onClick={() => void key.mint()}
+            >
+              <KeyRound className="h-4 w-4" />
+              Create a new key
+            </Button>
+          </div>
+        </div>
+      )}
+      {(key.phase === "loading" || key.phase === "working") && !apiKey && (
+        <p className="flex items-center gap-2 text-sm italic text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Preparing your API key…
+        </p>
+      )}
+
+      {key.error && (
         <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {keyError}
+          <span>{key.error} You can also manage keys on the dashboard&apos;s API keys page.</span>
+        </p>
+      )}
+      {apiKey && key.oldKeyExpiresAt && (
+        <p className="text-sm italic text-muted-foreground">
+          Key rotated. The previous secret keeps working until{" "}
+          <span className="lining not-italic">{formatDateTime(key.oldKeyExpiresAt)}</span>, then
+          stops.
         </p>
       )}
 
@@ -168,39 +226,64 @@ export function StepConnect({
           <div>
             <p className="smallcaps tracking-sc text-sm font-medium">Test connection</p>
             <p className="mt-1 text-xs italic text-muted-foreground">
-              Performs a real MCP <code className="font-mono not-italic">initialize</code>{" "}
-              handshake.
+              A real MCP handshake (<code className="font-mono not-italic">initialize</code> and{" "}
+              <code className="font-mono not-italic">tools/list</code>) through your endpoint.
             </p>
           </div>
-          <Button variant="outline" onClick={runTest} disabled={test === "running" || !apiKey}>
-            {test === "running" ? (
+          <Button variant="outline" onClick={runTest} disabled={testing || !apiKey}>
+            {testing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            {test === "running" ? "Testing…" : "Test"}
+            {testing ? "Testing…" : "Test"}
           </Button>
         </div>
 
-        {test !== "idle" && (
+        {test.phase !== "idle" && (
           <div
+            role="status"
+            aria-live="polite"
             className={cn(
               "mt-4 flex items-start gap-2 border px-3 py-2 text-sm",
-              test === "success"
+              test.phase === "success"
                 ? "border-success/40 bg-success/10 text-success"
-                : test === "error"
+                : test.phase === "error"
                   ? "border-destructive/40 bg-destructive/10 text-destructive"
                   : "border-border bg-card text-muted-foreground"
             )}
           >
-            {test === "success" ? (
+            {test.phase === "success" ? (
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            ) : test === "error" ? (
+            ) : test.phase === "error" ? (
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             ) : (
               <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
             )}
-            <span>{testMsg || (test === "running" ? "Running initialize…" : "")}</span>
+            <span>{test.message || "Running initialize…"}</span>
+          </div>
+        )}
+
+        {/* The moment the product proves itself: one real tool call. */}
+        {test.phase === "success" && (
+          <div className="mt-4 space-y-1 border-t border-border pt-4 text-sm">
+            <p className="smallcaps tracking-sc text-xs font-medium text-muted-foreground">
+              Try it
+            </p>
+            <p>
+              In {ideName(ide)}, ask:{" "}
+              <span className="font-medium">
+                &ldquo;
+                {sampleToolPrompt(
+                  mcpSlug,
+                  test.tools.filter((t) => t.startsWith(`${mcpSlug}__`))
+                )}
+                &rdquo;
+              </span>
+            </p>
+            <p className="text-xs italic text-muted-foreground">
+              The call appears in your server&apos;s Activity tab.
+            </p>
           </div>
         )}
       </div>
@@ -215,7 +298,7 @@ export function StepConnect({
           onClick={finish}
           disabled={finishing}
         >
-          {finishing ? "Finishing…" : "I'm done — go to dashboard"}
+          {finishing ? "Opening…" : "Open my server"}
         </Button>
       </div>
     </div>

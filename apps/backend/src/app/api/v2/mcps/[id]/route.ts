@@ -2,8 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, eq, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mcpServers } from "@/db/schema";
-import { notFound, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { notFound } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 // marketplace opens a detail/install dialog, so the browse list doesn't ship
 // every server's config schema to the client up front.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id } = await params;
 
   const [row] = await getDb()

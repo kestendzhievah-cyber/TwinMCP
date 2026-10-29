@@ -9,11 +9,59 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { PasswordStrength, passwordScore } from "@/components/auth/password-strength";
+import { PasswordStrength } from "@/components/auth/password-strength";
 import { createClient } from "@/utils/supabase/client";
 import { friendlyAuthError } from "@/lib/auth/errors";
+// The sign-up rule (8+ characters and two of mixed case, a number, a symbol):
+// a reset can never set a password the sign-up form would refuse.
+import { passwordAccepted } from "@/lib/auth/password-rule";
+import { authPath } from "@/lib/i18n/auth-paths";
+import type { Locale } from "@/lib/i18n/locales";
 
-export function ResetPasswordForm() {
+// Every visible string, per locale ("vous" in French, like the other French
+// auth screens). The dashboard it redirects to is English for everyone.
+const COPY = {
+  en: {
+    doneTitle: "Password updated",
+    doneLead: "Redirecting to your dashboard…",
+    checking: "Checking your reset link…",
+    invalidTitle: "Link invalid or expired",
+    invalidLead: "This password reset link is no longer valid. Request a new one to continue.",
+    requestNew: "Request a new link",
+    title: "New password",
+    subtitle:
+      "At least 8 characters, with two of: upper- and lowercase letters, a number, a symbol.",
+    password: "New password",
+    confirm: "Confirm password",
+    mismatch: "Passwords don’t match.",
+    updating: "Updating…",
+    update: "Update password",
+    remembered: "Remembered it after all?",
+    signIn: "Sign in",
+  },
+  fr: {
+    doneTitle: "Mot de passe modifié",
+    doneLead: "Redirection vers votre tableau de bord…",
+    checking: "Vérification de votre lien…",
+    invalidTitle: "Lien invalide ou expiré",
+    invalidLead:
+      "Ce lien de réinitialisation n’est plus valide. Demandez-en un nouveau pour continuer.",
+    requestNew: "Demander un nouveau lien",
+    title: "Nouveau mot de passe",
+    subtitle:
+      "Au moins 8 caractères, avec deux éléments parmi : majuscules et minuscules, un chiffre, un symbole.",
+    password: "Nouveau mot de passe",
+    confirm: "Confirmez le mot de passe",
+    mismatch: "Les mots de passe ne correspondent pas.",
+    updating: "Mise à jour…",
+    update: "Modifier le mot de passe",
+    remembered: "Finalement, il vous est revenu ?",
+    signIn: "Se connecter",
+  },
+} as const;
+
+export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
+  const t = COPY[locale];
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -37,8 +85,7 @@ export function ResetPasswordForm() {
   }, []);
 
   const mismatch = confirm.length > 0 && confirm !== password;
-  const tooWeak = passwordScore(password) < 2;
-  const canSubmit = !mismatch && !tooWeak && password.length >= 8 && confirm.length >= 8;
+  const canSubmit = passwordAccepted(password) && confirm === password;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -48,7 +95,7 @@ export function ResetPasswordForm() {
     const supabase = createClient();
     const { error: err } = await supabase.auth.updateUser({ password });
     if (err) {
-      setError(friendlyAuthError(err));
+      setError(friendlyAuthError(err, locale));
       setLoading(false);
       return;
     }
@@ -69,8 +116,8 @@ export function ResetPasswordForm() {
             <CheckCircle2 className="h-5 w-5" />
           </span>
         </div>
-        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">Password updated</h1>
-        <p className="mt-3 text-sm italic text-muted-foreground">Redirecting to your dashboard…</p>
+        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">{t.doneTitle}</h1>
+        <p className="mt-3 text-sm italic text-muted-foreground">{t.doneLead}</p>
       </div>
     );
   }
@@ -78,7 +125,7 @@ export function ResetPasswordForm() {
   if (checking) {
     return (
       <div className="flex flex-col items-center text-center">
-        <p className="text-sm italic text-muted-foreground">Checking your reset link…</p>
+        <p className="text-sm italic text-muted-foreground">{t.checking}</p>
       </div>
     );
   }
@@ -95,13 +142,11 @@ export function ResetPasswordForm() {
             <AlertCircle className="h-5 w-5" />
           </span>
         </div>
-        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">Link invalid or expired</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          This password reset link is no longer valid. Request a new one to continue.
-        </p>
+        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">{t.invalidTitle}</h1>
+        <p className="mt-3 text-sm text-muted-foreground">{t.invalidLead}</p>
         <div className="mt-8 flex flex-col gap-2 self-stretch">
           <Button asChild>
-            <Link href={"/forgot-password" as Route}>Request a new link</Link>
+            <Link href={authPath("forgotPassword", locale) as Route}>{t.requestNew}</Link>
           </Button>
         </div>
       </div>
@@ -111,16 +156,14 @@ export function ResetPasswordForm() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">New password</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          Pick a strong one — at least 8 characters, ideally with numbers and capitals.
-        </p>
+        <h1 className="smallcaps tracking-sc text-2xl font-medium">{t.title}</h1>
+        <p className="mt-1 text-sm italic text-muted-foreground">{t.subtitle}</p>
         <Separator variant="double" className="mt-4" />
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="password">New password</Label>
+          <Label htmlFor="password">{t.password}</Label>
           <Input
             id="password"
             type="password"
@@ -133,12 +176,12 @@ export function ResetPasswordForm() {
             aria-describedby="password-strength"
           />
           <div id="password-strength">
-            <PasswordStrength password={password} />
+            <PasswordStrength password={password} locale={locale} />
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="confirm">Confirm password</Label>
+          <Label htmlFor="confirm">{t.confirm}</Label>
           <Input
             id="confirm"
             type="password"
@@ -150,7 +193,7 @@ export function ResetPasswordForm() {
             aria-invalid={mismatch}
             className={mismatch ? "border-destructive" : undefined}
           />
-          {mismatch && <p className="text-xs text-destructive">Passwords don&apos;t match.</p>}
+          {mismatch && <p className="text-xs text-destructive">{t.mismatch}</p>}
         </div>
 
         <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
@@ -163,17 +206,17 @@ export function ResetPasswordForm() {
         </div>
 
         <Button type="submit" disabled={loading || !canSubmit}>
-          {loading ? "Updating…" : "Update password"}
+          {loading ? t.updating : t.update}
         </Button>
       </form>
 
       <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
-        Remembered it after all?{" "}
+        {t.remembered}{" "}
         <Link
-          href={"/sign-in" as Route}
+          href={authPath("signIn", locale) as Route}
           className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
         >
-          Sign in
+          {t.signIn}
         </Link>
       </p>
     </div>

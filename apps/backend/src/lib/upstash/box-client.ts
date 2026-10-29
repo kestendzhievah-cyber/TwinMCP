@@ -46,6 +46,11 @@ export interface BoxClient {
   getStatus(boxId: string): Promise<string>;
   /** Resume a paused (idle-lifecycle) box. */
   resume(boxId: string): Promise<void>;
+  /**
+   * Pause a box: compute is released, the disk is kept. Throws for a
+   * keep-alive box (the SDK refuses to pause those).
+   */
+  pause(boxId: string): Promise<void>;
 }
 
 /** Map our DB runtime enum onto the SDK's runtime set (no `-alpine`, `go`→`golang`). */
@@ -121,6 +126,9 @@ class StubBoxClient implements BoxClient {
   }
   async resume(boxId: string): Promise<void> {
     console.warn(`[box stub] resume ${boxId}`);
+  }
+  async pause(boxId: string): Promise<void> {
+    console.warn(`[box stub] pause ${boxId}`);
   }
 }
 
@@ -266,6 +274,11 @@ class UpstashBoxClient implements BoxClient {
   async resume(boxId: string): Promise<void> {
     const box = await this.getBox(boxId);
     await box.resume();
+  }
+
+  async pause(boxId: string): Promise<void> {
+    const box = await this.getBox(boxId);
+    await box.pause();
   }
 }
 

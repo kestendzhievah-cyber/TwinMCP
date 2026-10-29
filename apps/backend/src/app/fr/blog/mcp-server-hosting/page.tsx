@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 const faq = [
   {
     q: "Quel est le moyen le moins cher d'héberger un serveur MCP ?",
-    a: "stdio local est gratuit — le serveur tourne comme processus enfant de votre IDE sur votre machine. La moins chère des options hébergées en 2026 est une fonction serverless sur Cloudflare Workers (l'offre gratuite couvre la plupart des usages personnels). Un petit VPS Docker chez Hetzner coûte environ 5 $ par mois. Les runtimes MCP gérés démarrent à 0 $ (offre gratuite TwinMCP) et scalent avec l'usage.",
+    a: "stdio local est gratuit — le serveur tourne comme processus enfant de votre IDE sur votre machine. La moins chère des options hébergées en 2026 est une fonction serverless sur Cloudflare Workers (l'offre gratuite couvre la plupart des usages personnels). Un petit VPS Docker chez Hetzner coûte environ 5 $ par mois. Les runtimes MCP gérés démarrent à 0 € (offre gratuite TwinMCP) et scalent avec l'usage.",
   },
   {
     q: "Puis-je faire tourner des serveurs MCP en production sans les exposer à Internet ?",
@@ -207,16 +207,16 @@ export default function Post() {
         Windsurf et Cline.
       </p>
       <p>
-        Le coût chez TwinMCP démarre à €0 pour un serveur sur l&apos;offre gratuite et scale
-        jusqu&apos;à €14.99 par mois fixe pour Pro (25 serveurs). Setup deux minutes &mdash;
+        Le coût chez TwinMCP démarre à 0 € pour un serveur sur l&apos;offre gratuite et scale
+        jusqu&apos;à 14,99 € par mois fixe pour Pro (50 serveurs). Setup deux minutes &mdash;
         choisissez un runtime, collez une commande d&apos;install, c&apos;est parti. Le compromis
         est le verrouillage plateforme : la configuration de déploiement est spécifique à la
         plateforme, et migrer demande de reconstruire le conteneur vous-même. (Le code du serveur
         MCP lui-même est portable ; seule la glue de provisioning ne l&apos;est pas.)
       </p>
       <p>
-        Utilisez un runtime géré quand le serveur tient des secrets, quand plusieurs développeurs
-        doivent le partager, quand vous voulez logs et métriques centralisés, ou quand vous
+        Utilisez un runtime géré quand le serveur tient des secrets, quand il doit être accessible
+        depuis plusieurs machines, quand vous voulez logs et métriques centralisés, ou quand vous
         n&apos;avez pas d&apos;équipe plateforme qui veut faire tourner votre infrastructure MCP
         pour vous.
       </p>
@@ -241,8 +241,8 @@ export default function Post() {
           ? <strong>Catalogue.</strong> Arrêtez là.
         </li>
         <li>
-          Tout le reste &mdash; usage partagé d&apos;équipe, code privé, secrets, persistance, ou
-          vous voulez juste que ça marche en deux minutes ? <strong>Runtime géré.</strong>
+          Tout le reste &mdash; accès depuis plusieurs machines, code privé, secrets, persistance,
+          ou vous voulez juste que ça marche en deux minutes ? <strong>Runtime géré.</strong>
         </li>
       </ol>
 

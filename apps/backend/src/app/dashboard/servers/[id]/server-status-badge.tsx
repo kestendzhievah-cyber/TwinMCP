@@ -4,62 +4,48 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { ServerStatus } from "@/db/schema/platform";
-
-// Status tints (DESIGN.md §4.9): running green, provisioning ochre, stopped
-// plain stock, error oxblood, destroyed an empty outline.
-const VARIANT: Record<
-  ServerStatus,
-  "success" | "secondary" | "warning" | "destructive" | "outline"
-> = {
-  running: "success",
-  provisioning: "warning",
-  stopped: "secondary",
-  error: "destructive",
-  destroyed: "outline",
-};
-
-// Plain-language explanation of each status, shown on hover so the raw enum
-// isn't the only signal (esp. `error`, which otherwise reads as a dead end).
-const HELP: Record<ServerStatus, string> = {
-  running: "Online and serving MCP requests.",
-  provisioning: "Spinning up your runtime — usually about 30 seconds.",
-  stopped: "Sleeping to save resources. Start it to wake it up.",
-  error: "The runtime failed to start. Check the Logs tab, or restart the server.",
-  destroyed: "This server has been torn down.",
-};
-
-// Only poll while the status is in-flight; settled states don't change on their own.
-const TRANSIENT: ServerStatus[] = ["provisioning"];
+import type { HostType, ServerStatus } from "@/db/schema/platform";
+import { lifecycleLabel } from "@/lib/server-lifecycle-label";
 
 /**
- * Live server-status badge. While the status is transient (provisioning), polls
- * /health and, on a transition, refreshes the page so the controls + Runtime card
- * update too. Replaces the static badge so the user no longer has to reload.
+ * Live server-status badge. Says the derived lifecycle state
+ * (lib/server-lifecycle-label.ts): a `stopped` box server reads "Paused —
+ * resumes on next request" or "No runtime — Start", never the raw enum. While
+ * provisioning, polls /health and, on a transition, refreshes the page so the
+ * controls + Runtime card update too.
  */
 export function ServerStatusBadge({
   serverId,
   initialStatus,
+  hostType,
+  initialBoxId,
 }: {
   serverId: string;
   initialStatus: ServerStatus;
+  hostType: HostType;
+  initialBoxId: string | null;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState<ServerStatus>(initialStatus);
+  const [boxId, setBoxId] = useState<string | null>(initialBoxId);
 
   // Keep in sync when the server component re-renders with a new status.
   useEffect(() => setStatus(initialStatus), [initialStatus]);
+  useEffect(() => setBoxId(initialBoxId), [initialBoxId]);
+
+  const view = lifecycleLabel({ status, hostType, boxId });
 
   useEffect(() => {
-    if (!TRANSIENT.includes(status)) return;
+    if (!view.transient) return;
     let cancelled = false;
     const id = setInterval(async () => {
       try {
         const res = await fetch(`/api/v2/servers/${serverId}/health`);
         if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { status: ServerStatus };
+        const data = (await res.json()) as { status: ServerStatus; boxId?: string | null };
         if (data.status !== status) {
           setStatus(data.status);
+          if (data.boxId !== undefined) setBoxId(data.boxId);
           router.refresh();
         }
       } catch {
@@ -70,19 +56,16 @@ export function ServerStatusBadge({
       cancelled = true;
       clearInterval(id);
     };
-  }, [serverId, status, router]);
+  }, [serverId, status, view.transient, router]);
 
   return (
-    <Badge variant={VARIANT[status]} title={HELP[status]} className="capitalize">
+    <Badge variant={view.variant} title={view.help}>
       {/* The status dot — the one place a circle is allowed; it breathes while in flight. */}
       <span
         aria-hidden
-        className={cn(
-          "h-1.5 w-1.5 rounded-full bg-current",
-          TRANSIENT.includes(status) && "animate-pulse"
-        )}
+        className={cn("h-1.5 w-1.5 rounded-full bg-current", view.transient && "animate-pulse")}
       />
-      {status}
+      {view.label}
     </Badge>
   );
 }

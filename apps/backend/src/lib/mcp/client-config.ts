@@ -1,6 +1,8 @@
 // Shared MCP client-config generation — used by onboarding (StepConnect) and the
 // dashboard Connect panel. Keep this pure/client-safe (no server-only imports).
 
+import { WARNINGS_META_KEY } from "./aggregate";
+
 export type IdeKey =
   | "cursor"
   | "claude-desktop"
@@ -36,6 +38,29 @@ export function proxyUrl(origin: string, serverSlug: string, mcpSlug: string): s
   return `${origin.replace(/\/$/, "")}/api/mcp/${serverSlug}/${mcpSlug}`;
 }
 
+/**
+ * One URL for a whole server (contract D3): every enabled MCP of the server
+ * behind a single endpoint, tools named `<mcp>__<tool>`. With `router`, the
+ * endpoint lists three meta-tools (search_tools, get_tool_schema, call_tool)
+ * instead of every tool — for servers with many tools. Same snippets as a
+ * per-MCP URL: pass it to buildClientConfig with serverConfigLabel().
+ */
+export function buildServerUrl(
+  origin: string,
+  serverSlug: string,
+  opts: { router?: boolean } = {}
+): string {
+  const base = API_URL
+    ? `${API_URL}/mcp/${serverSlug}`
+    : `${origin.replace(/\/$/, "")}/api/mcp/${serverSlug}`;
+  return opts.router ? `${base}?mode=router` : base;
+}
+
+/** The entry name of a whole-server connection in a client config. */
+export function serverConfigLabel(serverSlug: string): string {
+  return `twinmcp-${serverSlug}`;
+}
+
 export const IDE_LABELS: Record<IdeKey, string> = {
   cursor: "Cursor",
   "claude-desktop": "Claude Desktop",
@@ -63,6 +88,9 @@ export function buildClientConfig(
   const httpEntry = { url, headers: { Authorization: authHeader } };
   // stdio→remote bridge for clients that only load local (stdio) servers.
   const remoteArgs = ["-y", "mcp-remote", url, "--header", `Authorization: ${authHeader}`];
+  // On a shell line, a URL with a query (`?mode=router`) must be quoted: zsh
+  // (the macOS default) treats an unquoted `?` as a glob and aborts.
+  const shellUrl = /[?&*\s]/.test(url) ? `"${url}"` : url;
 
   switch (ide) {
     case "cursor":
@@ -90,7 +118,7 @@ export function buildClientConfig(
       return {
         filename: "Claude Code — run in your terminal",
         language: "bash",
-        code: `claude mcp add --transport http ${label} ${url} \\\n  --header "Authorization: ${authHeader}"`,
+        code: `claude mcp add --transport http ${label} ${shellUrl} \\\n  --header "Authorization: ${authHeader}"`,
       };
     case "vscode":
       // VS Code MCP: .vscode/mcp.json uses "servers" with an explicit "http" type.
@@ -159,10 +187,10 @@ export function buildClientConfig(
           `Header: Authorization: Bearer ${apiKey}`,
           "",
           "# Bridge a stdio-only client with mcp-remote:",
-          `npx -y mcp-remote ${url} --header "Authorization: Bearer ${apiKey}"`,
+          `npx -y mcp-remote ${shellUrl} --header "Authorization: Bearer ${apiKey}"`,
           "",
           "# Quick handshake test:",
-          `curl -s -X POST ${url} \\`,
+          `curl -s -X POST ${shellUrl} \\`,
           `  -H "Authorization: Bearer ${apiKey}" \\`,
           '  -H "Content-Type: application/json" \\',
           '  -H "Accept: application/json, text/event-stream" \\',
@@ -172,8 +200,13 @@ export function buildClientConfig(
   }
 }
 
-type RpcShape = { result?: Record<string, unknown>; error?: { message?: string } };
+type RpcShape = {
+  result?: Record<string, unknown>;
+  error?: { message?: string };
+  message?: string;
+};
 
+/** Parse a JSON or single-event SSE body (Streamable HTTP answers either way). */
 function parseRpc(text: string): RpcShape | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -186,55 +219,183 @@ function parseRpc(text: string): RpcShape | null {
   }
 }
 
+/** Does an aggregated tools/list `_meta` flag an MCP as still waking/installing? */
+export function hasWakingMcp(meta: unknown): boolean {
+  if (!meta || typeof meta !== "object") return false;
+  const warnings = (meta as Record<string, unknown>)[WARNINGS_META_KEY];
+  return (
+    Array.isArray(warnings) &&
+    warnings.some(
+      (w) => !!w && typeof w === "object" && (w as { state?: unknown }).state === "waking"
+    )
+  );
+}
+
+/** The outcome of {@link testMcpConnection}. */
+export interface McpConnectionTestResult {
+  /** True when both `initialize` and `tools/list` succeeded. */
+  ok: boolean;
+  /** Tool names from `tools/list` (present when ok). */
+  tools?: string[];
+  /**
+   * The proxy answered 503 because the MCP is still installing, the server is
+   * still provisioning or the box is waking from idle: retry shortly.
+   */
+  installing?: boolean;
+  /** Human-readable outcome, safe to show as-is. */
+  message: string;
+}
+
+// The proxy may spend ~30 s waking a paused box before it answers, so the
+// per-request timeout sits above that.
+const TEST_TIMEOUT_MS = 45_000;
+
+// 503 messages from the proxy that mean "not ready yet" rather than "stopped".
+const NOT_READY_RE = /install|waking|provisioning|not yet provisioned|warm/i;
+
+/** "fetch" from ".../api/mcp/my-server/fetch" — the MCP label when none is given. */
+function slugFromUrl(url: string): string {
+  try {
+    const last = new URL(url).pathname.split("/").filter(Boolean).pop();
+    return last ? decodeURIComponent(last) : "The MCP";
+  } catch {
+    return "The MCP";
+  }
+}
+
 /**
- * Real connection test: POST an MCP `initialize` to the proxy URL with the API
- * key and require a valid JSON-RPC result (not just a health ping).
+ * Real connection test, the same handshake an IDE performs: POST `initialize`
+ * to the proxy URL with the API key, send `notifications/initialized`, then
+ * `tools/list`, and require a valid JSON-RPC result for both (not just a
+ * health ping). None of these is a `tools/call`, so the test never consumes
+ * the daily quota (lib/mcp/billable.ts).
+ *
+ * `mcpLabel` names the MCP in the "still installing" message; it defaults to
+ * the last segment of the URL. Callers that read only `ok`/`message` keep
+ * working unchanged.
  */
 export async function testMcpConnection(
   url: string,
-  apiKey: string
-): Promise<{ ok: boolean; message: string }> {
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        accept: "application/json, text/event-stream",
-        authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {
-          protocolVersion: "2024-11-05",
-          capabilities: {},
-          clientInfo: { name: "twinmcp-dashboard", version: "1.0.0" },
-        },
-      }),
-    });
+  apiKey: string,
+  mcpLabel?: string
+): Promise<McpConnectionTestResult> {
+  const label = mcpLabel?.trim() || slugFromUrl(url);
+  const installingResult: McpConnectionTestResult = {
+    ok: false,
+    installing: true,
+    message: `${label} is still installing — this takes about a minute.`,
+  };
+  let sessionId: string | null = null;
 
+  const post = (body: unknown) => {
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      authorization: `Bearer ${apiKey}`,
+    };
+    if (sessionId) headers["mcp-session-id"] = sessionId;
+    return fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      ...(typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+        ? { signal: AbortSignal.timeout(TEST_TIMEOUT_MS) }
+        : {}),
+    });
+  };
+
+  /** Map a non-2xx proxy answer to a result; null when the status is OK. */
+  const httpFailure = async (res: Response): Promise<McpConnectionTestResult | null> => {
+    if (res.ok) return null;
     if (res.status === 401) return { ok: false, message: "Unauthorized — check your API key." };
     if (res.status === 503) {
+      const body = parseRpc(await res.text().catch(() => ""));
+      const detail = body?.error?.message ?? body?.message ?? "";
+      if (NOT_READY_RE.test(detail)) return installingResult;
       return { ok: false, message: "Server isn't running yet — start it and retry in a moment." };
     }
-    if (!res.ok) return { ok: false, message: `MCP endpoint returned HTTP ${res.status}.` };
+    if (res.status === 429) {
+      return { ok: false, message: "Daily request limit reached — see Billing for your quota." };
+    }
+    return { ok: false, message: `MCP endpoint returned HTTP ${res.status}.` };
+  };
 
-    const parsed = parseRpc(await res.text());
-    if (parsed?.result && (parsed.result.serverInfo || parsed.result.capabilities)) {
-      const info = parsed.result.serverInfo as { name?: string } | undefined;
+  try {
+    // 1. initialize
+    const init = await post({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2024-11-05",
+        capabilities: {},
+        clientInfo: { name: "twinmcp-dashboard", version: "1.0.0" },
+      },
+    });
+    const initFailure = await httpFailure(init);
+    if (initFailure) return initFailure;
+    sessionId = init.headers.get("mcp-session-id");
+
+    const initRpc = parseRpc(await init.text());
+    if (initRpc?.error) {
+      return { ok: false, message: `MCP error: ${initRpc.error.message ?? "unknown"}` };
+    }
+    if (!initRpc?.result || !(initRpc.result.serverInfo || initRpc.result.capabilities)) {
+      return { ok: false, message: "Unexpected response from the MCP endpoint." };
+    }
+    const info = initRpc.result.serverInfo as { name?: string } | undefined;
+
+    // 2. notifications/initialized — required by the protocol before other
+    // requests; its answer (202, or nothing useful) is ignored.
+    await post({ jsonrpc: "2.0", method: "notifications/initialized" })
+      .then((r) => r.text())
+      .catch(() => undefined);
+
+    // 3. tools/list
+    const list = await post({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
+    const listFailure = await httpFailure(list);
+    if (listFailure) return listFailure;
+    const listRpc = parseRpc(await list.text());
+    if (listRpc?.error) {
       return {
-        ok: true,
-        message: info?.name
-          ? `Connected — "${info.name}" answered initialize.`
-          : "Connected — the MCP answered initialize.",
+        ok: false,
+        message: `Connected, but tools/list failed: ${listRpc.error.message ?? "unknown error"}`,
       };
     }
-    if (parsed?.error) {
-      return { ok: false, message: `MCP error: ${parsed.error.message ?? "unknown"}` };
+    const rawTools = listRpc?.result?.tools;
+    if (!Array.isArray(rawTools)) {
+      return { ok: false, message: "Connected, but the MCP returned no tool list." };
     }
-    return { ok: false, message: "Unexpected response from the MCP endpoint." };
-  } catch {
+    const tools = rawTools
+      .map((t) => (t && typeof t === "object" ? (t as { name?: unknown }).name : undefined))
+      .filter((n): n is string => typeof n === "string");
+
+    // The whole-server endpoint lists what it can and flags an MCP that is
+    // still installing or waking in `_meta`: keep waiting for it, so the test
+    // only passes once every MCP answers (the hook retries for 2 minutes).
+    if (hasWakingMcp(listRpc?.result?._meta)) return { ...installingResult, tools };
+
+    // Close the test session (best effort, never awaited).
+    if (sessionId) {
+      void fetch(url, {
+        method: "DELETE",
+        headers: { authorization: `Bearer ${apiKey}`, "mcp-session-id": sessionId },
+      }).catch(() => undefined);
+    }
+
+    const who = info?.name ? `"${info.name}"` : "the MCP";
+    return {
+      ok: true,
+      tools,
+      message: `Connected — ${who} answered initialize and listed ${tools.length} tool${
+        tools.length === 1 ? "" : "s"
+      }.`,
+    };
+  } catch (err) {
+    // Our own timeout: the proxy is still waking the box.
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      return installingResult;
+    }
     return { ok: false, message: "Network error — try again." };
   }
 }

@@ -3,8 +3,8 @@ import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { teamspaces, teamspaceMembers, users } from "@/db/schema";
-import { badRequest, forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 import { limitFor, minPlanForLimit, PLAN_LABELS } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
 
@@ -24,8 +24,8 @@ async function ownedBy(userId: string, teamspaceId: string) {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id: teamspaceId } = await params;
 
   let body: unknown;
@@ -97,8 +97,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id: teamspaceId } = await params;
   const memberId = new URL(req.url).searchParams.get("userId");
   if (!memberId) return badRequest("userId is required");

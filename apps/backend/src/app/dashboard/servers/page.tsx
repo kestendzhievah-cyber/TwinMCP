@@ -6,8 +6,11 @@ import { getDb } from "@/db";
 import { servers, users } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { SERVER_QUOTAS } from "@/lib/quota";
+import { PLAN_CAPABILITIES } from "@/lib/plan-features";
+import { trialCta } from "@/lib/billing/upgrade-state";
 import { cn } from "@/lib/utils";
 import { CreateServerDialog } from "./create-dialog";
+import { UpgradeInline } from "@/components/billing/upgrade-inline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -20,21 +23,8 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { ArrowRight, Boxes, Plus } from "lucide-react";
-import type { ServerStatus } from "@/db/schema/platform";
+import { lifecycleLabel } from "@/lib/server-lifecycle-label";
 import { EmptyState } from "@/components/dashboard/empty-state";
-
-// Status tints (DESIGN.md §4.9): running green, provisioning ochre, stopped
-// plain stock, error oxblood, destroyed an empty outline.
-const statusVariant: Record<
-  ServerStatus,
-  "success" | "secondary" | "warning" | "destructive" | "outline"
-> = {
-  running: "success",
-  provisioning: "warning",
-  stopped: "secondary",
-  error: "destructive",
-  destroyed: "outline",
-};
 
 export default async function ServersPage() {
   const supabase = await createClient();
@@ -45,12 +35,15 @@ export default async function ServersPage() {
 
   const db = getDb();
   const [me] = await db
-    .select({ plan: users.plan })
+    .select({ plan: users.plan, stripeCustomerId: users.stripeCustomerId })
     .from(users)
     .where(eq(users.id, user.id))
     .limit(1);
   const plan = me?.plan ?? "free";
   const quota = SERVER_QUOTAS[plan];
+  // A first Pro subscription starts with the free month; a Stripe customer
+  // already used it (lib/billing/upgrade-state.ts).
+  const trialEligible = plan === "free" && !me?.stripeCustomerId;
 
   const rows = await db
     .select({
@@ -58,6 +51,8 @@ export default async function ServersPage() {
       name: servers.name,
       slug: servers.slug,
       status: servers.status,
+      hostType: servers.hostType,
+      boxId: servers.boxId,
       boxSize: servers.boxSize,
       region: servers.region,
       createdAt: servers.createdAt,
@@ -66,7 +61,13 @@ export default async function ServersPage() {
     .where(eq(servers.userId, user.id))
     .orderBy(desc(servers.createdAt));
 
-  const remaining = quota === Number.POSITIVE_INFINITY ? "∞" : Math.max(0, quota - rows.length);
+  // Destroyed servers stay in the ledger but never count against the quota
+  // (lib/quota.ts assertServerQuota counts the same way).
+  const active = rows.filter((s) => s.status !== "destroyed").length;
+  const remaining = quota === Number.POSITIVE_INFINITY ? "∞" : Math.max(0, quota - active);
+  const atFreeLimit = plan === "free" && remaining === 0;
+  const pro = PLAN_CAPABILITIES.pro;
+  const proBoxes = `${pro.boxSizes.slice(0, -1).join(", ")} or ${pro.boxSizes[pro.boxSizes.length - 1]}`;
 
   return (
     <div className="space-y-8">
@@ -77,7 +78,7 @@ export default async function ServersPage() {
           <div>
             <h1 className="smallcaps tracking-sc text-2xl font-medium">Servers</h1>
             <p className="mt-1 text-sm italic text-muted-foreground">
-              <span className="lining">{rows.length}</span> active ·{" "}
+              <span className="lining">{active}</span> active ·{" "}
               <span className="lining">{remaining}</span> remaining on{" "}
               <span className="smallcaps font-medium capitalize not-italic text-foreground">
                 {plan}
@@ -85,9 +86,23 @@ export default async function ServersPage() {
               plan
             </p>
           </div>
-          <CreateServerDialog plan={plan} disabled={remaining === 0} />
+          <CreateServerDialog
+            plan={plan}
+            disabled={remaining === 0}
+            trialEligible={trialEligible}
+          />
         </div>
         <Separator variant="double" className="mt-4" />
+        {atFreeLimit && (
+          <UpgradeInline
+            source="servers"
+            level="offer"
+            reason="servers_limit"
+            label={trialCta(trialEligible).label}
+            description={`Free includes ${PLAN_CAPABILITIES.free.servers} server. Pro runs up to ${pro.servers} servers on ${proBoxes} boxes.`}
+            className="lining mt-4"
+          />
+        )}
       </div>
 
       {rows.length === 0 ? (
@@ -99,6 +114,7 @@ export default async function ServersPage() {
             <CreateServerDialog
               plan={plan}
               disabled={remaining === 0}
+              trialEligible={trialEligible}
               trigger={
                 <Button size="lg" disabled={remaining === 0}>
                   <Plus className="h-4 w-4" />
@@ -116,7 +132,7 @@ export default async function ServersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead className="w-32">Status</TableHead>
+                <TableHead className="w-44">Status</TableHead>
                 <TableHead className="w-24">Size</TableHead>
                 <TableHead className="w-32">Region</TableHead>
                 <TableHead className="w-32">Created</TableHead>
@@ -124,45 +140,52 @@ export default async function ServersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>
-                    <Link
-                      href={`/dashboard/servers/${s.id}` as Route}
-                      className="font-medium text-foreground decoration-brand/40 underline-offset-4 transition-colors hover:text-brand hover:underline"
-                    >
-                      {s.name}
-                    </Link>
-                    <div className="mt-0.5 font-mono text-xs text-muted-foreground">{s.slug}</div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant[s.status]}>
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full bg-current",
-                          s.status === "provisioning" && "animate-pulse"
-                        )}
-                      />
-                      {s.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="capitalize">{s.boxSize}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {s.region ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(s.createdAt)}</TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/dashboard/servers/${s.id}` as Route}
-                      aria-label={`Open ${s.name}`}
-                      className="inline-flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {rows.map((s) => {
+                // `stopped` reads two ways: paused (box kept) or no runtime
+                // (lib/server-lifecycle-label.ts), with the status tints of DESIGN.md §4.9.
+                const view = lifecycleLabel(s);
+                return (
+                  <TableRow key={s.id}>
+                    <TableCell>
+                      <Link
+                        href={`/dashboard/servers/${s.id}` as Route}
+                        className="font-medium text-foreground decoration-brand/40 underline-offset-4 transition-colors hover:text-brand hover:underline"
+                      >
+                        {s.name}
+                      </Link>
+                      <div className="mt-0.5 font-mono text-xs text-muted-foreground">{s.slug}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={view.variant} title={view.help}>
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "h-1.5 w-1.5 shrink-0 rounded-full bg-current",
+                            view.transient && "animate-pulse"
+                          )}
+                        />
+                        {view.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="capitalize">{s.boxSize}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {s.region ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(s.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/dashboard/servers/${s.id}` as Route}
+                        aria-label={`Open ${s.name}`}
+                        className="inline-flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

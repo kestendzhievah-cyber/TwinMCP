@@ -25,7 +25,7 @@ const benefits = [
   },
   {
     title: "Secrets stay server-side",
-    body: "Your GitHub token, your Slack bot key, your Postgres connection string — encrypted at rest, decrypted only inside the per-server sandbox. They never touch your laptop.",
+    body: "Your GitLab token, your Slack bot key, your Postgres connection string — encrypted at rest, decrypted only inside the per-server sandbox. They never touch your laptop.",
   },
   {
     title: "Survives quitting Claude",
@@ -40,7 +40,7 @@ const steps = [
   },
   {
     title: "Install an MCP from the marketplace",
-    body: "Pick GitHub, Notion, Slack, Postgres, or any of the curated MCPs. Provide the secret once; TwinMCP encrypts and stores it.",
+    body: "Pick GitLab, Notion, Slack, Postgres, or any of the curated MCPs. Provide the secret once; TwinMCP encrypts and stores it.",
   },
   {
     title: "Copy the Claude config snippet",
@@ -121,10 +121,10 @@ export default function ClaudeMcpHostingPage() {
                 </span>
               </div>
               <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
-                <code className="font-mono text-foreground">{`claude mcp add github-prod \
+                <code className="font-mono text-foreground">{`claude mcp add gitlab \
   --transport http \
-  https://github.your-team.twinmcp.fr/mcp \
-  --header "Authorization: Bearer tw_live_..."`}</code>
+  https://twinmcp.fr/api/mcp/your-server/gitlab \
+  --header "Authorization: Bearer ctx7sk_YOUR_KEY_HERE"`}</code>
               </pre>
             </div>
           </div>

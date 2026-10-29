@@ -41,4 +41,32 @@ describe("buildOpenApiSpec", () => {
     expect(schemas.UserServer).toBeDefined();
     expect(schemas.LogLine).toBeDefined();
   });
+
+  it("documents the real server hostType enum (from the DB schema)", () => {
+    const server = spec.components?.schemas?.Server as {
+      properties?: Record<string, { enum?: string[] }>;
+    };
+    expect(server.properties?.hostType?.enum).toEqual([
+      "upstash_box",
+      "external_url",
+      "local_agent",
+    ]);
+  });
+
+  it("documents API key scopes, server binding and expiry", () => {
+    const schemas = spec.components?.schemas ?? {};
+    expect((schemas.ApiKeyScope as { enum?: string[] }).enum).toEqual(["full", "mcp_proxy"]);
+    const key = schemas.ApiKey as { properties?: Record<string, unknown> };
+    expect(Object.keys(key.properties ?? {})).toEqual(
+      expect.arrayContaining(["scope", "serverId", "expiresAt", "lastUsedAt"])
+    );
+    const create = spec.paths?.["/api/v2/auth/keys"]?.post as {
+      requestBody?: { content?: Record<string, { schema?: { properties?: object } }> };
+    };
+    const body = create.requestBody?.content?.["application/json"]?.schema?.properties ?? {};
+    expect(Object.keys(body)).toEqual(expect.arrayContaining(["name", "scope", "serverId"]));
+    const rotate = JSON.stringify(spec.paths?.["/api/v2/auth/keys/{id}/rotate"]);
+    expect(rotate).toContain("oldKeyExpiresAt");
+    expect(rotate).toContain("24 h");
+  });
 });

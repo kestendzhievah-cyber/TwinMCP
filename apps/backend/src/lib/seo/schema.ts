@@ -2,14 +2,15 @@
 // Each helper returns a plain object ready to be stringified inside a
 // <script type="application/ld+json"> tag (use the JsonLd component).
 
+import { SOCIAL_LINKS, sameAsList } from "@/lib/site-links";
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 const ORG_NAME = "TwinMCP";
 const ORG_LOGO = `${SITE_URL}/icon-512.png`;
-const ORG_SAME_AS = [
-  "https://twitter.com/twinmcp",
-  "https://github.com/kestendzhievah-cyber/TwinMCP",
-];
+// Only profiles that exist: each comes from its NEXT_PUBLIC_* env var
+// (lib/site-links.ts) and is left out when unset. An empty list drops sameAs.
+const ORG_SAME_AS = sameAsList(SOCIAL_LINKS);
 
 function abs(path: string): string {
   if (/^https?:\/\//.test(path)) return path;
@@ -33,7 +34,7 @@ export function organizationSchema() {
       "AI coding agents",
       "Developer tools",
     ],
-    sameAs: ORG_SAME_AS,
+    ...(ORG_SAME_AS.length > 0 ? { sameAs: ORG_SAME_AS } : {}),
     contactPoint: [
       {
         "@type": "ContactPoint",

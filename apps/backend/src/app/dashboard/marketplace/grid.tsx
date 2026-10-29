@@ -16,12 +16,25 @@ import {
 } from "@/components/ui/select";
 import { Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { Plan } from "@/db/schema/core";
+import { compareFeatured } from "@/lib/mcp/bundles";
 import { InstallDialog, type CatalogEntry, type ServerOption } from "./install-dialog";
 import { DetailDialog } from "./detail-dialog";
 
 type Source = "all" | "official" | "community";
 type Runs = "all" | "box" | "local";
 type Sort = "featured" | "name" | "newest";
+
+/**
+ * A catalog entry as the marketplace page serves it: the shared CatalogEntry
+ * plus two flags computed server-side from the MCP's configSchema.
+ */
+export interface MarketplaceEntry extends CatalogEntry {
+  /** A required config field holds a credential (API key, token…). */
+  needsKey: boolean;
+  /** At least one required config field (key, path, URL…). */
+  needsConfig: boolean;
+}
 
 /** Where each catalog MCP is installed for this user (mcpServerId → servers). */
 export type InstalledMap = Record<string, { serverId: string; serverName: string }[]>;
@@ -75,10 +88,13 @@ export function McpCatalogGrid({
   catalog,
   userServers,
   installed,
+  plan,
 }: {
-  catalog: CatalogEntry[];
+  catalog: MarketplaceEntry[];
   userServers: ServerOption[];
   installed: InstalledMap;
+  /** The account's plan: only Free gets the Pro toast when a small box is full. */
+  plan: Plan;
 }) {
   const [picking, setPicking] = useState<CatalogEntry | null>(null);
   const [detail, setDetail] = useState<CatalogEntry | null>(null);
@@ -142,8 +158,10 @@ export function McpCatalogGrid({
     } else if (sort === "newest") {
       rows.sort((a, b) => b.createdAt - a.createdAt);
     } else {
-      // Featured: official first, then newest — mirrors the server ordering.
-      rows.sort((a, b) => Number(b.isOfficial) - Number(a.isOfficial) || b.createdAt - a.createdAt);
+      // Featured: the curated first installs (lib/mcp/bundles.ts FEATURED_ORDER),
+      // then zero-config box MCPs, then those needing a key or setup, then
+      // local-only tools; official first and by name within each tier.
+      rows.sort(compareFeatured);
     }
     return rows;
   }, [catalog, debouncedQuery, source, runs, runtime, category, sort]);
@@ -278,7 +296,11 @@ export function McpCatalogGrid({
                           installed
                         </Badge>
                       )}
-                      {local && <Badge variant="info">local</Badge>}
+                      {local ? (
+                        <Badge variant="info">local only</Badge>
+                      ) : (
+                        mcp.needsKey && <Badge variant="info">needs API key</Badge>
+                      )}
                       {mcp.isOfficial && <Badge variant="outline">official</Badge>}
                     </div>
                   </div>
@@ -347,7 +369,12 @@ export function McpCatalogGrid({
           setPicking(mcp);
         }}
       />
-      <InstallDialog mcp={picking} userServers={userServers} onClose={() => setPicking(null)} />
+      <InstallDialog
+        mcp={picking}
+        userServers={userServers}
+        plan={plan}
+        onClose={() => setPicking(null)}
+      />
     </>
   );
 }

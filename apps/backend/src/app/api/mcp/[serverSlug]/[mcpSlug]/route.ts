@@ -3,50 +3,64 @@ import { and, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
-import { authenticateRequest, type AuthedContext } from "@/lib/auth";
-import { jsonError, rateLimited } from "@/lib/errors";
-import { TWINMCP_DOCS_SLUG, resumeServer } from "@/lib/provisioning";
-import { decryptConfig } from "@/lib/crypto/config-encryption";
-import { MCP_STREAM_PATH } from "@/lib/upstash/mcp-bridge";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { authenticateRequest } from "@/lib/auth";
+import { SERVER_SCOPE_MESSAGE, keyAllowsServer } from "@/lib/auth/key-scope";
+import { PROXY_ERROR, newProxyRequestId, proxyError, withProxyRequestId } from "@/lib/errors";
+import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { recordMcpUsage } from "@/lib/usage-metrics";
-import { connKey, isAgentOnline, relayToAgent } from "@/lib/agent/registry";
+import { isBillableRequest } from "@/lib/mcp/billable";
+import { connKey, isAgentOnline } from "@/lib/agent/registry";
+import {
+  applyPolicyToJsonRpcResponse,
+  filterToolsList,
+  isToolCallAllowed,
+  isUnrestricted,
+  parseToolPolicy,
+  policyNeedsToolAnnotations,
+  type ToolPolicy,
+} from "@/lib/mcp/tool-policy";
+import {
+  TOOL_POLICY_DENIED_CODE,
+  extractJsonRpcResponse,
+  nextCursorOf,
+  toolCallName,
+  toolsFromResponse,
+  type McpTool,
+} from "@/lib/mcp/aggregate";
+import {
+  POLICY_TOOLS_MAX_AGE_MS,
+  TWINMCP_DOCS_TOOLS,
+  agentOffline,
+  callLocalAgent,
+  fetchAllBoxTools,
+  forwardToBox,
+  handleTwinMcpDocs,
+  newToolCallTrack,
+  noteFirstToolCall,
+  passHeader,
+  policyDenied,
+  probeAgentTools,
+  recordTrackedCall,
+  relayUpstream,
+  rememberToolsFromBody,
+  requestsCursor,
+  toolCache,
+  unauthorizedMcp,
+  type BoxForward,
+  type BoxTarget,
+  type JsonRpcRequest,
+  type Method,
+  type RelayCtx,
+  type ToolCallTrack,
+} from "@/lib/mcp/relay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface JsonRpcRequest {
-  jsonrpc?: "2.0";
-  id?: number | string | null;
-  method?: string;
-  params?: Record<string, unknown>;
-}
-
-type Method = "GET" | "POST" | "DELETE";
-
-function jsonRpcError(id: unknown, code: number, message: string, status = 200) {
-  return NextResponse.json(
-    { jsonrpc: "2.0", id: id ?? null, error: { code, message } },
-    { status }
-  );
-}
-
-function jsonRpcResult(id: unknown, result: unknown) {
-  return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, result });
-}
-
-/** 401 with WWW-Authenticate so MCP clients can bootstrap auth discovery. */
-function unauthorizedMcp() {
-  return NextResponse.json(
-    {
-      message: "Invalid API key. Provide your TwinMCP key as 'Authorization: Bearer ctx7sk_...'.",
-    },
-    {
-      status: 401,
-      headers: { "WWW-Authenticate": 'Bearer realm="twinmcp", error="invalid_token"' },
-    }
-  );
-}
+// One MCP of one server: /api/mcp/<serverSlug>/<mcpSlug>. A full Streamable
+// HTTP relay (GET stream, POST, DELETE) to the box bridge, the local agent or
+// the control-plane TwinMCP Docs. The whole server behind one URL is the
+// sibling route /api/mcp/<serverSlug> (contract D3); both share lib/mcp/relay.ts.
 
 export async function GET(req: NextRequest, ctx: RouteCtx) {
   return handleProxy(req, ctx, "GET");
@@ -60,10 +74,72 @@ export async function DELETE(req: NextRequest, ctx: RouteCtx) {
 
 type RouteCtx = { params: Promise<{ serverSlug: string; mcpSlug: string }> };
 
-async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Method) {
+/** Everything a branch needs once the request is authenticated and classified. */
+interface ProxyCtx extends RelayCtx {
+  req: NextRequest;
+  serverSlug: string;
+  mcpSlug: string;
+  method: Method;
+  /** The POST body, read once (replayed on a resume-and-retry). */
+  bodyText: string | undefined;
+  /** The tool call's own name (params.name), when this is a tools/call. */
+  toolName: string | null;
+  /** The installation's tool policy (contract D2); null = every tool. */
+  policy: ToolPolicy | null;
+  /** The activity-log entry of a tools/call (contract D1), logged once answered. */
+  track: ToolCallTrack | undefined;
+}
+
+/**
+ * Every proxy response carries `x-twinmcp-request-id` (contract K2), errors
+ * included, and the id goes into each JSON-RPC error the proxy produces
+ * (`error.data.requestId`) and into Sentry, so a user can quote it to support.
+ * A tools/call is logged to the activity log (contract D1) from the answer
+ * sent — fire-and-forget, metadata only. Its latency runs to the response
+ * headers (a streamed result is not awaited).
+ */
+async function handleProxy(req: NextRequest, routeCtx: RouteCtx, method: Method) {
+  const requestId = newProxyRequestId();
+  const startedAt = Date.now();
+  const out: { track?: ToolCallTrack } = {};
+  let res: Response;
+  try {
+    res = await proxyRequest(req, routeCtx, method, requestId, startedAt, out);
+  } catch (err) {
+    console.error(`[mcp proxy] unhandled error (request ${requestId}):`, err);
+    Sentry.captureException(err, { tags: { area: "mcp-proxy", requestId } });
+    res = proxyError({
+      status: 500,
+      code: PROXY_ERROR.INTERNAL,
+      message: "Internal proxy error. Quote the request id to support if it persists.",
+      requestId,
+    });
+  }
+  if (out.track) recordTrackedCall(out.track, res, requestId);
+  return withProxyRequestId(res, requestId);
+}
+
+async function proxyRequest(
+  req: NextRequest,
+  { params }: RouteCtx,
+  method: Method,
+  requestId: string,
+  startedAt: number,
+  out: { track?: ToolCallTrack }
+): Promise<Response> {
   const auth = await authenticateRequest(req);
-  if (!auth) return unauthorizedMcp();
+  if (!auth) return unauthorizedMcp(req, requestId, null);
   const { serverSlug, mcpSlug } = await params;
+
+  // Read the body once and classify the message before any gate. Only a
+  // `tools/call` consumes the daily quota and lands in usage_metrics; the
+  // protocol overhead around it (initialize, tools/list, notifications, ping,
+  // the GET stream, DELETE) is relayed for free — it used to burn a third of a
+  // Free day before the first real call.
+  const bodyText = method === "POST" ? await req.text() : undefined;
+  const verdict = isBillableRequest(method, bodyText ?? null);
+  const fail = (status: number, code: number, message: string, headers?: HeadersInit) =>
+    proxyError({ status, code, message, requestId, rpcId: verdict.rpcId, headers });
 
   const db = getDb();
   const [row] = await db
@@ -71,12 +147,14 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
       serverId: servers.id,
       serverStatus: servers.status,
       hostType: servers.hostType,
+      boxId: servers.boxId,
       enabled: userServers.enabled,
       userServerId: userServers.id,
       mcpEndpoint: userServers.endpointUrl,
       tokenCiphertext: userServers.endpointTokenCiphertext,
       tokenIv: userServers.endpointTokenIv,
       tokenTag: userServers.endpointTokenTag,
+      toolPolicy: userServers.toolPolicy,
     })
     .from(servers)
     .innerJoin(userServers, eq(userServers.serverId, servers.id))
@@ -90,16 +168,66 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
     )
     .limit(1);
 
-  if (!row) return jsonError(404, `Server '${serverSlug}' or MCP '${mcpSlug}' not found`);
-  if (!row.enabled) return jsonError(409, "MCP is disabled");
+  if (!row) {
+    return fail(404, PROXY_ERROR.NOT_FOUND, `Server '${serverSlug}' or MCP '${mcpSlug}' not found`);
+  }
 
-  // Per-MCP usage metering (fire-and-forget; never blocks the request).
-  const meter = (ok: boolean) => recordMcpUsage(row.userServerId, ok);
+  // From here on the request belongs to a known server: a tools/call is
+  // logged whatever happens to it (refused, rate-limited, failed or served).
+  const toolName = verdict.billable ? toolCallName(bodyText) : null;
+  if (verdict.billable) {
+    out.track = newToolCallTrack(auth, {
+      serverId: row.serverId,
+      userServerId: row.userServerId,
+      mcpSlug,
+      toolName,
+      startedAt,
+    });
+  }
+
+  // A key scoped to one server (contract K1) cannot reach the others. Applies
+  // to every branch, twinmcp-docs and local agents included.
+  // Fails closed: a context without a key (never produced today) is refused.
+  if (!auth.apiKey || !keyAllowsServer(auth.apiKey, row.serverId, serverSlug)) {
+    // Logged as `denied` (db/schema/activity.ts), like the aggregated endpoint.
+    if (out.track) out.track.deniedCode = PROXY_ERROR.KEY_RESTRICTED;
+    return fail(403, PROXY_ERROR.KEY_RESTRICTED, SERVER_SCOPE_MESSAGE);
+  }
+  if (!row.enabled) return fail(409, PROXY_ERROR.CONFLICT, "MCP is disabled");
+
+  const meter = (ok: boolean) => {
+    if (verdict.billable) recordMcpUsage(row.userServerId, ok);
+  };
+  const ctx: ProxyCtx = {
+    req,
+    auth,
+    serverSlug,
+    mcpSlug,
+    method,
+    bodyText,
+    verdict,
+    meter,
+    requestId,
+    toolName,
+    policy: parseToolPolicy(row.toolPolicy),
+    track: out.track,
+  };
+
+  // One tool call per request: a JSON-RPC batch carrying several tools/call
+  // would otherwise be metered and rate-limited as one (MCP 2025-06-18 removed
+  // batching; current clients never send one).
+  if (verdict.units > 1) {
+    return fail(
+      400,
+      PROXY_ERROR.INVALID_REQUEST,
+      "Batches with more than one tools/call are not supported. Send one call per request."
+    );
+  }
 
   // Local-agent MCP: served by the user's own machine over a live relay, not a
   // box. Skip every box gate and route to the connected agent.
   if (row.hostType === "local_agent") {
-    return handleLocalAgent(req, auth, serverSlug, mcpSlug, method, meter);
+    return handleLocalAgent(ctx);
   }
 
   // TwinMCP Docs is served by the control plane (no box). It is stateless and
@@ -111,120 +239,108 @@ async function handleProxy(req: NextRequest, { params }: RouteCtx, method: Metho
     }
     let rpc: JsonRpcRequest;
     try {
-      rpc = (await req.json()) as JsonRpcRequest;
+      rpc = JSON.parse(bodyText ?? "") as JsonRpcRequest;
     } catch {
-      return jsonError(400, "Invalid JSON-RPC body");
+      return fail(400, PROXY_ERROR.PARSE_ERROR, "Invalid JSON-RPC body");
     }
-    meter(true);
-    return handleTwinMcpDocs(req, rpc);
-  }
-
-  // Rate-limit real (box) MCP traffic at the proxy — the shared daily quota
-  // (free/pro/team) applies to MCP requests, not just /v2/context + /v2/libs.
-  const rl = await checkRateLimit(auth.userId, auth.plan);
-  if (!rl.ok) {
-    meter(false);
-    return rateLimited(true);
-  }
-
-  // Real MCP: server must be running and the bridge must be provisioned.
-  if (row.serverStatus !== "running") {
-    meter(false);
-    return jsonError(503, `Server is ${row.serverStatus}; start it before sending MCP requests`);
-  }
-  if (!row.mcpEndpoint) {
-    meter(false);
-    return jsonError(503, "MCP endpoint not yet provisioned; restart the server");
-  }
-
-  // The box public URL is bearer-protected; decrypt the token so it never
-  // leaves the control plane.
-  let boxToken: string | null = null;
-  if (row.tokenCiphertext) {
-    try {
-      boxToken = decryptConfig<string>({
-        ciphertext: row.tokenCiphertext,
-        iv: row.tokenIv,
-        tag: row.tokenTag,
-      });
-    } catch (err) {
-      console.error("[mcp proxy] token decrypt failed:", err);
-      Sentry.captureException(err, { tags: { area: "mcp-proxy", stage: "token-decrypt" } });
-      meter(false);
-      return jsonError(502, "MCP endpoint credentials unavailable");
+    if (verdict.billable && !isToolCallAllowed(toolName ?? "", ctx.policy, TWINMCP_DOCS_TOOLS)) {
+      return deny(ctx);
     }
-  }
-
-  // Read the body once so it can be replayed on a resume-and-retry.
-  const bodyText = method === "POST" ? await req.text() : undefined;
-  const contentType =
-    method === "POST" ? (req.headers.get("content-type") ?? "application/json") : undefined;
-
-  let upstream = await forwardOnce(req, row.mcpEndpoint, boxToken, method, bodyText, contentType);
-
-  // A connection error / gateway 5xx means the box is likely paused (non-keep-
-  // alive boxes pause when idle). Wake it, refresh the endpoint + token (the
-  // re-exposed URL is deterministic; the token may rotate), retry while it warms.
-  if (needsResume(upstream)) {
-    try {
-      await resumeServer(row.serverId);
-    } catch (err) {
-      console.error("[mcp proxy] resume failed:", err);
-      Sentry.captureException(err, {
-        tags: { area: "mcp-proxy", stage: "resume" },
-        extra: { serverId: row.serverId },
-      });
-    }
-    const fresh = await reloadEndpoint(row.userServerId);
-    // The bridge is cold-restarting (npx/uvx warm-up) — retry for ~30s.
-    for (let i = 0; fresh && i < 10 && needsResume(upstream); i++) {
-      upstream = await forwardOnce(req, fresh.endpoint, fresh.token, method, bodyText, contentType);
-      if (needsResume(upstream)) await sleep(3000);
-    }
-  }
-
-  if (needsResume(upstream)) {
-    meter(false);
-    return wakingUp(bodyText);
-  }
-  const finalResp = upstream as Response;
-  meter(finalResp.status < 400);
-  return relay(finalResp);
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Unreachable or gateway error → the box may be paused; try a resume. */
-function needsResume(u: Response | null): boolean {
-  return !u || u.status === 502 || u.status === 503 || u.status === 504;
-}
-
-/** Best-effort JSON-RPC request id so a wake-up error echoes the caller's id. */
-function requestId(bodyText: string | undefined): string | number | null {
-  if (!bodyText) return null;
-  try {
-    const parsed = JSON.parse(bodyText);
-    const id = Array.isArray(parsed) ? parsed[0]?.id : parsed?.id;
-    return typeof id === "string" || typeof id === "number" ? id : null;
-  } catch {
-    return null;
-  }
-}
-
-/** JSON-RPC-shaped 503 so MCP clients surface a clean, retryable error while a
- *  paused box finishes waking, instead of a bare text body. */
-function wakingUp(bodyText: string | undefined): NextResponse {
-  return NextResponse.json(
-    {
-      jsonrpc: "2.0",
-      id: requestId(bodyText),
-      error: {
-        code: -32001,
-        message: "MCP server is waking up from idle. Retry in a few seconds.",
+    // Metered from the call's real outcome: a failed lookup is answered as a
+    // 200 JSON-RPC error, and must count (and be logged) as a failure.
+    return handleTwinMcpDocs(
+      req,
+      rpc,
+      requestId,
+      () => {
+        meter(true);
+        noteFirstToolCall(auth.userId, mcpSlug);
       },
-    },
-    { status: 503, headers: { "retry-after": "3" } }
-  );
+      filterToolsList(TWINMCP_DOCS_TOOLS, ctx.policy),
+      (code) => {
+        meter(false);
+        if (out.track) out.track.failedCode = code;
+      }
+    );
+  }
+
+  const target: BoxTarget = {
+    serverId: row.serverId,
+    serverStatus: row.serverStatus,
+    hostType: row.hostType,
+    boxId: row.boxId,
+    userServerId: row.userServerId,
+    mcpEndpoint: row.mcpEndpoint,
+    tokenCiphertext: row.tokenCiphertext,
+    tokenIv: row.tokenIv,
+    tokenTag: row.tokenTag,
+  };
+  const fwd: BoxForward = {
+    method,
+    bodyText,
+    contentType:
+      method === "POST" ? (req.headers.get("content-type") ?? "application/json") : undefined,
+    headers: bridgeHeaders(req, method),
+  };
+
+  // Tool policy (contract D2): a refused tools/call never reaches the box, nor
+  // the quota. read_only needs the MCP's annotations: the cached tools/list,
+  // else one fetched now (free overhead, through the same wake/retry path).
+  if (verdict.billable && !isUnrestricted(ctx.policy)) {
+    let known: McpTool[] | null = null;
+    if (policyNeedsToolAnnotations(ctx.policy)) {
+      known = toolCache.get(row.userServerId, POLICY_TOOLS_MAX_AGE_MS);
+      if (!known) {
+        // Every page of the list: a tool on page 2 must not be denied.
+        const pre = await fetchAllBoxTools(ctx, target, fwd.headers);
+        if (!pre.ok) return pre.response;
+        known = pre.tools;
+        if (known) toolCache.set(row.userServerId, known);
+      }
+    }
+    if (!isToolCallAllowed(toolName ?? "", ctx.policy, known)) return deny(ctx);
+  }
+
+  const result = await forwardToBox(ctx, target, fwd);
+  if (!result.ok) return result.response;
+
+  const finalResp = result.response;
+  const ok = finalResp.status < 400;
+  meter(ok);
+  if (verdict.billable && ok) noteFirstToolCall(auth.userId, mcpSlug);
+
+  // A restricted installation never shows its hidden tools: buffer the
+  // tools/list answer (JSON or SSE) and rewrite it. Everything else streams.
+  if (ok && verdict.rpcMethod === "tools/list" && !isUnrestricted(ctx.policy)) {
+    const text = await finalResp.text();
+    rememberToolsFromBody(
+      row.userServerId,
+      text,
+      finalResp.headers.get("content-type"),
+      requestsCursor(bodyText)
+    );
+    return relayUpstream(finalResp, applyPolicyToJsonRpcResponse(text, ctx.policy));
+  }
+  return relayUpstream(finalResp);
+}
+
+/** The request headers relayed to the box bridge (never the caller's key). */
+function bridgeHeaders(req: NextRequest, method: Method): Record<string, string> {
+  const headers: Record<string, string> = {
+    accept:
+      req.headers.get("accept") ??
+      (method === "GET" ? "text/event-stream" : "application/json, text/event-stream"),
+  };
+  passHeader(req.headers, headers, "mcp-session-id");
+  passHeader(req.headers, headers, "mcp-protocol-version");
+  passHeader(req.headers, headers, "last-event-id");
+  return headers;
+}
+
+/** Refuse a tools/call the tool policy does not allow (logged as `denied`). */
+function deny(ctx: ProxyCtx): NextResponse {
+  if (ctx.track) ctx.track.deniedCode = TOOL_POLICY_DENIED_CODE;
+  return policyDenied(ctx, ctx.toolName ?? "", ctx.policy);
 }
 
 // ---------------------------------------------------------------------------
@@ -232,224 +348,48 @@ function wakingUp(bodyText: string | undefined): NextResponse {
 // we relay the JSON-RPC request over the agent's live link instead of forwarding
 // to a box. Request/response only in v1 (no server→client SSE stream).
 // ---------------------------------------------------------------------------
-async function handleLocalAgent(
-  req: NextRequest,
-  auth: AuthedContext,
-  serverSlug: string,
-  mcpSlug: string,
-  method: Method,
-  meter: (ok: boolean) => void
-): Promise<NextResponse> {
+async function handleLocalAgent(ctx: ProxyCtx): Promise<Response> {
+  const { auth, serverSlug, mcpSlug, method, verdict } = ctx;
   if (method !== "POST") {
     return new NextResponse(null, { status: 405, headers: { Allow: "POST" } });
   }
-
-  const rl = await checkRateLimit(auth.userId, auth.plan);
-  if (!rl.ok) {
-    meter(false);
-    return rateLimited(true);
-  }
-
-  const bodyText = await req.text();
+  const bodyText = ctx.bodyText ?? "";
   const key = connKey(auth.userId, serverSlug);
-  if (!isAgentOnline(key)) {
-    meter(false);
-    return agentOffline(bodyText);
+  const restricted = !isUnrestricted(ctx.policy);
+
+  if (verdict.billable && restricted) {
+    // Offline first: the policy check below may need the agent's tool list.
+    if (!isAgentOnline(key)) {
+      ctx.meter(false);
+      return agentOffline(ctx);
+    }
+    let known: McpTool[] | null = null;
+    if (policyNeedsToolAnnotations(ctx.policy)) {
+      known = toolCache.get(`${key}:${mcpSlug}`, POLICY_TOOLS_MAX_AGE_MS);
+      if (!known) {
+        const probe = await probeAgentTools(key, mcpSlug, 8_000);
+        if (probe.kind === "ok") {
+          known = probe.tools;
+          toolCache.set(`${key}:${mcpSlug}`, known);
+        }
+      }
+    }
+    if (!isToolCallAllowed(ctx.toolName ?? "", ctx.policy, known)) return deny(ctx);
   }
 
-  try {
-    const resp = await relayToAgent(key, mcpSlug, bodyText);
-    meter(resp.ok);
-    return new NextResponse(resp.body, {
-      status: resp.ok ? 200 : 502,
-      headers: { "content-type": resp.contentType ?? "application/json" },
+  const res = await callLocalAgent(ctx, key, mcpSlug, bodyText);
+  if (res.status === 200 && verdict.rpcMethod === "tools/list" && restricted) {
+    const text = await res.text();
+    // Cache a complete list only (not one page of a paginated one).
+    const message = extractJsonRpcResponse(text, res.headers.get("content-type"));
+    const tools = toolsFromResponse(message);
+    if (tools && !nextCursorOf(message) && !requestsCursor(bodyText)) {
+      toolCache.set(`${key}:${mcpSlug}`, tools);
+    }
+    return new NextResponse(applyPolicyToJsonRpcResponse(text, ctx.policy), {
+      status: res.status,
+      headers: res.headers,
     });
-  } catch (err) {
-    console.error("[mcp proxy] local-agent relay failed:", err);
-    meter(false);
-    return agentOffline(bodyText);
   }
-}
-
-/** JSON-RPC 503 shown when no local agent is currently connected for the server. */
-function agentOffline(bodyText: string | undefined): NextResponse {
-  return NextResponse.json(
-    {
-      jsonrpc: "2.0",
-      id: requestId(bodyText),
-      error: {
-        code: -32001,
-        message: "Local agent offline — run `ctx7 connect` on the machine that hosts this tool.",
-      },
-    },
-    { status: 503, headers: { "retry-after": "3" } }
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Streamable HTTP relay to the in-box supergateway bridge. One attempt; returns
-// the raw upstream Response, or null on a connection error (box likely paused).
-// ---------------------------------------------------------------------------
-async function forwardOnce(
-  req: NextRequest,
-  endpoint: string,
-  boxToken: string | null,
-  method: Method,
-  bodyText: string | undefined,
-  contentType: string | undefined
-): Promise<Response | null> {
-  const targetUrl = `${endpoint.replace(/\/$/, "")}${MCP_STREAM_PATH}`;
-  const headers: Record<string, string> = {
-    accept:
-      req.headers.get("accept") ??
-      (method === "GET" ? "text/event-stream" : "application/json, text/event-stream"),
-  };
-  passHeader(req, headers, "mcp-session-id");
-  passHeader(req, headers, "mcp-protocol-version");
-  passHeader(req, headers, "last-event-id");
-  if (boxToken) headers.authorization = `Bearer ${boxToken}`;
-
-  const init: RequestInit = { method, headers };
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  if (method === "POST") {
-    headers["content-type"] = contentType ?? "application/json";
-    init.body = bodyText ?? "";
-    // A JSON-RPC POST returns promptly; cap it so a hung/paused box surfaces as
-    // a resume-and-retry instead of blocking the worker indefinitely. GET is the
-    // long-lived server→client SSE stream — never time that out.
-    const ac = new AbortController();
-    timer = setTimeout(() => ac.abort(), 20_000);
-    init.signal = ac.signal;
-  }
-
-  try {
-    return await fetch(targetUrl, init);
-  } catch (err) {
-    console.error("[mcp proxy] upstream error:", err);
-    return null;
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
-/** Reload the (possibly resume-refreshed) endpoint + decrypted token for an MCP. */
-async function reloadEndpoint(
-  userServerId: string
-): Promise<{ endpoint: string; token: string | null } | null> {
-  const [r] = await getDb()
-    .select({
-      endpoint: userServers.endpointUrl,
-      tc: userServers.endpointTokenCiphertext,
-      iv: userServers.endpointTokenIv,
-      tag: userServers.endpointTokenTag,
-    })
-    .from(userServers)
-    .where(eq(userServers.id, userServerId))
-    .limit(1);
-  if (!r?.endpoint) return null;
-  let token: string | null = null;
-  if (r.tc) {
-    try {
-      token = decryptConfig<string>({ ciphertext: r.tc, iv: r.iv, tag: r.tag });
-    } catch {
-      return null;
-    }
-  }
-  return { endpoint: r.endpoint, token };
-}
-
-/** Build the streamed NextResponse from an upstream bridge Response. */
-function relay(upstream: Response): NextResponse {
-  const out = new Headers();
-  copyHeader(upstream.headers, out, "content-type", "application/json");
-  copyHeader(upstream.headers, out, "mcp-session-id");
-  copyHeader(upstream.headers, out, "mcp-protocol-version");
-  if ((out.get("content-type") ?? "").includes("text/event-stream")) {
-    out.set("cache-control", "no-cache, no-transform");
-    out.set("connection", "keep-alive");
-  }
-  return new NextResponse(upstream.body, { status: upstream.status, headers: out });
-}
-
-function passHeader(req: NextRequest, out: Record<string, string>, name: string) {
-  const v = req.headers.get(name);
-  if (v) out[name] = v;
-}
-
-function copyHeader(src: Headers, dst: Headers, name: string, fallback?: string) {
-  const v = src.get(name) ?? fallback;
-  if (v) dst.set(name, v);
-}
-
-// ---------------------------------------------------------------------------
-// TwinMCP Docs handler — minimal MCP protocol over JSON-RPC.
-// Exposes a single tool `get-context` that wraps GET /api/v2/context.
-// ---------------------------------------------------------------------------
-async function handleTwinMcpDocs(req: Request, rpc: JsonRpcRequest): Promise<NextResponse> {
-  switch (rpc.method) {
-    case "initialize":
-      return jsonRpcResult(rpc.id, {
-        protocolVersion: "2024-11-05",
-        capabilities: { tools: {} },
-        serverInfo: { name: "twinmcp-docs", version: "1.0.0" },
-      });
-
-    case "tools/list":
-      return jsonRpcResult(rpc.id, {
-        tools: [
-          {
-            name: "get-context",
-            description:
-              "Retrieve documentation chunks for a library indexed by TwinMCP. Use to get up-to-date library docs.",
-            inputSchema: {
-              type: "object",
-              properties: {
-                query: { type: "string", description: "What you want to know" },
-                libraryId: {
-                  type: "string",
-                  description: "TwinMCP library id, e.g. /facebook/react",
-                },
-              },
-              required: ["query", "libraryId"],
-            },
-          },
-        ],
-      });
-
-    case "tools/call": {
-      const params = (rpc.params ?? {}) as {
-        name?: string;
-        arguments?: { query?: string; libraryId?: string };
-      };
-      if (params.name !== "get-context") {
-        return jsonRpcError(rpc.id, -32601, `Unknown tool: ${params.name}`);
-      }
-      const args = params.arguments ?? {};
-      if (!args.query || !args.libraryId) {
-        return jsonRpcError(rpc.id, -32602, "Missing required argument: query or libraryId");
-      }
-
-      const url = new URL(req.url);
-      const internalUrl = `${url.origin}/api/v2/context?query=${encodeURIComponent(
-        args.query
-      )}&libraryId=${encodeURIComponent(args.libraryId)}`;
-      const inner = await fetch(internalUrl, {
-        headers: { authorization: req.headers.get("authorization") ?? "" },
-      });
-      const text = await inner.text();
-      if (!inner.ok) {
-        return jsonRpcError(
-          rpc.id,
-          -32000,
-          `Upstream error: ${inner.status} ${text.slice(0, 200)}`
-        );
-      }
-      return jsonRpcResult(rpc.id, {
-        content: [{ type: "text", text }],
-      });
-    }
-
-    default:
-      return jsonRpcError(rpc.id, -32601, `Method not found: ${rpc.method}`);
-  }
+  return res;
 }

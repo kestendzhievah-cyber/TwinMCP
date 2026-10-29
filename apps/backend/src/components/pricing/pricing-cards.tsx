@@ -8,7 +8,13 @@ import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { PLANS, formatPrice, planCopy, type BillingCadence } from "./pricing-data";
+import {
+  PLANS,
+  annualBillingNote,
+  formatPrice,
+  planCopy,
+  type BillingCadence,
+} from "./pricing-data";
 import { track } from "@/lib/analytics/funnel";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -17,9 +23,8 @@ import type { Locale } from "@/lib/i18n/locales";
 // Card chrome strings (the plan copy itself comes from planCopy()).
 const CHROME = {
   en: {
-    mostPopular: "Most popular",
+    recommended: "Recommended",
     forever: "forever",
-    pricing: "pricing",
     perMonthAnnual: "/ mo · billed annually",
     perMonth: "/ month",
     monthly: "monthly",
@@ -27,11 +32,11 @@ const CHROME = {
     checkoutError: "Couldn't start checkout. Please try again.",
     networkError: "Network error — couldn't start checkout. Please try again.",
     planAria: (name: string) => `${name} plan`,
+    trial: "1 month free on a first subscription · card required · cancel anytime during the trial",
   },
   fr: {
-    mostPopular: "Le plus populaire",
-    forever: "à vie",
-    pricing: "sur devis",
+    recommended: "Recommandé",
+    forever: "pour toujours",
     perMonthAnnual: "/ mois · facturé annuellement",
     perMonth: "/ mois",
     monthly: "par mois",
@@ -39,6 +44,7 @@ const CHROME = {
     checkoutError: "Impossible de démarrer le paiement. Réessayez.",
     networkError: "Erreur réseau — impossible de démarrer le paiement. Réessayez.",
     planAria: (name: string) => `Forfait ${name}`,
+    trial: "1 mois offert sur un premier abonnement · carte demandée · résiliable pendant l’essai",
   },
 } as const;
 
@@ -47,8 +53,8 @@ export interface PromoOffer {
   promotionCodeId: string;
   /** Creator slug for attribution. */
   creatorSlug: string;
-  /** Which plan the promo applies to — others render unchanged. */
-  appliesTo: "pro" | "team";
+  /** Which plan the promo applies to — only Pro is sold, so only Pro. */
+  appliesTo: "pro";
   /** Cadence the promo is scoped to (Stripe coupons are price-scoped). */
   cadence: BillingCadence;
   /** Marketing copy shown on the discounted card. */
@@ -73,22 +79,46 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
   // Detect session client-side so the CTAs can short-circuit to checkout
   // for already-authenticated visitors. Middleware would otherwise redirect
   // them to /dashboard mid-flow, which costs a round-trip and ditches the
-  // selected plan.
+  // selected plan. This only warms the answer: the Pro CTA never waits for it
+  // (handleUpgrade resolves the session itself when it is still unknown).
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
+    let alive = true;
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (alive) setSignedIn(!!data.user);
+      })
+      .catch(() => {
+        if (alive) setSignedIn(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  async function resolveSignedIn(): Promise<boolean> {
+    if (signedIn !== null) return signedIn;
+    try {
+      const { data } = await createClient().auth.getUser();
+      const known = !!data.user;
+      setSignedIn(known);
+      return known;
+    } catch {
+      // No session readable: sign-up is the safe path (it resumes checkout).
+      return false;
+    }
+  }
 
   // A promo only applies to its configured plan + cadence pair (Stripe coupons
   // are price-scoped). Switching the toggle to annual hides a monthly promo.
-  function promoFor(planId: "pro" | "team"): PromoOffer | undefined {
+  function promoFor(planId: "pro"): PromoOffer | undefined {
     if (!promo) return undefined;
     if (promo.appliesTo !== planId) return undefined;
     if (promo.cadence !== cadence) return undefined;
     return promo;
   }
 
-  async function handleUpgrade(planId: "pro" | "team") {
+  async function handleUpgrade(planId: "pro") {
     setPending(planId);
     const activePromo = promoFor(planId);
     track({
@@ -100,7 +130,7 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
       },
     });
 
-    if (signedIn) {
+    if (await resolveSignedIn()) {
       try {
         const res = await fetch("/api/v2/billing/checkout", {
           method: "POST",
@@ -108,6 +138,7 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
           body: JSON.stringify({
             plan: planId,
             cadence: apiCadence(cadence),
+            from: "pricing",
             ...(activePromo
               ? {
                   promotionCodeId: activePromo.promotionCodeId,
@@ -131,30 +162,33 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
 
     // Not signed in — bounce through sign-up, but carry plan + cadence (and
     // the promo slug if any) so the sign-up form can resume checkout right
-    // after email confirm.
+    // after email confirm. French surfaces use the French sign-up form, which
+    // takes the same params.
     const params = new URLSearchParams({ plan: planId, cadence: apiCadence(cadence) });
     if (activePromo) params.set("promo", activePromo.creatorSlug);
-    router.push(`/sign-up?${params.toString()}` as Route);
+    const signUpPath = locale === "fr" ? "/fr/inscription" : "/sign-up";
+    router.push(`${signUpPath}?${params.toString()}` as Route);
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+    // Two plans: a centred two-column grid held to ~860px so the pair reads
+    // as one balanced spread, with Pro as the single highlighted tier.
+    <div className="mx-auto grid max-w-[860px] gap-6 md:grid-cols-2">
       {PLANS.map((plan) => {
         const price = formatPrice(plan, cadence, locale);
         const copy = planCopy(plan, locale);
         const isFree = plan.id === "free";
-        const isCustom = plan.monthlyUsd === null;
-        // Pro and Team are self-serve checkout; free + enterprise are plain links
-        // (enterprise is contact-based, free just routes to sign-up).
-        const isBillable = plan.id === "pro" || plan.id === "team";
-        const activePromo = isBillable ? promoFor(plan.id as "pro" | "team") : undefined;
+        // Pro is self-serve checkout; Free is a plain link to sign-up. Team is
+        // no longer sold (existing subscribers are grandfathered elsewhere).
+        const isBillable = plan.id === "pro";
+        const activePromo = isBillable ? promoFor("pro") : undefined;
         const cadenceSuffix = isFree
           ? c.forever
-          : isCustom
-            ? c.pricing
-            : cadence === "annual"
-              ? c.perMonthAnnual
-              : c.perMonth;
+          : cadence === "annual"
+            ? c.perMonthAnnual
+            : c.perMonth;
+        // French surfaces send the free CTA to the French sign-up form too.
+        const freeHref = locale === "fr" ? "/fr/inscription?plan=free" : plan.cta.href;
 
         return (
           <article
@@ -164,39 +198,52 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
               activePromo
                 ? "border-success/40 shadow-md"
                 : plan.highlighted
-                  ? "border-foreground/40 shadow-stack"
-                  : "border-border/80"
+                  ? "border-foreground/70 shadow-stack"
+                  : "border-border shadow-sm"
             )}
             aria-label={c.planAria(plan.name)}
           >
             {activePromo ? (
-              <Badge className="absolute -top-2.5 left-6 bg-gilt text-primary-foreground hover:bg-gilt/90">
+              <Badge className="absolute -top-3 left-6 bg-gilt text-gilt-foreground hover:bg-gilt/90">
                 {activePromo.badge}
               </Badge>
             ) : plan.highlighted ? (
-              <Badge className="absolute -top-2.5 left-6">{c.mostPopular}</Badge>
+              // The seal straddles the card's top rule; the bg-card wrapper keeps the
+              // hairline from showing through the badge's translucent tint.
+              <div className="absolute -top-3 left-6 bg-card">
+                <Badge variant="gilt">{c.recommended}</Badge>
+              </div>
             ) : null}
 
             <header>
-              <h3 className="font-medium">{plan.name}</h3>
+              <h3 className="smallcaps tracking-sc text-lg font-medium">{plan.name}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{copy.blurb}</p>
             </header>
 
             <div className="mt-5 flex items-baseline gap-1.5">
-              <span className="text-3xl font-medium">{price}</span>
-              <span className="text-sm text-muted-foreground">{cadenceSuffix}</span>
+              <span className="lining text-4xl font-medium">{price}</span>
+              <span className="text-sm italic text-muted-foreground">{cadenceSuffix}</span>
             </div>
 
-            {!isCustom &&
-              cadence === "annual" &&
-              plan.monthlyUsd !== null &&
-              plan.monthlyUsd > 0 && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  <span className="line-through">€{plan.monthlyUsd}</span> {c.monthly}
+            {cadence === "annual" && plan.monthlyUsd > 0 && (
+              <>
+                {/* What the card is actually charged, once a year. A pre-applied
+                    promo replaces the free month, so it drops that clause. */}
+                <p className="lining mt-1 text-sm font-medium text-foreground/90">
+                  {annualBillingNote(plan, locale, { trial: isBillable && !activePromo })}
                 </p>
-              )}
+                <p className="lining mt-1 text-xs text-muted-foreground">
+                  <span className="line-through">{formatPrice(plan, "monthly", locale)}</span>{" "}
+                  {c.monthly}
+                </p>
+              </>
+            )}
 
-            <ul className="mt-5 flex-1 space-y-2 text-sm">
+            {isBillable && !activePromo && (
+              <p className="lining mt-2 text-xs font-medium text-gilt">{c.trial}</p>
+            )}
+
+            <ul className="lining mt-5 flex-1 space-y-2 text-sm">
               {copy.bullets.map((bullet) => (
                 <li key={bullet} className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
@@ -209,8 +256,8 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
               <Button
                 variant={plan.highlighted ? "default" : "outline"}
                 className="mt-6 w-full"
-                onClick={() => handleUpgrade(plan.id as "pro" | "team")}
-                disabled={pending !== null || signedIn === null}
+                onClick={() => handleUpgrade("pro")}
+                disabled={pending !== null}
               >
                 {pending === plan.id ? (
                   <>
@@ -228,11 +275,10 @@ export function PricingCards({ cadence, promo, locale = "en" }: PricingCardsProp
                 className="mt-6 w-full"
               >
                 <Link
-                  href={plan.cta.href as Route}
+                  href={freeHref as Route}
                   onClick={() => {
                     // Only the free CTA fires the funnel event here; the
-                    // billable plans run through handleUpgrade(), and
-                    // enterprise is a mailto (no checkout to track).
+                    // billable plan runs through handleUpgrade().
                     if (plan.id === "free") {
                       track({
                         name: "checkout_started",

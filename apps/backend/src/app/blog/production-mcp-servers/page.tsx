@@ -171,9 +171,10 @@ export default function Post() {
       </p>
       <p>
         <Link href="/">TwinMCP&apos;s free tier</Link> includes a curated set of installable MCPs (5
-        official servers including Filesystem, Fetch, Memory, Time, and Sequential Thinking).
-        GitHub, Notion, Playwright, and additional connectors are available on Pro. Linear is
-        connected directly via its hosted remote MCP &mdash; no install required on either tier.
+        official servers including Filesystem, Fetch, Memory, Time, and Sequential Thinking). Pro
+        raises the ceiling to 50 servers and every box size (small, medium, large), so you can run
+        more connectors side by side, such as Notion and Slack. Linear is connected directly via its
+        hosted remote MCP &mdash; no install required on either tier.
       </p>
     </PostLayout>
   );

@@ -11,6 +11,7 @@ import {
   validateConfigAgainstSchema,
 } from "@/lib/validation/platform";
 import { encryptConfig } from "@/lib/crypto/config-encryption";
+import { collectSecretRefs } from "@/lib/vault/refs";
 import { enqueue } from "@/lib/queue/qstash";
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { maxMcpsForBoxSize } from "@/lib/plan-features";
@@ -86,6 +87,14 @@ export async function POST(
     if (!schemaParse.success) return serverError("Entrée catalogue malformée");
     const validation = validateConfigAgainstSchema(parsed.data.config, schemaParse.data);
     if (!validation.ok) return badRequest(validation.error);
+    // Vault references resolve against the CLIENT's secrets at provisioning:
+    // an admin-written {{secret:NAME}} in an MCP the admin controls would
+    // exfiltrate the client's plaintext secret. Only the owner may set them.
+    if (collectSecretRefs(parsed.data.config).length > 0) {
+      return badRequest(
+        "Les références au coffre ({{secret:NOM}}) ne peuvent être posées que par le titulaire du compte."
+      );
+    }
 
     const encrypted = encryptConfig(parsed.data.config);
     const id = randomUUID();

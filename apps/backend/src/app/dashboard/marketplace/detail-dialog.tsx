@@ -31,6 +31,7 @@ import {
 } from "@/lib/mcp/client-config";
 import { parseSchema, type CatalogEntry, type ServerOption } from "./install-dialog";
 import { useMcpConfigSchema } from "./use-config-schema";
+import { cliCommand } from "@/lib/cli";
 
 const IDE_KEYS = Object.keys(IDE_LABELS) as IdeKey[];
 
@@ -130,8 +131,9 @@ export function DetailDialog({
 
         {local && (
           <p className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
-            Runs on your machine via <code className="font-mono">ctx7 connect</code> — install it on
-            a <strong className="font-medium">Local (agent)</strong> server.
+            Runs on your machine via the TwinMCP local agent (
+            <code className="font-mono">{cliCommand("connect")}</code>) — install it on a{" "}
+            <strong className="font-medium">Local (agent)</strong> server.
           </p>
         )}
 

@@ -5,7 +5,10 @@ import { UpgradeCard } from "./upgrade-card";
 interface FeatureGateProps {
   /** The current user's plan. */
   plan: Plan;
-  /** Minimum plan required to see the children. */
+  /**
+   * Minimum plan required to see the children. Gate on "pro" for anything sold;
+   * a "team"-only gate renders as unavailable (Team is grandfathered, not sold).
+   */
   requiredPlan: Plan;
   title: string;
   description?: React.ReactNode;
@@ -15,7 +18,8 @@ interface FeatureGateProps {
 
 /**
  * Renders `children` when the user's plan is high enough, otherwise an
- * UpgradeCard. This is a UI convenience only — never the security boundary.
+ * UpgradeCard (an upsell to Pro, the only plan sold; UpgradeCard never offers
+ * the grandfathered Team plan). This is a UI convenience only — never the security boundary.
  * Enforce access on the server (see lib/plan-features.ts helpers) regardless
  * of what the gate renders.
  */

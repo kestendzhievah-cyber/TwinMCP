@@ -88,6 +88,12 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { message?: string };
+        // Re-entering onboarding (?force=1) with this MCP already on the
+        // server is not an error: carry on to Connect with it.
+        if (data.message && /already installed/i.test(data.message)) {
+          onInstalled(current.slug);
+          return;
+        }
         setError(data.message ?? "Install failed");
         setInstalling(false);
         return;
@@ -105,7 +111,8 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
       <div>
         <h2 className="text-2xl font-medium md:text-3xl">Pick your first MCP.</h2>
         <p className="mt-2 text-base text-muted-foreground">
-          Browse the official catalog. You can install more from the marketplace anytime.
+          Pick one that needs no API key — you can add Notion, Slack or Postgres later from the
+          marketplace. Installing takes about a minute; you can wire up your IDE meanwhile.
         </p>
       </div>
 

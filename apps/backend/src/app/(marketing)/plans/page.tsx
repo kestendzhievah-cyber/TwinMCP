@@ -10,47 +10,57 @@ import { ComparisonTable } from "@/components/pricing/comparison-table";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
 import { productPricingSchema, faqPageSchema, breadcrumbListSchema } from "@/lib/seo/schema";
-import { PLANS } from "@/components/pricing/pricing-data";
+import { FREE_MCP_LIMIT, PLANS } from "@/components/pricing/pricing-data";
 
 const proMonthly = PLANS.find((p) => p.id === "pro")?.monthlyUsd ?? 14.99;
-const teamMonthly = PLANS.find((p) => p.id === "team")?.monthlyUsd ?? 99;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `Free forever (1 server, 5 official MCPs). Pro €${proMonthly}/mo, Team €${teamMonthly}/mo, Enterprise on request. No credit card on the free tier.`,
-  alternates: { canonical: "/plans" },
+  description: `Free forever (1 server, up to ${FREE_MCP_LIMIT} MCPs + TwinMCP Docs, no credit card). Pro €${proMonthly}/mo: 50 servers, all box sizes, 5,000 tool calls a day.`,
+  alternates: {
+    canonical: "/plans",
+    languages: { en: "/plans", fr: "/fr/tarifs", "x-default": "/plans" },
+  },
   openGraph: {
     title: "TwinMCP Pricing — start free, upgrade only when you outgrow it",
     description:
-      "Compare Free, Pro, Team, and Enterprise tiers — runtime, MCPs, audit logs, support SLA.",
+      "Compare Free and Pro — servers, box sizes, daily tool calls, audit logs, support.",
     url: "/plans",
   },
 };
 
 const pricingFaq: FaqItem[] = [
   {
+    q: "How does the free month of Pro work?",
+    a: "Your first Pro subscription starts with 30 days free. You enter a card at checkout but are not charged during the trial; cancel anytime before it ends and you pay nothing. Otherwise Pro renews at €14.99 a month (or the annual price you picked). The free month applies once per customer; a creator promo link replaces it with that link's own offer.",
+  },
+  {
     q: "How does annual billing work?",
-    a: "You pay 12 months up front and save up to 25% versus monthly. Cancel mid-cycle within the first 7 days for a full refund — after that the plan keeps running until the end of the year, no refunds prorated.",
+    a: "You pay 12 months up front and save up to 25% versus monthly. On a first subscription the first month is free, and the year is charged when it ends. If you cancel, the plan keeps running until the end of the period already paid; no prorated refunds.",
   },
   {
     q: "Can I switch plans later?",
-    a: "Anytime, in two clicks from /dashboard/billing. Upgrades apply immediately with a prorated charge. Downgrades apply at the next renewal so you keep what you paid for until then.",
+    a: "Anytime, from /dashboard/billing. Upgrading to Pro takes effect as soon as checkout completes. Cancelling Pro takes effect at the end of the current billing period, so you keep what you paid for until then; your account then returns to Free.",
+  },
+  {
+    q: "What counts toward the daily quota?",
+    a: "Only tool calls — the requests where your AI actually asks an MCP to do something. Connecting, listing tools, pings and session handshakes are free, so reconnecting a client or switching IDEs never uses up your quota.",
   },
   {
     q: "What happens if I exceed my quota?",
-    a: "Quotas are soft caps: existing servers keep running, but new ones (and new MCP installs above the limit) are blocked until you upgrade. We never auto-charge you for overages.",
+    a: "Quotas are soft caps: existing servers keep running, but new ones (and new MCP installs above the limit) are blocked until you upgrade. Tool calls above the daily quota (50 on Free, 5,000 on Pro) are refused with a limit-reached error until the 24-hour window resets.",
+  },
+  {
+    q: "Can usage ever cost me more than the plan price?",
+    a: "No. The price is flat: €0 on Free, €14.99 a month or €135 a year on Pro. There are no per-call charges and no overage billing: at the daily cap, calls pause until the window resets, and nothing is charged for them.",
   },
   {
     q: "Do you offer discounts?",
-    a: "50% off for verified non-profits, students, and active maintainers of public OSS MCPs. Email hello@twinmcp.fr with proof. Volume discounts on Team are negotiated per-account — talk to sales.",
+    a: "50% off for verified non-profits, students, and active maintainers of public OSS MCPs. Email hello@twinmcp.fr with proof.",
   },
   {
     q: "What happens to my data when I cancel?",
-    a: "Servers move to read-only at the end of your billing period. You have 30 days to export logs, configs, and key metadata via the API; after that everything is purged. Audit logs follow the retention attached to your plan at the time of generation.",
-  },
-  {
-    q: "Need something custom?",
-    a: "Enterprise covers SSO/SAML, private deployments in your VPC, custom SLAs, and dedicated support. Email sales@twinmcp.fr — we usually reply within one business day.",
+    a: "When Pro ends, your account returns to Free. Your oldest small server keeps running; the other servers (and any medium or large box) are stopped: their runtime is shut down and files written inside it are not kept, but the servers themselves, their installed MCPs and settings, your account and your API keys stay, and upgrading again lets you start them. Audit logs are only shown on Pro.",
   },
 ];
 
@@ -66,7 +76,7 @@ export default function PlansPage() {
           productPricingSchema({
             name: "TwinMCP",
             description:
-              "Hosted Model Context Protocol runtimes for AI coding agents — Free, Pro, Team, and Enterprise tiers.",
+              "Hosted Model Context Protocol runtimes for AI coding agents — Free and Pro plans.",
             tiers: PLANS.map((p) => ({
               id: p.id,
               name: p.name,
@@ -80,12 +90,21 @@ export default function PlansPage() {
         ]}
       />
       <TrackOnMount name="pricing_view" />
-      {/* Hero + cards + toggle */}
-      <Section
-        eyebrow="Pricing"
-        title="Pay for what you run, not what you might"
-        description="Free tier is real — no expiry, no card. Upgrade only when you outgrow the quota."
-      >
+      {/* Hero + cards + toggle. The header is written out (not Section's
+          title prop, which renders an h2) so the page has a real h1, set in
+          the same style as every other section title. */}
+      <Section>
+        <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+          <p className="eyebrow mb-4 flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']">
+            Pricing
+          </p>
+          <h1 className="text-3xl font-medium md:text-4xl">
+            Pay for what you run, not what you might
+          </h1>
+          <p className="mt-4 text-balance text-lg text-muted-foreground">
+            Free tier is real — no expiry, no card. Upgrade only when you outgrow the quota.
+          </p>
+        </div>
         <PricingExperience />
         {/* The section's address line: facts between two hairlines. */}
         <div className="mx-auto mt-12 max-w-3xl border-y border-border py-4">

@@ -3,9 +3,12 @@ import * as Sentry from "@sentry/nextjs";
 import { getRedis } from "./redis";
 import type { Plan } from "@/db/schema";
 
+// Daily MCP request quota per plan (env-overridable). Pro is the one paid plan
+// and gets 5,000/day — keep in sync with the marketing copy (pricing-data.ts).
+// Team is grandfathered (no longer sold) and keeps its limit.
 const DAILY_LIMITS: Record<Plan, number> = {
   free: Number(process.env.RATE_LIMIT_FREE_DAILY ?? 50),
-  pro: Number(process.env.RATE_LIMIT_PRO_DAILY ?? 1000),
+  pro: Number(process.env.RATE_LIMIT_PRO_DAILY ?? 5000),
   team: Number(process.env.RATE_LIMIT_TEAM_DAILY ?? 5000),
 };
 

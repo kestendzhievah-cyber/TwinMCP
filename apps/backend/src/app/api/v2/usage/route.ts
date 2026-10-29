@@ -2,10 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { usageEvents, users, usageMetrics, userServers, mcpServers } from "@/db/schema";
-import { serverError, unauthorized } from "@/lib/errors";
+import { serverError } from "@/lib/errors";
 import { getDailyLimit } from "@/lib/rate-limit";
 import { can } from "@/lib/plan-features";
-import { requireSessionUser } from "@/lib/session";
+import { requireManagementUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,8 +21,8 @@ function dateKey(d: Date): string {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   const url = new URL(req.url);
   const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 30, 1), MAX_DAYS);

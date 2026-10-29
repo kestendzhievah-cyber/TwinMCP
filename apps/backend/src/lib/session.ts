@@ -1,5 +1,12 @@
 import { sql } from "drizzle-orm";
-import { authenticateRequest } from "./auth";
+import { NextResponse } from "next/server";
+import { authenticateRequest, type AuthedApiKey } from "./auth";
+import {
+  keyAllowsManagement,
+  keyMayManageKeys,
+  MANAGEMENT_SCOPE_MESSAGE,
+  RETIRING_KEY_MESSAGE,
+} from "./auth/key-scope";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
@@ -7,6 +14,8 @@ import { users } from "@/db/schema";
 export interface SessionUser {
   userId: string;
   email?: string;
+  /** Set when the caller authenticated with a (full-access) API key. */
+  apiKey?: AuthedApiKey;
 }
 
 // Skip the idempotent upsert when we already ran it for this (userId, email)
@@ -43,7 +52,61 @@ async function ensureUserRow(userId: string, email: string | undefined) {
   ensuredCache.set(key, now + ENSURE_TTL_MS);
 }
 
+type Resolved =
+  | { kind: "user"; user: SessionUser }
+  | { kind: "scope_denied" } // an mcp_proxy key on a management route
+  | { kind: "anonymous" };
+
+/**
+ * Every management route (servers, keys, billing, account…) authenticates
+ * through here. Scope rule (contract K1): only a `full` API key may act as the
+ * account; an `mcp_proxy` key — the one pasted into IDE configs — resolves to
+ * no user at all, so no management route can let it through.
+ */
 export async function requireSessionUser(req: Request): Promise<SessionUser | null> {
+  const r = await resolveSession(req);
+  return r.kind === "user" ? r.user : null;
+}
+
+/**
+ * requireSessionUser plus a ready-to-return error: 401 when nobody is signed
+ * in, 403 with an explicit message when the caller used an MCP-proxy-only key.
+ * Prefer it in route handlers (`if (s instanceof NextResponse) return s;`).
+ */
+export async function requireManagementUser(
+  req: Request,
+  unauthenticatedMessage = "Sign in required"
+): Promise<SessionUser | NextResponse> {
+  const r = await resolveSession(req);
+  if (r.kind === "user") return r.user;
+  if (r.kind === "scope_denied") {
+    return NextResponse.json(
+      { message: MANAGEMENT_SCOPE_MESSAGE, code: "key_scope" },
+      { status: 403 }
+    );
+  }
+  return NextResponse.json({ message: unauthenticatedMessage }, { status: 401 });
+}
+
+/**
+ * requireManagementUser for the key-management routes (create, rotate,
+ * revoke): additionally refuses a full key that is being retired (it has an
+ * expiry, e.g. inside its rotation overlap), so a leaked old key cannot mint
+ * a permanent replacement or revoke its successor before it dies.
+ */
+export async function requireKeyManager(req: Request): Promise<SessionUser | NextResponse> {
+  const s = await requireManagementUser(req);
+  if (s instanceof NextResponse) return s;
+  if (s.apiKey && !keyMayManageKeys(s.apiKey)) {
+    return NextResponse.json(
+      { message: RETIRING_KEY_MESSAGE, code: "key_retiring" },
+      { status: 403 }
+    );
+  }
+  return s;
+}
+
+async function resolveSession(req: Request): Promise<Resolved> {
   // Dev header — requires an explicit opt-in env var. Relying on NODE_ENV
   // was risky: a staging deploy mislabeled as "development" would silently
   // accept any user id from a request header.
@@ -56,15 +119,18 @@ export async function requireSessionUser(req: Request): Promise<SessionUser | nu
     // Ensure the row exists so endpoints that UPDATE the user actually
     // persist instead of silently no-op'ing on a missing primary key.
     await ensureUserRow(devId, undefined);
-    return { userId: devId };
+    return { kind: "user", user: { userId: devId } };
   }
 
-  // API key (MCP clients)
+  // API key (scripts, CLIs). An invalid key never falls through to the cookie.
   const header = req.headers.get("authorization");
   if (header?.startsWith("Bearer ctx7sk_")) {
     const auth = await authenticateRequest(req);
-    if (auth) return { userId: auth.userId };
-    return null;
+    if (!auth) return { kind: "anonymous" };
+    // authenticateRequest always sets apiKey; treat a missing one as the
+    // narrowest scope rather than full access.
+    if (!auth.apiKey || !keyAllowsManagement(auth.apiKey)) return { kind: "scope_denied" };
+    return { kind: "user", user: { userId: auth.userId, apiKey: auth.apiKey } };
   }
 
   // Supabase session (dashboard / web)
@@ -75,11 +141,11 @@ export async function requireSessionUser(req: Request): Promise<SessionUser | nu
     } = await supabase.auth.getUser();
     if (user) {
       await ensureUserRow(user.id, user.email);
-      return { userId: user.id, email: user.email };
+      return { kind: "user", user: { userId: user.id, email: user.email } };
     }
   } catch {
     // No Supabase session
   }
 
-  return null;
+  return { kind: "anonymous" };
 }

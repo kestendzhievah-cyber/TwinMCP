@@ -40,7 +40,7 @@ const steps = [
   },
   {
     title: "Create a server and install an MCP",
-    body: "Pick the runtime (Node, Python, Go, Ruby, or Rust). Choose GitHub, Postgres, Notion, Slack, or anything else from the catalogue.",
+    body: "Pick the runtime (Node, Python, Go, Ruby, or Rust). Choose Postgres, Notion, Slack, GitLab, or anything else from the catalogue.",
   },
   {
     title: "Copy the Cursor snippet",
@@ -55,7 +55,7 @@ const steps = [
 const faq = [
   {
     q: "Does this replace running MCP servers locally with stdio?",
-    a: "It complements stdio. Keep stdio for personal local tools (filesystem, scratchpad). Use hosted MCPs for anything that holds a token, needs persistence, or should be shared with teammates.",
+    a: "It complements stdio. Keep stdio for personal local tools (filesystem, scratchpad). Use hosted MCPs for anything that holds a token, needs persistence, or should be reachable from more than one machine.",
   },
   {
     q: "Can I use a hosted MCP and a local stdio MCP at the same time in Cursor?",
@@ -67,7 +67,7 @@ const faq = [
   },
   {
     q: "Is the free tier enough to evaluate Cursor MCP hosting?",
-    a: "Yes. The free tier includes one server, the marketplace catalogue, live logs, and unlimited tool calls within sane fair-use limits. Most personal evaluations never need to upgrade.",
+    a: "Yes. The free tier includes one server, the marketplace catalogue, live logs, and 50 tool calls per day, with no credit card. When you outgrow it, Pro raises that to 50 servers and 5,000 tool calls per day.",
   },
   {
     q: "How do I rotate the Cursor MCP API key?",
@@ -110,10 +110,10 @@ export default function CursorMcpHostingPage() {
           <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
             <code className="font-mono text-foreground">{`{
   "mcpServers": {
-    "github-prod": {
-      "url": "https://github.your-team.twinmcp.fr/sse",
+    "gitlab": {
+      "url": "https://twinmcp.fr/api/mcp/your-server/gitlab",
       "headers": {
-        "Authorization": "Bearer tw_live_..."
+        "Authorization": "Bearer ctx7sk_YOUR_KEY_HERE"
       }
     }
   }

@@ -26,6 +26,9 @@ import {
 import { Plus } from "lucide-react";
 import type { Plan } from "@/db/schema/core";
 import { allowedBoxSizes, minPlanForBoxSize, PLAN_LABELS } from "@/lib/plan-features";
+import { trialCta } from "@/lib/billing/upgrade-state";
+import { UpgradeLink } from "@/components/billing/upgrade-inline";
+import { cliCommand, localAgentCommand } from "@/lib/cli";
 
 const BOX_SIZES = [
   { value: "small", label: "Small — 2 vCPU / 4 GB RAM" },
@@ -39,17 +42,25 @@ interface CreateServerDialogProps {
   plan: Plan;
   disabled?: boolean;
   trigger?: React.ReactNode;
+  /** Free account with no Stripe customer yet: the upgrade link offers the free month. */
+  trialEligible?: boolean;
 }
 
-export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDialogProps) {
+export function CreateServerDialog({
+  plan,
+  disabled,
+  trigger,
+  trialEligible = false,
+}: CreateServerDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [hostType, setHostType] = useState<HostType>("upstash_box");
   const [boxSize, setBoxSize] = useState("small");
-  const [region, setRegion] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const isLocal = hostType === "local_agent";
+  // No region field: the API stores a region column but nothing provisions by
+  // it, and no plan sells a region choice (PLAN_CAPABILITIES.regionSelection).
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -60,7 +71,7 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
       body: JSON.stringify({
         name: name.trim(),
         hostType,
-        ...(isLocal ? {} : { boxSize, region: region.trim() || undefined }),
+        ...(isLocal ? {} : { boxSize }),
       }),
     });
     setSubmitting(false);
@@ -68,12 +79,11 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
       const data = await res.json();
       toast.success(
         isLocal
-          ? `Server "${name}" created — run \`ctx7 connect --server ${data.slug}\` to bring it online.`
+          ? `Server "${name}" created — run ${localAgentCommand(data.slug)} to bring it online.`
           : `Server "${name}" created — provisioning…`
       );
       setOpen(false);
       setName("");
-      setRegion("");
       router.push(`/dashboard/servers/${data.id}` as Route);
     } else {
       const err = await res.json().catch(() => ({}));
@@ -97,8 +107,8 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
             {isLocal ? (
               <>
                 A local server hosts tools that run on your own machine (e.g. Blender) — bring it
-                online with the <code className="font-mono text-xs not-italic">ctx7 connect</code>{" "}
-                agent.
+                online with the TwinMCP local agent (
+                <code className="font-mono text-xs not-italic">{cliCommand("connect")}</code>).
               </>
             ) : (
               "A new Upstash Box runtime will be provisioned. TwinMCP Docs is auto-installed."
@@ -157,26 +167,16 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
                 </Select>
                 {allowedBoxSizes(plan).length < BOX_SIZES.length && (
                   <p className="text-xs italic text-muted-foreground">
-                    Larger boxes are available on higher plans.{" "}
-                    <a
-                      href="/dashboard/billing"
-                      className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
-                    >
-                      Upgrade
-                    </a>
-                    .
+                    Larger boxes are included in Pro.{" "}
+                    <UpgradeLink
+                      source="servers"
+                      level="offer"
+                      reason="offer"
+                      label={trialCta(trialEligible).label}
+                      className="not-italic"
+                    />
                   </p>
                 )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="region">Region (optional)</Label>
-                <Input
-                  id="region"
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  placeholder="e.g. us-east-1"
-                  maxLength={40}
-                />
               </div>
             </>
           )}

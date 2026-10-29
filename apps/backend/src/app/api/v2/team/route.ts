@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { teamspaceMembers, teamspaces, users } from "@/db/schema";
 import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
+import { requireManagementUser } from "@/lib/session";
 import { meetsPlan } from "@/lib/plan-features";
 
 export const runtime = "nodejs";
@@ -14,8 +14,8 @@ export const dynamic = "force-dynamic";
 const schema = z.object({ name: z.string().min(1).max(80) });
 
 export async function POST(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   let body: unknown;
   try {

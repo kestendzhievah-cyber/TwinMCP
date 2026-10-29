@@ -50,9 +50,19 @@ export default function Post() {
         <strong>TL;DR.</strong> <Link href={"/blog/smithery-vs-twinmcp" as Route}>Smithery</Link> is
         an excellent choice when every MCP you need is public and open source and you are fine
         running on shared infrastructure. The moment you need <em>private code</em>, real{" "}
-        <em>isolation</em>, per-server <em>secrets</em>, or <em>team access controls</em>, you want
-        a different tool. This guide covers the four kinds of Smithery alternative &mdash; managed
-        runtimes, other public registries, self-hosting, and serverless &mdash; and how to pick.
+        <em>isolation</em>, per-server <em>secrets</em>, or <em>audit logs and key rotation</em>,
+        you want a different tool. This guide covers the four kinds of Smithery alternative &mdash;
+        managed runtimes, other public registries, self-hosting, and serverless &mdash; and how to
+        pick.
+      </p>
+      <p>
+        <strong>Update, October 2026.</strong> Smithery has announced that its hosted proxy, server
+        URLs, API and accounts stop on 31 October 2026 (
+        <a href="https://smithery.ai/future" target="_blank" rel="noopener noreferrer">
+          smithery.ai/future
+        </a>
+        ). If you run MCPs there today, the step-by-step move is in{" "}
+        <Link href={"/migrate-from-smithery" as Route}>Migrate from Smithery</Link>.
       </p>
 
       <h2 id="why-alternative">Why people look for a Smithery alternative</h2>
@@ -75,8 +85,8 @@ export default function Post() {
           yours.
         </li>
         <li>
-          <strong>Team controls.</strong> Per-user keys, audit logs, and key rotation are
-          first-class needs the moment more than one person is involved.
+          <strong>Access controls.</strong> Multiple API keys, audit logs, and key rotation are
+          first-class needs the moment a server holds real credentials.
         </li>
       </ul>
       <p>
@@ -199,7 +209,7 @@ export default function Post() {
             <td>Serverless</td>
           </tr>
           <tr>
-            <td>Team keys, audit logs, rotation</td>
+            <td>Multiple API keys, audit logs, rotation</td>
             <td>Managed runtime or self-host</td>
           </tr>
         </tbody>
@@ -214,6 +224,10 @@ export default function Post() {
         And to try the managed route without committing, the{" "}
         <Link href={"/servers" as Route}>MCP catalog</Link> and the <Link href="/">free tier</Link>{" "}
         give you one isolated server and every popular MCP in a few minutes.
+      </p>
+      <p>
+        For sourced, side-by-side comparisons of TwinMCP with Composio, Smithery and self-hosting,
+        see <Link href={"/compare" as Route}>Compare TwinMCP</Link>.
       </p>
     </PostLayout>
   );

@@ -171,15 +171,15 @@ export default function Post() {
       </p>
       <p>
         Cost on TwinMCP starts at €0 for one server on the free tier and scales to a flat €14.99 per
-        month for Pro (25 servers). Setup time is two minutes &mdash; pick a runtime, paste an
+        month for Pro (50 servers). Setup time is two minutes &mdash; pick a runtime, paste an
         install command, hit go. The trade-off is platform lock-in: the deployment configuration is
         platform-specific, and migrating off requires rebuilding the container yourself. (The MCP
         server code itself is portable; only the provisioning glue is not.)
       </p>
       <p>
-        Use a managed runtime when the server holds secrets, when multiple developers should share
-        it, when you want central logs and metrics, or when you do not have a platform team that
-        wants to run your MCP infrastructure for you.
+        Use a managed runtime when the server holds secrets, when it must be reachable from more
+        than one machine, when you want central logs and metrics, or when you do not have a platform
+        team that wants to run your MCP infrastructure for you.
       </p>
 
       <h2 id="comparison">Comparison table</h2>
@@ -272,15 +272,17 @@ export default function Post() {
         Two hundred calls per workday across the team, each averaging 200 ms. Local stdio is not an
         option (no sharing). Hetzner CX22: around $5 per month (CPU and memory headroom is enormous
         at this volume). Cloudflare Workers: still under the free tier or about $5 on the paid plan.
-        TwinMCP Team tier: €99 per month for unlimited servers and ten members. Smithery: free but
-        does not host private code, so this scenario only works if your Postgres MCP is a public,
-        generic one (which it is not, by definition).
+        TwinMCP Pro: €14.99 per month covers this volume (5,000 tool calls a day), but accounts are
+        single-user, with no member management or per-member access control. Smithery: free but does
+        not host private code, so this scenario only works if your Postgres MCP is a public, generic
+        one (which it is not, by definition).
       </p>
       <h3>Scenario C &mdash; production, customer-facing</h3>
       <p>
         Ten thousand calls per day, half of them with streaming responses. Hetzner: needs to scale
         to CPX31 (~$12/mo) and you are now managing real infrastructure. Cloudflare Workers: $5/mo
-        plus paid SSE add-ons; awkward for streaming. TwinMCP Team: €99/mo flat. Self-hosted
+        plus paid SSE add-ons; awkward for streaming. TwinMCP Pro: €14.99/mo flat, but capped at
+        5,000 tool calls a day per account, so this volume is beyond what it covers. Self-hosted
         Kubernetes on AWS: $200&ndash;500/mo by the time you have HA, observability, and a runbook.
       </p>
 
@@ -334,8 +336,8 @@ export default function Post() {
           <strong>Catalog.</strong> Stop here.
         </li>
         <li>
-          Anything else &mdash; shared team use, private code, secrets, persistence, or you just
-          want this to work in two minutes? <strong>Managed runtime.</strong>
+          Anything else &mdash; access from several machines, private code, secrets, persistence, or
+          you just want this to work in two minutes? <strong>Managed runtime.</strong>
         </li>
       </ol>
 

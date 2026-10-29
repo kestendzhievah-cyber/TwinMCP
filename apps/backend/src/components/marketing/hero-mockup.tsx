@@ -1,10 +1,19 @@
 import { Boxes, Store, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+// Illustration only. Labels stick to what the dashboard really shows — name,
+// status, box size, installed MCPs — and the MCP counts stay within each box's
+// cap (lib/plan-features.ts: small 4, medium 8). No regions: none is applied.
 const fakeServers = [
-  { name: "prod-cluster", slug: "prod-cluster-7f3a", status: "running", region: "fra1" },
-  { name: "staging", slug: "staging-2c8b", status: "running", region: "iad1" },
-  { name: "data-pipeline", slug: "data-pipeline-9e1d", status: "provisioning", region: "fra1" },
+  { name: "prod-cluster", slug: "prod-cluster-7f3a", status: "running", box: "medium", mcps: 8 },
+  { name: "staging", slug: "staging-2c8b", status: "running", box: "small", mcps: 3 },
+  {
+    name: "data-pipeline",
+    slug: "data-pipeline-9e1d",
+    status: "provisioning",
+    box: "small",
+    mcps: 2,
+  },
 ];
 
 const statusVariant = {
@@ -26,7 +35,9 @@ export function HeroMockup() {
         <span className="truncate font-mono text-xs text-muted-foreground">
           twinmcp.fr/dashboard/servers
         </span>
-        <span className="smallcaps tracking-sc text-xs text-muted-foreground">Control plane</span>
+        <span className="smallcaps tracking-sc hidden shrink-0 text-xs text-muted-foreground sm:inline">
+          Control plane
+        </span>
       </div>
 
       {/* layout */}
@@ -66,7 +77,7 @@ export function HeroMockup() {
           <div className="mb-3 flex items-end justify-between border-b-[3px] border-double border-border pb-3">
             <div>
               <p className="smallcaps tracking-sc text-sm font-medium">Servers</p>
-              <p className="lining text-xs italic text-muted-foreground">3 active · Pro plan</p>
+              <p className="lining text-xs italic text-muted-foreground">3 servers · Pro plan</p>
             </div>
             <span className="smallcaps tracking-sc border border-primary bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
               New server
@@ -78,7 +89,8 @@ export function HeroMockup() {
               <tr className="smallcaps tracking-sc border-b border-foreground/50 text-left text-muted-foreground">
                 <th className="py-1.5 pr-3 font-medium">Name</th>
                 <th className="py-1.5 pr-3 font-medium">Status</th>
-                <th className="py-1.5 font-medium">Region</th>
+                <th className="py-1.5 pr-3 font-medium">Box</th>
+                <th className="py-1.5 text-right font-medium">MCPs</th>
               </tr>
             </thead>
             <tbody>
@@ -96,14 +108,17 @@ export function HeroMockup() {
                       {s.status}
                     </Badge>
                   </td>
-                  <td className="py-2 font-mono text-muted-foreground">{s.region}</td>
+                  <td className="py-2 pr-3 font-mono text-muted-foreground">{s.box}</td>
+                  <td className="py-2 text-right text-muted-foreground">{s.mcps}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
           <div className="mt-3 flex items-center justify-between border border-border bg-secondary/40 px-3 py-2 text-xs">
-            <span className="text-muted-foreground">prod-cluster · 8 MCPs installed</span>
+            <span className="text-muted-foreground">
+              prod-cluster · medium box · 8 MCPs installed
+            </span>
             <span className="smallcaps tracking-sc text-muted-foreground">Details</span>
           </div>
         </div>

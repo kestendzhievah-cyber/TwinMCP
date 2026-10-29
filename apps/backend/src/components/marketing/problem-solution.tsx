@@ -1,43 +1,75 @@
 import { Check, X } from "lucide-react";
+import type { Locale } from "@/lib/i18n/locales";
 import { Section } from "./section";
 import { cn } from "@/lib/utils";
 
-const without = [
-  "Copy-paste docs into a chat window every 30 min",
-  "Hand-roll Docker / Coolify / VPS just to host an MCP",
-  "Track and refresh API keys per IDE, per machine",
-  "Lose context the moment you switch projects",
-];
+const COPY = {
+  en: {
+    eyebrow: "The problem",
+    title: "Your agent is only as good as its context",
+    description:
+      "A local MCP server works on one laptop. Sharing it means Docker, TLS and a VPS to babysit. TwinMCP runs that layer for you, so you keep the servers without keeping a machine warm.",
+    withoutTitle: "Without TwinMCP",
+    withTitle: "With TwinMCP",
+    without: [
+      "A Docker image or a VPS to maintain just to host one MCP",
+      "Secrets pasted into the shell profile of every machine",
+      "One config to redo per IDE, per machine",
+      "No logs when a tool call fails",
+    ],
+    with: [
+      "Pick an MCP from the catalog, live in about 2 minutes",
+      "Secrets encrypted at rest (AES-256-GCM), access by API key",
+      "The same URL in Cursor, Claude Code, VS Code or Windsurf",
+      "Live logs for every server",
+    ],
+  },
+  fr: {
+    eyebrow: "Le problème",
+    title: "Votre agent ne vaut que par son contexte",
+    description:
+      "En local, un serveur MCP fonctionne sur un seul poste. Pour le partager, il faut Docker, du TLS et un VPS à surveiller. TwinMCP prend en charge cette couche : vous gardez vos serveurs, sans machine à entretenir.",
+    withoutTitle: "Sans TwinMCP",
+    withTitle: "Avec TwinMCP",
+    without: [
+      "Une image Docker ou un VPS à maintenir pour héberger un seul MCP",
+      "Des secrets collés dans le profil shell de chaque poste",
+      "Une configuration à refaire par IDE et par machine",
+      "Aucun log quand un appel d’outil échoue",
+    ],
+    with: [
+      "Un MCP choisi dans le catalogue, en ligne en 2 minutes environ",
+      "Secrets chiffrés au repos (AES-256-GCM), accès par clé API",
+      "La même URL dans Cursor, Claude Code, VS Code ou Windsurf",
+      "Des logs en direct pour chaque serveur",
+    ],
+  },
+} as const;
 
-const withTwin = [
-  "Live context streamed from MCPs you actually own",
-  "One-click install of curated MCPs — no infra to babysit",
-  "One API key per server, rotated and audited centrally",
-  "Same servers across Cursor, Claude Code, Windsurf",
-];
-
-export function ProblemSolution() {
+export function ProblemSolution({ locale = "en" }: { locale?: Locale }) {
+  const t = COPY[locale];
   return (
     <Section
       id="features"
-      eyebrow="The problem"
-      title="Your agent is only as good as its context"
-      description="Most tools either lock you into a hosted endpoint or hand you a Docker file and wish you luck. TwinMCP runs the runtime so you keep ownership of your servers — without keeping a VPS warm."
+      eyebrow={t.eyebrow}
+      title={t.title}
+      description={t.description}
+      className="scroll-mt-20"
     >
       {/* One sheet of card stock ruled down the middle: a two-column ledger. */}
       <div className="grid divide-y divide-border border border-border bg-card shadow-sm md:grid-cols-2 md:divide-x md:divide-y-0">
         <Column
           tone="negative"
           icon={<X className="h-4 w-4" />}
-          title="Without TwinMCP"
-          items={without}
+          title={t.withoutTitle}
+          items={t.without}
           itemIcon={<X className="mt-1 h-4 w-4 shrink-0 text-destructive" />}
         />
         <Column
           tone="positive"
           icon={<Check className="h-4 w-4" />}
-          title="With TwinMCP"
-          items={withTwin}
+          title={t.withTitle}
+          items={t.with}
           itemIcon={<Check className="mt-1 h-4 w-4 shrink-0 text-success" />}
         />
       </div>
@@ -55,7 +87,7 @@ function Column({
   tone: "positive" | "negative";
   icon: React.ReactNode;
   title: string;
-  items: string[];
+  items: readonly string[];
   itemIcon: React.ReactNode;
 }) {
   return (

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { forbidden, unauthorized } from "@/lib/errors";
-import { requireSessionUser, type SessionUser } from "@/lib/session";
+import { forbidden } from "@/lib/errors";
+import { requireManagementUser, type SessionUser } from "@/lib/session";
 import { isAdminEmail } from "@/lib/admin";
 import { getDb } from "@/db";
 import { prospectActivities, type ProspectActivityType } from "@/db/schema";
@@ -9,8 +9,8 @@ import { prospectActivities, type ProspectActivityType } from "@/db/schema";
 // Admins only — enforced server-side on every prospects API route (never trust
 // the hidden nav link). Returns the session, or a ready-to-return error response.
 export async function requireAdmin(req: NextRequest): Promise<SessionUser | NextResponse> {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   if (!isAdminEmail(session.email)) return forbidden("Admins only");
   return session;
 }

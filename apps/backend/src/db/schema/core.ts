@@ -12,6 +12,8 @@ import {
   boolean,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { KeyScope } from "../../lib/auth/key-scope";
+import { servers } from "./platform";
 
 export const plans = ["free", "pro", "team"] as const;
 export type Plan = (typeof plans)[number];
@@ -55,12 +57,31 @@ export const apiKeys = pgTable(
     keyHash: text("key_hash").notNull(),
     prefix: text("prefix").notNull(), // e.g. ctx7sk_abc1
     name: text("name"),
+    // What the key may do (lib/auth/key-scope.ts). 'full' = the management API
+    // and every MCP server (the historical behaviour, so existing keys keep it);
+    // 'mcp_proxy' = only the MCP proxy, optionally bound to one server.
+    scope: text("scope").$type<KeyScope>().notNull().default("full"),
+    // mcp_proxy only: the one server the key may call (null = any of the
+    // owner's servers). Deleting the server deletes its keys.
+    serverId: text("server_id").references(() => servers.id, { onDelete: "cascade" }),
+    // mcp_proxy only: the agency's own id for the end customer this key was
+    // issued to (≤ 128 chars, lib/vault/key-meta.ts). Lets one account give each
+    // of its customers a separate, individually revocable key and attribute
+    // tool calls to them. Never interpreted by TwinMCP.
+    externalUserId: text("external_user_id"),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    // Rejected like a revoked key once past (rotation sets it to now + 24 h on
+    // the replaced key so both keys overlap while configs are updated).
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("api_keys_hash_idx").on(t.keyHash), index("api_keys_user_idx").on(t.userId)]
+  (t) => [
+    uniqueIndex("api_keys_hash_idx").on(t.keyHash),
+    index("api_keys_user_idx").on(t.userId),
+    index("api_keys_server_idx").on(t.serverId),
+    index("api_keys_user_external_idx").on(t.userId, t.externalUserId),
+  ]
 );
 
 export const teamspaces = pgTable("teamspaces", {

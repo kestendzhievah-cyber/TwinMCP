@@ -3,7 +3,7 @@
 //   node scripts/verify-mcp-versions.mjs           # resolve latest versions (fast)
 //   node scripts/verify-mcp-versions.mjs --smoke   # + boot the no-config servers and send `initialize`
 //
-// It parses seed-mcps.ts, pulls the npm/PyPI package out of each `startCmd`,
+// It parses src/lib/servers/seed-catalog.ts, pulls the npm/PyPI package out of each `startCmd`,
 // and asks the registry for the current version. A missing package = a wrong
 // name (that server would fail to install) — the loudest thing this catches.
 // Nothing here touches the database.
@@ -14,7 +14,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SEED = path.join(HERE, "seed-mcps.ts");
+// The catalogue array lives in the app (src/lib/servers/seed-catalog.ts) so the
+// pages can import it; scripts/seed-mcps.ts only upserts it.
+const SEED = path.join(HERE, "..", "src", "lib", "servers", "seed-catalog.ts");
 const SMOKE = process.argv.includes("--smoke");
 
 // Servers with an empty configSchema — safe to actually boot in --smoke mode
@@ -112,7 +114,7 @@ function smoke(startCmd) {
 
 const src = await readFile(SEED, "utf8");
 const entries = parseEntries(src);
-console.log(`\nParsed ${entries.length} catalog entries from seed-mcps.ts\n`);
+console.log(`\nParsed ${entries.length} catalog entries from seed-catalog.ts\n`);
 
 const pins = [];
 let missing = 0;
@@ -165,7 +167,9 @@ for (const e of entries) {
 }
 
 if (pins.length) {
-  console.log(`\n── Suggested pins (npm) — paste into seed-mcps.ts ─────────────────────────\n`);
+  console.log(
+    `\n── Suggested pins (npm) — paste into src/lib/servers/seed-catalog.ts ─────────────────────────\n`
+  );
   for (const p of pins) {
     console.log(`  ${p.slug}:`);
     console.log(`    startCmd: "${p.startCmd}",`);

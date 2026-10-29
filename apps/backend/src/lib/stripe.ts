@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { PRO_TRIAL_DAYS } from "./plan-features";
 
 let _stripe: Stripe | null = null;
 
@@ -85,7 +86,9 @@ export function planActionForSubscription(opts: {
   return { kind: "none" };
 }
 
-export const TRIAL_DAYS = Number(process.env.TRIAL_DAYS ?? 0);
+// One month free on a first Pro subscription. An empty or unset TRIAL_DAYS
+// falls back to the shared default; set TRIAL_DAYS=0 to switch trials off.
+export const TRIAL_DAYS = process.env.TRIAL_DAYS ? Number(process.env.TRIAL_DAYS) : PRO_TRIAL_DAYS;
 
 /**
  * Stripe Tax is opt-in. Automatic tax + tax-ID collection are only enabled when
@@ -94,3 +97,181 @@ export const TRIAL_DAYS = Number(process.env.TRIAL_DAYS ?? 0);
  * here so all Stripe config lives in one module.
  */
 export const TAX_ENABLED = process.env.STRIPE_TAX_ENABLED === "true";
+
+// ---- Pure helpers for the webhook and the health probe ----------------------
+// Kept free of I/O so the money path stays unit-testable (__tests__/stripe.test.ts).
+
+/** Which cadence a configured price id bills at, or null when it is not one of ours. */
+export function cadenceFromPriceId(priceId: string | null | undefined): Cadence | null {
+  if (!priceId) return null;
+  for (const plan of Object.keys(PRICES) as BillablePlan[]) {
+    const pair = PRICES[plan];
+    if (pair.monthly && priceId === pair.monthly) return "monthly";
+    if (pair.yearly && priceId === pair.yearly) return "yearly";
+  }
+  return null;
+}
+
+/** A Stripe recurring interval → our cadence ("year" → yearly, anything else → monthly). */
+export function cadenceFromInterval(interval: string | null | undefined): Cadence | null {
+  if (interval === "year") return "yearly";
+  if (interval === "month") return "monthly";
+  return null;
+}
+
+/**
+ * The subscription id an invoice belongs to. API 2026-03 dahlia moved it from
+ * invoice.subscription to invoice.parent.subscription_details.subscription;
+ * both shapes are read so a future move does not silently null it.
+ */
+export function invoiceSubscriptionId(invoice: unknown): string | null {
+  if (!invoice || typeof invoice !== "object") return null;
+  const inv = invoice as {
+    parent?: { subscription_details?: { subscription?: unknown } | null } | null;
+    subscription?: unknown;
+  };
+  const raw = inv.parent?.subscription_details?.subscription ?? inv.subscription;
+  if (typeof raw === "string") return raw || null;
+  if (raw && typeof raw === "object" && "id" in raw) {
+    const id = (raw as { id?: unknown }).id;
+    return typeof id === "string" && id ? id : null;
+  }
+  return null;
+}
+
+/** The first line's price id (lines[].pricing.price_details.price, or the legacy lines[].price). */
+export function invoicePriceId(invoice: unknown): string | null {
+  if (!invoice || typeof invoice !== "object") return null;
+  const lines = (invoice as { lines?: { data?: unknown[] } }).lines?.data;
+  if (!Array.isArray(lines)) return null;
+  for (const line of lines) {
+    if (!line || typeof line !== "object") continue;
+    const l = line as {
+      pricing?: { price_details?: { price?: unknown } | null } | null;
+      price?: unknown;
+    };
+    const raw = l.pricing?.price_details?.price ?? l.price;
+    if (typeof raw === "string" && raw) return raw;
+    if (raw && typeof raw === "object" && "id" in raw) {
+      const id = (raw as { id?: unknown }).id;
+      if (typeof id === "string" && id) return id;
+    }
+  }
+  return null;
+}
+
+/**
+ * Is this paid invoice the first charge after a free trial (trial → paid)?
+ *
+ * Stripe does not order webhooks, so two signals are accepted:
+ *  - the account was still mirrored as `trialing` when the invoice landed, or
+ *  - the invoice is a regular renewal (`subscription_cycle`) of a subscription
+ *    known to have started on a trial (users.metadata.billing.trialStartedAt,
+ *    or a trial that ended right before the invoice) — this covers the case
+ *    where customer.subscription.updated (trialing → active) arrived first.
+ * A conversion is counted once per account (`alreadyConverted`), and never for
+ * a zero-amount invoice (the €0 invoice that opens a trial).
+ */
+export function isTrialConversion(opts: {
+  amountPaid: number;
+  billingReason: string | null | undefined;
+  storedStatus: string | null | undefined;
+  trialStarted: boolean;
+  alreadyConverted: boolean;
+}): boolean {
+  if (opts.alreadyConverted || !(opts.amountPaid > 0)) return false;
+  if (opts.storedStatus === "trialing") return true;
+  return opts.billingReason === "subscription_cycle" && opts.trialStarted;
+}
+
+/**
+ * Did this customer.subscription.updated schedule a cancellation? True when
+ * cancel_at_period_end flipped false → true, or cancel_at went from unset to a
+ * date (the Customer Portal can use either, depending on its configuration).
+ */
+export function cancellationScheduled(
+  previous: { cancel_at_period_end?: boolean | null; cancel_at?: number | null } | null | undefined,
+  current: { cancel_at_period_end?: boolean | null; cancel_at?: number | null }
+): boolean {
+  if (!previous) return false;
+  if (
+    "cancel_at_period_end" in previous &&
+    previous.cancel_at_period_end === false &&
+    current.cancel_at_period_end === true
+  ) {
+    return true;
+  }
+  return (
+    "cancel_at" in previous &&
+    (previous.cancel_at === null || previous.cancel_at === undefined) &&
+    typeof current.cancel_at === "number"
+  );
+}
+
+/**
+ * The one-word reason we report for a cancellation: the customer's portal
+ * feedback when they gave one ("too_expensive", "unused", …), else Stripe's
+ * cancellation reason ("cancellation_requested", "payment_failed", …), else
+ * the fallback.
+ */
+export function cancellationReason(
+  details: { feedback?: string | null; reason?: string | null } | null | undefined,
+  fallback: string
+): string {
+  return details?.feedback || details?.reason || fallback;
+}
+
+/** /api/health billing state of one configured price id. */
+export type PriceHealth = "configured" | "missing" | "invalid" | "unreachable" | "unconfigured";
+
+/**
+ * Classify a retrieved Stripe price against the cadence it is configured for.
+ * Invalid = archived, not recurring, or billed at the wrong interval (the
+ * yearly env var pointing at a monthly price is the classic mix-up).
+ */
+export function classifyPrice(
+  price: { active?: boolean; recurring?: { interval?: string | null } | null } | null | undefined,
+  cadence: Cadence
+): "configured" | "invalid" {
+  if (!price || price.active === false) return "invalid";
+  const interval = price.recurring?.interval;
+  if (!interval) return "invalid";
+  return cadenceFromInterval(interval) === cadence ? "configured" : "invalid";
+}
+
+/**
+ * Probe one configured price (bounded by `timeoutMs`, never throws, never
+ * returns the id or any secret). "invalid" only for an answer from Stripe
+ * (unknown id, wrong mode, archived, wrong interval); a timeout or network
+ * error is "unreachable" so a Stripe blip is not reported as a config error.
+ */
+export async function probePrice(cadence: Cadence, timeoutMs = 1500): Promise<PriceHealth> {
+  if (!process.env.STRIPE_SECRET_KEY) return "unconfigured";
+  const id = getPriceId("pro", cadence);
+  if (!id) return "missing";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const price = await Promise.race([
+      getStripe().prices.retrieve(id),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+      }),
+    ]);
+    return classifyPrice(price, cadence);
+  } catch (err) {
+    const type = (err as { type?: unknown })?.type;
+    // StripeInvalidRequestError = "No such price" (unknown id, or a test-mode id
+    // with a live key). StripeAuthenticationError / StripePermissionError mean
+    // the key itself is wrong: checkout fails just the same.
+    if (
+      type === "StripeInvalidRequestError" ||
+      type === "StripeAuthenticationError" ||
+      type === "StripePermissionError"
+    ) {
+      return "invalid";
+    }
+    return "unreachable";
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}

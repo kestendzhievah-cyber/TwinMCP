@@ -59,17 +59,19 @@ export const USE_CASES: UseCase[] = [
     relatedBlogSlugs: ["notion-mcp-server-tutorial", "mcp-server-hosting"],
   },
   {
+    // TwinMCP does NOT host GitHub's official MCP server (Go binary / Docker
+    // image, retired in scripts/seed-mcps.ts). The copy says what works today.
     slug: "github-mcp",
     title: "GitHub MCP",
-    metaTitle: "GitHub MCP server hosting — TwinMCP",
+    metaTitle: "GitHub MCP: what works today, and how to bring your own — TwinMCP",
     description:
-      "Host the GitHub MCP server in an isolated sandbox. Per-user PAT, audit logs, scope-limited tokens, works with Cursor, Claude, Windsurf, and Cline.",
+      "TwinMCP does not host GitHub's official MCP server. Here is what works today: GitHub's own remote MCP server, your own npm or PyPI GitHub MCP published on TwinMCP Pro, and the GitLab and Git MCPs from the catalogue.",
     heroEyebrow: "GitHub connector",
-    heroHeadline: "GitHub MCP, ready in two minutes",
+    heroHeadline: "GitHub MCP: what works today",
     heroSubheadline:
-      "Run the official GitHub MCP server on a managed runtime. Your AI agent reads code, browses pull requests, and creates branches with a scoped token.",
+      "TwinMCP does not host GitHub's official MCP server. You can still give your AI agent GitHub context: connect GitHub's own remote server, or bring a Node or Python GitHub MCP and run it on your TwinMCP server.",
     targetKeyword: "GitHub MCP",
-    relatedServerSlugs: ["github", "sentry"],
+    relatedServerSlugs: ["sentry", "linear"],
     relatedBlogSlugs: ["secure-mcp-server", "production-mcp-servers"],
   },
 ];

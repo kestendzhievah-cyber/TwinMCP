@@ -1,17 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { getDb } from "@/db";
-import { users } from "@/db/schema";
-import { getStripe, getPriceId, TRIAL_DAYS, TAX_ENABLED } from "@/lib/stripe";
 import { returnOrigin } from "@/lib/billing/origin";
-import { badRequest, serverError, unauthorized } from "@/lib/errors";
-import { requireSessionUser } from "@/lib/session";
-import { getCreator } from "@/lib/promos/creators";
+import { createProCheckout } from "@/lib/billing/checkout";
+import { badRequest, jsonError } from "@/lib/errors";
+import { requireManagementUser } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Only Pro is sold. "team" is still parsed (old links / clients may send it) so
+// we can answer with a clear 400 below instead of a raw validation error. Team is
+// grandfathered: existing subscribers manage it from the billing portal.
 const schema = z.object({
   plan: z.enum(["pro", "team"]),
   cadence: z.enum(["monthly", "yearly"]).default("monthly"),
@@ -24,11 +23,17 @@ const schema = z.object({
   // Free-form attribution slug from the creator landing page (e.g. "youtuber").
   // Surfaces in subscription metadata for ROI tracking.
   creatorSlug: z.string().min(1).max(64).optional(),
+  // The surface that opened the checkout: decides where Stripe sends the user
+  // back (lib/billing/checkout.ts checkoutReturnUrls). Defaults to Billing.
+  from: z.enum(["billing", "onboarding", "pricing", "signup"]).optional(),
 });
 
+// Thin wrapper over lib/billing/checkout.ts createProCheckout, which owns every
+// money-path rule (portal for subscribers, first-subscription trial, promo
+// exclusivity, tax, return URLs, attribution metadata).
 export async function POST(req: NextRequest) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
 
   let body: unknown;
   try {
@@ -38,112 +43,18 @@ export async function POST(req: NextRequest) {
   }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return badRequest(parsed.error.message);
+  if (parsed.data.plan !== "pro") return badRequest("This plan is no longer available");
 
-  const priceId = getPriceId(parsed.data.plan, parsed.data.cadence);
-  if (!priceId) return badRequest("Stripe price not configured for this plan/cadence");
+  const result = await createProCheckout({
+    userId: session.userId,
+    email: session.email ?? null,
+    cadence: parsed.data.cadence,
+    promotionCodeId: parsed.data.promotionCodeId,
+    creatorSlug: parsed.data.creatorSlug,
+    from: parsed.data.from ?? "billing",
+    origin: returnOrigin(req),
+  });
 
-  // If only a creatorSlug was provided, resolve to its promotion_code id.
-  // This keeps the client API tiny — sign-up just persists the slug.
-  let resolvedPromoId = parsed.data.promotionCodeId;
-  if (!resolvedPromoId && parsed.data.creatorSlug) {
-    const creator = getCreator(parsed.data.creatorSlug);
-    if (creator && creator.plan === parsed.data.plan && creator.cadence === parsed.data.cadence) {
-      resolvedPromoId = creator.promotionCodeId;
-    }
-    // If the creator exists but the plan/cadence don't match, drop the promo
-    // silently — the user still gets to check out, just at full price.
-  }
-
-  try {
-    const db = getDb();
-    const [userRow] = await db
-      .select({
-        email: users.email,
-        stripeCustomerId: users.stripeCustomerId,
-        stripeSubscriptionId: users.stripeSubscriptionId,
-        subscriptionStatus: users.subscriptionStatus,
-      })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
-
-    const origin = returnOrigin(req);
-    const stripe = getStripe();
-
-    // Already subscribed → send them to the Customer Portal to switch/manage
-    // instead of opening a fresh Checkout, which would create a SECOND
-    // subscription and double-bill. active/trialing/past_due (dunning) count as
-    // subscribed; canceled/incomplete fall through to a normal checkout.
-    const ACTIVE_STATUSES = ["active", "trialing", "past_due"];
-    if (
-      userRow?.stripeCustomerId &&
-      userRow.stripeSubscriptionId &&
-      ACTIVE_STATUSES.includes(userRow.subscriptionStatus ?? "")
-    ) {
-      const portal = await stripe.billingPortal.sessions.create({
-        customer: userRow.stripeCustomerId,
-        return_url: `${origin}/dashboard/billing`,
-      });
-      return NextResponse.json({ url: portal.url });
-    }
-
-    // Reuse an existing Stripe customer if we already linked one — avoids
-    // duplicate customers across upgrades and keeps Customer Portal happy.
-    // customer + customer_email are mutually exclusive; we pick one.
-    const customerArgs = userRow?.stripeCustomerId
-      ? { customer: userRow.stripeCustomerId }
-      : { customer_email: userRow?.email };
-
-    // Pre-applying a discount and allowing the promo input are mutually
-    // exclusive in Stripe — pick one based on whether we have a code to apply.
-    const hasPreApplied = !!resolvedPromoId;
-    const promoMetadata: Record<string, string> = {};
-    if (parsed.data.creatorSlug) {
-      promoMetadata.creatorSlug = parsed.data.creatorSlug;
-      promoMetadata.promotionCodeId = resolvedPromoId ?? "";
-    }
-
-    const checkout = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      ...customerArgs,
-      line_items: [{ price: priceId, quantity: 1 }],
-      metadata: {
-        userId: session.userId,
-        plan: parsed.data.plan,
-        cadence: parsed.data.cadence,
-        ...promoMetadata,
-      },
-      subscription_data: {
-        metadata: {
-          userId: session.userId,
-          plan: parsed.data.plan,
-          cadence: parsed.data.cadence,
-          ...promoMetadata,
-        },
-        ...(TRIAL_DAYS > 0 ? { trial_period_days: TRIAL_DAYS } : {}),
-      },
-      ...(hasPreApplied
-        ? { discounts: [{ promotion_code: resolvedPromoId! }] }
-        : { allow_promotion_codes: true }),
-      ...(TAX_ENABLED
-        ? {
-            automatic_tax: { enabled: true },
-            tax_id_collection: { enabled: true },
-            // Stripe requires an address on file to compute tax for a *provided*
-            // customer; customer_update (valid only with `customer`, not
-            // `customer_email`) lets Checkout capture + persist it. Without this,
-            // automatic_tax rejects the session for every returning customer.
-            ...(userRow?.stripeCustomerId ? { customer_update: { address: "auto" as const } } : {}),
-          }
-        : {}),
-      billing_address_collection: "auto",
-      success_url: `${origin}/dashboard/billing?status=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/plans?status=canceled`,
-    });
-
-    return NextResponse.json({ url: checkout.url });
-  } catch (err) {
-    console.error("[billing/checkout]", err);
-    return serverError();
-  }
+  if (result.kind === "error") return jsonError(result.status, result.message);
+  return NextResponse.json({ url: result.url, kind: result.kind });
 }

@@ -2,9 +2,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { mcpServers, userServers, servers } from "@/db/schema";
-import { badRequest, forbidden, notFound, serverError, unauthorized } from "@/lib/errors";
+import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
 import { enqueue } from "@/lib/queue/qstash";
-import { requireSessionUser } from "@/lib/session";
+import { requireManagementUser } from "@/lib/session";
 import {
   assertServerOwnership,
   assertUserServerOwnership,
@@ -19,6 +19,7 @@ import {
 } from "@/lib/validation/platform";
 import { encryptConfig, decryptConfig } from "@/lib/crypto/config-encryption";
 import { logAudit, clientIp } from "@/lib/audit/log";
+import { displayConfigValue } from "@/lib/vault/refs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +41,9 @@ function maskSecrets(
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(config)) {
     const def = schema.properties?.[k];
-    out[k] = def?.secret ? null : v;
+    // A pure vault reference ({{secret:NAME}}) is not secret: return it so the
+    // editor opens on the saved secret. Any other secret value stays masked.
+    out[k] = def?.secret ? displayConfigValue(v, null) : v;
   }
   return out;
 }
@@ -49,8 +52,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; userServerId: string }> }
 ) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id: serverId, userServerId } = await params;
 
   try {
@@ -103,8 +106,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; userServerId: string }> }
 ) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id: serverId, userServerId } = await params;
 
   let body: unknown;
@@ -197,8 +200,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; userServerId: string }> }
 ) {
-  const session = await requireSessionUser(req);
-  if (!session) return unauthorized("Sign in required");
+  const session = await requireManagementUser(req);
+  if (session instanceof NextResponse) return session;
   const { id: serverId, userServerId } = await params;
 
   try {

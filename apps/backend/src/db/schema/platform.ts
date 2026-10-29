@@ -118,6 +118,11 @@ export const userServers = pgTable(
     endpointTokenCiphertext: text("endpoint_token_ciphertext").notNull().default(""),
     endpointTokenIv: text("endpoint_token_iv").notNull().default(""),
     endpointTokenTag: text("endpoint_token_tag").notNull().default(""),
+    // Per-installation tool access policy (lib/mcp/tool-policy.ts):
+    // { mode: "all" | "read_only" | "allow_list"; allow?: string[]; deny?: string[] }.
+    // Null = every tool the MCP exposes. Applied by the proxy to tools/list
+    // (filtered) and tools/call (refused). Always read through parseToolPolicy.
+    toolPolicy: jsonb("tool_policy"),
     installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
