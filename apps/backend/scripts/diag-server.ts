@@ -31,9 +31,13 @@ async function main() {
   console.log(`=== ${servers.length} server(s) ===\n`);
   for (const s of servers) {
     console.log(`• ${s.name} (${s.slug})`);
-    console.log(`    plan=${s.plan}  status=${s.status}  size=${s.box_size}  region=${s.region ?? "—"}`);
+    console.log(
+      `    plan=${s.plan}  status=${s.status}  size=${s.box_size}  region=${s.region ?? "—"}`
+    );
     console.log(`    boxId=${s.box_id ?? "(none — createBox never succeeded)"}`);
-    console.log(`    endpointUrl set=${s.has_endpoint}  lastHeartbeat=${s.last_heartbeat_at ?? "never"}`);
+    console.log(
+      `    endpointUrl set=${s.has_endpoint}  lastHeartbeat=${s.last_heartbeat_at ?? "never"}`
+    );
     console.log(`    created=${s.created_at}`);
 
     const mcps = await sql`
@@ -43,7 +47,9 @@ async function main() {
       where us.server_id = ${s.id as string}`;
     if (mcps.length === 0) console.log(`    MCPs: none installed`);
     for (const m of mcps) {
-      console.log(`    MCP ${m.slug} (${m.runtime}) enabled=${m.enabled} port=${m.bridge_port ?? "—"} endpoint=${m.has_ep}`);
+      console.log(
+        `    MCP ${m.slug} (${m.runtime}) enabled=${m.enabled} port=${m.bridge_port ?? "—"} endpoint=${m.has_ep}`
+      );
     }
 
     if (s.box_id) {
@@ -51,7 +57,9 @@ async function main() {
         const status = await getBoxClient().getStatus(s.box_id as string);
         console.log(`    → live box status (Upstash): ${status}`);
       } catch (err) {
-        console.log(`    → live box status ERROR: ${err instanceof Error ? err.message : String(err)}`);
+        console.log(
+          `    → live box status ERROR: ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }
     console.log("");

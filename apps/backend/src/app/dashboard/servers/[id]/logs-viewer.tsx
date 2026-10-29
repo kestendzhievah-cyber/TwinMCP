@@ -98,7 +98,6 @@ export function LogsViewer({
       fetchLogs();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverId, slug, paused]);
 
   useEffect(() => {

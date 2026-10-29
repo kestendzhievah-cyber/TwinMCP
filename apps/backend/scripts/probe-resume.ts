@@ -53,7 +53,9 @@ async function main() {
     await client.exec(boxId, startBridgeCommand(SLUG));
     const ep = await client.exposePort(boxId, PORT);
     console.log(`   box ${boxId}  url ${ep.url}`);
-    console.log(`   initialize before pause: ${(await healthcheckMcp(ep.url, ep.token)) ? "✅" : "❌"}`);
+    console.log(
+      `   initialize before pause: ${(await healthcheckMcp(ep.url, ep.token)) ? "✅" : "❌"}`
+    );
 
     const box = await Box.get(boxId);
 
@@ -70,7 +72,9 @@ async function main() {
 
     console.log("4. same URL after resume, no restart (does the bridge survive?)…");
     const survived = await healthcheckMcp(ep.url, ep.token, { attempts: 2, delayMs: 2000 });
-    console.log(`   ${survived ? "✅ bridge survived resume" : "❌ bridge dead (expected — must restart)"}`);
+    console.log(
+      `   ${survived ? "✅ bridge survived resume" : "❌ bridge dead (expected — must restart)"}`
+    );
 
     let workingUrl = ep.url;
     let workingToken = ep.token;
@@ -96,8 +100,12 @@ async function main() {
     console.log("\n=== VERDICT ===");
     console.log(`resume latency: ~${resumeS}s`);
     console.log(`bridge survives resume: ${survived ? "yes" : "no (manual restart needed)"}`);
-    console.log(`working URL after full cycle: ${workingUrl === ep.url ? "same as original" : "CHANGED"}`);
-    console.log(`final reachable: ${(await healthcheckMcp(workingUrl, workingToken, { attempts: 2, delayMs: 2000 })) ? "✅" : "❌"}`);
+    console.log(
+      `working URL after full cycle: ${workingUrl === ep.url ? "same as original" : "CHANGED"}`
+    );
+    console.log(
+      `final reachable: ${(await healthcheckMcp(workingUrl, workingToken, { attempts: 2, delayMs: 2000 })) ? "✅" : "❌"}`
+    );
   } catch (err) {
     console.error("ERROR:", err instanceof Error ? (err.stack ?? err.message) : err);
     process.exitCode = 1;

@@ -13,7 +13,6 @@ export function TrackOnMount(props: FunnelEvent) {
     track(props);
     // The full event object is stable across renders — keying by name+JSON
     // matches the user-facing intent ("fire this once for this page").
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.name]);
   return null;
 }

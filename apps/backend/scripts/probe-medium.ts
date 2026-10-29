@@ -15,7 +15,12 @@ async function tryCreate(size: "small" | "medium") {
   const client = getBoxClient();
   console.log(`\n→ createBox(size=${size}, keepAlive=false)…`);
   try {
-    const box = await client.createBox({ runtime: "node", size, name: `twinmcp-probe-${size}`, keepAlive: false });
+    const box = await client.createBox({
+      runtime: "node",
+      size,
+      name: `twinmcp-probe-${size}`,
+      keepAlive: false,
+    });
     console.log(`   ✅ created ${box.id}`);
     await client.deleteBox(box.id).catch(() => {});
     console.log(`   (deleted)`);

@@ -27,7 +27,9 @@ export async function fetchRepoMeta(owner: string, repo: string): Promise<RepoMe
   const o = octokit();
   const [{ data: r }, { data: contributors }] = await Promise.all([
     o.repos.get({ owner, repo }),
-    o.repos.listContributors({ owner, repo, per_page: 1, anon: "true" }).catch(() => ({ data: [] })),
+    o.repos
+      .listContributors({ owner, repo, per_page: 1, anon: "true" })
+      .catch(() => ({ data: [] })),
   ]);
   const contribHeader =
     contributors.length === 0

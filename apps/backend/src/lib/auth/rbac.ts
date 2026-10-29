@@ -19,10 +19,7 @@ export class ForbiddenError extends Error {
   }
 }
 
-export async function assertServerOwnership(
-  userId: string,
-  serverId: string
-): Promise<Server> {
+export async function assertServerOwnership(userId: string, serverId: string): Promise<Server> {
   const rows = await getDb().select().from(servers).where(eq(servers.id, serverId)).limit(1);
   const row = rows[0];
   if (!row) throw new NotFoundError("server");
@@ -45,10 +42,7 @@ export async function assertUserServerOwnership(
   return row;
 }
 
-export async function assertApiKeyOwnership(
-  userId: string,
-  apiKeyId: string
-): Promise<ApiKey> {
+export async function assertApiKeyOwnership(userId: string, apiKeyId: string): Promise<ApiKey> {
   const rows = await getDb().select().from(apiKeys).where(eq(apiKeys.id, apiKeyId)).limit(1);
   const row = rows[0];
   if (!row) throw new NotFoundError("api_key");

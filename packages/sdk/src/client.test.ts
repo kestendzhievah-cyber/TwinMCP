@@ -6,7 +6,6 @@ const realApiKey = process.env.TWINMCP_API_KEY || process.env.API_KEY;
 const apiKey = realApiKey ?? "test-skip-placeholder";
 
 describe.skipIf(!realApiKey)("TwinMCP Client", () => {
-
   describe("constructor", () => {
     test("should create client with API key", () => {
       const client = new TwinMCP({ apiKey });

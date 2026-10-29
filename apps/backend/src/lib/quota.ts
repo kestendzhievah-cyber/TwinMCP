@@ -13,7 +13,10 @@ export const SERVER_QUOTAS: Record<Plan, number> = {
 };
 
 export class QuotaExceededError extends Error {
-  constructor(public readonly resource: string, public readonly limit: number) {
+  constructor(
+    public readonly resource: string,
+    public readonly limit: number
+  ) {
     super(`Quota exceeded: ${resource} (limit ${limit})`);
     this.name = "QuotaExceededError";
   }

@@ -52,7 +52,12 @@ const db = drizzle(client, { schema });
 
 async function main() {
   const [user] = await db
-    .select({ id: schema.users.id, email: schema.users.email, plan: schema.users.plan, metadata: schema.users.metadata })
+    .select({
+      id: schema.users.id,
+      email: schema.users.email,
+      plan: schema.users.plan,
+      metadata: schema.users.metadata,
+    })
     .from(schema.users)
     .where(eq(schema.users.email, args.email!))
     .limit(1);

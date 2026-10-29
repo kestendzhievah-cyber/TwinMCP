@@ -7,7 +7,6 @@ import { randomBytes } from "node:crypto";
 import * as schema from "@/db/schema";
 import {
   assertServerOwnership,
-  assertUserServerOwnership,
   assertApiKeyOwnership,
   ForbiddenError,
   NotFoundError,
