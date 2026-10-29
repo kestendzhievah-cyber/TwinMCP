@@ -12,7 +12,17 @@ Référence de lancement à jour : **`docs/GO-LIVE.md`** (les autres docs de pla
 
 ### Inscriptions / connexion (bloquant pour les nouveaux clients)
 
-- [X] **Supabase → Authentication → URL Configuration** : Site URL = `https://twinmcp.fr` + Redirect URLs `https://twinmcp.fr/**`. ⚠️ Tant que c'est `localhost`, les emails de confirmation pointent dans le vide → **les nouveaux comptes ne s'activent jamais**. (Connexion = **Email + mot de passe + magic link** ; Google/GitHub retirés.)
+- [x] **Supabase → Authentication → URL Configuration** : Site URL = `https://twinmcp.fr` + Redirect URLs `https://twinmcp.fr/**`. ⚠️ Tant que c'est `localhost`, les emails de confirmation pointent dans le vide → **les nouveaux comptes ne s'activent jamais**. (Connexion = **Email + mot de passe + magic link** ; Google/GitHub retirés.)
+  - [ ] **Re-vérifier** (2026-10-27) : Site URL exactement `https://twinmcp.fr` (sans `/` final) et `https://twinmcp.fr/**` présent dans Redirect URLs. Les liens d'auth portent maintenant l'intention Pro en query (`/auth/callback?returnTo=…&plan=pro&cadence=…&promo=…`) : `/**` les couvre, rien d'autre à ajouter.
+- [ ] **Supabase → Authentication → Email Templates → « Confirm signup »** (confirmation depuis un autre appareil / navigateur — sans ça, un lien ouvert sur le téléphone échoue en PKCE et l'utilisateur atterrit sur « lien expiré ») :
+  - Sujet (bilingue) : `Confirmez votre compte TwinMCP / Confirm your TwinMCP account`
+  - Lien du bouton (remplacer `{{ .ConfirmationURL }}`), **option A, recommandée — garde l'intention Pro** :
+    `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`
+    (`{{ .RedirectTo }}` = l'URL `emailRedirectTo` envoyée par le formulaire, toujours de la forme `https://twinmcp.fr/auth/callback?returnTo=…[&plan=pro&cadence=…&promo=…]` ; `/auth/callback` vérifie le `token_hash` côté serveur puis ouvre Stripe Checkout si `plan=pro`.) ⚠️ Ne fonctionne que si l'URL de redirection est acceptée par Supabase (Redirect URLs `https://twinmcp.fr/**`) ; sinon Supabase remplace par la Site URL et le lien devient invalide.
+  - **Option B, la plus simple** : `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&returnTo=/dashboard` — marche toujours, mais ne porte pas `plan=pro` : un compte Pro confirmé sur un autre appareil arrive sur l'onboarding (il retrouve l'offre dans Billing), pas directement sur Stripe.
+  - Corps conseillé : « Cliquez pour activer votre compte TwinMCP. / Click to activate your TwinMCP account. » + le bouton. Les deux routes vérifient le jeton côté serveur (`app/auth/callback/route.ts`, `app/auth/confirm/route.ts`), créent la ligne `users`, envoient l'email de bienvenue puis redirigent (onboarding, ou Stripe pour une intention Pro).
+  - Tester : créer un compte, ouvrir le lien sur un autre navigateur → doit arriver connecté sur `/onboarding`.
+- [ ] **(Optionnel) même changement pour « Magic Link »** : `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&returnTo=/dashboard`, et **« Reset Password »** : `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&returnTo=/reset-password` (mêmes avantages multi-appareil).
 
 ### Emails (Resend) — active digest, alertes, emails vente/upgrade
 
@@ -21,9 +31,10 @@ Référence de lancement à jour : **`docs/GO-LIVE.md`** (les autres docs de pla
 ### Digest quotidien + alertes churn (features livrées, jamais déclenchées)
 
 - [ ] **`CRON_SECRET`** (+ `DIGEST_EMAIL` optionnel) en env Dokploy.
-- [ ] **2 schedules QStash** (ou n'importe quel cron) qui font un `POST` avec l'en-tête `Authorization: Bearer <CRON_SECRET>` :
+- [ ] **3 schedules QStash** (ou n'importe quel cron) qui font un `POST` avec l'en-tête `Authorization: Bearer <CRON_SECRET>` :
   - `https://twinmcp.fr/api/cron/digest` — ex. `0 7 * * *`
   - `https://twinmcp.fr/api/cron/churn` — ex. `0 8 * * *`
+  - `https://twinmcp.fr/api/cron/nudges` — ex. `0 9 * * *` (relances upgrade Free → Pro : offre du mois gratuit + limite de quota, max 1 email / 7 j / compte). Alternative : un schedule QStash qui `POST` `{"type":"upgrade-nudges"}` sur `/api/jobs/run`. En admin, `GET /api/cron/nudges?dryRun=1` dans le navigateur montre les décisions sans rien envoyer. ⚠️ Sans `RESEND_API_KEY`, aucun email ne part (no-op loggé).
   - ⚠️ Sans ça ils **ne se déclenchent jamais**. Le bouton « M'envoyer le digest » du cockpit marche déjà (dès que Resend est posé).
 
 ### Auto-rescue des serveurs bloqués (fiabilité)

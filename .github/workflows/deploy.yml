@@ -121,6 +121,13 @@ jobs:
             NEXT_PUBLIC_GSC_VERIFICATION=${{ vars.NEXT_PUBLIC_GSC_VERIFICATION }}
             NEXT_PUBLIC_BING_VERIFICATION=${{ vars.NEXT_PUBLIC_BING_VERIFICATION }}
             NEXT_PUBLIC_YANDEX_VERIFICATION=${{ vars.NEXT_PUBLIC_YANDEX_VERIFICATION }}
+            NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_SEND_TO=${{ vars.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_SEND_TO }}
+            NEXT_PUBLIC_GOOGLE_ADS_DEMO_SEND_TO=${{ vars.NEXT_PUBLIC_GOOGLE_ADS_DEMO_SEND_TO }}
+            NEXT_PUBLIC_TWINMCP_CLI_PACKAGE=${{ vars.NEXT_PUBLIC_TWINMCP_CLI_PACKAGE }}
+            NEXT_PUBLIC_STATUS_URL=${{ vars.NEXT_PUBLIC_STATUS_URL }}
+            NEXT_PUBLIC_TWITTER_URL=${{ vars.NEXT_PUBLIC_TWITTER_URL }}
+            NEXT_PUBLIC_GITHUB_URL=${{ vars.NEXT_PUBLIC_GITHUB_URL }}
+            NEXT_PUBLIC_LINKEDIN_URL=${{ vars.NEXT_PUBLIC_LINKEDIN_URL }}
 
   # Runs AFTER migrate: the schema is always at least as new as the code it
   # serves. The old code tolerates the new schema as long as migrations stay
@@ -247,6 +254,18 @@ jobs:
             # (first deploy, manual deploy, or VPS image cache pruned).
             if ! docker image inspect "$ROLLBACK_TAG" >/dev/null 2>&1; then
               echo "❌ No previous image available to roll back to — manual recovery needed"
+              exit 1
+            fi
+
+            # Scoped API keys (migration 0014): an image built before them
+            # ignores api_keys.scope / server_id, so every "MCP proxy only" key
+            # would silently become a full management key on it. Refuse an
+            # automatic rollback to such an image (the proxy's scope message is
+            # the marker); recover manually instead (revoke non-full keys first:
+            # UPDATE api_keys SET revoked_at = now() WHERE scope <> 'full').
+            if ! docker run --rm --entrypoint sh "$ROLLBACK_TAG" -c \
+              'grep -rqs "This API key is restricted to another server" /app/apps/backend/.next/server'; then
+              echo "❌ Previous image predates scoped API keys — automatic rollback refused, manual recovery needed"
               exit 1
             fi
 
