@@ -1,10 +1,10 @@
 {
-  "name": "@upstash/twinmcp-mcp",
+  "name": "@twinmcp/mcp",
   "version": "2.1.8",
-  "mcpName": "io.github.upstash/twinmcp",
+  "mcpName": "io.github.kestendzhievah-cyber/twinmcp",
   "description": "MCP server for TwinMCP",
   "scripts": {
-    "build": "tsc && chmod 755 dist/index.js",
+    "build": "tsc && node -e \"require('fs').chmodSync('dist/index.js', 0o755)\"",
     "test": "pnpm exec vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/upstash/twinmcp.git",
+    "url": "git+https://github.com/kestendzhievah-cyber/TwinMCP.git",
     "directory": "packages/mcp"
   },
   "keywords": [
@@ -29,7 +29,7 @@
     "documentation",
     "context"
   ],
-  "author": "abdush",
+  "author": "TwinMCP",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -41,9 +41,9 @@
     "README.md"
   ],
   "bugs": {
-    "url": "https://github.com/upstash/twinmcp/issues"
+    "url": "https://github.com/kestendzhievah-cyber/TwinMCP/issues"
   },
-  "homepage": "https://github.com/upstash/twinmcp#readme",
+  "homepage": "https://twinmcp.fr",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
     "@types/express": "^5.0.4",
@@ -56,5 +56,8 @@
     "@types/node": "^25.0.3",
     "typescript": "^5.8.2",
     "vitest": "^4.0.13"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

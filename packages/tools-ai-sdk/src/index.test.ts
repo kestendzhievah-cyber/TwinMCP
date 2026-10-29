@@ -18,7 +18,7 @@ const bedrock = createAmazonBedrock({
   apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK ?? "test-skip-placeholder",
 });
 
-describe("@upstash/twinmcp-tools-ai-sdk", () => {
+describe("@twinmcp/tools-ai-sdk", () => {
   describe("Tool structure", () => {
     test("resolveLibraryId() should return a tool object with correct structure", () => {
       const tool = resolveLibraryId();
@@ -169,43 +169,51 @@ describe("@upstash/twinmcp-tools-ai-sdk", () => {
       expect(agent).toBeDefined();
     });
 
-    test.skipIf(!hasAwsCreds)("should generate response using agent workflow", async () => {
-      const agent = new TwinMCPAgent({
-        model: bedrock("anthropic.claude-3-haiku-20240307-v1:0"),
-        stopWhen: stepCountIs(5),
-      });
+    test.skipIf(!hasAwsCreds)(
+      "should generate response using agent workflow",
+      async () => {
+        const agent = new TwinMCPAgent({
+          model: bedrock("anthropic.claude-3-haiku-20240307-v1:0"),
+          stopWhen: stepCountIs(5),
+        });
 
-      const result = await agent.generate({
-        prompt: "Find the React library and get documentation about hooks",
-      });
+        const result = await agent.generate({
+          prompt: "Find the React library and get documentation about hooks",
+        });
 
-      expect(result).toBeDefined();
-      expect(result.steps.length).toBeGreaterThan(0);
+        expect(result).toBeDefined();
+        expect(result.steps.length).toBeGreaterThan(0);
 
-      const allToolCalls = result.steps.flatMap((step) => step.toolCalls);
-      const toolNames = allToolCalls.map((call) => call.toolName);
-      expect(toolNames).toContain("resolveLibraryId");
-    }, 60000);
+        const allToolCalls = result.steps.flatMap((step) => step.toolCalls);
+        const toolNames = allToolCalls.map((call) => call.toolName);
+        expect(toolNames).toContain("resolveLibraryId");
+      },
+      60000
+    );
 
-    test.skipIf(!hasAwsCreds)("should include TwinMCP tools in generate result", async () => {
-      const agent = new TwinMCPAgent({
-        model: bedrock("anthropic.claude-3-haiku-20240307-v1:0"),
-        stopWhen: stepCountIs(5),
-      });
+    test.skipIf(!hasAwsCreds)(
+      "should include TwinMCP tools in generate result",
+      async () => {
+        const agent = new TwinMCPAgent({
+          model: bedrock("anthropic.claude-3-haiku-20240307-v1:0"),
+          stopWhen: stepCountIs(5),
+        });
 
-      const result = await agent.generate({
-        prompt:
-          "Use resolveLibraryId to search for Next.js, then use queryDocs to get routing documentation",
-      });
+        const result = await agent.generate({
+          prompt:
+            "Use resolveLibraryId to search for Next.js, then use queryDocs to get routing documentation",
+        });
 
-      expect(result).toBeDefined();
+        expect(result).toBeDefined();
 
-      const allToolCalls = result.steps.flatMap((step) => step.toolCalls);
-      const toolNames = allToolCalls.map((call) => call.toolName);
+        const allToolCalls = result.steps.flatMap((step) => step.toolCalls);
+        const toolNames = allToolCalls.map((call) => call.toolName);
 
-      expect(toolNames).toContain("resolveLibraryId");
-      expect(toolNames).toContain("queryDocs");
-    }, 60000);
+        expect(toolNames).toContain("resolveLibraryId");
+        expect(toolNames).toContain("queryDocs");
+      },
+      60000
+    );
   });
 
   describe("Prompt exports", () => {

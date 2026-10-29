@@ -1,94 +1,46 @@
-# Upstash TwinMCP SDK
+# @twinmcp/sdk
 
-> ⚠️ **Work in Progress**: This SDK is currently under active development. The API is subject to change and may introduce breaking changes in future releases.
+TypeScript client for the TwinMCP documentation API (`https://twinmcp.fr/api/v2`): search a
+library, then fetch version-specific documentation and code examples for a question.
 
-`@upstash/twinmcp-sdk` is an HTTP/REST based client for TypeScript, built on top of the [TwinMCP API](https://twinmcp.com).
+> Work in progress: the API may change between minor versions.
 
-## Why TwinMCP?
-
-LLMs rely on outdated or generic training data about the libraries you use. This leads to:
-
-- Code examples based on year-old training data
-- Hallucinated APIs that don't exist
-- Generic answers for old package versions
-
-TwinMCP solves this by providing up-to-date, version-specific documentation and code examples directly from the source. Use this SDK to:
-
-- Build AI agents with accurate, current documentation context
-- Create RAG pipelines with reliable library documentation
-- Power code generation tools with real API references
-
-## Quick Start
-
-### Install
+## Install
 
 ```bash
-npm install @upstash/twinmcp-sdk
+npm install @twinmcp/sdk
 ```
 
-### Get API Key
+Requires a TwinMCP API key (`ctx7sk_…`). Create one in the dashboard at
+[twinmcp.fr/dashboard](https://twinmcp.fr/dashboard).
 
-Get your API key from [TwinMCP](https://twinmcp.com)
-
-## Basic Usage
+## Usage
 
 ```ts
-import { TwinMCP } from "@upstash/twinmcp-sdk";
+import { TwinMCP } from "@twinmcp/sdk";
 
-const client = new TwinMCP({
-  apiKey: "<TWINMCP_API_KEY>",
-});
+const client = new TwinMCP({ apiKey: process.env.TWINMCP_API_KEY });
 
-// Search for libraries
-const libraries = await client.searchLibrary(
-  "I need to build a UI with components",
-  "react"
-);
-console.log(libraries[0].id); // "/facebook/react"
+// Find the library ID
+const libraries = await client.searchLibrary("I need to build a UI with components", "react");
+console.log(libraries[0].id); // e.g. "/facebook/react"
 
-// Get documentation as JSON array (default)
+// Documentation as JSON (default)
 const docs = await client.getContext("How do I use hooks?", "/facebook/react");
 console.log(docs[0].title, docs[0].content);
 
-// Get documentation context as plain text
-const context = await client.getContext(
-  "How do I use hooks?",
-  "/facebook/react",
-  { type: "txt" }
-);
-console.log(context);
+// Documentation as plain text
+const text = await client.getContext("How do I use hooks?", "/facebook/react", { type: "txt" });
 ```
 
-## Configuration
+Without `apiKey`, the client reads `TWINMCP_API_KEY` from the environment.
 
-### Environment Variables
+## Related packages
 
-You can set your API key via environment variable:
+- [`@twinmcp/tools-ai-sdk`](../tools-ai-sdk): the same calls as Vercel AI SDK tools.
+- [`@twinmcp/mcp`](../mcp): the same calls as an MCP server.
+- [`@twinmcp/cli`](../cli): manage TwinMCP servers and connect AI clients from a terminal.
 
-```sh
-TWINMCP_API_KEY=ctx7sk-...
-```
+## License
 
-Then initialize without options:
-
-```ts
-const client = new TwinMCP();
-```
-
-## Docs
-
-See the [documentation](https://twinmcp.com/docs/sdks/ts/getting-started) for details.
-
-## Contributing
-
-### Running tests
-
-```sh
-pnpm test
-```
-
-### Building
-
-```sh
-pnpm build
-```
+MIT, see [LICENSE](LICENSE).

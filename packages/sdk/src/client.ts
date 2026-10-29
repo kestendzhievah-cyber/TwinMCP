@@ -9,7 +9,7 @@ import { TwinMCPError } from "@error";
 import { HttpClient } from "@http";
 import { SearchLibraryCommand, GetContextCommand } from "@commands/index";
 
-const DEFAULT_BASE_URL = "https://twinmcp.com/api";
+const DEFAULT_BASE_URL = "https://twinmcp.fr/api";
 const API_KEY_PREFIX = "ctx7sk";
 
 export type * from "@commands/types";

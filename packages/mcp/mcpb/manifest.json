@@ -3,17 +3,17 @@
   "name": "twinmcp",
   "display_name": "TwinMCP",
   "version": "2.1.0",
-  "description": "Up-to-date Code Docs For Any Prompt",
-  "long_description": "TwinMCP MCP pulls up-to-date, version-specific documentation and code examples straight from the source — and places them directly into your prompt.",
+  "description": "Up-to-date library documentation for your prompts, from TwinMCP",
+  "long_description": "TwinMCP Docs pulls version-specific documentation and code examples for a library from the TwinMCP API and places them in your prompt. It needs a TwinMCP API key (ctx7sk_), created in the dashboard at https://twinmcp.fr/dashboard.",
   "author": {
-    "name": "Upstash",
-    "email": "twinmcp@upstash.com",
-    "url": "https://upstash.com"
+    "name": "TwinMCP",
+    "email": "hello@twinmcp.fr",
+    "url": "https://twinmcp.fr"
   },
-  "homepage": "https://twinmcp.com",
-  "documentation": "https://github.com/upstash/twinmcp",
-  "support": "https://github.com/upstash/twinmcp/issues",
-  "privacy_policies": ["https://upstash.com/privacy"],
+  "homepage": "https://twinmcp.fr",
+  "documentation": "https://twinmcp.fr/docs",
+  "support": "https://github.com/kestendzhievah-cyber/TwinMCP/issues",
+  "privacy_policies": ["https://twinmcp.fr/legal/privacy"],
   "icon": "icon.png",
   "server": {
     "type": "node",
@@ -21,7 +21,18 @@
     "mcp_config": {
       "command": "node",
       "args": ["${__dirname}/dist/index.js"],
-      "env": {}
+      "env": {
+        "TWINMCP_API_KEY": "${user_config.api_key}"
+      }
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "TwinMCP API key",
+      "description": "Your TwinMCP API key (starts with ctx7sk_). Create one at https://twinmcp.fr/dashboard.",
+      "sensitive": true,
+      "required": true
     }
   },
   "tools": [
@@ -44,6 +55,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/upstash/twinmcp.git"
+    "url": "git+https://github.com/kestendzhievah-cyber/TwinMCP.git"
   }
 }

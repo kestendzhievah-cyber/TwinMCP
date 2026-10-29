@@ -2,39 +2,34 @@ import { Command } from "commander";
 import pc from "picocolors";
 import ora from "ora";
 import open from "open";
-import {
-  generatePKCE,
-  generateState,
-  createCallbackServer,
-  exchangeCodeForTokens,
-  saveTokens,
-  clearTokens,
-  buildAuthorizationUrl,
-  getValidAccessToken,
-} from "../utils/auth.js";
+import { password } from "@inquirer/prompts";
+import { saveTokens, clearTokens, getValidAccessToken } from "../utils/auth.js";
 
 import { trackEvent } from "../utils/tracking.js";
-import { CLI_CLIENT_ID } from "../constants.js";
 import { getBaseUrl } from "../utils/api.js";
+import { API_KEY_PREFIX, ApiError, HostingClient, isApiKey, maskKey } from "../utils/hosting.js";
 
-let baseUrl = "https://twinmcp.com";
+// Login stores a full-access TwinMCP API key (ctx7sk_…) in
+// ~/.twinmcp/credentials.json. The management API (/api/v2) authenticates
+// with such a key only — TwinMCP's OAuth server issues MCP-scoped tokens for
+// remote connectors, which cannot manage servers.
 
-export function setAuthBaseUrl(url: string): void {
-  baseUrl = url;
-}
+/** @deprecated The base URL now comes from `--base-url` via utils/api. Kept for callers. */
+export function setAuthBaseUrl(_url: string): void {}
 
 export function registerAuthCommands(program: Command): void {
   program
     .command("login")
-    .description("Log in to TwinMCP")
-    .option("--no-browser", "Don't open browser automatically")
-    .action(async (options) => {
+    .description("Log in to TwinMCP with a full-access API key")
+    .option("--key <key>", "the API key (ctx7sk_…) — skips the prompt")
+    .option("--no-browser", "Don't open the dashboard in a browser")
+    .action(async (options: { key?: string; browser: boolean }) => {
       await loginCommand(options);
     });
 
   program
     .command("logout")
-    .description("Log out of TwinMCP")
+    .description("Log out of TwinMCP (forget the stored API key)")
     .action(() => {
       logoutCommand();
     });
@@ -47,89 +42,93 @@ export function registerAuthCommands(program: Command): void {
     });
 }
 
-export async function performLogin(openBrowser = true): Promise<string | null> {
-  const spinner = ora("Preparing login...").start();
+function dashboardUrl(): string {
+  return `${getBaseUrl().replace(/\/+$/, "")}/dashboard`;
+}
 
+/**
+ * Checks the key against the management API and stores it. Returns the key,
+ * or null (with the reason printed) when TwinMCP refuses it.
+ */
+export async function verifyAndSaveKey(key: string): Promise<string | null> {
+  if (!isApiKey(key)) {
+    console.error(pc.red(`That is not a TwinMCP API key (they start with ${API_KEY_PREFIX}).`));
+    return null;
+  }
+  const spinner = ora("Checking the key...").start();
   try {
-    const { codeVerifier, codeChallenge } = generatePKCE();
-    const state = generateState();
-    const callbackServer = createCallbackServer(state);
-    const port = await callbackServer.port;
-    const redirectUri = `http://localhost:${port}/callback`;
-    const authUrl = buildAuthorizationUrl(
-      baseUrl,
-      CLI_CLIENT_ID,
-      redirectUri,
-      codeChallenge,
-      state
-    );
-
-    spinner.stop();
-
-    console.log("");
-    console.log(pc.bold("Opening browser to log in..."));
-    console.log("");
-
-    if (openBrowser) {
-      await open(authUrl);
-      console.log(pc.dim("If the browser didn't open, visit this URL:"));
-    } else {
-      console.log(pc.dim("Open this URL in your browser:"));
-    }
-    console.log(pc.cyan(authUrl));
-    console.log("");
-
-    const waitingSpinner = ora("Waiting for login...").start();
-
-    try {
-      const { code } = await callbackServer.result;
-      waitingSpinner.text = "Exchanging code for tokens...";
-
-      const tokens = await exchangeCodeForTokens(
-        baseUrl,
-        code,
-        codeVerifier,
-        redirectUri,
-        CLI_CLIENT_ID
-      );
-      saveTokens(tokens);
-      callbackServer.close();
-
-      waitingSpinner.succeed(pc.green("Login successful!"));
-      return tokens.access_token;
-    } catch (error) {
-      callbackServer.close();
-      waitingSpinner.fail(pc.red("Login failed"));
-      if (error instanceof Error) {
-        console.error(pc.red(error.message));
-      }
-      return null;
-    }
+    await new HostingClient(getBaseUrl(), key).listServers();
+    saveTokens({ access_token: key, token_type: "api_key" });
+    spinner.succeed(pc.green(`Logged in with ${maskKey(key)}`));
+    return key;
   } catch (error) {
     spinner.fail(pc.red("Login failed"));
-    if (error instanceof Error) {
-      console.error(pc.red(error.message));
-    }
+    console.error(pc.red(error instanceof Error ? error.message : String(error)));
     return null;
   }
 }
 
-async function loginCommand(options: { browser: boolean }): Promise<void> {
+/**
+ * Interactive login: opens the dashboard, where the API keys panel creates a
+ * key, and asks for it. Returns the stored key, or null.
+ */
+export async function performLogin(openBrowser = true): Promise<string | null> {
+  const url = dashboardUrl();
+  console.log("");
+  console.log(pc.bold("Log in to TwinMCP"));
+  console.log(pc.dim(`Create a full-access API key in the dashboard (API keys): ${url}`));
+  console.log("");
+
+  if (!process.stdin.isTTY) {
+    console.error(pc.red("No terminal to paste the key into. Run: twinmcp login --key ctx7sk_…"));
+    return null;
+  }
+
+  if (openBrowser) {
+    await open(url).catch(() => {});
+  }
+
+  let key: string;
+  try {
+    key = await password({
+      message: "Paste your API key",
+      mask: "*",
+      validate: (value) =>
+        isApiKey(value.trim()) || `TwinMCP API keys start with ${API_KEY_PREFIX}`,
+    });
+  } catch {
+    return null; // prompt cancelled (Ctrl+C)
+  }
+  return verifyAndSaveKey(key.trim());
+}
+
+// Failures set process.exitCode instead of calling process.exit(): on Windows
+// (Node 24) exiting right after a fetch aborts with a libuv assertion and
+// exit code 127.
+async function loginCommand(options: { key?: string; browser: boolean }): Promise<void> {
   trackEvent("command", { name: "login" });
+
+  if (options.key) {
+    const saved = await verifyAndSaveKey(options.key.trim());
+    if (!saved) process.exitCode = 1;
+    return;
+  }
+
   const existingToken = await getValidAccessToken();
-  if (existingToken) {
-    console.log(pc.yellow("You are already logged in."));
-    console.log(pc.dim("Run 'ctx7 logout' first if you want to log in with a different account."));
+  if (existingToken && isApiKey(existingToken)) {
+    console.log(pc.yellow(`You are already logged in (${maskKey(existingToken)}).`));
+    console.log(pc.dim("Run 'twinmcp logout' first if you want to use a different key."));
     return;
   }
   clearTokens();
 
   const token = await performLogin(options.browser);
   if (!token) {
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   console.log("");
-  console.log(pc.dim("You can now use authenticated TwinMCP features."));
+  console.log(pc.dim("Try: twinmcp servers list"));
 }
 
 function logoutCommand(): void {
@@ -143,49 +142,27 @@ function logoutCommand(): void {
 
 async function whoamiCommand(): Promise<void> {
   trackEvent("command", { name: "whoami" });
-  const accessToken = await getValidAccessToken();
+  const envKey = process.env.TWINMCP_API_KEY;
+  const stored = await getValidAccessToken();
+  const key = isApiKey(envKey) ? envKey : isApiKey(stored) ? stored : null;
 
-  if (!accessToken) {
+  if (!key) {
     console.log(pc.yellow("Not logged in."));
-    console.log(pc.dim("Run 'ctx7 login' to authenticate."));
+    console.log(pc.dim("Run 'twinmcp login' to authenticate."));
     return;
   }
 
   console.log(pc.green("Logged in"));
+  console.log(
+    `${pc.dim("Key:".padEnd(13))}${maskKey(key)}${key === envKey ? " (TWINMCP_API_KEY)" : ""}`
+  );
+  console.log(`${pc.dim("API:".padEnd(13))}${getBaseUrl()}`);
 
   try {
-    const whoami = await fetchWhoami(accessToken);
-    if (whoami.name) {
-      console.log(`${pc.dim("Name:".padEnd(13))}${whoami.name}`);
-    }
-    if (whoami.email) {
-      console.log(`${pc.dim("Email:".padEnd(13))}${whoami.email}`);
-    }
-    if (whoami.teamspace) {
-      console.log(`${pc.dim("Teamspace:".padEnd(13))}${whoami.teamspace.name}`);
-    }
-  } catch {
-    console.log(pc.dim("(Session may be expired - run 'ctx7 login' to refresh)"));
+    const servers = await new HostingClient(getBaseUrl(), key).listServers();
+    console.log(`${pc.dim("Servers:".padEnd(13))}${servers.length}`);
+  } catch (error) {
+    const message = error instanceof ApiError ? error.message : "Could not reach TwinMCP.";
+    console.log(pc.dim(message));
   }
-}
-
-interface WhoamiResponse {
-  success: boolean;
-  name: string | null;
-  email: string | null;
-  teamspace: { id: string; name: string } | null;
-}
-
-async function fetchWhoami(accessToken: string): Promise<WhoamiResponse> {
-  const response = await fetch(`${getBaseUrl()}/api/dashboard/whoami`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch user info");
-  }
-
-  return (await response.json()) as WhoamiResponse;
 }

@@ -1,265 +1,108 @@
-# ctx7
+# @twinmcp/cli
 
-CLI for [TwinMCP](https://twinmcp.com) - query up-to-date library documentation and manage AI coding skills.
+Command line for [TwinMCP](https://twinmcp.fr): create servers, install MCPs from the catalog,
+connect AI clients to them, and run local tools through a local-agent server.
 
-Skills are reusable prompt instructions that enhance your AI coding assistant with specialized capabilities like working with specific frameworks, libraries, or coding patterns.
-
-## Installation
-
-```bash
-# Run directly with npx (no install needed)
-npx ctx7
-
-# Or install globally
-npm install -g ctx7
-```
-
-## Quick Start
+## Install
 
 ```bash
-# Set up TwinMCP MCP for your coding agents
-ctx7 setup
-
-# Target a specific agent
-ctx7 setup --cursor
-ctx7 setup --claude
-ctx7 setup --opencode
+npm install -g @twinmcp/cli     # gives you the `twinmcp` command
+# or, without installing:
+npx @twinmcp/cli --help
 ```
 
-### Library Documentation
+Node.js 18 or later. The command is `twinmcp`. (`ctx7` on npm is a different, unrelated package.)
+
+## Log in
+
+The management commands use a **full-access** API key (`ctx7sk_…`). Create one in the dashboard
+(API keys panel on [twinmcp.fr/dashboard](https://twinmcp.fr/dashboard)), then:
 
 ```bash
-# Find a library
-ctx7 library react
-ctx7 library nextjs "app router"
-
-# Get documentation
-ctx7 docs /facebook/react "useEffect cleanup"
-ctx7 docs /vercel/next.js "middleware"
+twinmcp login                       # opens the dashboard and asks you to paste the key
+twinmcp login --key ctx7sk_…        # non-interactive
+twinmcp whoami
+twinmcp logout
 ```
 
-### Skills
+The key is stored in `~/.twinmcp/credentials.json` (`%USERPROFILE%\.twinmcp` on Windows). Every
+command also accepts `--key`, and `TWINMCP_API_KEY` overrides the stored key. A key bound to a
+single server (scope `mcp_proxy`) can call that server's MCPs but cannot manage anything; the CLI
+says so when it gets one.
+
+## Servers and MCPs
 
 ```bash
-# Search for skills
-ctx7 skills search pdf
+twinmcp servers list
+twinmcp servers create "My tools"               # isolated runtime; --size small|medium|large
+twinmcp servers create "My desktop" --local     # local-agent server (see `connect`)
 
-# Install a skill
-ctx7 skills install /anthropics/skills pdf
-
-# Generate a custom skill with AI
-ctx7 skills generate
-
-# List installed skills
-ctx7 skills list --claude
+twinmcp mcp search brave
+twinmcp mcp install my-tools fetch
+twinmcp mcp install my-tools brave-search --config BRAVE_API_KEY=…
+twinmcp mcp list my-tools
 ```
 
-## Usage
+`--config KEY=VALUE` can be repeated; values are converted to the types the catalog entry declares.
+Leave a required secret out to be prompted for it (masked) instead of typing it into your shell
+history; `--yes` disables prompts. Box sizes and the number of servers depend on your plan, and the
+API's own message is shown when a request goes beyond it.
 
-### Find a library
-
-Resolve a library name to a TwinMCP library ID.
+## Connect an AI client
 
 ```bash
-ctx7 library react
-ctx7 library nextjs "app router setup"
-ctx7 library prisma "database relations"
-
-# Output as JSON
-ctx7 library react --json
+twinmcp setup --server my-tools --cursor          # also: --claude --codex --gemini --opencode
+twinmcp setup --server my-tools --claude --router
+twinmcp setup --server my-tools --cursor --project
 ```
 
-### Query documentation
+`setup` creates a new key bound to that server (scope `mcp_proxy`) and writes the server URL with
+`Authorization: Bearer <key>` into each client's MCP config, under the name `twinmcp-<server>`.
+Your full-access key never lands in a config file. Without `--server` it uses your only server or
+asks which one. `--api-key ctx7sk_…` writes a key you already have instead; `--oauth` writes the
+URL alone for clients that sign in with MCP OAuth. Restart the client afterwards.
 
-Fetch documentation for a specific library using its TwinMCP ID.
+To paste a URL yourself:
 
 ```bash
-ctx7 docs /facebook/react "useEffect cleanup"
-ctx7 docs /vercel/next.js "middleware authentication"
-ctx7 docs /prisma/prisma "one-to-many relations"
-
-# Output as JSON
-ctx7 docs /facebook/react "hooks" --json
+twinmcp url my-tools                 # https://twinmcp.fr/api/mcp/my-tools (every MCP of the server)
+twinmcp url my-tools --router        # …?mode=router (search_tools, get_tool_schema, call_tool)
+twinmcp url my-tools --mcp fetch     # one MCP only
 ```
 
-### Setup
+## Local tools (`connect`)
 
-Configure TwinMCP MCP and a rule for your AI coding agents. Authenticates via OAuth, generates an API key, and writes the config.
+Tools that must run on your own machine (for example Blender) go on a local-agent server.
+`connect` keeps a link open to TwinMCP, starts each local tool installed on that server, and relays
+calls to them:
 
 ```bash
-# Interactive (prompts for agent selection)
-ctx7 setup
-
-# Target specific agents
-ctx7 setup --cursor
-ctx7 setup --claude
-ctx7 setup --opencode
-
-# Use an existing API key instead of OAuth
-ctx7 setup --api-key YOUR_API_KEY
-
-# Use OAuth endpoint (IDE handles auth flow)
-ctx7 setup --oauth
-
-# Configure for current project only (default is global)
-ctx7 setup --project
-
-# Skip prompts
-ctx7 setup --yes
+twinmcp connect --server my-desktop
 ```
 
-### Generate skills
+Stop it with Ctrl+C (Ctrl+Break also works on Windows); the tools it started are stopped with it.
 
-Generate custom skills tailored to your use case using AI. Requires authentication.
+## Library documentation
 
 ```bash
-# Log in first
-ctx7 login
-
-# Generate a skill (interactive)
-ctx7 skills generate
-
-# Short aliases
-ctx7 skills gen
-ctx7 skills g
-
-# Generate and install to a specific client
-ctx7 skills generate --cursor
-ctx7 skills generate --claude
-ctx7 skills generate --universal
-
-# Generate globally
-ctx7 skills generate --global
+twinmcp library react "how to use hooks"
+twinmcp docs /facebook/react "useEffect cleanup"
+twinmcp docs /facebook/react "hooks" --json
 ```
 
-The generate flow:
+## Options
 
-1. Describe the expertise you want (e.g., "OAuth authentication with NextAuth.js")
-2. Select relevant libraries from search results
-3. Answer 3 clarifying questions to focus the skill
-4. Review the generated skill, request changes if needed, then install
+- `--base-url <url>` targets another TwinMCP deployment (default `https://twinmcp.fr`).
+- `TWINMCP_TELEMETRY_DISABLED=1` turns off the anonymous command events the CLI sends.
 
-Weekly generation limits apply: free accounts get 6 generations/week, Pro accounts get 10.
-
-### Authentication
-
-Log in to access skill generation and other authenticated features.
+## Development
 
 ```bash
-# Log in (opens browser for OAuth)
-ctx7 login
-
-# Check login status
-ctx7 whoami
-
-# Log out
-ctx7 logout
+pnpm --filter @twinmcp/cli build
+pnpm --filter @twinmcp/cli test
+node packages/cli/dist/index.js --help
 ```
 
-### Install skills
+## License
 
-Install skills from a project repository to your AI coding assistant's skills directory.
-
-```bash
-# Install all skills from a project (interactive selection)
-ctx7 skills install /anthropics/skills
-
-# Install a specific skill
-ctx7 skills install /anthropics/skills pdf
-
-# Install multiple skills at once
-ctx7 skills install /anthropics/skills pdf commit
-
-# Install to a specific client
-ctx7 skills install /anthropics/skills pdf --cursor
-ctx7 skills install /anthropics/skills pdf --claude
-ctx7 skills install /anthropics/skills pdf --universal
-
-# Install globally (home directory instead of current project)
-ctx7 skills install /anthropics/skills pdf --global
-
-# Install non-interactively
-ctx7 skills install /anthropics/skills pdf --global --universal --yes
-
-# Install to all supported agent locations
-ctx7 skills install /anthropics/skills pdf --all-agents
-```
-
-### Search for skills
-
-Find skills across all indexed projects in the registry.
-
-```bash
-ctx7 skills search pdf
-ctx7 skills search typescript
-ctx7 skills search react testing
-```
-
-### List installed skills
-
-View skills installed in your project or globally.
-
-```bash
-ctx7 skills list
-ctx7 skills list --claude
-ctx7 skills list --cursor
-ctx7 skills list --universal
-ctx7 skills list --global
-```
-
-### Show skill information
-
-Get details about available skills in a project.
-
-```bash
-ctx7 skills info /anthropics/skills
-```
-
-### Remove a skill
-
-Uninstall a skill from your project.
-
-```bash
-ctx7 skills remove pdf
-ctx7 skills remove pdf --claude
-ctx7 skills remove pdf --universal
-ctx7 skills remove pdf --global
-```
-
-## Supported Clients
-
-The CLI automatically detects which AI coding assistants you have installed and offers to install skills for them:
-
-| Client | Skills Directory |
-|--------|-----------------|
-| Universal (Amp, Codex, Gemini CLI, GitHub Copilot, OpenCode + more) | `.agents/skills/` |
-| Claude Code | `.claude/skills/` |
-| Cursor | `.cursor/skills/` |
-| Antigravity | `.agent/skills/` |
-
-## Shortcuts
-
-For faster usage, the CLI provides short aliases:
-
-```bash
-ctx7 si /anthropics/skills pdf   # skills install
-ctx7 ss pdf                       # skills search
-ctx7 skills gen                   # skills generate
-ctx7 skills g                     # skills generate
-```
-
-## Disabling Telemetry
-
-The CLI collects anonymous usage data to help improve the product. To disable telemetry, set the `CTX7_TELEMETRY_DISABLED` environment variable:
-
-```bash
-# For a single command
-CTX7_TELEMETRY_DISABLED=1 ctx7 skills search pdf
-
-# Or export in your shell profile (~/.bashrc, ~/.zshrc, etc.)
-export CTX7_TELEMETRY_DISABLED=1
-```
-
-## Learn More
-
-Visit [twinmcp.com](https://twinmcp.com) to browse the skills registry and discover available skills.
+MIT

@@ -4,7 +4,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 const MOCK_MCP_RULE = "Use TwinMCP MCP to fetch docs.\n";
-const MOCK_CLI_RULE = "Use the `ctx7` CLI to fetch docs.\n";
+const MOCK_CLI_RULE = "Use the `twinmcp` CLI to fetch docs.\n";
 
 vi.stubGlobal(
   "fetch",
@@ -73,11 +73,11 @@ describe("getRuleContent", () => {
 describe("mergeServerEntry", () => {
   test("adds server to empty config", () => {
     const { config, alreadyExists } = mergeServerEntry({}, "mcpServers", "twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
     expect(alreadyExists).toBe(false);
     expect((config.mcpServers as Record<string, unknown>).twinmcp).toEqual({
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
   });
 
@@ -86,7 +86,7 @@ describe("mergeServerEntry", () => {
       { mcpServers: { other: { url: "https://other.com" } } },
       "mcpServers",
       "twinmcp",
-      { url: "https://mcp.twinmcp.com/mcp" }
+      { url: "https://twinmcp.fr/api/mcp/my-tools" }
     );
     const servers = config.mcpServers as Record<string, unknown>;
     expect(servers.twinmcp).toBeTruthy();
@@ -112,13 +112,13 @@ describe("mergeServerEntry", () => {
       },
     };
     const { config, alreadyExists } = mergeServerEntry(existing, "mcpServers", "twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
       headers: { key: "new-key" },
     });
     expect(alreadyExists).toBe(true);
     const servers = config.mcpServers as Record<string, unknown>;
     expect(servers.twinmcp).toEqual({
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
       headers: { key: "new-key" },
     });
     expect(servers.other).toEqual({ url: "https://other.com" });
@@ -127,26 +127,26 @@ describe("mergeServerEntry", () => {
   test("overwrites existing server entry with different auth mode", () => {
     const existing = {
       mcpServers: {
-        twinmcp: { url: "https://mcp.twinmcp.com/mcp", headers: { "x-api-key": "old" } },
+        twinmcp: { url: "https://twinmcp.fr/api/mcp/my-tools", headers: { "x-api-key": "old" } },
       },
     };
     const { config, alreadyExists } = mergeServerEntry(existing, "mcpServers", "twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
     expect(alreadyExists).toBe(true);
     expect((config.mcpServers as Record<string, unknown>).twinmcp).toEqual({
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
   });
 
   test("works with opencode configKey 'mcp'", () => {
     const { config } = mergeServerEntry({}, "mcp", "twinmcp", {
       type: "remote",
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
     expect((config.mcp as Record<string, unknown>).twinmcp).toEqual({
       type: "remote",
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
   });
 });
@@ -155,7 +155,7 @@ describe("readJsonConfig / writeJsonConfig", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = join(tmpdir(), `ctx7-test-${Date.now()}`);
+    tempDir = join(tmpdir(), `twinmcp-test-${Date.now()}`);
     await mkdir(tempDir, { recursive: true });
   });
 
@@ -172,7 +172,7 @@ describe("readJsonConfig / writeJsonConfig", () => {
 
   test("roundtrip write then read preserves data", async () => {
     const path = join(tempDir, "sub", "dir", "config.json");
-    const data = { mcpServers: { twinmcp: { url: "https://mcp.twinmcp.com/mcp" } } };
+    const data = { mcpServers: { twinmcp: { url: "https://twinmcp.fr/api/mcp/my-tools" } } };
 
     await writeJsonConfig(path, data);
     const result = await readJsonConfig(path);
@@ -187,7 +187,7 @@ describe("JSONC support", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = join(tmpdir(), `ctx7-test-${Date.now()}`);
+    tempDir = join(tmpdir(), `twinmcp-test-${Date.now()}`);
     await mkdir(tempDir, { recursive: true });
   });
 
@@ -242,7 +242,7 @@ describe("TOML config", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = join(tmpdir(), `ctx7-test-${Date.now()}`);
+    tempDir = join(tmpdir(), `twinmcp-test-${Date.now()}`);
     await mkdir(tempDir, { recursive: true });
   });
 
@@ -252,15 +252,15 @@ describe("TOML config", () => {
 
   test("buildTomlServerBlock generates correct TOML", () => {
     const block = buildTomlServerBlock("twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
     expect(block).toContain("[mcp_servers.twinmcp]");
-    expect(block).toContain('url = "https://mcp.twinmcp.com/mcp"');
+    expect(block).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
   });
 
   test("buildTomlServerBlock includes http_headers", () => {
     const block = buildTomlServerBlock("twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
       headers: { TWINMCP_API_KEY: "sk-test" },
     });
     expect(block).toContain("[mcp_servers.twinmcp]");
@@ -283,18 +283,18 @@ describe("TOML config", () => {
   test("appendTomlServer appends to empty file", async () => {
     const path = join(tempDir, "config.toml");
     const { alreadyExists } = await appendTomlServer(path, "twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
     expect(alreadyExists).toBe(false);
     const content = await readFile(path, "utf-8");
     expect(content).toContain("[mcp_servers.twinmcp]");
-    expect(content).toContain('url = "https://mcp.twinmcp.com/mcp"');
+    expect(content).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
   });
 
   test("appendTomlServer preserves existing config", async () => {
     const path = join(tempDir, "config.toml");
     await writeFile(path, 'model = "gpt-5"\n\n[mcp_servers.other]\nurl = "https://other.com"\n');
-    await appendTomlServer(path, "twinmcp", { url: "https://mcp.twinmcp.com/mcp" });
+    await appendTomlServer(path, "twinmcp", { url: "https://twinmcp.fr/api/mcp/my-tools" });
     const content = await readFile(path, "utf-8");
     expect(content).toContain('model = "gpt-5"');
     expect(content).toContain("[mcp_servers.other]");
@@ -303,9 +303,9 @@ describe("TOML config", () => {
 
   test("appendTomlServer is idempotent", async () => {
     const path = join(tempDir, "config.toml");
-    await appendTomlServer(path, "twinmcp", { url: "https://mcp.twinmcp.com/mcp" });
+    await appendTomlServer(path, "twinmcp", { url: "https://twinmcp.fr/api/mcp/my-tools" });
     const { alreadyExists } = await appendTomlServer(path, "twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
     expect(alreadyExists).toBe(true);
     const content = await readFile(path, "utf-8");
@@ -316,12 +316,12 @@ describe("TOML config", () => {
     const path = join(tempDir, "config.toml");
     await appendTomlServer(path, "twinmcp", { url: "https://old.com" });
     const { alreadyExists } = await appendTomlServer(path, "twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
     });
     expect(alreadyExists).toBe(true);
     const content = await readFile(path, "utf-8");
     expect(content.match(/\[mcp_servers\.twinmcp\]/g)?.length).toBe(1);
-    expect(content).toContain('url = "https://mcp.twinmcp.com/mcp"');
+    expect(content).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
     expect(content).not.toContain("https://old.com");
   });
 
@@ -331,9 +331,9 @@ describe("TOML config", () => {
       path,
       '[mcp_servers.twinmcp]\nurl = "https://old.com"\n\n[mcp_servers.other]\nurl = "https://other.com"\n'
     );
-    await appendTomlServer(path, "twinmcp", { url: "https://mcp.twinmcp.com/mcp" });
+    await appendTomlServer(path, "twinmcp", { url: "https://twinmcp.fr/api/mcp/my-tools" });
     const content = await readFile(path, "utf-8");
-    expect(content).toContain('url = "https://mcp.twinmcp.com/mcp"');
+    expect(content).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
     expect(content).not.toContain("https://old.com");
     expect(content).toContain("[mcp_servers.other]");
     expect(content).toContain('url = "https://other.com"');
@@ -346,12 +346,12 @@ describe("TOML config", () => {
       'model = "gpt-5"\n\n[mcp_servers.twinmcp]\nurl = "https://old.com"\n\n[some_other_section]\nkey = "value"\n'
     );
     await appendTomlServer(path, "twinmcp", {
-      url: "https://mcp.twinmcp.com/mcp",
+      url: "https://twinmcp.fr/api/mcp/my-tools",
       headers: { "x-api-key": "sk-new" },
     });
     const content = await readFile(path, "utf-8");
     expect(content).toContain('model = "gpt-5"');
-    expect(content).toContain('url = "https://mcp.twinmcp.com/mcp"');
+    expect(content).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
     expect(content).toContain("[mcp_servers.twinmcp.http_headers]");
     expect(content).toContain('x-api-key = "sk-new"');
     expect(content).not.toContain("https://old.com");
@@ -396,7 +396,7 @@ describe("AGENTS.md append", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = join(tmpdir(), `ctx7-test-${Date.now()}`);
+    tempDir = join(tmpdir(), `twinmcp-test-${Date.now()}`);
     await mkdir(tempDir, { recursive: true });
   });
 
@@ -471,7 +471,7 @@ describe("agent config integration", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = join(tmpdir(), `ctx7-agent-cfg-${Date.now()}`);
+    tempDir = join(tmpdir(), `twinmcp-agent-cfg-${Date.now()}`);
     await mkdir(tempDir, { recursive: true });
   });
 
@@ -479,8 +479,9 @@ describe("agent config integration", () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  const apiKeyAuth: AuthOptions = { mode: "api-key", apiKey: "sk-test-123" };
-  const oauthAuth: AuthOptions = { mode: "oauth" };
+  const SERVER_URL = "https://twinmcp.fr/api/mcp/my-tools";
+  const apiKeyAuth: AuthOptions = { mode: "api-key", apiKey: "sk-test-123", url: SERVER_URL };
+  const oauthAuth: AuthOptions = { mode: "oauth", url: SERVER_URL };
 
   describe("claude", () => {
     const agent = getAgent("claude");
@@ -489,8 +490,8 @@ describe("agent config integration", () => {
       const entry = agent.mcp.buildEntry(apiKeyAuth);
       expect(entry).toEqual({
         type: "http",
-        url: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        url: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
     });
 
@@ -498,7 +499,7 @@ describe("agent config integration", () => {
       const entry = agent.mcp.buildEntry(oauthAuth);
       expect(entry).toEqual({
         type: "http",
-        url: "https://mcp.twinmcp.com/mcp/oauth",
+        url: "https://twinmcp.fr/api/mcp/my-tools",
       });
     });
 
@@ -517,8 +518,8 @@ describe("agent config integration", () => {
       const servers = result.mcpServers as Record<string, unknown>;
       expect(servers.twinmcp).toEqual({
         type: "http",
-        url: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        url: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
     });
 
@@ -541,8 +542,8 @@ describe("agent config integration", () => {
       const result = await readJsonConfig(path);
       expect((result.mcpServers as Record<string, unknown>).twinmcp).toEqual({
         type: "http",
-        url: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        url: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
     });
   });
@@ -553,8 +554,8 @@ describe("agent config integration", () => {
     test("buildEntry with api-key produces correct shape (no type field)", () => {
       const entry = agent.mcp.buildEntry(apiKeyAuth);
       expect(entry).toEqual({
-        url: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        url: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
       expect(entry).not.toHaveProperty("type");
     });
@@ -562,7 +563,7 @@ describe("agent config integration", () => {
     test("buildEntry with oauth produces correct shape", () => {
       const entry = agent.mcp.buildEntry(oauthAuth);
       expect(entry).toEqual({
-        url: "https://mcp.twinmcp.com/mcp/oauth",
+        url: "https://twinmcp.fr/api/mcp/my-tools",
       });
     });
 
@@ -579,7 +580,7 @@ describe("agent config integration", () => {
 
       const result = await readJsonConfig(path);
       expect((result.mcpServers as Record<string, unknown>).twinmcp).toEqual({
-        url: "https://mcp.twinmcp.com/mcp/oauth",
+        url: "https://twinmcp.fr/api/mcp/my-tools",
       });
     });
 
@@ -602,8 +603,8 @@ describe("agent config integration", () => {
       const result = await readJsonConfig(path);
       const servers = result.mcpServers as Record<string, unknown>;
       expect(servers.twinmcp).toEqual({
-        url: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        url: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
       expect(servers.other).toEqual({ url: "https://other.com" });
     });
@@ -616,9 +617,9 @@ describe("agent config integration", () => {
       const entry = agent.mcp.buildEntry(apiKeyAuth);
       expect(entry).toEqual({
         type: "remote",
-        url: "https://mcp.twinmcp.com/mcp",
+        url: "https://twinmcp.fr/api/mcp/my-tools",
         enabled: true,
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        headers: { Authorization: "Bearer sk-test-123" },
       });
     });
 
@@ -626,7 +627,7 @@ describe("agent config integration", () => {
       const entry = agent.mcp.buildEntry(oauthAuth);
       expect(entry).toEqual({
         type: "remote",
-        url: "https://mcp.twinmcp.com/mcp/oauth",
+        url: "https://twinmcp.fr/api/mcp/my-tools",
         enabled: true,
       });
     });
@@ -652,9 +653,9 @@ describe("agent config integration", () => {
       expect(result.$schema).toBe("https://opencode.ai/config.json");
       expect((result.mcp as Record<string, unknown>).twinmcp).toEqual({
         type: "remote",
-        url: "https://mcp.twinmcp.com/mcp",
+        url: "https://twinmcp.fr/api/mcp/my-tools",
         enabled: true,
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        headers: { Authorization: "Bearer sk-test-123" },
       });
     });
 
@@ -677,7 +678,7 @@ describe("agent config integration", () => {
       const result = await readJsonConfig(path);
       expect((result.mcp as Record<string, unknown>).twinmcp).toEqual({
         type: "remote",
-        url: "https://mcp.twinmcp.com/mcp/oauth",
+        url: "https://twinmcp.fr/api/mcp/my-tools",
         enabled: true,
       });
     });
@@ -716,8 +717,8 @@ describe("agent config integration", () => {
       const entry = agent.mcp.buildEntry(apiKeyAuth);
       expect(entry).toEqual({
         type: "http",
-        url: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        url: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
     });
 
@@ -725,7 +726,7 @@ describe("agent config integration", () => {
       const entry = agent.mcp.buildEntry(oauthAuth);
       expect(entry).toEqual({
         type: "http",
-        url: "https://mcp.twinmcp.com/mcp/oauth",
+        url: "https://twinmcp.fr/api/mcp/my-tools",
       });
     });
 
@@ -741,9 +742,9 @@ describe("agent config integration", () => {
       const content = await readFile(path, "utf-8");
       expect(content).toContain("[mcp_servers.twinmcp]");
       expect(content).toContain('type = "http"');
-      expect(content).toContain('url = "https://mcp.twinmcp.com/mcp"');
+      expect(content).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
       expect(content).toContain("[mcp_servers.twinmcp.http_headers]");
-      expect(content).toContain('TWINMCP_API_KEY = "sk-test-123"');
+      expect(content).toContain('Authorization = "Bearer sk-test-123"');
     });
 
     test("appends oauth entry to TOML without headers", async () => {
@@ -752,7 +753,7 @@ describe("agent config integration", () => {
 
       const content = await readFile(path, "utf-8");
       expect(content).toContain("[mcp_servers.twinmcp]");
-      expect(content).toContain('url = "https://mcp.twinmcp.com/mcp/oauth"');
+      expect(content).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
       expect(content).not.toContain("http_headers");
     });
 
@@ -768,9 +769,9 @@ describe("agent config integration", () => {
       expect(alreadyExists).toBe(true);
       const content = await readFile(path, "utf-8");
       expect(content.match(/\[mcp_servers\.twinmcp\]/g)?.length).toBe(1);
-      expect(content).toContain('url = "https://mcp.twinmcp.com/mcp"');
+      expect(content).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
       expect(content).not.toContain("mcp/oauth");
-      expect(content).toContain('TWINMCP_API_KEY = "sk-test-123"');
+      expect(content).toContain('Authorization = "Bearer sk-test-123"');
     });
 
     test("overwrites TOML config preserving other servers", async () => {
@@ -784,7 +785,7 @@ describe("agent config integration", () => {
       const content = await readFile(path, "utf-8");
       expect(content).toContain("[mcp_servers.other]");
       expect(content).toContain('url = "https://other.com"');
-      expect(content).toContain('url = "https://mcp.twinmcp.com/mcp"');
+      expect(content).toContain('url = "https://twinmcp.fr/api/mcp/my-tools"');
       expect(content).not.toContain("https://old.com");
     });
   });
@@ -795,8 +796,8 @@ describe("agent config integration", () => {
     test("buildEntry with api-key uses httpUrl", () => {
       const entry = agent.mcp.buildEntry(apiKeyAuth);
       expect(entry).toEqual({
-        httpUrl: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        httpUrl: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
       expect(entry).not.toHaveProperty("url");
     });
@@ -804,7 +805,7 @@ describe("agent config integration", () => {
     test("buildEntry with oauth uses httpUrl without headers", () => {
       const entry = agent.mcp.buildEntry(oauthAuth);
       expect(entry).toEqual({
-        httpUrl: "https://mcp.twinmcp.com/mcp/oauth",
+        httpUrl: "https://twinmcp.fr/api/mcp/my-tools",
       });
     });
 
@@ -828,8 +829,8 @@ describe("agent config integration", () => {
       const result = await readJsonConfig(path);
       expect(result.theme).toBe("dark");
       expect((result.mcpServers as Record<string, unknown>).twinmcp).toEqual({
-        httpUrl: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        httpUrl: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
     });
 
@@ -851,8 +852,8 @@ describe("agent config integration", () => {
 
       const result = await readJsonConfig(path);
       expect((result.mcpServers as Record<string, unknown>).twinmcp).toEqual({
-        httpUrl: "https://mcp.twinmcp.com/mcp",
-        headers: { TWINMCP_API_KEY: "sk-test-123" },
+        httpUrl: "https://twinmcp.fr/api/mcp/my-tools",
+        headers: { Authorization: "Bearer sk-test-123" },
       });
     });
   });
@@ -868,8 +869,8 @@ describe("agent config integration", () => {
       const oauthEntry = agent.mcp.buildEntry(oauthAuth);
 
       const urlKey = name === "gemini" ? "httpUrl" : "url";
-      expect(apiEntry[urlKey]).toBe("https://mcp.twinmcp.com/mcp");
-      expect(oauthEntry[urlKey]).toBe("https://mcp.twinmcp.com/mcp/oauth");
+      expect(apiEntry[urlKey]).toBe("https://twinmcp.fr/api/mcp/my-tools");
+      expect(oauthEntry[urlKey]).toBe("https://twinmcp.fr/api/mcp/my-tools");
     });
 
     test.each(ALL_AGENT_NAMES)("%s buildEntry includes headers only for api-key auth", (name) => {
@@ -877,13 +878,13 @@ describe("agent config integration", () => {
       const apiEntry = agent.mcp.buildEntry(apiKeyAuth);
       const oauthEntry = agent.mcp.buildEntry(oauthAuth);
 
-      expect(apiEntry.headers).toEqual({ TWINMCP_API_KEY: "sk-test-123" });
+      expect(apiEntry.headers).toEqual({ Authorization: "Bearer sk-test-123" });
       expect(oauthEntry).not.toHaveProperty("headers");
     });
 
     test.each(ALL_AGENT_NAMES)("%s buildEntry without apiKey omits headers", (name) => {
       const agent = getAgent(name);
-      const entry = agent.mcp.buildEntry({ mode: "api-key" });
+      const entry = agent.mcp.buildEntry({ mode: "api-key", url: SERVER_URL });
       expect(entry).not.toHaveProperty("headers");
     });
   });

@@ -58,8 +58,21 @@ Self-hosted VPS via Docker / Dokploy. See **[PRODUCTION.md](PRODUCTION.md)** and
 |------|------|
 | `apps/backend` | Control plane (Next.js) + MCP proxy |
 | `apps/ingest`  | Doc ingestion worker (BullMQ) for TwinMCP Docs |
-| `packages/mcp` | Standalone "TwinMCP Docs" MCP server |
-| `packages/sdk`, `packages/cli`, `packages/tools-ai-sdk` | Client SDKs/tooling |
+| `packages/cli` | `@twinmcp/cli`: the `twinmcp` command (servers, MCP installs, client setup, local agent) |
+| `packages/mcp` | `@twinmcp/mcp`: standalone "TwinMCP Docs" MCP server (stdio / HTTP, MCPB bundle) |
+| `packages/sdk` | `@twinmcp/sdk`: TypeScript client for the documentation API |
+| `packages/tools-ai-sdk` | `@twinmcp/tools-ai-sdk`: Vercel AI SDK tools and agent on top of the SDK |
+
+### Publishing the packages
+
+The four packages publish to npm under the `@twinmcp` scope (`publishConfig.access: public`).
+Nothing is published yet. Versions come from changesets in `.changeset/`:
+
+```bash
+pnpm changeset              # describe a change
+pnpm changeset version      # bump versions and changelogs
+pnpm build && pnpm changeset publish
+```
 
 ## Useful commands
 

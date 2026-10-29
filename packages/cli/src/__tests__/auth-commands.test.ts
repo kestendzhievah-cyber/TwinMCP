@@ -4,21 +4,11 @@ import { Command } from "commander";
 const mockGetValidAccessToken = vi.fn();
 const mockClearTokens = vi.fn();
 const mockSaveTokens = vi.fn();
-const mockGeneratePKCE = vi.fn();
-const mockGenerateState = vi.fn();
-const mockCreateCallbackServer = vi.fn();
-const mockExchangeCodeForTokens = vi.fn();
-const mockBuildAuthorizationUrl = vi.fn();
 
 vi.mock("../utils/auth.js", () => ({
   getValidAccessToken: (...args: unknown[]) => mockGetValidAccessToken(...args),
   clearTokens: (...args: unknown[]) => mockClearTokens(...args),
   saveTokens: (...args: unknown[]) => mockSaveTokens(...args),
-  generatePKCE: (...args: unknown[]) => mockGeneratePKCE(...args),
-  generateState: (...args: unknown[]) => mockGenerateState(...args),
-  createCallbackServer: (...args: unknown[]) => mockCreateCallbackServer(...args),
-  exchangeCodeForTokens: (...args: unknown[]) => mockExchangeCodeForTokens(...args),
-  buildAuthorizationUrl: (...args: unknown[]) => mockBuildAuthorizationUrl(...args),
 }));
 
 vi.mock("../utils/tracking.js", () => ({
@@ -37,15 +27,31 @@ vi.mock("ora", () => ({ default: () => mockSpinner }));
 const mockOpen = vi.fn().mockResolvedValue(undefined);
 vi.mock("open", () => ({ default: (...args: unknown[]) => mockOpen(...args) }));
 
-vi.mock("../constants.js", () => ({ CLI_CLIENT_ID: "test-client-id" }));
-vi.mock("../utils/api.js", () => ({ getBaseUrl: () => "https://test.twinmcp.com" }));
+const mockPassword = vi.fn();
+vi.mock("@inquirer/prompts", () => ({
+  password: (...args: unknown[]) => mockPassword(...args),
+}));
 
-import { registerAuthCommands, performLogin } from "../commands/auth.js";
+vi.mock("../utils/api.js", () => ({ getBaseUrl: () => "https://test.twinmcp.fr" }));
+
+import { registerAuthCommands, performLogin, verifyAndSaveKey } from "../commands/auth.js";
 import { trackEvent } from "../utils/tracking.js";
+
+const GOOD_KEY = "ctx7sk_live_0123456789abcdef";
 
 let logOutput: string[];
 let errorOutput: string[];
 let originalExit: typeof process.exit;
+let originalIsTTY: boolean | undefined;
+
+function jsonResponse(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers(),
+    json: () => Promise.resolve(body),
+  } as unknown as Response;
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -59,6 +65,10 @@ beforeEach(() => {
   });
   originalExit = process.exit;
   process.exit = vi.fn() as never;
+  process.exitCode = undefined;
+  originalIsTTY = process.stdin.isTTY;
+  process.stdin.isTTY = true;
+  delete process.env.TWINMCP_API_KEY;
 
   vi.stubGlobal(
     "fetch",
@@ -70,6 +80,8 @@ beforeEach(() => {
 
 afterEach(() => {
   process.exit = originalExit;
+  process.exitCode = undefined;
+  process.stdin.isTTY = originalIsTTY as boolean;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -82,33 +94,62 @@ async function runCommand(...args: string[]): Promise<void> {
 }
 
 describe("login command", () => {
-  test("skips login when valid token exists", async () => {
-    mockGetValidAccessToken.mockResolvedValue("existing-token");
+  test("skips login when a valid API key is stored", async () => {
+    mockGetValidAccessToken.mockResolvedValue(GOOD_KEY);
     await runCommand("login");
     expect(logOutput.some((l) => l.includes("already logged in"))).toBe(true);
   });
 
   test("tracks login event", async () => {
-    mockGetValidAccessToken.mockResolvedValue("existing-token");
+    mockGetValidAccessToken.mockResolvedValue(GOOD_KEY);
     await runCommand("login");
     expect(trackEvent).toHaveBeenCalledWith("command", { name: "login" });
   });
 
-  test("calls process.exit(1) when login fails", async () => {
+  test("--key verifies the key against /api/v2/servers and stores it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { items: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await runCommand("login", "--key", GOOD_KEY);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://test.twinmcp.fr/api/v2/servers",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ Authorization: `Bearer ${GOOD_KEY}` }),
+      })
+    );
+    expect(mockSaveTokens).toHaveBeenCalledWith({ access_token: GOOD_KEY, token_type: "api_key" });
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  test("--key with a server-bound key explains the scope and exits 1", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(403, { message: "nope", code: "key_scope" }))
+    );
+    await runCommand("login", "--key", GOOD_KEY);
+    expect(mockSaveTokens).not.toHaveBeenCalled();
+    expect(errorOutput.some((l) => l.includes("mcp_proxy"))).toBe(true);
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("--key rejects a value that is not a ctx7sk_ key without calling the API", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await runCommand("login", "--key", "sk-something-else");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("sets exit code 1 when the pasted key is refused", async () => {
     mockGetValidAccessToken.mockResolvedValue(null);
     mockClearTokens.mockReturnValue(false);
-    // Mock performLogin to fail by making createCallbackServer reject
-    mockGeneratePKCE.mockReturnValue({ codeVerifier: "v", codeChallenge: "c" });
-    mockGenerateState.mockReturnValue("state");
-    mockCreateCallbackServer.mockReturnValue({
-      port: Promise.resolve(52417),
-      result: Promise.reject(new Error("timeout")),
-      close: vi.fn(),
-    });
-    mockBuildAuthorizationUrl.mockReturnValue("https://example.com/auth");
+    mockPassword.mockResolvedValue(GOOD_KEY);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(401, { message: "bad" })));
 
-    await runCommand("login").catch(() => {});
-    expect(process.exit).toHaveBeenCalledWith(1);
+    await runCommand("login", "--no-browser");
+    expect(process.exitCode).toBe(1);
   });
 });
 
@@ -133,46 +174,37 @@ describe("logout command", () => {
 });
 
 describe("whoami command", () => {
-  test("shows 'Not logged in' when no valid token", async () => {
+  test("shows 'Not logged in' when no key is stored", async () => {
     mockGetValidAccessToken.mockResolvedValue(null);
     await runCommand("whoami");
     expect(logOutput.some((l) => l.includes("Not logged in"))).toBe(true);
   });
 
-  test("fetches and displays user info when logged in", async () => {
-    mockGetValidAccessToken.mockResolvedValue("valid-token");
+  test("treats a stored non-key token (old OAuth login) as logged out", async () => {
+    mockGetValidAccessToken.mockResolvedValue("some-oauth-access-token");
+    await runCommand("whoami");
+    expect(logOutput.some((l) => l.includes("Not logged in"))).toBe(true);
+  });
+
+  test("shows the masked key and the server count", async () => {
+    mockGetValidAccessToken.mockResolvedValue(GOOD_KEY);
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            success: true,
-            name: "Test User",
-            email: "test@example.com",
-            teamspace: null,
-          }),
-      })
+      vi.fn().mockResolvedValue(jsonResponse(200, { items: [{ slug: "a" }, { slug: "b" }] }))
     );
 
     await runCommand("whoami");
     expect(logOutput.some((l) => l.includes("Logged in"))).toBe(true);
-    expect(logOutput.some((l) => l.includes("Test User"))).toBe(true);
-    expect(logOutput.some((l) => l.includes("test@example.com"))).toBe(true);
+    expect(logOutput.some((l) => l.includes("ctx7sk_live…cdef"))).toBe(true);
+    expect(logOutput.some((l) => l.includes("Servers:") && l.includes("2"))).toBe(true);
+    expect(logOutput.join("\n")).not.toContain(GOOD_KEY);
   });
 
-  test("shows session expired hint when fetch fails", async () => {
-    mockGetValidAccessToken.mockResolvedValue("valid-token");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        json: () => Promise.reject(new Error("fail")),
-      })
-    );
-
+  test("prints the API's reason when the key is refused", async () => {
+    mockGetValidAccessToken.mockResolvedValue(GOOD_KEY);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(401, {})));
     await runCommand("whoami");
-    expect(logOutput.some((l) => l.includes("Session may be expired"))).toBe(true);
+    expect(logOutput.some((l) => l.includes("rejected the API key"))).toBe(true);
   });
 
   test("tracks whoami event", async () => {
@@ -183,76 +215,53 @@ describe("whoami command", () => {
 });
 
 describe("performLogin", () => {
-  test("returns access_token on success", async () => {
-    const mockClose = vi.fn();
-    mockGeneratePKCE.mockReturnValue({ codeVerifier: "verifier", codeChallenge: "challenge" });
-    mockGenerateState.mockReturnValue("state");
-    mockCreateCallbackServer.mockReturnValue({
-      port: Promise.resolve(52417),
-      result: Promise.resolve({ code: "auth-code", state: "state" }),
-      close: mockClose,
-    });
-    mockBuildAuthorizationUrl.mockReturnValue("https://example.com/auth");
-    mockExchangeCodeForTokens.mockResolvedValue({
-      access_token: "new-token",
-      token_type: "bearer",
-    });
+  test("returns the pasted key once the API accepts it", async () => {
+    mockPassword.mockResolvedValue(`  ${GOOD_KEY}  `);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { items: [] })));
 
     const result = await performLogin();
-    expect(result).toBe("new-token");
+    expect(result).toBe(GOOD_KEY);
     expect(mockSaveTokens).toHaveBeenCalled();
-    expect(mockClose).toHaveBeenCalled();
   });
 
-  test("opens browser by default", async () => {
-    mockGeneratePKCE.mockReturnValue({ codeVerifier: "v", codeChallenge: "c" });
-    mockGenerateState.mockReturnValue("s");
-    mockCreateCallbackServer.mockReturnValue({
-      port: Promise.resolve(52417),
-      result: Promise.resolve({ code: "code", state: "s" }),
-      close: vi.fn(),
-    });
-    mockBuildAuthorizationUrl.mockReturnValue("https://example.com/auth");
-    mockExchangeCodeForTokens.mockResolvedValue({
-      access_token: "tok",
-      token_type: "bearer",
-    });
+  test("opens the dashboard by default", async () => {
+    mockPassword.mockResolvedValue(GOOD_KEY);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { items: [] })));
 
     await performLogin(true);
-    expect(mockOpen).toHaveBeenCalledWith("https://example.com/auth");
+    expect(mockOpen).toHaveBeenCalledWith("https://test.twinmcp.fr/dashboard");
   });
 
   test("skips browser open when openBrowser=false", async () => {
-    mockGeneratePKCE.mockReturnValue({ codeVerifier: "v", codeChallenge: "c" });
-    mockGenerateState.mockReturnValue("s");
-    mockCreateCallbackServer.mockReturnValue({
-      port: Promise.resolve(52417),
-      result: Promise.resolve({ code: "code", state: "s" }),
-      close: vi.fn(),
-    });
-    mockBuildAuthorizationUrl.mockReturnValue("https://example.com/auth");
-    mockExchangeCodeForTokens.mockResolvedValue({
-      access_token: "tok",
-      token_type: "bearer",
-    });
+    mockPassword.mockResolvedValue(GOOD_KEY);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { items: [] })));
 
     await performLogin(false);
     expect(mockOpen).not.toHaveBeenCalled();
   });
 
-  test("returns null on callback failure", async () => {
-    const mockClose = vi.fn();
-    mockGeneratePKCE.mockReturnValue({ codeVerifier: "v", codeChallenge: "c" });
-    mockGenerateState.mockReturnValue("s");
-    mockCreateCallbackServer.mockReturnValue({
-      port: Promise.resolve(52417),
-      result: Promise.reject(new Error("User cancelled")),
-      close: mockClose,
-    });
-    mockBuildAuthorizationUrl.mockReturnValue("https://example.com/auth");
-
-    const result = await performLogin();
+  test("returns null when the prompt is cancelled", async () => {
+    mockPassword.mockRejectedValue(Object.assign(new Error("cancel"), { name: "ExitPromptError" }));
+    const result = await performLogin(false);
     expect(result).toBeNull();
-    expect(mockClose).toHaveBeenCalled();
+    expect(mockSaveTokens).not.toHaveBeenCalled();
+  });
+
+  test("returns null without a terminal to prompt in", async () => {
+    process.stdin.isTTY = false;
+    const result = await performLogin(false);
+    expect(result).toBeNull();
+    expect(mockPassword).not.toHaveBeenCalled();
+    expect(errorOutput.some((l) => l.includes("twinmcp login --key"))).toBe(true);
+  });
+});
+
+describe("verifyAndSaveKey", () => {
+  test("reports an unreachable API without saving", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ENOTFOUND")));
+    const result = await verifyAndSaveKey(GOOD_KEY);
+    expect(result).toBeNull();
+    expect(mockSaveTokens).not.toHaveBeenCalled();
+    expect(errorOutput.some((l) => l.includes("Could not reach"))).toBe(true);
   });
 });

@@ -22,7 +22,7 @@ export interface TwinMCPAgentConfig extends ToolLoopAgentSettings<never, ToolSet
  *
  * @example
  * ```typescript
- * import { TwinMCPAgent } from '@upstash/twinmcp-tools-ai-sdk';
+ * import { TwinMCPAgent } from '@twinmcp/tools-ai-sdk';
  * import { anthropic } from '@ai-sdk/anthropic';
  *
  * const agent = new TwinMCPAgent({

@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { TwinMCP } from "@upstash/twinmcp-sdk";
+import { TwinMCP } from "@twinmcp/sdk";
 import { RESOLVE_LIBRARY_ID_DESCRIPTION } from "@prompts";
 import type { TwinMCPToolsConfig } from "./types";
 
@@ -15,7 +15,7 @@ import type { TwinMCPToolsConfig } from "./types";
  *
  * @example
  * ```typescript
- * import { resolveLibraryId, queryDocs } from '@upstash/twinmcp-tools-ai-sdk';
+ * import { resolveLibraryId, queryDocs } from '@twinmcp/tools-ai-sdk';
  * import { generateText, stepCountIs } from 'ai';
  * import { openai } from '@ai-sdk/openai';
  *

@@ -72,7 +72,7 @@ export function formatSearchResults(searchResponse: SearchResponse): string {
 
   if (searchResponse.searchFilterApplied) {
     parts.push(
-      "**Note:** Your results only include libraries matching your teamspace's library filters. To adjust quality thresholds or blocked libraries, update your filters at https://twinmcp.com/dashboard?tab=policies"
+      "**Note:** Your results only include libraries matching your teamspace's library filters. To adjust quality thresholds or blocked libraries, update your filters at https://twinmcp.fr/dashboard/policies"
     );
   }
 

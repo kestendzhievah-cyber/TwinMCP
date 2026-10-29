@@ -13,9 +13,4 @@ export {
 } from "@prompts";
 
 // Re-export useful types from SDK
-export type {
-  TwinMCPConfig,
-  Library,
-  Documentation,
-  GetContextOptions,
-} from "@upstash/twinmcp-sdk";
+export type { TwinMCPConfig, Library, Documentation, GetContextOptions } from "@twinmcp/sdk";

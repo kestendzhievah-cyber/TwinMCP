@@ -94,7 +94,7 @@ async function resolveCommand(
 
   if (data.searchFilterApplied) {
     log.warn(
-      "Your results only include libraries matching your teamspace's library filters. To adjust quality thresholds or blocked libraries, update your filters at https://twinmcp.com/dashboard?tab=policies"
+      "Your results only include libraries matching your teamspace's library filters. To adjust quality thresholds or blocked libraries, update your filters at https://twinmcp.fr/dashboard/policies"
     );
     log.blank();
   }
@@ -107,7 +107,8 @@ async function resolveCommand(
   if (isTTY && results.length > 0) {
     const best = results[0];
     log.plain(
-      `${pc.bold("Quick command:")}\n` + `  ${pc.cyan(`ctx7 docs "${best.id}" "<your question>"`)}`
+      `${pc.bold("Quick command:")}\n` +
+        `  ${pc.cyan(`twinmcp docs "${best.id}" "<your question>"`)}`
     );
     log.blank();
   }
@@ -123,7 +124,7 @@ async function queryCommand(
   if (!libraryId.startsWith("/") || !/^\/[^/]+\/[^/]/.test(libraryId)) {
     log.error(`Invalid library ID: "${libraryId}"`);
     log.info(`Expected format: /owner/repo or /owner/repo/version (e.g., /facebook/react)`);
-    log.info(`Run "ctx7 library <name>" to find the correct ID`);
+    log.info(`Run "twinmcp library <name>" to find the correct ID`);
     process.exitCode = 1;
     return;
   }
@@ -155,7 +156,7 @@ async function queryCommand(
       spinner?.warn("Library has been redirected");
       if (!spinner) log.warn("Library has been redirected");
       log.info(`New ID: ${pc.cyan(ctx.redirectUrl)}`);
-      log.info(`Run: ${pc.cyan(`ctx7 docs "${ctx.redirectUrl}" "${query}"`)}`);
+      log.info(`Run: ${pc.cyan(`twinmcp docs "${ctx.redirectUrl}" "${query}"`)}`);
       process.exitCode = 1;
       return;
     }

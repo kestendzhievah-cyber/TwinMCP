@@ -1,6 +1,8 @@
 import type { Command } from "commander";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { getBaseUrl } from "../utils/api.js";
+import { loadTokens } from "../utils/auth.js";
+import { resolveApiKey } from "../utils/hosting.js";
 import { log } from "../utils/logger.js";
 
 // One local tool the agent should run, as delivered by the control plane over
@@ -20,7 +22,7 @@ interface RelayRequest {
   body: string; // raw JSON-RPC request body from the LLM client
 }
 
-type LinkEvent =
+export type LinkEvent =
   | { type: "init"; server: string; mcps: McpSpec[] }
   | RelayRequest
   | { type: "ping" };
@@ -30,17 +32,30 @@ export function registerConnectCommand(program: Command): void {
     .command("connect")
     .description("Run local MCP tools (e.g. Blender) on this machine and relay them to TwinMCP")
     .requiredOption("--server <slug>", "your TwinMCP local-agent server slug")
-    .option("--key <key>", "your TwinMCP API key (ctx7sk_…) — or set TWINMCP_API_KEY")
+    .option(
+      "--key <key>",
+      "your TwinMCP API key (ctx7sk_…); defaults to TWINMCP_API_KEY or `twinmcp login`"
+    )
     .action(async (opts: { server: string; key?: string }) => {
-      const apiKey = opts.key ?? process.env.TWINMCP_API_KEY;
-      if (!apiKey || !apiKey.startsWith("ctx7sk_")) {
+      let resolved: ReturnType<typeof resolveApiKey> = null;
+      try {
+        resolved = resolveApiKey({
+          flag: opts.key,
+          env: process.env.TWINMCP_API_KEY,
+          stored: loadTokens()?.access_token ?? null,
+        });
+      } catch (err) {
+        log.error(err instanceof Error ? err.message : String(err));
+      }
+      if (!resolved) {
         log.error(
           "Provide your TwinMCP API key via --key ctx7sk_… or the TWINMCP_API_KEY env var."
         );
         log.dim("Generate one in your dashboard → server → Connect → Generate API key.");
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       }
-      await runAgent(opts.server, apiKey);
+      await runAgent(opts.server, resolved.key);
     });
 }
 
@@ -51,17 +66,30 @@ async function runAgent(serverSlug: string, apiKey: string): Promise<void> {
   // to the right relayed request.
   const pending = new Map<string, string>();
 
+  // Shutdown lets the event loop drain instead of calling process.exit(): on
+  // Windows (Node 24), exiting while a fetch socket is closing aborts with a
+  // libuv assertion (exit code 127). Aborting the link stream, killing the
+  // tools and clearing the backoff timer is enough for Node to exit by itself.
+  const stop = new AbortController();
   let shuttingDown = false;
-  const shutdown = () => {
-    if (shuttingDown) return;
+  const shutdown = (code = 0) => {
+    if (shuttingDown) {
+      process.exit(code === 0 ? 130 : code); // second Ctrl+C: don't wait
+    }
     shuttingDown = true;
     log.blank();
     log.warn("Shutting down agent…");
-    for (const child of children.values()) child.kill();
-    process.exit(0);
+    for (const child of children.values()) killTree(child);
+    stop.abort();
+    process.exitCode = code;
+    // Last resort if something still holds the loop open.
+    setTimeout(() => process.exit(code), 5000).unref();
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  const onSignal = () => shutdown(0);
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  // Ctrl+Break in a Windows console.
+  if (process.platform === "win32") process.on("SIGBREAK", onSignal);
 
   log.info(`TwinMCP agent → ${baseUrl}  ·  server '${serverSlug}'`);
 
@@ -83,7 +111,10 @@ async function runAgent(serverSlug: string, apiKey: string): Promise<void> {
     for (const [k, v] of Object.entries(spec.env ?? {})) env[k] = String(v);
 
     log.item(`starting ${spec.name}  (${spec.startCmd})`);
-    const child = spawn(spec.startCmd, { shell: true, env });
+    // A shell resolves the command the way the user's terminal would (npx.cmd
+    // and uvx.exe on Windows, PATH lookups everywhere). windowsHide keeps each
+    // tool from opening its own console window.
+    const child = spawn(spec.startCmd, { shell: true, env, windowsHide: true });
     children.set(spec.slug, child);
 
     // MCP stdio is newline-delimited JSON-RPC on stdout; logs go to stderr.
@@ -151,7 +182,7 @@ async function runAgent(serverSlug: string, apiKey: string): Promise<void> {
   for (let attempt = 0; !shuttingDown; attempt++) {
     try {
       if (attempt > 0) log.dim(`Reconnecting… (attempt ${attempt})`);
-      await openLink(baseUrl, serverSlug, apiKey, {
+      await openLink(baseUrl, serverSlug, apiKey, stop.signal, {
         onInit: (mcps) => {
           log.success(`Linked '${serverSlug}' — ${mcps.length} local tool(s). Waiting for calls…`);
           for (const m of mcps) spawnMcp(m);
@@ -162,18 +193,22 @@ async function runAgent(serverSlug: string, apiKey: string): Promise<void> {
         onRequest: handleRelay,
       });
     } catch (err) {
+      if (shuttingDown) break;
       const msg = err instanceof Error ? err.message : String(err);
       if (/^link (401|403|404|409)/.test(msg)) {
         log.error(`Cannot link: ${msg}`);
         log.dim("Check the API key and that '" + serverSlug + "' is a local-agent server you own.");
-        shutdown();
-        return;
+        shutdown(1);
+        break;
       }
       log.error(`Link error: ${msg}`);
     }
     if (shuttingDown) break;
-    await sleep(Math.min(1000 * 2 ** Math.min(attempt, 5), 30_000));
+    await sleep(Math.min(1000 * 2 ** Math.min(attempt, 5), 30_000), stop.signal);
   }
+  process.off("SIGINT", onSignal);
+  process.off("SIGTERM", onSignal);
+  if (process.platform === "win32") process.off("SIGBREAK", onSignal);
 }
 
 /** Open the SSE link and dispatch events until the stream ends. */
@@ -181,10 +216,12 @@ async function openLink(
   baseUrl: string,
   serverSlug: string,
   apiKey: string,
+  signal: AbortSignal,
   handlers: { onInit: (mcps: McpSpec[]) => void; onRequest: (evt: RelayRequest) => void }
 ): Promise<void> {
   const res = await fetch(`${baseUrl}/api/agent/link?server=${encodeURIComponent(serverSlug)}`, {
     headers: { authorization: `Bearer ${apiKey}`, accept: "text/event-stream" },
+    signal,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -199,18 +236,9 @@ async function openLink(
     const { done, value } = await reader.read();
     if (done) return;
     buf += decoder.decode(value, { stream: true });
-    let sep: number;
-    while ((sep = buf.indexOf("\n\n")) !== -1) {
-      const rawEvent = buf.slice(0, sep);
-      buf = buf.slice(sep + 2);
-      const dataLine = rawEvent.split(/\r?\n/).find((l) => l.startsWith("data:"));
-      if (!dataLine) continue;
-      let evt: LinkEvent;
-      try {
-        evt = JSON.parse(dataLine.slice(5).trim()) as LinkEvent;
-      } catch {
-        continue;
-      }
+    const { events, rest } = drainSseEvents(buf);
+    buf = rest;
+    for (const evt of events) {
       if (evt.type === "init") handlers.onInit(evt.mcps);
       else if (evt.type === "request") handlers.onRequest(evt);
       // "ping" → keep-alive, ignore
@@ -218,7 +246,57 @@ async function openLink(
   }
 }
 
-function parseRpcId(body: string): string | number | null {
+/**
+ * Splits complete SSE events off the buffer (blank-line separated; LF or CRLF,
+ * since a proxy in front of the API may rewrite line endings) and returns the
+ * parsed `data:` payloads plus the unfinished tail.
+ */
+export function drainSseEvents(buffer: string): { events: LinkEvent[]; rest: string } {
+  let rest = buffer.replace(/\r\n/g, "\n");
+  const events: LinkEvent[] = [];
+  let sep: number;
+  while ((sep = rest.indexOf("\n\n")) !== -1) {
+    const rawEvent = rest.slice(0, sep);
+    rest = rest.slice(sep + 2);
+    const data = rawEvent
+      .split("\n")
+      .filter((l) => l.startsWith("data:"))
+      .map((l) => l.slice(5).trim())
+      .join("\n");
+    if (!data) continue;
+    try {
+      events.push(JSON.parse(data) as LinkEvent);
+    } catch {
+      // not JSON: ignore
+    }
+  }
+  return { events, rest };
+}
+
+/**
+ * How to stop a tool and everything it started. With `shell: true`, Windows
+ * runs cmd.exe → npx.cmd → node/python; killing the cmd.exe pid alone leaves
+ * the tool running, so the whole tree goes through taskkill. Elsewhere the
+ * shell execs the command, so a plain signal reaches the tool.
+ */
+export function killCommand(
+  platform: NodeJS.Platform,
+  pid: number | undefined
+): { cmd: string; args: string[] } | null {
+  if (platform !== "win32" || !pid) return null;
+  return { cmd: "taskkill", args: ["/pid", String(pid), "/T", "/F"] };
+}
+
+function killTree(child: ChildProcess): void {
+  const kill = killCommand(process.platform, child.pid);
+  if (kill) {
+    const res = spawnSync(kill.cmd, kill.args, { stdio: "ignore", windowsHide: true });
+    if (!res.error && res.status === 0) return;
+  }
+  child.kill();
+}
+
+export function parseRpcId(body: string): string | number | null {
   try {
     const parsed = JSON.parse(body) as { id?: unknown } | Array<{ id?: unknown }>;
     const id = Array.isArray(parsed) ? parsed[0]?.id : parsed?.id;
@@ -228,10 +306,20 @@ function parseRpcId(body: string): string | number | null {
   }
 }
 
-function ensureNewline(s: string): string {
+export function ensureNewline(s: string): string {
   return s.endsWith("\n") ? s : s + "\n";
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+/** Resolves after `ms`, or as soon as `signal` aborts (so shutdown is immediate). */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const timer = setTimeout(done, ms);
+    function done() {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    }
+    signal?.addEventListener("abort", done, { once: true });
+  });
 }

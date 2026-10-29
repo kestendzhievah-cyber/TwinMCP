@@ -25,8 +25,8 @@ async function parseErrorResponse(response: Response, apiKey?: string): Promise<
   const status = response.status;
   if (status === 429) {
     return apiKey
-      ? "Rate limited or quota exceeded. Upgrade your plan at https://twinmcp.com/plans for higher limits."
-      : "Rate limited or quota exceeded. Create a free API key at https://twinmcp.com/dashboard for higher limits.";
+      ? "Rate limited or quota exceeded. Upgrade your plan at https://twinmcp.fr/dashboard/billing for higher limits."
+      : "Rate limited or quota exceeded. Create a free API key at https://twinmcp.fr/dashboard for higher limits.";
   }
   if (status === 404) {
     return "The library you are trying to access does not exist. Please try with a different library ID.";

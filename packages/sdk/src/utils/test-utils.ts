@@ -8,7 +8,7 @@ export function newHttpClient(): HttpClient {
   }
 
   return new HttpClient({
-    baseUrl: process.env.TWINMCP_BASE_URL || "https://twinmcp.com/api",
+    baseUrl: process.env.TWINMCP_BASE_URL || "https://twinmcp.fr/api",
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },

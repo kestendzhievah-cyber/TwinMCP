@@ -123,7 +123,7 @@ const server = new McpServer(
   {
     name: "TwinMCP",
     version: SERVER_VERSION,
-    websiteUrl: "https://twinmcp.com",
+    websiteUrl: "https://twinmcp.fr",
     description:
       "TwinMCP provides up-to-date documentation and code examples for libraries and frameworks.",
     icons: [

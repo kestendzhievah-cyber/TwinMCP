@@ -5,8 +5,14 @@ import { homedir } from "os";
 export type SetupAgent = "claude" | "cursor" | "opencode" | "codex" | "gemini";
 export type AuthMode = "oauth" | "api-key";
 
+/**
+ * What to write into a client config: the connection URL (a TwinMCP server or
+ * one of its MCPs) and, for "api-key", the key sent as a Bearer token. With
+ * "oauth" the client runs the MCP OAuth sign-in itself, so no header.
+ */
 export interface AuthOptions {
   mode: AuthMode;
+  url: string;
   apiKey?: string;
 }
 
@@ -22,8 +28,6 @@ export const AUTH_MODE_LABELS: Record<AuthMode, string> = {
   oauth: "OAuth",
   "api-key": "API Key",
 };
-
-const MCP_BASE_URL = "https://mcp.twinmcp.com";
 
 export type RuleType =
   | {
@@ -54,14 +58,20 @@ export interface AgentConfig {
 }
 
 function mcpUrl(auth: AuthOptions): string {
-  return auth.mode === "oauth" ? `${MCP_BASE_URL}/mcp/oauth` : `${MCP_BASE_URL}/mcp`;
+  return auth.url;
+}
+
+/** The TwinMCP proxy reads only the Authorization header. */
+export function authHeaders(auth: AuthOptions): Record<string, string> | undefined {
+  if (auth.mode === "api-key" && auth.apiKey) {
+    return { Authorization: `Bearer ${auth.apiKey}` };
+  }
+  return undefined;
 }
 
 function withHeaders(base: Record<string, unknown>, auth: AuthOptions): Record<string, unknown> {
-  if (auth.mode === "api-key" && auth.apiKey) {
-    return { ...base, headers: { TWINMCP_API_KEY: auth.apiKey } };
-  }
-  return base;
+  const headers = authHeaders(auth);
+  return headers ? { ...base, headers } : base;
 }
 
 const agents: Record<SetupAgent, AgentConfig> = {
@@ -155,13 +165,8 @@ const agents: Record<SetupAgent, AgentConfig> = {
       projectPaths: [join(".codex", "config.toml")],
       globalPaths: [join(homedir(), ".codex", "config.toml")],
       configKey: "mcp_servers",
-      buildEntry: (auth) => {
-        const entry: Record<string, unknown> = { type: "http", url: mcpUrl(auth) };
-        if (auth.mode === "api-key" && auth.apiKey) {
-          entry.headers = { TWINMCP_API_KEY: auth.apiKey };
-        }
-        return entry;
-      },
+      // Written as [mcp_servers.<name>] url + [mcp_servers.<name>.http_headers].
+      buildEntry: (auth) => withHeaders({ type: "http", url: mcpUrl(auth) }, auth),
     },
     rule: {
       kind: "append",

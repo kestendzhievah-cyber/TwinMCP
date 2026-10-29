@@ -1,11 +1,11 @@
 import { Command } from "commander";
 import pc from "picocolors";
 import figlet from "figlet";
-import { registerSkillCommands, registerSkillAliases } from "./commands/skill.js";
-import { registerAuthCommands, setAuthBaseUrl } from "./commands/auth.js";
+import { registerAuthCommands } from "./commands/auth.js";
 import { registerSetupCommand } from "./commands/setup.js";
 import { registerDocsCommands } from "./commands/docs.js";
 import { registerConnectCommand } from "./commands/connect.js";
+import { registerHostingCommands } from "./commands/hosting.js";
 import { setBaseUrl } from "./utils/api.js";
 import { VERSION } from "./constants.js";
 
@@ -17,47 +17,45 @@ const brand = {
 const program = new Command();
 
 program
-  .name("ctx7")
-  .description("TwinMCP CLI - Manage AI coding skills and documentation context")
+  .name("twinmcp")
+  .description("TwinMCP CLI - host MCP servers, connect AI clients, and run local tools")
   .version(VERSION)
-  .option("--base-url <url>")
+  .option("--base-url <url>", "TwinMCP API origin (default https://twinmcp.fr)")
   .hook("preAction", (thisCommand) => {
     const opts = thisCommand.opts();
     if (opts.baseUrl) {
       setBaseUrl(opts.baseUrl);
-      setAuthBaseUrl(opts.baseUrl);
     }
   })
   .addHelpText(
     "after",
     `
 Examples:
-  ${brand.dim("# Search for skills")}
-  ${brand.primary("npx ctx7 skills search pdf")}
-  ${brand.primary("npx ctx7 skills search react hooks")}
+  ${brand.dim("# Log in with a full-access API key from the dashboard")}
+  ${brand.primary("twinmcp login")}
 
-  ${brand.dim("# Install from a repository")}
-  ${brand.primary("npx ctx7 skills install /anthropics/skills")}
-  ${brand.primary("npx ctx7 skills install /anthropics/skills pdf")}
+  ${brand.dim("# Create a server and install MCPs on it")}
+  ${brand.primary("twinmcp servers create my-tools")}
+  ${brand.primary("twinmcp mcp search brave")}
+  ${brand.primary("twinmcp mcp install my-tools fetch")}
 
-  ${brand.dim("# Install to specific client")}
-  ${brand.primary("npx ctx7 skills install /anthropics/skills --cursor")}
-  ${brand.primary("npx ctx7 skills install /anthropics/skills --global")}
+  ${brand.dim("# Connect an AI client (writes the URL and a key bound to the server)")}
+  ${brand.primary("twinmcp setup --server my-tools --cursor")}
+  ${brand.primary("twinmcp url my-tools --router")}
 
-  ${brand.dim("# List and manage installed skills")}
-  ${brand.primary("npx ctx7 skills list --claude")}
-  ${brand.primary("npx ctx7 skills remove pdf")}
+  ${brand.dim("# Run local tools (local-agent server) on this machine")}
+  ${brand.primary("twinmcp connect --server my-desktop")}
 
   ${brand.dim("# Query library documentation")}
-  ${brand.primary('npx ctx7 library react "how to use hooks"')}
-  ${brand.primary('npx ctx7 docs /facebook/react "useEffect examples"')}
+  ${brand.primary('twinmcp library react "how to use hooks"')}
+  ${brand.primary('twinmcp docs /facebook/react "useEffect examples"')}
 
-Visit ${brand.primary("https://twinmcp.com")} to browse skills
+Without a global install, prefix commands with ${brand.primary("npx @twinmcp/cli")}.
+Visit ${brand.primary("https://twinmcp.fr")}
 `
   );
 
-registerSkillCommands(program);
-registerSkillAliases(program);
+registerHostingCommands(program);
 registerAuthCommands(program);
 registerSetupCommand(program);
 registerDocsCommands(program);
@@ -67,16 +65,17 @@ program.action(() => {
   console.log("");
   const banner = figlet.textSync("TwinMCP", { font: "ANSI Shadow" });
   console.log(brand.primary(banner));
-  console.log(brand.dim("  The open agent skills ecosystem"));
+  console.log(brand.dim("  Managed MCP servers for every AI client"));
   console.log("");
 
   console.log("  Quick start:");
-  console.log(`    ${brand.primary("npx ctx7 skills search pdf")}`);
-  console.log(`    ${brand.primary("npx ctx7 skills install /anthropics/skills")}`);
+  console.log(`    ${brand.primary("twinmcp login")}`);
+  console.log(`    ${brand.primary("twinmcp servers list")}`);
+  console.log(`    ${brand.primary("twinmcp setup --server <slug>")}`);
   console.log("");
 
-  console.log(`  Run ${brand.primary("npx ctx7 --help")} for all commands and options`);
-  console.log(`  Visit ${brand.primary("https://twinmcp.com")} to browse skills`);
+  console.log(`  Run ${brand.primary("twinmcp --help")} for all commands and options`);
+  console.log(`  Visit ${brand.primary("https://twinmcp.fr")}`);
   console.log("");
 });
 

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://twinmcp.com/schema/twinmcp.json",
+  "$id": "https://twinmcp.fr/schema/twinmcp.json",
   "title": "TwinMCP Configuration Schema",
   "description": "Configuration file for TwinMCP project parsing and documentation generation",
   "type": "object",

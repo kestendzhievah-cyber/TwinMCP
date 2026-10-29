@@ -1,10 +1,10 @@
 {
-  "name": "ctx7",
+  "name": "@twinmcp/cli",
   "version": "0.3.13",
-  "description": "TwinMCP CLI - Manage AI coding skills and documentation context",
+  "description": "TwinMCP CLI - host MCP servers, connect AI clients, and run local tools",
   "type": "module",
   "bin": {
-    "ctx7": "./dist/index.js"
+    "twinmcp": "./dist/index.js"
   },
   "files": [
     "dist"
@@ -50,18 +50,21 @@
     "documentation",
     "mcp"
   ],
-  "author": "Upstash",
+  "author": "TwinMCP",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/upstash/twinmcp.git",
+    "url": "git+https://github.com/kestendzhievah-cyber/TwinMCP.git",
     "directory": "packages/cli"
   },
   "bugs": {
-    "url": "https://github.com/upstash/twinmcp/issues"
+    "url": "https://github.com/kestendzhievah-cyber/TwinMCP/issues"
   },
-  "homepage": "https://twinmcp.com",
+  "homepage": "https://twinmcp.fr",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

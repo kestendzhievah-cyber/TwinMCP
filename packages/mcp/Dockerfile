@@ -9,7 +9,7 @@ COPY packages/mcp ./packages/mcp
 RUN pnpm install --frozen-lockfile
 
 # Build the mcp package
-RUN pnpm --filter @upstash/twinmcp-mcp build
+RUN pnpm --filter @twinmcp/mcp build
 
 # ----- Production Stage -----
 FROM node:lts-alpine
@@ -19,7 +19,7 @@ WORKDIR /app
 # Install production dependencies only
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/mcp/package.json ./packages/mcp/
-RUN pnpm install --frozen-lockfile --prod --filter @upstash/twinmcp-mcp
+RUN pnpm install --frozen-lockfile --prod --filter @twinmcp/mcp
 
 # Copy built files from builder
 COPY --from=builder /app/packages/mcp/dist ./packages/mcp/dist

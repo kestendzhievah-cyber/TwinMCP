@@ -4,7 +4,6 @@ import ora from "ora";
 import { select } from "@inquirer/prompts";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
-import { randomBytes } from "crypto";
 
 import { log } from "../utils/logger.js";
 import { checkboxWithHover } from "../utils/prompts.js";
@@ -22,7 +21,7 @@ import {
   getAgent,
   detectAgents,
 } from "../setup/agents.js";
-import { customizeSkillFilesForAgent, getRuleContent } from "../setup/templates.js";
+import { customizeSkillFilesForAgent, getRuleContent, SKILLS_PROJECT } from "../setup/templates.js";
 import {
   readJsonConfig,
   mergeServerEntry,
@@ -30,6 +29,16 @@ import {
   resolveMcpPath,
   appendTomlServer,
 } from "../setup/mcp-writer.js";
+import { managementClient } from "./hosting.js";
+import {
+  NO_KEY_MESSAGE,
+  buildServerUrl,
+  isApiKey,
+  isValidSlug,
+  serverEntryLabel,
+  type HostedServer,
+  type HostingClient,
+} from "../utils/hosting.js";
 
 type Scope = "global" | "project";
 type SetupMode = "mcp" | "cli";
@@ -48,6 +57,8 @@ interface SetupOptions {
   oauth?: boolean;
   cli?: boolean;
   mcp?: boolean;
+  server?: string;
+  router?: boolean;
 }
 
 const CHECKBOX_THEME = {
@@ -78,73 +89,126 @@ export function registerSetupCommand(program: Command): void {
     .option("--opencode", "Set up for OpenCode")
     .option("--codex", "Set up for Codex")
     .option("--gemini", "Set up for Gemini CLI")
+    .option("--server <slug>", "Connect this TwinMCP server (default: pick one of yours)")
+    .option("--router", "Use the server's router mode (search_tools / call_tool)")
     .option("--mcp", "Set up MCP server mode")
     .option("--cli", "Set up CLI + Skills mode (no MCP server)")
     .option("-p, --project", "Configure for current project instead of globally")
     .option("-y, --yes", "Skip confirmation prompts")
-    .option("--api-key <key>", "Use API key authentication")
-    .option("--oauth", "Use OAuth endpoint (IDE handles auth flow)")
+    .option(
+      "--api-key <key>",
+      "Write this key into the client config instead of minting a key bound to the server"
+    )
+    .option("--oauth", "Write the URL without a key; the client signs in with MCP OAuth")
     .action(async (options: SetupOptions) => {
       await setupCommand(options);
     });
 }
 
-async function authenticateAndGenerateKey(): Promise<string | null> {
-  const accessToken = (await getValidAccessToken()) ?? (await performLogin());
-
-  if (!accessToken) return null;
-
-  const spinner = ora("Configuring authentication...").start();
-
+/** A management client, logging in first when no key is stored yet. */
+async function ensureManagementClient(): Promise<HostingClient | null> {
   try {
-    const response = await fetch(`${getBaseUrl()}/api/dashboard/api-keys`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: `ctx7-cli-${randomBytes(3).toString("hex")}` }),
-    });
-
-    if (!response.ok) {
-      const err = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
-      spinner.fail("Authentication failed");
-      log.error(err.message || err.error || `HTTP ${response.status}`);
-      return null;
-    }
-
-    const result = (await response.json()) as { data: { apiKey: string } };
-    spinner.succeed("Authenticated");
-    return result.data.apiKey;
+    return managementClient();
   } catch (err) {
-    spinner.fail("Authentication failed");
-    log.error(err instanceof Error ? err.message : String(err));
-    return null;
+    if (!(err instanceof Error) || err.message !== NO_KEY_MESSAGE) throw err;
   }
+  const key = await performLogin();
+  return key ? managementClient() : null;
 }
 
-async function resolveAuth(options: SetupOptions): Promise<AuthOptions | null> {
-  if (options.apiKey) return { mode: "api-key", apiKey: options.apiKey };
-  if (options.oauth) return { mode: "oauth" };
+/** The server to connect: --server, the only one there is, or a prompt. */
+async function pickServer(client: HostingClient, options: SetupOptions): Promise<HostedServer> {
+  if (options.server) return client.getServer(options.server);
 
-  const apiKey = await authenticateAndGenerateKey();
-  if (!apiKey) return null;
-  return { mode: "api-key", apiKey };
+  const servers = (await client.listServers()).filter((s) => s.status !== "destroyed");
+  if (servers.length === 0) {
+    throw new Error("You have no server yet. Create one first: twinmcp servers create <name>");
+  }
+  if (servers.length === 1) return servers[0];
+  if (options.yes) {
+    throw new Error(
+      `Several servers: pass --server <slug> (one of: ${servers.map((s) => s.slug).join(", ")}).`
+    );
+  }
+  return select<HostedServer>({
+    message: "Which server should your agents connect to?",
+    choices: servers.map((s) => ({
+      name: `${s.slug}  ${pc.dim(`${s.name} · ${s.status}`)}`,
+      value: s,
+    })),
+    theme: { style: { highlight: (text: string) => pc.green(text) } },
+  });
+}
+
+/**
+ * Where the client connects and with which credential. A key is minted for
+ * the server (scope mcp_proxy) unless the user brings one or picks OAuth, so
+ * the config files never hold a key that can manage the account.
+ */
+async function resolveServerTarget(
+  options: SetupOptions,
+  agents: SetupAgent[]
+): Promise<{ slug: string; auth: AuthOptions; minted: boolean } | null> {
+  if (options.apiKey && !isApiKey(options.apiKey)) {
+    throw new Error("--api-key must be a TwinMCP API key (ctx7sk_…).");
+  }
+  if (options.server && !isValidSlug(options.server)) {
+    throw new Error(`"${options.server}" is not a server slug (see: twinmcp servers list).`);
+  }
+
+  // With a slug and the user's own credential there is nothing to look up.
+  if (options.server && (options.oauth || options.apiKey)) {
+    const url = buildServerUrl(getBaseUrl(), options.server, { router: options.router });
+    return {
+      slug: options.server,
+      auth: options.oauth
+        ? { mode: "oauth", url }
+        : { mode: "api-key", apiKey: options.apiKey, url },
+      minted: false,
+    };
+  }
+
+  const client = await ensureManagementClient();
+  if (!client) return null;
+  const server = await pickServer(client, options);
+  const url = buildServerUrl(getBaseUrl(), server.slug, { router: options.router });
+
+  if (options.oauth) return { slug: server.slug, auth: { mode: "oauth", url }, minted: false };
+  if (options.apiKey) {
+    return {
+      slug: server.slug,
+      auth: { mode: "api-key", apiKey: options.apiKey, url },
+      minted: false,
+    };
+  }
+
+  const spinner = ora(`Creating a key for ${server.slug}...`).start();
+  try {
+    const names = agents.map((a) => SETUP_AGENT_NAMES[a]).join(", ");
+    const created = await client.createProxyKey(server.id, `CLI setup (${names})`);
+    spinner.succeed(`Created a key that can only call ${server.slug}`);
+    return { slug: server.slug, auth: { mode: "api-key", apiKey: created.key, url }, minted: true };
+  } catch (err) {
+    spinner.fail("Could not create a key");
+    throw err;
+  }
 }
 
 async function resolveMode(options: SetupOptions): Promise<SetupMode> {
   if (options.cli) return "cli";
-  if (options.mcp || options.yes || options.oauth || options.apiKey) return "mcp";
+  if (options.server || options.mcp || options.yes || options.oauth || options.apiKey) {
+    return "mcp";
+  }
 
   return select<SetupMode>({
     message: "How should your agent access TwinMCP?",
     choices: [
       {
-        name: `MCP server\n    ${pc.dim("Agent calls TwinMCP tools via MCP protocol to retrieve up-to-date library docs")}`,
+        name: `MCP server\n    ${pc.dim("Agent connects to one of your TwinMCP servers over MCP (every installed tool)")}`,
         value: "mcp" as SetupMode,
       },
       {
-        name: `CLI + Skills\n    ${pc.dim("Installs a find-docs skill that guides your agent to fetch up-to-date library docs using ")}${pc.dim(pc.bold("ctx7"))}${pc.dim(" CLI commands")}`,
+        name: `CLI + Skills\n    ${pc.dim("Installs a find-docs skill that guides your agent to fetch up-to-date library docs using ")}${pc.dim(pc.bold("twinmcp"))}${pc.dim(" CLI commands")}`,
         value: "cli" as SetupMode,
       },
     ],
@@ -263,16 +327,9 @@ async function installRule(
 async function setupAgent(
   agentName: SetupAgent,
   auth: AuthOptions,
-  scope: Scope
-): Promise<{
-  agent: string;
-  mcpStatus: string;
-  mcpPath: string;
-  ruleStatus: string;
-  rulePath: string;
-  skillStatus: string;
-  skillPath: string;
-}> {
+  scope: Scope,
+  label: string
+): Promise<{ agent: string; mcpStatus: string; mcpPath: string }> {
   const agent = getAgent(agentName);
 
   const mcpCandidates =
@@ -283,115 +340,73 @@ async function setupAgent(
 
   let mcpStatus: string;
   try {
+    const entry = agent.mcp.buildEntry(auth);
+    let alreadyExists: boolean;
     if (mcpPath.endsWith(".toml")) {
-      const { alreadyExists } = await appendTomlServer(
-        mcpPath,
-        "twinmcp",
-        agent.mcp.buildEntry(auth)
-      );
-      mcpStatus = alreadyExists
-        ? `reconfigured with ${AUTH_MODE_LABELS[auth.mode]}`
-        : `configured with ${AUTH_MODE_LABELS[auth.mode]}`;
+      ({ alreadyExists } = await appendTomlServer(mcpPath, label, entry));
     } else {
       const existing = await readJsonConfig(mcpPath);
-      const { config, alreadyExists } = mergeServerEntry(
-        existing,
-        agent.mcp.configKey,
-        "twinmcp",
-        agent.mcp.buildEntry(auth)
-      );
-      mcpStatus = alreadyExists
-        ? `reconfigured with ${AUTH_MODE_LABELS[auth.mode]}`
-        : `configured with ${AUTH_MODE_LABELS[auth.mode]}`;
-      await writeJsonConfig(mcpPath, config);
+      const merged = mergeServerEntry(existing, agent.mcp.configKey, label, entry);
+      alreadyExists = merged.alreadyExists;
+      await writeJsonConfig(mcpPath, merged.config);
     }
+    mcpStatus = `${alreadyExists ? "reconfigured" : "configured"} with ${AUTH_MODE_LABELS[auth.mode]}`;
   } catch (err) {
     mcpStatus = `failed: ${err instanceof Error ? err.message : String(err)}`;
   }
 
-  let ruleStatus: string;
-  let rulePath: string;
-  try {
-    const result = await installRule(agentName, "mcp", scope);
-    ruleStatus = result.status;
-    rulePath = result.path;
-  } catch (err) {
-    ruleStatus = `failed: ${err instanceof Error ? err.message : String(err)}`;
-    rulePath = "";
-  }
-
-  const skillDir =
-    scope === "global"
-      ? agent.skill.dir("global")
-      : join(process.cwd(), agent.skill.dir("project"));
-  const skillPath = join(skillDir, agent.skill.name, "SKILL.md");
-
-  let skillStatus: string;
-  try {
-    const downloadData = await downloadSkill("/upstash/twinmcp", agent.skill.name);
-    if (downloadData.error || downloadData.files.length === 0) {
-      throw new Error(downloadData.error || "no files");
-    }
-    await installSkillFiles(agent.skill.name, downloadData.files, skillDir);
-    skillStatus = "installed";
-  } catch (err) {
-    skillStatus = `failed: ${err instanceof Error ? err.message : String(err)}`;
-  }
-
-  return {
-    agent: agent.displayName,
-    mcpStatus,
-    mcpPath,
-    ruleStatus,
-    rulePath,
-    skillStatus,
-    skillPath,
-  };
+  return { agent: agent.displayName, mcpStatus, mcpPath };
 }
 
 async function setupMcp(agents: SetupAgent[], options: SetupOptions, scope: Scope): Promise<void> {
-  const auth = await resolveAuth(options);
-  if (!auth) {
+  let target: Awaited<ReturnType<typeof resolveServerTarget>>;
+  try {
+    target = await resolveServerTarget(options, agents);
+  } catch (err) {
+    if (err instanceof Error && err.name === "ExitPromptError") throw err;
+    log.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+    return;
+  }
+  if (!target) {
     log.warn("Setup cancelled");
     return;
   }
 
+  const label = serverEntryLabel(target.slug);
   log.blank();
-  const spinner = ora("Setting up TwinMCP...").start();
+  const spinner = ora("Writing client configs...").start();
 
   const results = [];
   for (const agentName of agents) {
     spinner.text = `Setting up ${getAgent(agentName).displayName}...`;
-    results.push(await setupAgent(agentName, auth, scope));
+    results.push(await setupAgent(agentName, target.auth, scope, label));
   }
 
-  spinner.succeed("TwinMCP setup complete");
+  const failed = results.filter((r) => r.mcpStatus.startsWith("failed"));
+  if (failed.length === results.length) spinner.fail("Setup failed");
+  else spinner.succeed(`${label} added`);
 
+  log.blank();
+  log.plain(`  ${pc.dim("URL")}  ${target.auth.url}`);
   log.blank();
   for (const r of results) {
+    const ok = !r.mcpStatus.startsWith("failed");
     log.plain(`  ${pc.bold(r.agent)}`);
-    const mcpIcon =
-      r.mcpStatus.startsWith("configured") || r.mcpStatus.startsWith("reconfigured")
-        ? pc.green("+")
-        : pc.dim("~");
-    log.plain(`    ${mcpIcon} MCP server ${r.mcpStatus}`);
+    log.plain(`    ${ok ? pc.green("+") : pc.red("x")} MCP server ${r.mcpStatus}`);
     log.plain(`      ${pc.dim(r.mcpPath)}`);
-    const ruleIcon = r.ruleStatus === "installed" ? pc.green("+") : pc.dim("~");
-    log.plain(`    ${ruleIcon} Rule ${r.ruleStatus}`);
-    log.plain(`      ${pc.dim(r.rulePath)}`);
-    const skillIcon = r.skillStatus === "installed" ? pc.green("+") : pc.dim("~");
-    log.plain(`    ${skillIcon} Skill ${r.skillStatus}`);
-    log.plain(`      ${pc.dim(r.skillPath)}`);
-    if (r.skillStatus.includes("EACCES")) {
-      log.plain(
-        `      ${pc.yellow("tip:")} fix permissions with: ${pc.cyan(`sudo chown -R $(whoami) ${dirname(dirname(r.skillPath))}`)}`
-      );
-    }
   }
   log.blank();
+  if (target.minted) {
+    log.dim(
+      "  The key written above can only call this server. Revoke it in the dashboard anytime."
+    );
+  }
+  log.dim("  Restart the client so it reloads its MCP config.");
+  log.blank();
+  if (failed.length > 0) process.exitCode = 1;
 
-  trackEvent("setup", { agents, scope, authMode: auth.mode });
-  trackEvent("install", { skills: ["/upstash/twinmcp/twinmcp-mcp"], ides: agents });
+  trackEvent("setup", { agents, scope, authMode: target.auth.mode, mode: "server" });
 }
 
 async function setupCliAgent(
@@ -439,7 +454,7 @@ async function setupCli(options: SetupOptions): Promise<void> {
   log.blank();
   const spinner = ora("Downloading find-docs skill...").start();
 
-  const downloadData = await downloadSkill("/upstash/twinmcp", "find-docs");
+  const downloadData = await downloadSkill(SKILLS_PROJECT, "find-docs");
   if (downloadData.error || downloadData.files.length === 0) {
     spinner.fail(`Failed to download find-docs skill: ${downloadData.error || "no files"}`);
     return;
@@ -483,7 +498,7 @@ async function setupCli(options: SetupOptions): Promise<void> {
   log.blank();
 
   trackEvent("setup", { mode: "cli" });
-  trackEvent("install", { skills: ["/upstash/twinmcp/find-docs"], ides: agents });
+  trackEvent("install", { skills: [`${SKILLS_PROJECT}/find-docs`], ides: agents });
 }
 
 async function setupCommand(options: SetupOptions): Promise<void> {
@@ -500,7 +515,8 @@ async function setupCommand(options: SetupOptions): Promise<void> {
       await setupCli(options);
     }
   } catch (err) {
-    if (err instanceof Error && err.name === "ExitPromptError") process.exit(0);
+    // Ctrl+C in a prompt: leave quietly (no process.exit, see commands/auth.ts).
+    if (err instanceof Error && err.name === "ExitPromptError") return;
     throw err;
   }
 }

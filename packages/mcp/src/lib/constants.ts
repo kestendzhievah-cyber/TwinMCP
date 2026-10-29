@@ -7,8 +7,10 @@ const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf-
 
 export const SERVER_VERSION: string = pkg.version;
 
-const TWINMCP_BASE_URL = "https://twinmcp.com";
-const MCP_RESOURCE_URL = "https://mcp.twinmcp.com";
+const TWINMCP_BASE_URL = "https://twinmcp.fr";
+// There is no dedicated MCP host: when this server runs over HTTP, set
+// RESOURCE_URL to the public URL it is served from (OAuth resource metadata).
+const MCP_RESOURCE_URL = TWINMCP_BASE_URL;
 
 export const TWINMCP_API_BASE_URL = process.env.TWINMCP_API_URL || `${TWINMCP_BASE_URL}/api`;
 export const RESOURCE_URL = process.env.RESOURCE_URL || MCP_RESOURCE_URL;

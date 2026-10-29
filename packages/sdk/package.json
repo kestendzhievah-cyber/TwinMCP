@@ -1,5 +1,5 @@
 {
-  "name": "@upstash/twinmcp-sdk",
+  "name": "@twinmcp/sdk",
   "version": "0.3.0",
   "description": "JavaScript/TypeScript SDK for TwinMCP",
   "scripts": {
@@ -14,17 +14,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/upstash/twinmcp.git",
+    "url": "git+https://github.com/kestendzhievah-cyber/TwinMCP.git",
     "directory": "packages/sdk"
   },
   "keywords": [
     "twinmcp",
     "sdk",
     "documentation",
-    "ai",
-    "upstash"
+    "ai"
   ],
-  "author": "Upstash",
+  "author": "TwinMCP",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -40,9 +39,9 @@
     "dist"
   ],
   "bugs": {
-    "url": "https://github.com/upstash/twinmcp/issues"
+    "url": "https://github.com/kestendzhievah-cyber/TwinMCP/issues"
   },
-  "homepage": "https://github.com/upstash/twinmcp#readme",
+  "homepage": "https://twinmcp.fr",
   "publishConfig": {
     "access": "public"
   },
