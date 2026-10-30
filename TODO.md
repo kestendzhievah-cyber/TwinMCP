@@ -31,11 +31,11 @@ Référence de lancement à jour : **`docs/GO-LIVE.md`** (les autres docs de pla
 ### Digest quotidien + alertes churn (features livrées, jamais déclenchées)
 
 - [ ] **`CRON_SECRET`** (+ `DIGEST_EMAIL` optionnel) en env Dokploy.
-- [ ] **3 schedules QStash** (ou n'importe quel cron) qui font un `POST` avec l'en-tête `Authorization: Bearer <CRON_SECRET>` :
+- [x] ~~**3 schedules QStash**~~ — remplacés par le planificateur intégré (`src/lib/scheduler`, actif par défaut en production ; digest 07:00, churn 08:10, nudges 09:00 UTC ; `INTERNAL_SCHEDULER_SKIP` pour en désactiver). Les routes restent appelables à la main, ou par un cron externe qui fait un `POST` avec l'en-tête `Authorization: Bearer <CRON_SECRET>` :
   - `https://twinmcp.fr/api/cron/digest` — ex. `0 7 * * *`
   - `https://twinmcp.fr/api/cron/churn` — ex. `0 8 * * *`
   - `https://twinmcp.fr/api/cron/nudges` — ex. `0 9 * * *` (relances upgrade Free → Pro : offre du mois gratuit + limite de quota, max 1 email / 7 j / compte). Alternative : un schedule QStash qui `POST` `{"type":"upgrade-nudges"}` sur `/api/jobs/run`. En admin, `GET /api/cron/nudges?dryRun=1` dans le navigateur montre les décisions sans rien envoyer. ⚠️ Sans `RESEND_API_KEY`, aucun email ne part (no-op loggé).
-  - ⚠️ Sans ça ils **ne se déclenchent jamais**. Le bouton « M'envoyer le digest » du cockpit marche déjà (dès que Resend est posé).
+  - Vérifier après déploiement le bloc `scheduler` de `/api/health`. Le bouton « M'envoyer le digest » du cockpit marche déjà (dès que Resend est posé).
 
 ### Auto-rescue des serveurs bloqués (fiabilité)
 

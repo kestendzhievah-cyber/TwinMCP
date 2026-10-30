@@ -2,12 +2,13 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { mcpServers, users } from "@/db/schema";
+import { mcpServers } from "@/db/schema";
 import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { createMcpServerSchema } from "@/lib/validation/platform";
 import { can, minPlanFor, requiredTierMessage } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,13 +88,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const db = getDb();
-    const [me] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
+    // Publishing needs a funded wallet (wallet-derived tier, never users.plan).
+    const me = await getEntitlements(session.userId);
     if (!me) return unauthorized("User not found");
-    if (!can(me.plan, "publishMcp")) {
+    if (!can(me.tier, "publishMcp")) {
       const required = minPlanFor("publishMcp");
       return forbidden(requiredTierMessage(required, "Publishing MCPs"));
     }

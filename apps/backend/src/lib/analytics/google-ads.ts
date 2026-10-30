@@ -103,6 +103,25 @@ export function trackAdsPageview(path: string): void {
 /** "Abonnement": a paid or trialing subscription (value = amount paid). */
 export const SUBSCRIPTION_CONVERSION =
   process.env.NEXT_PUBLIC_GOOGLE_ADS_SUBSCRIPTION_SEND_TO || "AW-18520591061/Kp_qCIyKsKEdENWVp_9E";
+/**
+ * "Recharge": a paid wallet top-up (value = amount paid net of VAT, EUR). Empty
+ * until NEXT_PUBLIC_GOOGLE_ADS_TOPUP_SEND_TO is passed at build time; until
+ * then top-ups report to "Abonnement" (see topupConversionSendTo).
+ */
+export const TOPUP_CONVERSION = process.env.NEXT_PUBLIC_GOOGLE_ADS_TOPUP_SEND_TO || "";
+
+/**
+ * Where a top-up conversion goes: the dedicated "Recharge" action when its
+ * send_to is configured, otherwise the existing "Abonnement" action, so paid
+ * top-ups keep feeding Smart Bidding before the new action exists.
+ */
+export function topupConversionSendTo(
+  topup: string = TOPUP_CONVERSION,
+  fallback: string = SUBSCRIPTION_CONVERSION
+): string {
+  return topup.trim() || fallback;
+}
+
 /** "Inscription": a confirmed sign-up (value set in Google Ads). */
 export const SIGNUP_CONVERSION = process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_SEND_TO || "";
 /**

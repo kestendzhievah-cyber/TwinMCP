@@ -22,7 +22,8 @@
     "db:studio": "drizzle-kit studio",
     "seed:mcps": "tsx scripts/seed-mcps.ts",
     "setup:prices": "tsx scripts/setup-prices.ts",
-    "smoke:mcp": "tsx scripts/smoke-mcp.ts"
+    "smoke:mcp": "tsx scripts/smoke-mcp.ts",
+    "stripe:webhook": "tsx scripts/configure-stripe-webhook.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.3.0",

@@ -204,3 +204,31 @@ describe("whatTenEuroBuys", () => {
     expect(whatTenEuroBuys(base, 25).toolCalls).toBe(250_000);
   });
 });
+
+describe("promo cost caps (WALLET_PROMO_*_COST_CAP_EUR)", () => {
+  it("default to 20% / 90% of the sign-up credit's real cost", () => {
+    const p = loadPricing();
+    expect(p.promoDailyCostCapEur).toBe(0.2);
+    expect(p.promoTotalCostCapEur).toBe(0.9);
+  });
+
+  it("are overridable in real-cost euros", () => {
+    vi.stubEnv("WALLET_PROMO_DAILY_COST_CAP_EUR", "0.15");
+    vi.stubEnv("WALLET_PROMO_TOTAL_COST_CAP_EUR", "0.5");
+    expect(loadPricing()).toMatchObject({ promoDailyCostCapEur: 0.15, promoTotalCostCapEur: 0.5 });
+  });
+
+  it("ignore zero, negative and junk values", () => {
+    vi.stubEnv("WALLET_PROMO_DAILY_COST_CAP_EUR", "0");
+    vi.stubEnv("WALLET_PROMO_TOTAL_COST_CAP_EUR", "-1");
+    expect(loadPricing()).toMatchObject({ promoDailyCostCapEur: 0.2, promoTotalCostCapEur: 0.9 });
+    vi.stubEnv("WALLET_PROMO_DAILY_COST_CAP_EUR", "abc");
+    expect(loadPricing().promoDailyCostCapEur).toBe(0.2);
+  });
+
+  it("the daily cap never exceeds the total cap", () => {
+    vi.stubEnv("WALLET_PROMO_DAILY_COST_CAP_EUR", "2");
+    vi.stubEnv("WALLET_PROMO_TOTAL_COST_CAP_EUR", "0.5");
+    expect(loadPricing()).toMatchObject({ promoDailyCostCapEur: 0.5, promoTotalCostCapEur: 0.5 });
+  });
+});

@@ -8,6 +8,7 @@ import { isQueueEnabled } from "@/lib/queue/qstash";
 import { getRedis } from "@/lib/redis";
 import { probeStripeAccount, type StripeAccountHealth } from "@/lib/stripe";
 import { METER_STALE_MS, lastMeterRun, lastSnapshotAt } from "@/lib/wallet/compute-meter";
+import { schedulerHealth } from "@/lib/scheduler";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -139,10 +140,20 @@ export async function GET() {
   // stopped means compute is used without being billed. lastMeterAt is the
   // later of this process's last run and the newest snapshot in the DB (which
   // survives restarts). Booleans and timestamps only.
+  // The in-process scheduler (lib/scheduler) runs the crons from this
+  // container; its block reports, per job, the last run and its outcome. It
+  // runs in the instrumentation bundle, so its successful meter-boxes runs
+  // count here too (lastMeterRun() is this bundle's module state).
+  const [scheduler, snapshotAt] = await Promise.all([
+    schedulerHealth(dbOk),
+    dbOk ? lastSnapshotAt() : Promise.resolve(null),
+  ]);
+  const meterJob = scheduler.jobs["meter-boxes"];
+  const schedulerMeterAt =
+    meterJob?.lastOk && meterJob.lastFinishedAt ? new Date(meterJob.lastFinishedAt) : null;
   const meterRun = lastMeterRun();
-  const snapshotAt = dbOk ? await lastSnapshotAt() : null;
   const lastMeterAt =
-    [meterRun?.at ?? null, snapshotAt]
+    [meterRun?.at ?? null, snapshotAt, schedulerMeterAt]
       .filter((d): d is Date => d instanceof Date)
       .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
   const meterAgeMs = lastMeterAt ? Date.now() - lastMeterAt.getTime() : null;
@@ -150,10 +161,13 @@ export async function GET() {
   const walletBlockers: string[] = [];
   const walletWarnings: string[] = [];
   if (meterStale) {
+    const fix = scheduler.enabled
+      ? "see scheduler.jobs['meter-boxes'] (the in-process scheduler runs it every 5 min)"
+      : `the in-process scheduler is off (${scheduler.reason}): unset INTERNAL_SCHEDULER or schedule /api/cron/meter-boxes every 5 min`;
     walletBlockers.push(
       lastMeterAt
-        ? `Compute metering last ran ${Math.round((meterAgeMs ?? 0) / 60_000)} min ago (> 15 min): schedule /api/cron/meter-boxes every 5 min`
-        : "Compute metering has never run: schedule /api/cron/meter-boxes every 5 min"
+        ? `Compute metering last ran ${Math.round((meterAgeMs ?? 0) / 60_000)} min ago (> 15 min): ${fix}`
+        : `Compute metering has never run: ${fix}`
     );
   }
   // null = no run in this process yet (unknown).
@@ -206,6 +220,8 @@ export async function GET() {
         blockers: walletBlockers,
         warnings: walletWarnings,
       },
+      // Never part of the top-level status. Timestamps, outcomes and counts only.
+      scheduler,
       timestamp: new Date().toISOString(),
     },
     { status: code }

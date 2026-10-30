@@ -66,44 +66,44 @@ export const defaultFaqItems: { q: string; a: string }[] = [
 
 export const frFaqItems: { q: string; a: string }[] = [
   {
-    q: "Combien coûte TwinMCP ?",
-    a: `Vous payez à l’usage, sans abonnement. Chaque nouveau compte reçoit ${FR.signupCredit} de crédit offert, sans carte, valable ${FR.signupDays} jours : de quoi faire tourner ${FR.creditServers} serveur avec jusqu’à ${FREE_MCP_LIMIT} MCP plus TwinMCP Docs. Ensuite, vous rechargez un solde prépayé à partir de ${FR.minTopup}. Les appels d’outils coûtent ${FR.per1000Calls} les 1 000 et le calcul ${FR.cpuHour.small} par heure de CPU actif sur un petit serveur.`,
+    q: "Combien coûte TwinMCP ?",
+    a: `Vous payez à l’usage, sans abonnement. Chaque nouveau compte reçoit ${FR.signupCredit} de crédit offert, sans carte, valable ${FR.signupDays} jours : de quoi faire tourner ${FR.creditServers} serveur avec jusqu’à ${FREE_MCP_LIMIT} MCP plus TwinMCP Docs. Ensuite, vous rechargez un solde prépayé à partir de ${FR.minTopup}. Les appels d’outils coûtent ${FR.per1000Calls} les 1 000 et le calcul ${FR.cpuHour.small} par heure de CPU actif sur un petit serveur.`,
   },
   {
-    q: "Connecter mon IDE consomme-t-il mon crédit ?",
-    a: "Non. Seuls les appels d’outils sont facturés : les requêtes où votre IA demande réellement à un MCP de faire quelque chose. La connexion, la liste des outils, les pings et l’ouverture de session sont gratuits ; reconnecter un client ou changer d’IDE ne coûte donc rien.",
+    q: "Connecter mon IDE consomme-t-il mon crédit ?",
+    a: "Non. Seuls les appels d’outils sont facturés : les requêtes où votre IA demande réellement à un MCP de faire quelque chose. La connexion, la liste des outils, les pings et l’ouverture de session sont gratuits ; reconnecter un client ou changer d’IDE ne coûte donc rien.",
   },
   {
-    q: "Puis-je recevoir une facture surprise ?",
-    a: "Non. TwinMCP est prépayé : vous ne pouvez dépenser que le crédit de votre solde. Quand il arrive à zéro, les appels d’outils sont refusés avec un message clair et vos serveurs se mettent en pause. Rien n’est prélevé sur une carte, sauf si vous activez la recharge automatique, plafonnée chaque mois au montant que vous fixez.",
+    q: "Puis-je recevoir une facture surprise ?",
+    a: "Non. TwinMCP est prépayé : vous ne pouvez dépenser que le crédit de votre solde. Quand il arrive à zéro, les appels d’outils sont refusés avec un message clair et vos serveurs se mettent en pause. Rien n’est prélevé sur une carte, sauf si vous activez la recharge automatique, plafonnée chaque mois au montant que vous fixez.",
   },
   {
-    q: "Que se passe-t-il quand le crédit offert est épuisé ?",
-    a: `Rien n’est prélevé : sans carte enregistrée, rien ne peut l’être. Les appels s’arrêtent jusqu’à ce que vous rechargiez, à partir de ${FR.minTopup}, au moment où vous le décidez. Votre première recharge débloque aussi jusqu’à ${FR.fundedServers} serveurs et toutes les tailles de box.`,
+    q: "Que se passe-t-il quand le crédit offert est épuisé ?",
+    a: `Rien n’est prélevé : sans carte enregistrée, rien ne peut l’être. Les appels s’arrêtent jusqu’à ce que vous rechargiez, à partir de ${FR.minTopup}, au moment où vous le décidez. Votre première recharge débloque aussi jusqu’à ${FR.fundedServers} serveurs et toutes les tailles de box.`,
   },
   {
-    q: "Faut-il Docker ou un VPS ?",
-    a: "Non. Vous choisissez un MCP dans le catalogue : TwinMCP l’installe dans votre serveur isolé et vous donne une URL et une clé API. Comptez environ 2 minutes.",
+    q: "Faut-il Docker ou un VPS ?",
+    a: "Non. Vous choisissez un MCP dans le catalogue : TwinMCP l’installe dans votre serveur isolé et vous donne une URL et une clé API. Comptez environ 2 minutes.",
   },
   {
-    q: "Puis-je héberger un serveur MCP absent du catalogue ?",
-    a: "Oui, une fois votre compte alimenté (après votre première recharge). Publiez n’importe quel serveur MCP distribué en paquet npm ou PyPI, serveurs stdio compris : TwinMCP l’installe dans votre serveur isolé, fait le pont entre stdio et Streamable HTTP et lui donne une URL comme à n’importe quel MCP du catalogue. Il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox pour l’instant.",
+    q: "Puis-je héberger un serveur MCP absent du catalogue ?",
+    a: "Oui, une fois votre compte alimenté (après votre première recharge). Publiez n’importe quel serveur MCP distribué en paquet npm ou PyPI, serveurs stdio compris : TwinMCP l’installe dans votre serveur isolé, fait le pont entre stdio et Streamable HTTP et lui donne une URL comme à n’importe quel MCP du catalogue. Il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox pour l’instant.",
   },
   {
-    q: "Quels clients IA sont compatibles ?",
-    a: "Cursor, Claude Code, Claude Desktop, VS Code, Windsurf, Cline et Zed, ainsi que tout client compatible Streamable HTTP. Le tableau de bord génère le bloc de configuration exact pour chacun : le même serveur hébergé fonctionne dans tous. Configurez-le une fois, changez d’IDE sans rien réinstaller.",
+    q: "Quels clients IA sont compatibles ?",
+    a: "Cursor, Claude Code, Claude Desktop, VS Code, Windsurf, Cline et Zed, ainsi que tout client compatible Streamable HTTP. Le tableau de bord génère le bloc de configuration exact pour chacun : le même serveur hébergé fonctionne dans tous. Configurez-le une fois, changez d’IDE sans rien réinstaller.",
   },
   {
-    q: "Mes secrets sont-ils protégés ?",
+    q: "Mes secrets sont-ils protégés ?",
     a: "Chaque serveur tourne dans son propre sandbox isolé, une micro-VM Upstash Box. Vos secrets (tokens d’API, chaînes de connexion) sont chiffrés au repos en AES-256-GCM, chaque appel est authentifié par votre clé API, et les logs en direct vous montrent ce qui se passe sur chaque serveur.",
   },
   {
-    q: "Qu’est-ce qu’un serveur MCP exactement ?",
-    a: "MCP (Model Context Protocol) est un standard ouvert publié par Anthropic en novembre 2024. Il permet à un assistant IA d’utiliser des outils et des données externes via une interface unique. Un serveur MCP expose des outils (lire une page web, interroger une base de données, lire des fichiers…) ; votre client IA les appelle. TwinMCP est l’endroit où ces serveurs tournent.",
+    q: "Qu’est-ce qu’un serveur MCP exactement ?",
+    a: "MCP (Model Context Protocol) est un standard ouvert publié par Anthropic en novembre 2024. Il permet à un assistant IA d’utiliser des outils et des données externes via une interface unique. Un serveur MCP expose des outils (lire une page web, interroger une base de données, lire des fichiers…) ; votre client IA les appelle. TwinMCP est l’endroit où ces serveurs tournent.",
   },
   {
-    q: "Pourquoi ne pas faire tourner mes serveurs MCP en local ?",
-    a: "En local (stdio), un MCP convient à un usage personnel, mais il ne vous suit pas : les secrets restent dans l’environnement shell, il n’y a pas de logs centralisés et chaque machine doit être configurée. Le transport HTTP règle ce problème, mais vous devez alors gérer conteneurs, TLS et isolation. C’est précisément ce que TwinMCP fait pour vous.",
+    q: "Pourquoi ne pas faire tourner mes serveurs MCP en local ?",
+    a: "En local (stdio), un MCP convient à un usage personnel, mais il ne vous suit pas : les secrets restent dans l’environnement shell, il n’y a pas de logs centralisés et chaque machine doit être configurée. Le transport HTTP règle ce problème, mais vous devez alors gérer conteneurs, TLS et isolation. C’est précisément ce que TwinMCP fait pour vous.",
   },
 ];
 
@@ -117,7 +117,7 @@ const DEFAULTS: Record<Locale, { title: string; description: string; items: FaqI
   fr: {
     title: "Les questions qu’on se pose avant de s’inscrire",
     description:
-      "Une question manque ? Écrivez à hello@twinmcp.fr, la réponse viendra enrichir cette liste.",
+      "Une question manque ? Écrivez à hello@twinmcp.fr, la réponse viendra enrichir cette liste.",
     items: frFaqItems,
   },
 };

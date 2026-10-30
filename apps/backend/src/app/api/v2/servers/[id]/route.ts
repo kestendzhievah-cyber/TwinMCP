@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { servers, users } from "@/db/schema";
+import { servers } from "@/db/schema";
 import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { updateServerSchema } from "@/lib/validation/platform";
@@ -15,6 +15,7 @@ import {
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { clearAuthCache } from "@/lib/auth";
 import { destroyServerRuntime } from "@/lib/provisioning";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,12 +59,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // actual change, so unrelated edits (e.g. rename) by a downgraded user who
     // still owns a larger box keep working.
     if (parsed.data.boxSize !== undefined && parsed.data.boxSize !== current.boxSize) {
-      const [me] = await db
-        .select({ plan: users.plan })
-        .from(users)
-        .where(eq(users.id, session.userId))
-        .limit(1);
-      const plan = me?.plan ?? "free";
+      // Wallet-derived tier (never users.plan): an unfunded account is "free".
+      const plan = (await getEntitlements(session.userId))?.tier ?? "free";
       if (!isBoxSizeAllowed(plan, parsed.data.boxSize)) {
         const required = minPlanForBoxSize(parsed.data.boxSize) ?? "team";
         throw new PlanRestrictionError(

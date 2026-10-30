@@ -10,9 +10,9 @@ import { demoPackSummary } from "@/lib/solutions/data";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 const PATH = DEMO_PATHS.fr;
 
-const TITLE = "Installation accompagnée : nous installons vos serveurs MCP";
+const TITLE = "Installation accompagnée : nous installons vos serveurs MCP";
 const DESCRIPTION =
-  "Pour les équipes qui veulent qu’on installe leurs MCP à leur place : un serveur TwinMCP, un pack de MCP, les clés API et la connexion à votre client IA. Offre Pro plus des frais d’installation uniques, chiffrés après l’appel.";
+  "Pour les équipes qui veulent qu’on installe leurs MCP à leur place : un serveur TwinMCP, un pack de MCP, les clés API et la connexion à votre client IA. Offre Pro plus des frais d’installation uniques, chiffrés après l’appel.";
 
 export const metadata: Metadata = {
   title: TITLE,

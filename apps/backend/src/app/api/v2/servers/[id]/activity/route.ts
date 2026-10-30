@@ -1,11 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { getDb } from "@/db";
-import { users } from "@/db/schema/core";
 import { forbidden, jsonError, notFound, serverError } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
 import { listServerToolCalls, parseActivityQuery } from "@/lib/activity/query";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,16 +26,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   try {
     await assertServerOwnership(session.userId, id);
-    const [me] = await getDb()
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
+    // Retention follows the wallet tier, never users.plan.
+    const ent = await getEntitlements(session.userId);
 
     const page = await listServerToolCalls({
       userId: session.userId,
       serverId: id,
-      plan: me?.plan,
+      plan: ent?.tier ?? "free",
       query: parsed.query,
     });
     return NextResponse.json(page, { headers: { "Cache-Control": "no-store" } });

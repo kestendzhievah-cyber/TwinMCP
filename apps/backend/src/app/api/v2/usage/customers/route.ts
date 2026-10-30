@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { apiKeys, users } from "@/db/schema/core";
+import { apiKeys } from "@/db/schema/core";
 import { toolCalls } from "@/db/schema/activity";
 import { badRequest, forbidden, serverError } from "@/lib/errors";
 import { can, minPlanFor, requiredTierMessage } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { requireManagementUser } from "@/lib/session";
 import {
   CUSTOMER_ROWS_MAX,
@@ -38,12 +39,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const db = getDb();
-    const [userRow] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
-    const plan = userRow?.plan ?? "free";
+    // The tier comes from the wallet (getEntitlements), never users.plan.
+    const plan = (await getEntitlements(session.userId))?.tier ?? "free";
 
     if (wantsCsv && !can(plan, "usageExport")) {
       return forbidden(requiredTierMessage(minPlanFor("usageExport"), "Exporting usage"));

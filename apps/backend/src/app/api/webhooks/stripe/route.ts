@@ -14,7 +14,6 @@ import {
   cancellationReason,
   type Cadence,
 } from "@/lib/stripe";
-import { sendUpgradeConfirmationEmail } from "@/lib/email";
 import { attributionMetadata } from "@/lib/billing/checkout-helpers";
 import { audit } from "@/lib/audit";
 import { trackServer } from "@/lib/analytics/server";
@@ -29,6 +28,7 @@ import {
   walletSessionAction,
 } from "@/lib/wallet/topup";
 import { failAutoRecharge, settleAutoRecharge } from "@/lib/wallet/auto-recharge";
+import { HANDLED_STRIPE_EVENTS } from "@/lib/billing/stripe-events";
 import type { Plan } from "@/db/schema";
 
 export const runtime = "nodejs";
@@ -144,6 +144,12 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("[stripe webhook] signature verification failed:", err);
     return NextResponse.json({ error: "invalid signature" }, { status: 400 });
+  }
+
+  // An event type handleStripeEvent() has no case for is acknowledged without
+  // being recorded in processed_stripe_events (it would be a no-op anyway).
+  if (!(HANDLED_STRIPE_EVENTS as readonly string[]).includes(event.type)) {
+    return NextResponse.json({ received: true, ignored: true });
   }
 
   if (!(await shouldProcess(event.id, event.type))) {
@@ -487,12 +493,9 @@ async function handleLegacySubscriptionCheckout(
     distinctId: userId,
     properties: { plan, previousPlan: previous?.plan ?? null, status: subStatus, legacy: true },
   });
-  if (previous?.email) {
-    sendUpgradeConfirmationEmail(previous.email, plan, {
-      trialing: subStatus === "trialing",
-      periodEnd: currentPeriodEnd,
-    }).catch(() => {});
-  }
+  // No "upgraded" email any more: plans are not sold, and its trial / free
+  // month wording no longer applies. The conversion script emails the
+  // customer when this subscription is turned into credit.
   if (customerId) {
     await getStripe()
       .customers.update(customerId, { metadata: { userId } })

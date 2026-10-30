@@ -20,6 +20,8 @@ import {
 import { encryptConfig, decryptConfig } from "@/lib/crypto/config-encryption";
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { displayConfigValue } from "@/lib/vault/refs";
+import { canUseMcpOnPromo, PROMO_LOCKED_MCP_MESSAGE } from "@/lib/wallet/eligibility";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -127,6 +129,24 @@ export async function PATCH(
     const patch: Record<string, unknown> = {};
     let action: "mcp.toggle" | "mcp.reconfigure" = "mcp.toggle";
 
+    if (parsed.data.enabled === true) {
+      // Same promo lock as POST /mcps: re-enabling a shell / code / browser
+      // MCP must not bypass it (e.g. one installed before the account became
+      // promo-only). Fails closed on a missing user row.
+      const [m] = await getDb()
+        .select({
+          slug: mcpServers.slug,
+          startCmd: mcpServers.startCmd,
+          isOfficial: mcpServers.isOfficial,
+        })
+        .from(mcpServers)
+        .where(eq(mcpServers.id, us.mcpServerId))
+        .limit(1);
+      if (m && !canUseMcpOnPromo(m.slug, { startCmd: m.startCmd, isOfficial: m.isOfficial })) {
+        const me = await getEntitlements(session.userId);
+        if (!me || me.promoOnly) return forbidden(PROMO_LOCKED_MCP_MESSAGE);
+      }
+    }
     if (parsed.data.enabled !== undefined) {
       patch.enabled = parsed.data.enabled;
     }

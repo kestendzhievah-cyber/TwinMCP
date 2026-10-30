@@ -1,6 +1,5 @@
 import { Resend } from "resend";
-import type { Plan } from "@/db/schema/core";
-import { PLAN_CAPABILITIES, PLAN_LABELS } from "@/lib/plan-features";
+import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { cardEmail, esc, link, p, row, table } from "./email-layout";
 import type { Locale } from "@/lib/i18n/locales";
 import { EDITEUR } from "@/lib/legal/entity";
@@ -30,7 +29,6 @@ const FROM = process.env.EMAIL_FROM ?? "TwinMCP <noreply@twinmcp.fr>";
  *  inbox (e.g. your Gmail) in the environment. */
 const SALES_TO = process.env.SALES_EMAIL ?? process.env.EMAIL_FROM ?? "hello@twinmcp.fr";
 
-const DASHBOARD = "https://twinmcp.fr/dashboard";
 const BILLING = "https://twinmcp.fr/dashboard/billing";
 const SETTINGS = "https://twinmcp.fr/dashboard/settings";
 const ONBOARDING = "https://twinmcp.fr/onboarding";
@@ -153,9 +151,14 @@ export async function sendDemoRequestAcknowledgement(to: string, locale: Locale)
   return result;
 }
 
-/** Daily admin digest — subject + prebuilt HTML from lib/admin/digest-email. */
-export async function sendAdminDigest(to: string, subject: string, html: string) {
-  return getResend().emails.send({ from: FROM, to, subject, html });
+/**
+ * Daily admin digest / churn alert — subject + prebuilt HTML. Throws on a
+ * Resend error (through send()), so the digest and churn jobs record a
+ * failure and churn does not mark clients as alerted for an email that never
+ * left.
+ */
+export async function sendAdminDigest(to: string, subject: string, html: string): Promise<void> {
+  await send(to, subject, html);
 }
 
 // ---- Activation (welcome + the 24 h reminder share the same four steps) ----
@@ -238,43 +241,6 @@ export async function sendActivationEmail(to: string): Promise<void> {
   if (result.error) throw new Error(`Resend: ${result.error.message}`);
 }
 
-/**
- * Sent by the Stripe webhook on checkout.session.completed of a legacy Pro
- * subscription checkout. `trialing` means the subscription started with the
- * free month: the first invoice only follows the trial, on `periodEnd`.
- *
- * @deprecated Subscriptions are no longer sold (prepaid credit since
- * 2026-10-29). Kept while the webhook still handles legacy sessions.
- */
-export async function sendUpgradeConfirmationEmail(
-  to: string,
-  plan: Plan,
-  opts: { trialing?: boolean; periodEnd?: Date | null } = {}
-) {
-  const label = PLAN_LABELS[plan] ?? plan;
-  const trialBody = opts.trialing
-    ? p(
-        opts.periodEnd
-          ? `Your free month runs until <strong>${fmtDay(opts.periodEnd)}</strong>. Nothing is charged before then. Cancel from ${link(BILLING, "Billing")} before it ends and you pay nothing.`
-          : `Your free month has started. Nothing is charged during the trial. Cancel from ${link(BILLING, "Billing")} before it ends and you pay nothing.`
-      )
-    : "";
-  return getResend().emails.send({
-    from: FROM,
-    to,
-    subject: `TwinMCP: Upgraded to ${label}`,
-    html: cardEmail({
-      eyebrow: "Billing",
-      title: `You're now on ${label}`,
-      body:
-        p(
-          `Your new limits are active immediately. Visit your ${link(DASHBOARD, "dashboard")} to see them.`
-        ) + trialBody,
-      cta: { label: "Open the dashboard", href: DASHBOARD },
-    }),
-  });
-}
-
 // ---- Wallet (lib/wallet/notify.ts decides when and dedupes) -----------------
 // Amounts arrive already formatted (lib/billing/upgrade-state.ts formatCredit)
 // so every surface shows the same figures. Each sender throws on a Resend
@@ -351,12 +317,15 @@ export async function sendZeroBalanceEmail(
   to: string,
   opts: { funded: boolean; deleteAfterDays?: number | null; promoExpired?: boolean }
 ): Promise<void> {
+  // The deletion sentence only when the caller says the countdown runs
+  // (lib/wallet/notify.ts zeroBalanceDeletionDays: unfunded account AND
+  // WALLET_ENFORCE_ENABLED=true). Otherwise servers simply stay paused.
   const deletion =
     !opts.funded && opts.deleteAfterDays
       ? p(
           `Without credit, the runtime of your server is deleted after ${opts.deleteAfterDays} days. Its configuration (installed MCPs and their settings) is kept, so you can start again at any time.`
         )
-      : "";
+      : p("Your servers stay paused until you top up. Their MCPs and settings are kept.");
   await send(
     to,
     opts.promoExpired ? "Your free TwinMCP credit has expired" : "Your TwinMCP credit is used up",
@@ -369,7 +338,7 @@ export async function sendZeroBalanceEmail(
           : "Your free credit is used up",
       body:
         p(
-          `${opts.promoExpired ? "Your free credit reached its expiry date, so your" : "Your"} TwinMCP balance is now zero. Tool calls from your assistant are refused and your servers are paused until you add credit. Your servers, their MCPs and settings are kept.`
+          `${opts.promoExpired ? "Your free credit reached its expiry date, so your" : "Your"} TwinMCP balance is now zero. Tool calls from your assistant are refused and your servers are paused.`
         ) +
         deletion +
         p(

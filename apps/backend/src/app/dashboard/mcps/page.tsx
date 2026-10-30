@@ -1,8 +1,9 @@
 import { and, desc, eq } from "drizzle-orm";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { mcpServers, users } from "@/db/schema";
+import { mcpServers } from "@/db/schema";
 import { can, isSellablePlan, minPlanFor } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { FundedCard } from "@/components/billing/funded-card";
 import { Separator } from "@/components/ui/separator";
 import { PublishMcpPanel } from "./panel";
@@ -17,12 +18,9 @@ export default async function McpsPage() {
   if (!user) return null;
 
   const db = getDb();
-  const [me] = await db
-    .select({ plan: users.plan })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-  const plan = me?.plan ?? "free";
+  // The tier comes from the wallet (getEntitlements), never users.plan, so the
+  // panel matches what POST /api/v2/mcp-servers allows.
+  const plan = (await getEntitlements(user.id))?.tier ?? "free";
   const canPublish = can(plan, "publishMcp");
 
   // Only the columns the panel's table renders — description (up to 2000 chars)

@@ -10,6 +10,7 @@ import { getDb } from "@/db";
 import { servers, userServers, mcpServers, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { keepWarm } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { ServerControls } from "./controls";
 import { InstalledMcps } from "./installed-mcps";
 import { ConnectPanel } from "./connect-panel";
@@ -40,7 +41,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
   // (installations key off the id param — srv.id === id), so fetch them in
   // parallel instead of three sequential round-trips. srv is projected to the
   // columns the page renders rather than SELECT *.
-  const [[srv], [me], installations] = await Promise.all([
+  const [[srv], [me], installations, ent] = await Promise.all([
     db
       .select({
         id: servers.id,
@@ -58,11 +59,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
       .from(servers)
       .where(and(eq(servers.id, id), eq(servers.userId, user.id)))
       .limit(1),
-    db
-      .select({ plan: users.plan, metadata: users.metadata })
-      .from(users)
-      .where(eq(users.id, user.id))
-      .limit(1),
+    db.select({ metadata: users.metadata }).from(users).where(eq(users.id, user.id)).limit(1),
     db
       .select({
         id: userServers.id,
@@ -79,13 +76,15 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
       .from(userServers)
       .innerJoin(mcpServers, eq(mcpServers.id, userServers.mcpServerId))
       .where(eq(userServers.serverId, id)),
+    getEntitlements(user.id),
   ]);
   if (!srv) notFound();
   const lifecycle = lifecycleState(srv);
 
   // Runtime mode: warm (always-on, no cold start) vs pause-when-idle. Gated by
-  // plan + the WARM_BOXES_ENABLED ops switch — same decision as provisioning.
-  const plan = me?.plan ?? "free";
+  // plan + the WARM_BOXES_ENABLED ops switch — same decision as provisioning
+  // (the wallet tier from getEntitlements, never users.plan).
+  const plan = ent?.tier ?? "free";
   const warmEnabled = process.env.WARM_BOXES_ENABLED === "true";
   const warm = keepWarm(plan, warmEnabled);
 

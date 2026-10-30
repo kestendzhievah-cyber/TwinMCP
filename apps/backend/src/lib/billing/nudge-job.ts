@@ -15,6 +15,7 @@ import {
 } from "@/lib/billing/nudge-state";
 import { sendActivationEmail } from "@/lib/email";
 import { trackServer } from "@/lib/analytics/server";
+import { isFundedAccount } from "@/lib/plan-features";
 import {
   MONEY_CRITICAL_EVENTS,
   decideWalletNotification,
@@ -284,6 +285,7 @@ export async function loadCandidateRows(db: Db, now: Date): Promise<CandidateRow
         userId: users.id,
         email: users.email,
         plan: users.plan,
+        subscriptionStatus: users.subscriptionStatus,
         createdAt: users.createdAt,
         metadata: users.metadata,
         serverCount,
@@ -339,7 +341,8 @@ export async function loadCandidateRows(db: Db, now: Date): Promise<CandidateRow
           paidMicros: Number(u.paidMicros ?? 0),
           promoMicros: Number(u.promoMicros ?? 0),
           promoExpiresAt: toDate(u.promoExpiresAt),
-          funded: Boolean(u.fundedAt) || u.plan === "pro" || u.plan === "team",
+          // One funded rule everywhere (lib/plan-features.ts): never users.plan.
+          funded: isFundedAccount(toDate(u.fundedAt), u.subscriptionStatus),
           zeroBalanceAt: toDate(u.zeroBalanceAt),
           autoRechargeEnabled: Boolean(u.autoRechargeEnabled),
           notified: u.notified ?? {},

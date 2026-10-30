@@ -6,6 +6,7 @@ import { Users } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { TeamPanel } from "./panel";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export default async function TeamPage() {
   const supabase = await createClient();
@@ -16,12 +17,8 @@ export default async function TeamPage() {
 
   const db = getDb();
 
-  const [meRow] = await db
-    .select({ plan: users.plan })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-  const plan = meRow?.plan ?? "free";
+  // Same gate as POST /api/v2/team: a funded grandfathered Team account.
+  const plan = (await getEntitlements(user.id))?.tier ?? "free";
 
   const memberships = await db
     .select({

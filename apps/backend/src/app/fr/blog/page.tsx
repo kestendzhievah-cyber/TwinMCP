@@ -29,23 +29,23 @@ const FR_POSTS = [
     slug: "smithery-alternatives",
     title: "Les meilleures alternatives à Smithery pour héberger un serveur MCP (2026)",
     description:
-      "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, clés API.",
+      "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, clés API.",
     publishedAt: "2026-10-01",
     readingTimeMinutes: 10,
     tags: ["mcp", "smithery", "alternatives", "hébergement", "comparaison"],
   },
   {
     slug: "managed-vs-self-hosted-mcp",
-    title: "Serveur MCP géré vs auto-hébergé : les vrais compromis (2026)",
+    title: "Serveur MCP géré vs auto-hébergé : les vrais compromis (2026)",
     description:
-      "Vos serveurs MCP doivent-ils tourner sur une plateforme gérée ou sur votre propre infrastructure ? Comparaison lucide du coût, de l'exploitation, de l'isolation, de la sécurité et du passage à l'échelle — et le point de bascule où chacun l'emporte.",
+      "Vos serveurs MCP doivent-ils tourner sur une plateforme gérée ou sur votre propre infrastructure ? Comparaison lucide du coût, de l'exploitation, de l'isolation, de la sécurité et du passage à l'échelle — et le point de bascule où chacun l'emporte.",
     publishedAt: "2026-10-01",
     readingTimeMinutes: 10,
     tags: ["mcp", "hébergement", "auto-hébergé", "géré", "comparaison"],
   },
   {
     slug: "what-is-mcp",
-    title: "Qu'est-ce que Model Context Protocol ? Le guide complet 2026",
+    title: "Qu'est-ce que Model Context Protocol ? Le guide complet 2026",
     description:
       "MCP expliqué depuis zéro — ce que c'est, pourquoi Anthropic l'a construit, comment clients et serveurs communiquent, et ce que vous pouvez en faire aujourd'hui.",
     publishedAt: "2026-05-10",
@@ -54,9 +54,9 @@ const FR_POSTS = [
   },
   {
     slug: "mcp-server-hosting",
-    title: "Hébergement de serveurs MCP en 2026 : auto-hébergé vs géré, comparaison",
+    title: "Hébergement de serveurs MCP en 2026 : auto-hébergé vs géré, comparaison",
     description:
-      "Où devraient réellement tourner vos serveurs Model Context Protocol ? Comparaison entre stdio local, Docker sur VPS, Cloudflare Workers, Smithery, et runtimes gérés comme TwinMCP.",
+      "Où devraient réellement tourner vos serveurs Model Context Protocol ? Comparaison entre stdio local, Docker sur VPS, Cloudflare Workers, Smithery, et runtimes gérés comme TwinMCP.",
     publishedAt: "2026-05-10",
     readingTimeMinutes: 16,
     tags: ["mcp", "hébergement", "déploiement", "comparaison"],
@@ -65,7 +65,7 @@ const FR_POSTS = [
     slug: "build-mcp-server",
     title: "Comment construire un serveur Model Context Protocol (étape par étape)",
     description:
-      "Construisez un serveur MCP fonctionnel depuis zéro en TypeScript : outils, ressources, prompts, transport, déploiement, et connexion à Cursor et Claude Code. Code complet, aucun raccourci.",
+      "Construisez un serveur MCP fonctionnel depuis zéro en TypeScript : outils, ressources, prompts, transport, déploiement, et connexion à Cursor et Claude Code. Code complet, aucun raccourci.",
     publishedAt: "2026-05-10",
     readingTimeMinutes: 18,
     tags: ["mcp", "tutoriel", "typescript", "sdk"],

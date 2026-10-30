@@ -27,7 +27,7 @@ const CLIENT_NAMES = MATRIX_CLIENTS.map((k) => IDE_LABELS[k]);
 
 export const metadata: Metadata = {
   title: "Documentation — TwinMCP",
-  description: `Documentation TwinMCP en français : créer un serveur MCP, installer des connecteurs depuis le catalogue, brancher ${CLIENT_NAMES.join(", ")}, et résoudre les problèmes courants.`,
+  description: `Documentation TwinMCP en français : créer un serveur MCP, installer des connecteurs depuis le catalogue, brancher ${CLIENT_NAMES.join(", ")}, et résoudre les problèmes courants.`,
   alternates: {
     canonical: "/fr/docs",
     languages: { en: "/docs", fr: "/fr/docs", "x-default": "/docs" },
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Documentation TwinMCP",
     description:
-      "Guide de prise en main en français : serveurs MCP hébergés, connexion aux IDE et agents IA, clés API, dépannage.",
+      "Guide de prise en main en français : serveurs MCP hébergés, connexion aux IDE et agents IA, clés API, dépannage.",
     url: `${SITE_URL}/fr/docs`,
     locale: "fr_FR",
   },
@@ -101,7 +101,7 @@ export default function DocsPageFr() {
           articleSchema({
             headline: "Documentation TwinMCP",
             description:
-              "Guide de référence en français : créer des serveurs MCP hébergés sur TwinMCP et les connecter à vos agents IA.",
+              "Guide de référence en français : créer des serveurs MCP hébergés sur TwinMCP et les connecter à vos agents IA.",
             url: "/fr/docs",
             datePublished: "2026-10-13",
             inLanguage: "fr",
@@ -137,7 +137,7 @@ export default function DocsPageFr() {
             minutes.
           </p>
           <p className="mx-auto mt-4 max-w-2xl text-sm italic text-muted-foreground">
-            Le tableau de bord est en anglais ; les noms de boutons et les messages d&apos;erreur
+            Le tableau de bord est en anglais ; les noms de boutons et les messages d&apos;erreur
             sont donc cités tels quels, avec l&apos;explication en français.
           </p>
           <Separator variant="double" className="mt-10" />
@@ -198,7 +198,7 @@ export default function DocsPageFr() {
                 <h3 className="text-2xl font-medium">Connecteurs (MCPs)</h3>
                 <p className="mt-2 text-base leading-7">
                   Plus de 70 connecteurs installables en un clic depuis le catalogue, sans écrire de
-                  code : GitLab, Postgres, MongoDB, Notion, Slack, HubSpot, Stripe, et bien
+                  code : GitLab, Postgres, MongoDB, Notion, Slack, HubSpot, Stripe, et bien
                   d&apos;autres. Chaque connecteur installé a sa propre URL,{" "}
                   <code>{docsExampleUrl("fr")}</code>, servie en Streamable HTTP.
                 </p>
@@ -227,7 +227,7 @@ export default function DocsPageFr() {
             </p>
             <ClientSetupList locale="fr" />
             <p className="mt-6 text-sm leading-6 text-muted-foreground">
-              Un autre client ? Tout client MCP compatible Streamable HTTP fonctionne : donnez-lui
+              Un autre client ? Tout client MCP compatible Streamable HTTP fonctionne : donnez-lui
               l&apos;URL et l&apos;en-tête <code>Authorization: Bearer ctx7sk_…</code>. Un client
               limité au stdio peut passer par <code>npx -y mcp-remote</code>, comme dans le bloc
               Claude Desktop.
@@ -239,7 +239,7 @@ export default function DocsPageFr() {
             <p className="mt-3 text-base leading-7 text-muted-foreground">
               Chaque requête MCP porte une clé TwinMCP (préfixe <code>ctx7sk_</code>) dans
               l&apos;en-tête <code>Authorization: Bearer</code>. Les clés se créent dans{" "}
-              <strong>Dashboard → API keys</strong> : {n(FACTS.freeKeys)} clés avant votre première
+              <strong>Dashboard → API keys</strong> : {n(FACTS.freeKeys)} clés avant votre première
               recharge, {n(FACTS.proKeys)} ensuite.
             </p>
 
@@ -258,9 +258,9 @@ export default function DocsPageFr() {
                 <p className="mt-2 text-base leading-7">
                   Elles n&apos;appellent que les points d&apos;accès MCP et peuvent être liées à un
                   seul serveur. C&apos;est la clé à coller dans la configuration d&apos;un IDE, où
-                  elle reste en clair : si elle fuit, elle ne peut pas gérer votre compte, et une
+                  elle reste en clair : si elle fuit, elle ne peut pas gérer votre compte, et une
                   clé liée n&apos;atteint pas vos autres serveurs. L&apos;API REST refuse une telle
-                  clé avec une erreur HTTP 403 (« {MANAGEMENT_SCOPE_MESSAGE} »), et une clé liée
+                  clé avec une erreur HTTP 403 (« {MANAGEMENT_SCOPE_MESSAGE} »), et une clé liée
                   utilisée sur un autre serveur reçoit une erreur HTTP 403, code JSON-RPC{" "}
                   <code>{RPC_CODES.wrongServer}</code>.
                 </p>
@@ -270,7 +270,7 @@ export default function DocsPageFr() {
                 <h3 className="text-2xl font-medium">Rotation, expiration et révocation</h3>
                 <p className="mt-2 text-base leading-7">
                   <strong>Rotate</strong> crée une clé de remplacement avec le même nom, la même
-                  portée et le même serveur ; l&apos;ancienne clé reste valide {OVERLAP_HOURS}{" "}
+                  portée et le même serveur ; l&apos;ancienne clé reste valide {OVERLAP_HOURS}{" "}
                   heures, le temps de mettre à jour vos clients sans coupure, puis cesse de
                   fonctionner. Une rotation n&apos;occupe jamais d&apos;emplacement de clé
                   supplémentaire. Pendant ce délai, l&apos;ancienne clé ne peut plus créer, faire
@@ -290,9 +290,9 @@ export default function DocsPageFr() {
                 <h3 className="text-2xl font-medium">Pause</h3>
                 <p className="mt-2 text-base leading-7">
                   Le bouton <strong>Pause</strong> met en pause la sandbox du serveur et conserve
-                  son disque : connecteurs installés, configuration, secrets et données sont
+                  son disque : connecteurs installés, configuration, secrets et données sont
                   conservés. La requête MCP suivante — ou le bouton <strong>Resume</strong> sur la
-                  page du serveur — le relance ; cette première requête peut prendre un peu plus de
+                  page du serveur — le relance ; cette première requête peut prendre un peu plus de
                   temps, le temps du réveil (voir{" "}
                   <a href="#depannage" className={LINK}>
                     réveil en cours
@@ -315,10 +315,10 @@ export default function DocsPageFr() {
               <div className="py-5 last:pb-0">
                 <h3 className="text-2xl font-medium">Redémarrage</h3>
                 <p className="mt-2 text-base leading-7">
-                  Le bouton <strong>Restart</strong> recrée l&apos;environnement : la sandbox
+                  Le bouton <strong>Restart</strong> recrée l&apos;environnement : la sandbox
                   actuelle est supprimée et une nouvelle est créée, qui réinstalle chaque connecteur
                   depuis sa configuration enregistrée. Les fichiers écrits dans l&apos;ancienne
-                  sandbox sont perdus ; il faut donc aussi saisir le nom du serveur.
+                  sandbox sont perdus ; il faut donc aussi saisir le nom du serveur.
                 </p>
               </div>
             </div>
@@ -335,16 +335,16 @@ export default function DocsPageFr() {
               Chaque entrée cite le message exact affiché par le produit (en anglais), pour le
               retrouver par Ctrl+F. Les erreurs d&apos;un point d&apos;accès MCP sont des erreurs
               JSON-RPC dont le champ <code>error.data</code> contient un <code>requestId</code> et
-              un lien vers cette rubrique :
+              un lien vers cette rubrique :
             </p>
             <DocsCodeBlock code={ERROR_EXAMPLE} language="json" locale="fr" className="mt-4" />
 
             <div className="mt-6 divide-y divide-border">
               <div className="py-6 first:pt-0">
-                <h3 className="text-2xl font-medium">Serveur bloqué sur « provisioning »</h3>
+                <h3 className="text-2xl font-medium">Serveur bloqué sur « provisioning »</h3>
                 <p className="mt-2 text-base leading-7">
                   Le démarrage prend normalement ~30 secondes. Au-delà de quelques minutes,
-                  rechargez la page : la plateforme bascule automatiquement en <code>error</code>{" "}
+                  rechargez la page : la plateforme bascule automatiquement en <code>error</code>{" "}
                   tout serveur bloqué plus de 15 minutes, et le bouton <strong>Start</strong>{" "}
                   réapparaît alors — cliquez-le pour relancer. Si le problème persiste, contactez le
                   support (ci-dessous) avec le slug du serveur.
@@ -352,22 +352,23 @@ export default function DocsPageFr() {
               </div>
 
               <div id="erreur-401" className="py-6">
-                <h3 className="text-2xl font-medium">« Invalid API key » (HTTP 401)</h3>
+                <h3 className="text-2xl font-medium">« Invalid API key » (HTTP 401)</h3>
                 <p className="mt-2 text-base leading-7">
                   La clé dans votre configuration est erronée, révoquée, expirée (y compris une
                   ancienne clé {OVERLAP_HOURS} heures après une rotation), ou c&apos;est encore la
                   clé fictive <code>{API_KEY_PLACEHOLDER}</code>. Le bouton{" "}
-                  <strong>Test connection</strong> du tableau de bord l&apos;affiche ainsi : «
-                  Unauthorized — check your API key. » Ouvrez <strong>Dashboard → API keys</strong>,
-                  créez ou copiez une clé (préfixe <code>ctx7sk_</code>), collez-la dans
-                  l&apos;en-tête <code>Authorization: Bearer …</code>, puis redémarrez votre client
-                  pour qu&apos;il recharge le fichier.
+                  <strong>Test connection</strong> du tableau de bord l&apos;affiche ainsi :
+                  « Unauthorized — check your API key. » Ouvrez{" "}
+                  <strong>Dashboard → API keys</strong>, créez ou copiez une clé (préfixe{" "}
+                  <code>ctx7sk_</code>), collez-la dans l&apos;en-tête{" "}
+                  <code>Authorization: Bearer …</code>, puis redémarrez votre client pour qu&apos;il
+                  recharge le fichier.
                 </p>
               </div>
 
               <div id="erreur-403" className="py-6">
                 <h3 className="text-2xl font-medium">
-                  « {SERVER_SCOPE_MESSAGE} » (HTTP 403, JSON-RPC {RPC_CODES.wrongServer})
+                  « {SERVER_SCOPE_MESSAGE} » (HTTP 403, JSON-RPC {RPC_CODES.wrongServer})
                 </h3>
                 <p className="mt-2 text-base leading-7">
                   La clé est une{" "}
@@ -377,16 +378,16 @@ export default function DocsPageFr() {
                   liée à un autre serveur. Utilisez une clé liée à ce serveur — le panneau{" "}
                   <strong>Connect</strong> du serveur en choisit ou en crée une — ou une clé proxy
                   qui n&apos;est liée à aucun serveur. La même clé utilisée sur l&apos;API REST
-                  reçoit une erreur HTTP 403 « {MANAGEMENT_SCOPE_MESSAGE} ».
+                  reçoit une erreur HTTP 403 « {MANAGEMENT_SCOPE_MESSAGE} ».
                 </p>
               </div>
 
               <div id="erreur-402" className="py-6">
                 <h3 className="text-2xl font-medium">
-                  « Your TwinMCP credit is used up » (HTTP 402, JSON-RPC {CREDIT_RPC_CODE})
+                  « Your TwinMCP credit is used up » (HTTP 402, JSON-RPC {CREDIT_RPC_CODE})
                 </h3>
                 <p className="mt-2 text-base leading-7">
-                  Votre solde est à zéro : l&apos;appel d&apos;outil a été refusé avant
+                  Votre solde est à zéro : l&apos;appel d&apos;outil a été refusé avant
                   d&apos;atteindre le MCP, et il n&apos;est pas facturé. Seuls les{" "}
                   <code>tools/call</code> sont refusés — <code>initialize</code>,{" "}
                   <code>tools/list</code>, les notifications et les pings répondent toujours.
@@ -401,28 +402,28 @@ export default function DocsPageFr() {
               </div>
 
               <div id="erreur-429" className="py-6">
-                <h3 className="text-2xl font-medium">« Too many requests » (HTTP 429)</h3>
+                <h3 className="text-2xl font-medium">« Too many requests » (HTTP 429)</h3>
                 <p className="mt-2 text-base leading-7">
-                  Trop d&apos;appels d&apos;outils en peu de temps depuis un même compte : une
+                  Trop d&apos;appels d&apos;outils en peu de temps depuis un même compte : une
                   limite par minute protège la plateforme des boucles qui s&apos;emballent. Il
-                  n&apos;y a pas de plafond journalier : seul votre solde limite le volume.
-                  Patientez un instant puis réessayez ; si la réponse porte <code>Retry-After</code>{" "}
+                  n&apos;y a pas de plafond journalier : seul votre solde limite le volume.
+                  Patientez un instant puis réessayez ; si la réponse porte <code>Retry-After</code>{" "}
                   (en secondes), attendez ce délai.
                 </p>
               </div>
 
               <div id="erreur-503" className="py-6">
                 <h3 className="text-2xl font-medium">
-                  « Waking up » ou « still installing » (HTTP 503, JSON-RPC {RPC_CODES.notReady})
+                  « Waking up » ou « still installing » (HTTP 503, JSON-RPC {RPC_CODES.notReady})
                 </h3>
                 <p className="mt-2 text-base leading-7">
                   Le serveur sort d&apos;une pause ou le connecteur est encore en cours
                   d&apos;installation. La première installation d&apos;un connecteur prend environ
-                  une minute (le paquet est téléchargé dans la sandbox) ; le réveil d&apos;un
+                  une minute (le paquet est téléchargé dans la sandbox) ; le réveil d&apos;un
                   serveur en pause peut prendre jusqu&apos;à 30 secondes environ. La requête
-                  n&apos;a pas atteint le connecteur : réessayez après le délai indiqué par{" "}
+                  n&apos;a pas atteint le connecteur : réessayez après le délai indiqué par{" "}
                   <code>Retry-After</code>. Le bouton <strong>Test connection</strong> du tableau de
-                  bord affiche « … is still installing — this takes about a minute. »
+                  bord affiche « … is still installing — this takes about a minute. »
                 </p>
               </div>
 
@@ -430,10 +431,10 @@ export default function DocsPageFr() {
                 <h3 className="text-2xl font-medium">Le serveur est en pause</h3>
                 <p className="mt-2 text-base leading-7">
                   Un serveur en pause redémarre à sa prochaine requête MCP — le proxy réveille la
-                  sandbox et répond en général à cette requête, un peu plus lentement ; si le réveil
-                  échoue ou n&apos;est pas terminé, vous recevez l&apos;erreur 503 ci-dessus :
+                  sandbox et répond en général à cette requête, un peu plus lentement ; si le réveil
+                  échoue ou n&apos;est pas terminé, vous recevez l&apos;erreur 503 ci-dessus :
                   réessayez — ou cliquez <strong>Resume</strong> sur la page du serveur. Rien
-                  n&apos;a été supprimé : voir{" "}
+                  n&apos;a été supprimé : voir{" "}
                   <a href="#cycle-de-vie" className={LINK}>
                     Cycle de vie d&apos;un serveur
                   </a>
@@ -444,12 +445,12 @@ export default function DocsPageFr() {
 
               <div id="erreur-504" className="py-6">
                 <h3 className="text-2xl font-medium">
-                  « The MCP server did not answer in time. » (HTTP 504, JSON-RPC{" "}
+                  « The MCP server did not answer in time. » (HTTP 504, JSON-RPC{" "}
                   {RPC_CODES.uncertain})
                 </h3>
                 <p className="mt-2 text-base leading-7">
                   Un appel d&apos;outil a dépassé le délai. Il a pu s&apos;exécuter quand même, donc
-                  TwinMCP ne le renvoie pas : un outil à effet de bord (envoi d&apos;un message,
+                  TwinMCP ne le renvoie pas : un outil à effet de bord (envoi d&apos;un message,
                   écriture en base) ne s&apos;exécute jamais deux fois. Vérifiez si l&apos;action a
                   eu lieu avant de réessayer.
                 </p>
@@ -457,12 +458,12 @@ export default function DocsPageFr() {
 
               <div id="outil-bloque" className="py-6">
                 <h3 className="text-2xl font-medium">
-                  « Tool … is blocked by this MCP&apos;s tool access policy » (HTTP 200, JSON-RPC{" "}
+                  « Tool … is blocked by this MCP&apos;s tool access policy » (HTTP 200, JSON-RPC{" "}
                   {TOOL_POLICY_DENIED_CODE})
                 </h3>
                 <p className="mt-2 text-base leading-7">
                   La politique d&apos;accès aux outils du connecteur a refusé l&apos;appel avant
-                  qu&apos;il n&apos;atteigne le connecteur : liste de blocage, mode lecture seule
+                  qu&apos;il n&apos;atteigne le connecteur : liste de blocage, mode lecture seule
                   (seuls les outils marqués <code>readOnlyHint</code>) ou liste d&apos;autorisation.
                   L&apos;outil ne s&apos;est pas exécuté. Pour la modifier, ouvrez le serveur, puis{" "}
                   <strong>Tool access</strong> sur le connecteur dans{" "}
@@ -472,7 +473,7 @@ export default function DocsPageFr() {
 
               <div className="py-6">
                 <h3 className="text-2xl font-medium">
-                  Statut « error » — « The runtime failed to start. »
+                  Statut « error » — « The runtime failed to start. »
                 </h3>
                 <p className="mt-2 text-base leading-7">
                   Ouvrez l&apos;onglet <strong>Logs</strong> du serveur. La cause la plus fréquente
@@ -487,7 +488,7 @@ export default function DocsPageFr() {
                   Claude Desktop / Zed ne se connecte pas (pont mcp-remote)
                 </h3>
                 <p className="mt-2 text-base leading-7">
-                  Les clients sans support HTTP natif passent par <code>npx -y mcp-remote</code> :
+                  Les clients sans support HTTP natif passent par <code>npx -y mcp-remote</code> :
                   il faut Node.js 18+ sur le poste, le premier lancement peut prendre une minute, et
                   le client doit être complètement redémarré après modification de son fichier de
                   configuration. Le bouton <strong>Test connection</strong> du panneau Connect
@@ -496,20 +497,20 @@ export default function DocsPageFr() {
               </div>
 
               <div id="support" className="py-6 last:pb-0">
-                <h3 className="text-2xl font-medium">Toujours bloqué ? Contactez le support</h3>
+                <h3 className="text-2xl font-medium">Toujours bloqué ? Contactez le support</h3>
                 <p className="mt-2 text-base leading-7">
                   Écrivez à{" "}
                   <a href="mailto:hello@twinmcp.fr" className={LINK}>
                     hello@twinmcp.fr
                   </a>{" "}
-                  en précisant : l&apos;<strong>identifiant de requête</strong>, le{" "}
+                  en précisant : l&apos;<strong>identifiant de requête</strong>, le{" "}
                   <strong>slug du serveur</strong> (affiché sur sa page), le{" "}
                   <strong>message d&apos;erreur exact</strong>, le contenu de l&apos;onglet{" "}
                   <strong>Logs</strong>, et l&apos;heure approximative du problème (avec votre
                   fuseau horaire). Chaque réponse d&apos;un point d&apos;accès MCP porte cet
                   identifiant dans l&apos;en-tête <code>{REQUEST_ID_HEADER}</code>, et les erreurs
                   le reprennent dans <code>error.data.requestId</code>. Pour lire l&apos;en-tête
-                  vous-même :
+                  vous-même :
                 </p>
                 <DocsCodeBlock
                   code={REQUEST_ID_CURL}

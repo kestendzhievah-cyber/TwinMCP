@@ -39,8 +39,12 @@ ARG NEXT_PUBLIC_BING_VERIFICATION
 ARG NEXT_PUBLIC_YANDEX_VERIFICATION
 # Google Ads "Inscription" conversion ("AW-…/label"). Empty = no-op.
 ARG NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_SEND_TO=
-# Optional public links / CLI package name (lib/site-links.ts, lib/cli.ts). Empty = hidden / default.
+# Google Ads "Demande de démo" conversion. Empty = no-op.
 ARG NEXT_PUBLIC_GOOGLE_ADS_DEMO_SEND_TO=
+# Google Ads "Recharge" conversion (paid wallet top-up). Empty = top-ups report
+# to the existing "Abonnement" action.
+ARG NEXT_PUBLIC_GOOGLE_ADS_TOPUP_SEND_TO=
+# Optional public links / CLI package name (lib/site-links.ts, lib/cli.ts). Empty = hidden / default.
 ARG NEXT_PUBLIC_TWINMCP_CLI_PACKAGE=
 ARG NEXT_PUBLIC_STATUS_URL=
 ARG NEXT_PUBLIC_TWITTER_URL=
@@ -58,6 +62,7 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_YANDEX_VERIFICATION=$NEXT_PUBLIC_YANDEX_VERIFICATION \
     NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_SEND_TO=$NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_SEND_TO \
     NEXT_PUBLIC_GOOGLE_ADS_DEMO_SEND_TO=$NEXT_PUBLIC_GOOGLE_ADS_DEMO_SEND_TO \
+    NEXT_PUBLIC_GOOGLE_ADS_TOPUP_SEND_TO=$NEXT_PUBLIC_GOOGLE_ADS_TOPUP_SEND_TO \
     NEXT_PUBLIC_TWINMCP_CLI_PACKAGE=$NEXT_PUBLIC_TWINMCP_CLI_PACKAGE \
     NEXT_PUBLIC_STATUS_URL=$NEXT_PUBLIC_STATUS_URL \
     NEXT_PUBLIC_TWITTER_URL=$NEXT_PUBLIC_TWITTER_URL \
@@ -69,6 +74,8 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# In-process scheduler (lib/scheduler): on only in this image, never for a local next start.
+ENV INTERNAL_SCHEDULER=1
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/apps/backend/public ./apps/backend/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/backend/.next/standalone ./

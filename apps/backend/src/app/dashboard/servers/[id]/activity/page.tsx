@@ -5,7 +5,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { Activity, AlertCircle, ArrowRight, RotateCcw, ShieldCheck } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { apiKeys, users } from "@/db/schema/core";
+import { apiKeys } from "@/db/schema/core";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
 import { toolCallStatuses, type ToolCallStatus } from "@/db/schema/activity";
 import {
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { ServerNav } from "./server-nav";
 import { CopyRequestId } from "./copy-request-id";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -98,13 +99,13 @@ export default async function ServerActivityPage({
   if (!user) return null;
 
   const db = getDb();
-  const [[srv], [me], installed, keys] = await Promise.all([
+  const [[srv], ent, installed, keys] = await Promise.all([
     db
       .select({ id: servers.id, name: servers.name, slug: servers.slug })
       .from(servers)
       .where(and(eq(servers.id, id), eq(servers.userId, user.id)))
       .limit(1),
-    db.select({ plan: users.plan }).from(users).where(eq(users.id, user.id)).limit(1),
+    getEntitlements(user.id),
     db
       .select({ slug: mcpServers.slug, name: mcpServers.name })
       .from(userServers)
@@ -119,7 +120,7 @@ export default async function ServerActivityPage({
   ]);
   if (!srv) notFound();
 
-  const plan = me?.plan ?? "free";
+  const plan = ent?.tier ?? "free";
   const base = `/dashboard/servers/${srv.id}/activity`;
   const parsed = parseActivityQuery(sp);
 

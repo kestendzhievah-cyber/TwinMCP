@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { TopupConversion } from "@/components/analytics/ads-conversion";
 import { getCheckoutConversion } from "@/lib/billing/checkout-conversion";
 import { computeWalletNudge } from "@/lib/billing/upgrade-state";
+import { isFundedAccount } from "@/lib/plan-features";
 import { getWallet, decodeLedgerCursor, listLedger, type WalletView } from "@/lib/wallet/ledger";
 import { AUTO_RECHARGE_LIMITS } from "@/lib/wallet/auto-recharge";
 import { PRICING, publicPriceTable, whatTenEuroBuys } from "@/lib/wallet/pricing";
@@ -74,7 +75,9 @@ export default async function CreditsPage({
     paidMicros: wallet?.paidMicros ?? 0,
     promoMicros: wallet?.promoMicros ?? 0,
     promoExpiresAt: wallet?.promoExpiresAt ?? null,
-    funded: Boolean(wallet?.funded) || plan === "pro" || plan === "team",
+    // Same funded rule as every gate: a top-up, or a legacy subscription still
+    // being paid. A never-paid trial row with plan='pro' is not funded.
+    funded: isFundedAccount(wallet?.fundedAt ?? null, me?.subscriptionStatus),
     autoRechargeEnabled: wallet?.autoRecharge.enabled ?? false,
     serverCount: 0,
     subscriptionStatus: me?.subscriptionStatus ?? null,

@@ -9,7 +9,7 @@ const post = {
   slug: "smithery-alternatives",
   title: "Les meilleures alternatives à Smithery pour héberger un serveur MCP (2026)",
   description:
-    "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, clés API.",
+    "Vous cherchez une alternative à Smithery ? Comparez les runtimes MCP gérés, les registres publics, l'auto-hébergement et le serverless — avec un tableau de décision : code privé, isolation, secrets, clés API.",
   publishedAt: "2026-10-01",
   readingTimeMinutes: 10,
   tags: ["mcp", "smithery", "alternatives", "hébergement", "comparaison"],
@@ -38,15 +38,15 @@ export const metadata: Metadata = {
 
 const faq = [
   {
-    q: "Quelle est la meilleure alternative à Smithery pour des serveurs MCP privés ?",
-    a: "Un runtime MCP géré comme TwinMCP, ou l'auto-hébergement. La force de Smithery, c'est son catalogue public open-source ; il n'est pas conçu pour héberger votre propre code privé avec une isolation des secrets par serveur. Un runtime géré vous donne un bac à sable isolé par serveur plus un catalogue en un clic, tandis que l'auto-hébergement offre le contrôle total au prix de l'exploitation.",
+    q: "Quelle est la meilleure alternative à Smithery pour des serveurs MCP privés ?",
+    a: "Un runtime MCP géré comme TwinMCP, ou l'auto-hébergement. La force de Smithery, c'est son catalogue public open-source ; il n'est pas conçu pour héberger votre propre code privé avec une isolation des secrets par serveur. Un runtime géré vous donne un bac à sable isolé par serveur plus un catalogue en un clic, tandis que l'auto-hébergement offre le contrôle total au prix de l'exploitation.",
   },
   {
-    q: "Existe-t-il une alternative gratuite à Smithery ?",
+    q: "Existe-t-il une alternative gratuite à Smithery ?",
     a: "Oui. TwinMCP propose une offre gratuite avec un serveur isolé et l'accès complet au catalogue, sans carte bancaire. L'auto-hébergement est gratuit côté logiciel mais coûte du temps réel d'exploitation (TLS, secrets, logs, supervision). D'autres registres publics ont aussi des offres gratuites de catalogue, avec des compromis proches de ceux de Smithery.",
   },
   {
-    q: "Puis-je migrer facilement hors de Smithery ?",
+    q: "Puis-je migrer facilement hors de Smithery ?",
     a: "Oui — le code d'un serveur MCP est portable. Le verrouillage se situe dans la configuration de déploiement, pas dans le serveur lui-même. Pour passer à un runtime géré ou à votre propre hébergement, installez le même paquet amont (npm/pip/Git), collez la commande de démarrage et recopiez vos secrets.",
   },
 ];
@@ -76,10 +76,10 @@ export default function Post() {
       <h2 id="why-alternative">Pourquoi chercher une alternative à Smithery</h2>
       <p>
         La proposition de valeur de Smithery, c&apos;est un catalogue hébergé de MCP publics
-        open-source : l&apos;équipe cure un large registre, fait tourner les serveurs populaires sur
+        open-source : l&apos;équipe cure un large registre, fait tourner les serveurs populaires sur
         une infrastructure partagée, et vous donne un seul token pour vous connecter depuis Cursor
         ou Claude Desktop. C&apos;est réellement utile &mdash; mais cela définit le plafond que les
-        gens finissent par atteindre :
+        gens finissent par atteindre :
       </p>
       <ul>
         <li>
@@ -104,36 +104,36 @@ export default function Post() {
       </p>
 
       <h2 id="criteria">Quels critères regarder</h2>
-      <p>Jugez chaque option sur les six critères qui changent vraiment la décision :</p>
+      <p>Jugez chaque option sur les six critères qui changent vraiment la décision :</p>
       <ul>
         <li>
           <strong>MCP privés</strong> &mdash; pouvez-vous faire tourner du code hors catalogue
-          public ?
+          public ?
         </li>
         <li>
           <strong>Isolation</strong> &mdash; chaque serveur a-t-il son propre bac à sable, ou est-ce
-          partagé ?
+          partagé ?
         </li>
         <li>
           <strong>Gestion des secrets</strong> &mdash; chiffrés au repos, par serveur, jamais
-          exposés aux autres locataires ?
+          exposés aux autres locataires ?
         </li>
         <li>
           <strong>Compatibilité clients</strong> &mdash; une seule URL + clé fonctionne-t-elle pour
-          Cursor, Claude, Windsurf et Cline ?
+          Cursor, Claude, Windsurf et Cline ?
         </li>
         <li>
           <strong>Modèle tarifaire</strong> &mdash; offre gratuite, forfait fixe, ou à l&apos;usage
           ?
         </li>
         <li>
-          <strong>Verrouillage</strong> &mdash; est-ce difficile de partir ?
+          <strong>Verrouillage</strong> &mdash; est-ce difficile de partir ?
         </li>
       </ul>
 
       <h2 id="managed">1. Les runtimes MCP gérés &mdash; l&apos;alternative la plus proche</h2>
       <p>
-        Un runtime géré est la suite naturelle du catalogue : au lieu de vous connecter à un serveur
+        Un runtime géré est la suite naturelle du catalogue : au lieu de vous connecter à un serveur
         public partagé, vous <em>provisionnez le vôtre</em> &mdash; public ou privé &mdash; et la
         plateforme le fait tourner pour vous. <Link href={"/fr" as Route}>TwinMCP</Link> est bâti
         exactement là-dessus. Chaque serveur que vous créez obtient son propre bac à sable isolé
@@ -145,7 +145,7 @@ export default function Post() {
       </p>
       <p>
         Il garde ce qui rend Smithery agréable &mdash; aucun déploiement, un seul token, un
-        catalogue installable &mdash; et retire le plafond : code privé, isolation par serveur,
+        catalogue installable &mdash; et retire le plafond : code privé, isolation par serveur,
         journaux d&apos;audit et rotation des clés en fonctionnalités de premier plan. L&apos;
         <Link href={"/fr/tarifs" as Route}>offre gratuite</Link> vous donne un serveur et le
         catalogue complet sans carte bancaire, donc le changement ne coûte rien à essayer.
@@ -155,25 +155,25 @@ export default function Post() {
       <p>
         Si vous voulez seulement un catalogue public <em>différent</em> &mdash; pas une nouvelle
         capacité &mdash; d&apos;autres registres et annuaires MCP existent dans l&apos;écosystème
-        (par exemple Glama, PulseMCP et mcp.run). Ils partagent globalement la forme de Smithery :
+        (par exemple Glama, PulseMCP et mcp.run). Ils partagent globalement la forme de Smithery :
         un index navigable de serveurs publics open-source, avec la commodité et les limites qui
         vont avec. Vérifiez toujours la documentation actuelle d&apos;un registre pour
         l&apos;hébergement privé et l&apos;isolation, car cela évolue vite.
       </p>
       <p>
-        Le résumé honnête : passer d&apos;un registre public à un autre change le catalogue et
-        l&apos;expérience, pas le compromis de fond. Si votre blocage était « j&apos;ai besoin de
-        faire tourner du code privé avec une vraie isolation », un autre registre atteindra le même
+        Le résumé honnête : passer d&apos;un registre public à un autre change le catalogue et
+        l&apos;expérience, pas le compromis de fond. Si votre blocage était « j&apos;ai besoin de
+        faire tourner du code privé avec une vraie isolation », un autre registre atteindra le même
         plafond &mdash; il vous faut un runtime géré ou l&apos;auto-hébergement.
       </p>
 
       <h2 id="selfhost">3. L&apos;auto-hébergement (Docker ou Kubernetes)</h2>
       <p>
-        L&apos;auto-hébergement, c&apos;est l&apos;alternative au contrôle maximal : Docker sur un
+        L&apos;auto-hébergement, c&apos;est l&apos;alternative au contrôle maximal : Docker sur un
         VPS, ou Kubernetes si vous l&apos;exploitez déjà. Vous obtenez le code privé,
         l&apos;isolation que vous concevez, et votre propre VPC &mdash; ce qui compte si vous avez
         une contrainte de conformité stricte. Le coût, c&apos;est que vous assumez
-        l&apos;exploitation : bac à sable, TLS, rotation des secrets, capture des logs, supervision,
+        l&apos;exploitation : bac à sable, TLS, rotation des secrets, capture des logs, supervision,
         et plusieurs versions en parallèle.
       </p>
       <p>
@@ -190,9 +190,9 @@ export default function Post() {
       <h2 id="serverless">4. Le serverless (Cloudflare Workers, Upstash Box)</h2>
       <p>
         Si vous hébergez un ou deux serveurs vous-même et voulez éviter la gestion de VM, les
-        plateformes serverless peuvent faire tourner des serveurs MCP directement. La nuance : le
+        plateformes serverless peuvent faire tourner des serveurs MCP directement. La nuance : le
         transport en streaming de MCP (SSE à longue durée de vie) et les démarrages à froid se
-        comportent différemment selon les fournisseurs. Un runtime géré masque tout cela ; le faire
+        comportent différemment selon les fournisseurs. Un runtime géré masque tout cela ; le faire
         vous-même donne plus de contrôle et plus à exploiter.
       </p>
 

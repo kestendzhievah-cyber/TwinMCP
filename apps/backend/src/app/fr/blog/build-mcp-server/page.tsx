@@ -9,7 +9,7 @@ const post = {
   slug: "build-mcp-server",
   title: "Comment construire un serveur Model Context Protocol (étape par étape)",
   description:
-    "Construisez un serveur MCP fonctionnel depuis zéro en TypeScript : outils, ressources, prompts, transport, déploiement, et connexion à Cursor et Claude Code. Code complet, aucun raccourci.",
+    "Construisez un serveur MCP fonctionnel depuis zéro en TypeScript : outils, ressources, prompts, transport, déploiement, et connexion à Cursor et Claude Code. Code complet, aucun raccourci.",
   publishedAt: "2026-05-10",
   readingTimeMinutes: 18,
   tags: ["mcp", "tutoriel", "typescript", "sdk"],
@@ -79,23 +79,23 @@ const tutorial = howToSchema({
 
 const faq = [
   {
-    q: "Quel langage utiliser pour construire un serveur MCP ?",
-    a: "Les SDKs MCP officiels couvrent TypeScript, Python, C#, Java, Kotlin, Ruby et Swift ; des SDKs communautaires existent pour Go, Rust, PHP et d'autres. TypeScript et Python ont le plus d'exemples en production et le plus petit écart entre dev local et déploiement. Choisissez le langage de votre backend existant.",
+    q: "Quel langage utiliser pour construire un serveur MCP ?",
+    a: "Les SDKs MCP officiels couvrent TypeScript, Python, C#, Java, Kotlin, Ruby et Swift ; des SDKs communautaires existent pour Go, Rust, PHP et d'autres. TypeScript et Python ont le plus d'exemples en production et le plus petit écart entre dev local et déploiement. Choisissez le langage de votre backend existant.",
   },
   {
-    q: "Faut-il connaître JSON-RPC pour construire un serveur MCP ?",
-    a: "Non. Les SDKs cachent JSON-RPC entièrement. Vous déclarez tools, resources et prompts avec des helpers de haut niveau ; le SDK gère le framing des messages, les IDs de requête et l'encodage des erreurs.",
+    q: "Faut-il connaître JSON-RPC pour construire un serveur MCP ?",
+    a: "Non. Les SDKs cachent JSON-RPC entièrement. Vous déclarez tools, resources et prompts avec des helpers de haut niveau ; le SDK gère le framing des messages, les IDs de requête et l'encodage des erreurs.",
   },
   {
-    q: "Combien de temps pour construire un serveur MCP qui marche ?",
+    q: "Combien de temps pour construire un serveur MCP qui marche ?",
     a: "Un serveur minimal avec un seul tool peut fonctionner de bout en bout en moins de 30 minutes. Un serveur production-ready avec auth, retries, logging et tests prend généralement quelques jours, selon ce que le tool enveloppe.",
   },
   {
-    q: "Puis-je utiliser mes bibliothèques client API existantes dans un serveur MCP ?",
+    q: "Puis-je utiliser mes bibliothèques client API existantes dans un serveur MCP ?",
     a: "Oui. Un serveur MCP n'est qu'un processus Node.js ou Python. Vous pouvez importer n'importe quel SDK, taper n'importe quelle base de données, parler à n'importe quel service interne. La couche MCP n'enveloppe que la surface publique que vous exposez au client IA.",
   },
   {
-    q: "Comment tester un serveur MCP sans modèle IA ?",
+    q: "Comment tester un serveur MCP sans modèle IA ?",
     a: "Utilisez le MCP Inspector, le débogueur officiel du projet. Il se connecte à votre serveur comme un vrai client, liste les capacités déclarées et vous laisse déclencher les appels d'outils manuellement. Vous validez tout le contrat du serveur sans jamais payer de tokens LLM.",
   },
 ];
@@ -103,13 +103,13 @@ const faq = [
 const related = [
   {
     slug: "what-is-mcp",
-    title: "Qu'est-ce que Model Context Protocol ? Le guide complet 2026",
+    title: "Qu'est-ce que Model Context Protocol ? Le guide complet 2026",
     description: "MCP expliqué depuis zéro — fondamentaux, architecture, exemples concrets.",
     readingTimeMinutes: 14,
   },
   {
     slug: "mcp-server-hosting",
-    title: "Hébergement de serveurs MCP en 2026 : auto-hébergé vs géré",
+    title: "Hébergement de serveurs MCP en 2026 : auto-hébergé vs géré",
     description:
       "Comparaison des 5 options d'hébergement avec chiffres réels et critères de décision.",
     readingTimeMinutes: 16,
@@ -123,32 +123,32 @@ export default function Post() {
         <strong>TL;DR.</strong> Ce tutoriel parcourt la construction d&apos;un serveur Model Context
         Protocol fonctionnel depuis un dossier vide. Nous utilisons TypeScript et le package
         officiel <code>@modelcontextprotocol/sdk</code>. À la fin vous avez un serveur qui expose un
-        tool, une ressource et un prompt ; vous l&apos;avez testé avec l&apos;Inspector ; vous
-        l&apos;avez connecté à Cursor et Claude Code via stdio ; et vous l&apos;avez déployé en HTTP
-        pour que d&apos;autres puissent l&apos;utiliser. Temps total : environ 45 minutes.
+        tool, une ressource et un prompt ; vous l&apos;avez testé avec l&apos;Inspector ; vous
+        l&apos;avez connecté à Cursor et Claude Code via stdio ; et vous l&apos;avez déployé en HTTP
+        pour que d&apos;autres puissent l&apos;utiliser. Temps total : environ 45 minutes.
       </p>
 
       <h2 id="what-youll-build">Ce que vous allez construire</h2>
       <p>
         Un serveur météo. L&apos;exemple est délibérément assez petit pour tenir dans un seul
-        fichier et assez concret pour servir de template. Il expose :
+        fichier et assez concret pour servir de template. Il expose :
       </p>
       <ul>
         <li>
-          <strong>Un tool</strong> : <code>get_forecast(latitude, longitude)</code> &mdash; retourne
+          <strong>Un tool</strong> : <code>get_forecast(latitude, longitude)</code> &mdash; retourne
           une prévision sur 3 jours depuis une API météo publique.
         </li>
         <li>
-          <strong>Une ressource</strong> : <code>weather://stations/&lt;id&gt;</code> &mdash;
+          <strong>Une ressource</strong> : <code>weather://stations/&lt;id&gt;</code> &mdash;
           retourne les métadonnées d&apos;une station météo spécifique.
         </li>
         <li>
-          <strong>Un prompt</strong> : <code>/plan-trip &lt;ville&gt;</code> &mdash; un prompt
+          <strong>Un prompt</strong> : <code>/plan-trip &lt;ville&gt;</code> &mdash; un prompt
           templaté qui demande au modèle de rédiger un plan de voyage informé par la météo.
         </li>
       </ul>
       <p>
-        Tout ce que vous écrivez ici se généralise directement : remplacez l&apos;API météo par
+        Tout ce que vous écrivez ici se généralise directement : remplacez l&apos;API météo par
         votre propre service, étendez le schéma, et vous avez livré votre premier MCP interne.
       </p>
 
@@ -178,7 +178,7 @@ npx tsc --init`}</code>
       <p>
         Modifiez <code>tsconfig.json</code> pour cibler du Node moderne (target ES2022, module
         Node16, strict). Dans <code>package.json</code>, ajoutez <code>{`"type": "module"`}</code>{" "}
-        et quelques scripts :
+        et quelques scripts :
       </p>
       <pre>
         <code>{`{
@@ -218,7 +218,7 @@ console.error("Weather MCP server running on stdio");`}</code>
       <p>
         Deux choses à remarquer. Primo, l&apos;objet <code>capabilities</code> déclare quels types
         de primitives ce serveur supporte &mdash; les clients l&apos;utilisent pour savoir quelles
-        listes demander. Deuxièmement, on log sur <code>stderr</code> exprès : stdout porte le
+        listes demander. Deuxièmement, on log sur <code>stderr</code> exprès : stdout porte le
         protocole JSON-RPC, et un <code>console.log</code> errant corromprait le flux.
       </p>
 
@@ -276,7 +276,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       <p>
         Le tableau <code>content</code> dans la réponse est la façon dont MCP retourne des données
         structurées. Chaque entrée a un type (<code>text</code>, <code>image</code>,
-        <code> resource</code>) ; les clients les rendent en conséquence.
+        <code> resource</code>) ; les clients les rendent en conséquence.
       </p>
 
       <h2 id="step-6">Étape 6 &mdash; Tester avec le MCP Inspector</h2>
@@ -300,7 +300,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       <h3>Cursor</h3>
       <p>
         Ouvrez les settings de Cursor, allez dans{" "}
-        <strong>Features &rarr; Model Context Protocol</strong>, ajoutez un serveur :
+        <strong>Features &rarr; Model Context Protocol</strong>, ajoutez un serveur :
       </p>
       <pre>
         <code>{`{
@@ -314,11 +314,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       </pre>
       <p>
         Construisez le projet d&apos;abord (<code>npm run build</code>), puis pointez Cursor vers le
-        fichier compilé. Redémarrez Cursor ; le serveur weather apparaît dans le panneau et ses
+        fichier compilé. Redémarrez Cursor ; le serveur weather apparaît dans le panneau et ses
         tools passent au vert quand le modèle y a accès.
       </p>
       <h3>Claude Code</h3>
-      <p>Depuis un terminal :</p>
+      <p>Depuis un terminal :</p>
       <pre>
         <code>{`claude mcp add weather node /chemin/absolu/vers/dist/server.js`}</code>
       </pre>
@@ -331,7 +331,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       <p>
         stdio est génial pour le dev local mais ne permet pas le partage entre machines. Basculez le
         transport en HTTP pour que vos coéquipiers se connectent à une instance partagée. Deux
-        chemins ensuite : auto-hébergement Docker sur un VPS (vous gérez TLS, secrets, redémarrages)
+        chemins ensuite : auto-hébergement Docker sur un VPS (vous gérez TLS, secrets, redémarrages)
         ou runtime géré comme <Link href={"/fr" as Route}>TwinMCP</Link> qui prend un package ou une
         URL Git plus les commandes d&apos;install/start, le fait tourner dans un sandbox isolé, et
         vous donne une URL HTTPS stable plus des clés API par utilisateur.
@@ -365,7 +365,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         doute, retournez <code>{`{ content: [{ type: "text", text: "..." }] }`}</code>.
       </p>
 
-      <h2 id="next-steps">Et après ?</h2>
+      <h2 id="next-steps">Et après ?</h2>
       <p>
         Vous avez maintenant la forme entière d&apos;un serveur MCP en mémoire musculaire. Pour le
         contexte conceptuel que vous avez sauté pour arriver ici, lisez{" "}

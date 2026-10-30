@@ -5,9 +5,9 @@ import { solutionAlternates } from "@/lib/solutions/data";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 const ALT = solutionAlternates(null, "fr");
 
-const TITLE = "Stacks MCP par métier : essentiel, développeurs, recherche, data, finance";
+const TITLE = "Stacks MCP par métier : essentiel, développeurs, recherche, data, finance";
 const DESCRIPTION =
-  "Des packs de départ de serveurs MCP hébergés, un par type d’équipe : ce que fait chaque MCP, les clés à fournir, ce que votre assistant IA peut en faire. Installation par vous-même ou avec nous.";
+  "Des packs de départ de serveurs MCP hébergés, un par type d’équipe : ce que fait chaque MCP, les clés à fournir, ce que votre assistant IA peut en faire. Installation par vous-même ou avec nous.";
 
 export const metadata: Metadata = {
   title: TITLE,

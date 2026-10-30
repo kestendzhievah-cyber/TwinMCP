@@ -1,12 +1,12 @@
 import { randomUUID } from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { teamspaceMembers, teamspaces, users } from "@/db/schema";
+import { teamspaceMembers, teamspaces } from "@/db/schema";
 import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { meetsPlan } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,13 +32,10 @@ export async function POST(req: NextRequest) {
     // Teamspaces are the multi-member collaboration feature — gated to the Team
     // plan (free/pro are single-member per the pricing table). Member invites,
     // when added, must additionally check limitFor(plan, "members").
-    const [me] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
-    if (!me) return unauthorized("User not found");
-    if (!meetsPlan(me.plan, "team")) {
+    // The tier comes from the wallet (getEntitlements), never users.plan.
+    const ent = await getEntitlements(session.userId);
+    if (!ent) return unauthorized("User not found");
+    if (!meetsPlan(ent.tier, "team")) {
       return forbidden("Teamspaces require the Team plan.");
     }
 

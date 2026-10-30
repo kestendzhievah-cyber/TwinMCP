@@ -8,7 +8,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 export const metadata: Metadata = {
   title: "Nouveautés",
   description:
-    "Ce qui a changé dans TwinMCP, mois par mois : nouveaux MCP, clés API limitées, tarifs, tableau de bord et corrections. Uniquement des fonctionnalités en ligne.",
+    "Ce qui a changé dans TwinMCP, mois par mois : nouveaux MCP, clés API limitées, tarifs, tableau de bord et corrections. Uniquement des fonctionnalités en ligne.",
   alternates: {
     canonical: "/fr/changelog",
     languages: { en: "/changelog", fr: "/fr/changelog", "x-default": "/changelog" },

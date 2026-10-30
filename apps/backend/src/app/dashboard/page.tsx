@@ -4,7 +4,7 @@ import { apiKeys, mcpServers, servers, usageMetrics, userServers, users } from "
 import { and, asc, desc, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { SERVER_QUOTAS } from "@/lib/quota";
-import { PLAN_CAPABILITIES } from "@/lib/plan-features";
+import { entitlementTier, PLAN_CAPABILITIES } from "@/lib/plan-features";
 import {
   computeWalletNudge,
   expiryCountdown,
@@ -122,7 +122,10 @@ export default async function DashboardPage() {
   ).length;
   const activation = activationRaw ? { ...activationRaw, hasKey: keyCount > 0 } : null;
 
-  const { plan, serverCount, funded } = signals;
+  const { serverCount, funded } = signals;
+  // The tier comes from the wallet (funded), never users.plan alone, so the
+  // limits shown match what the API gates allow.
+  const plan = entitlementTier(signals.plan, funded);
   const serverLimit = SERVER_QUOTAS[plan];
   const serverLimitLabel = serverLimit === Number.POSITIVE_INFINITY ? "∞" : serverLimit.toString();
 

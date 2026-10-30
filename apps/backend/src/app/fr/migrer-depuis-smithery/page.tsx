@@ -14,7 +14,7 @@ const PATH = MIGRATION_PATHS.fr;
 
 const TITLE = "Migrer depuis Smithery avant le 31 octobre";
 const DESCRIPTION =
-  "Le proxy hébergé, les URL, l’API et les comptes Smithery ferment le 31 octobre 2026. Déplacez vos serveurs MCP vers TwinMCP : mêmes paquets MCP, secrets chiffrés par serveur, une URL et une clé API par MCP. Offre gratuite, sans carte bancaire.";
+  "Le proxy hébergé, les URL, l’API et les comptes Smithery ferment le 31 octobre 2026. Déplacez vos serveurs MCP vers TwinMCP : mêmes paquets MCP, secrets chiffrés par serveur, une URL et une clé API par MCP. Offre gratuite, sans carte bancaire.";
 
 export const metadata: Metadata = {
   title: TITLE,

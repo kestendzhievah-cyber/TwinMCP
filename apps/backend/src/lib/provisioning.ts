@@ -2,9 +2,9 @@ import { eq, and, inArray, notInArray, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers, type ServerStatus } from "@/db/schema/platform";
-import { users } from "@/db/schema/core";
 import { getBoxClient } from "@/lib/upstash/box-client";
 import { keepWarm } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { isRuntimeGone, pauseFailureAction } from "@/lib/server-lifecycle";
 import {
   BRIDGE_BASE_PORT,
@@ -324,12 +324,11 @@ export async function provisionServer(serverId: string): Promise<void> {
     // Warm ("always-on") boxes are a Pro+ perk, gated additionally by the
     // WARM_BOXES_ENABLED ops switch — keep-alive boxes require a paid Upstash
     // plan, so warm stays OFF (pause-when-idle for everyone) until it's on.
-    const [owner] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, srv.userId))
-      .limit(1);
-    const wantWarm = keepWarm(owner?.plan ?? "free", process.env.WARM_BOXES_ENABLED === "true");
+    // Tier from the wallet (funded or not), never users.plan.
+    const warmEnabled = process.env.WARM_BOXES_ENABLED === "true";
+    // A failed read falls back to pause-when-idle (the cheap, safe default).
+    const owner = warmEnabled ? await getEntitlements(srv.userId).catch(() => null) : null;
+    const wantWarm = keepWarm(owner?.tier ?? "free", warmEnabled);
 
     // Idempotent on QStash retry: reuse an existing live box rather than create a
     // duplicate. Only (re)create when there is no box or the existing one is dead.
@@ -366,8 +365,13 @@ export async function provisionServer(serverId: string): Promise<void> {
           throw err;
         }
       }
-      // A zero usage snapshot: the compute meter bills this box from its first
-      // CPU second (a box without a snapshot is only baselined). Never throws.
+      // A zero usage snapshot (total_cost_usd 0, total_cpu_ns 0), written BEFORE
+      // servers.box_id is recorded, so the meter (which attributes boxes through
+      // box_id) never sees this box without it: it is billed from its first CPU
+      // second. Retried, never throws; if every attempt fails, the meter still
+      // bills a snapshot-less box created after metering started from zero
+      // (compute-meter.ts billsFromZero). Only boxes older than metering (pre
+      // 0020) are baselined at their current counters.
       const { ensureZeroSnapshot } = await import("@/lib/wallet/compute-meter");
       await ensureZeroSnapshot(boxId, serverId, srv.userId);
     }

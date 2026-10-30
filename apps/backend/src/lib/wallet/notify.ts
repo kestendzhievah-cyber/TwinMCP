@@ -6,6 +6,7 @@ import { creditLedger, walletAccounts } from "@/db/schema/wallet";
 import { emailNudgesEnabled } from "@/lib/billing/nudge-state";
 import { formatCredit, RUNTIME_DELETION_AFTER_DAYS } from "@/lib/billing/upgrade-state";
 import { PRICING, eurToMicros, publicPriceTable, whatTenEuroBuys } from "@/lib/wallet/pricing";
+import { isFundedAccount } from "@/lib/plan-features";
 import {
   sendAutoRechargeFailedEmail,
   sendLowBalanceEmail,
@@ -277,7 +278,7 @@ export async function deliverWalletEmail(
     case "zero_balance":
       return sendZeroBalanceEmail(to, {
         funded: ctx.funded,
-        deleteAfterDays: ctx.funded ? null : RUNTIME_DELETION_AFTER_DAYS,
+        deleteAfterDays: zeroBalanceDeletionDays(ctx.funded),
         // lib/wallet/ledger.ts expirePromos passes the ledger kind along.
         promoExpired: data.kind === "promo_expiry",
       });
@@ -324,6 +325,21 @@ export async function deliverWalletEmail(
       });
     }
   }
+}
+
+/**
+ * Days after which the zero-balance email says the runtime is deleted, or null
+ * for no deletion sentence. Only an unfunded account, and only while the
+ * deletion countdown really runs (WALLET_ENFORCE_ENABLED === "true",
+ * lib/wallet/compute-meter.ts runWalletEnforce): otherwise servers just stay
+ * paused until a top-up, and the email says so. Pure given `env`.
+ */
+export function zeroBalanceDeletionDays(
+  funded: boolean,
+  env: Record<string, string | undefined> = process.env
+): number | null {
+  if (funded || env.WALLET_ENFORCE_ENABLED !== "true") return null;
+  return RUNTIME_DELETION_AFTER_DAYS;
 }
 
 // ---- The entry point ----------------------------------------------------------
@@ -410,7 +426,11 @@ const liveDeps: NotifyDeps = {
     const db = getDb();
     const [[user], [wallet], [credit], [srv]] = await Promise.all([
       db
-        .select({ email: users.email, metadata: users.metadata, plan: users.plan })
+        .select({
+          email: users.email,
+          metadata: users.metadata,
+          subscriptionStatus: users.subscriptionStatus,
+        })
         .from(users)
         .where(eq(users.id, userId))
         .limit(1),
@@ -430,7 +450,9 @@ const liveDeps: NotifyDeps = {
     return {
       email: user.email,
       metadata: user.metadata,
-      funded: Boolean(wallet?.fundedAt) || user.plan === "pro" || user.plan === "team",
+      // Wallet-derived (funded_at or a live paying legacy subscription), never
+      // users.plan: a trial that never paid can still carry plan='pro'.
+      funded: isFundedAccount(wallet?.fundedAt ?? null, user.subscriptionStatus),
       paidMicros: Number(wallet?.paidMicros ?? 0),
       promoMicros: promoLive ? Number(wallet?.promoMicros ?? 0) : 0,
       promoExpiresAt: expiresAt,

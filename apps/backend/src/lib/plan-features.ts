@@ -22,6 +22,12 @@ import type { BoxSize } from "@/db/schema/platform";
  * it is used (servers → lib/quota.ts + api/v2/servers, box size → the v2
  * servers routes, api keys, members, publishing → their v2 routes).
  *
+ * WHICH ROW APPLIES is decided by the WALLET, not by users.plan: billing never
+ * moves an account back to "free", so a trial that never paid can still carry
+ * plan='pro'. Server-side gates resolve the tier with resolveEntitlements()
+ * below (lib/wallet/entitlements.ts getEntitlements reads its inputs), and
+ * users.plan is only a display / analytics label.
+ *
  * This module imports types only — it is safe to import from both Server and
  * Client Components.
  */
@@ -246,4 +252,87 @@ export class PlanRestrictionError extends Error {
     super(message ?? requiredTierMessage(requiredPlan));
     this.name = "PlanRestrictionError";
   }
+}
+
+// ---------------------------------------------------------------------------
+// Entitlements: which capability row an account gets (wallet-derived)
+// ---------------------------------------------------------------------------
+
+/**
+ * Legacy subscription states that mean "this account is PAYING right now" (a
+ * subscriber the owner's conversion script has not converted yet). `trialing`
+ * is NOT one: a trial never paid anything. Same rule everywhere money decides
+ * (compute meter, enforcement, eligibility, dashboard signals).
+ */
+const PAYING_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set(["active", "past_due"]);
+
+/** Whether a users.subscription_status is a legacy subscription still being paid. */
+export function isPayingSubscription(subscriptionStatus?: string | null): boolean {
+  return !!subscriptionStatus && PAYING_SUBSCRIPTION_STATUSES.has(subscriptionStatus);
+}
+
+/**
+ * An account is "funded" once it paid: wallet_accounts.funded_at is set (a
+ * first paid top-up or a converted subscription), or a legacy subscription is
+ * still being paid. NEVER derived from users.plan.
+ */
+export function isFundedAccount(
+  fundedAt: Date | string | null | undefined,
+  subscriptionStatus?: string | null
+): boolean {
+  return !!fundedAt || isPayingSubscription(subscriptionStatus);
+}
+
+export interface EntitlementInput {
+  /** users.plan: display label only; it picks Team over Pay as you go for a funded account. */
+  plan: Plan | null | undefined;
+  /** wallet_accounts.funded_at (null / undefined = no wallet row or never funded). */
+  fundedAt: Date | string | null | undefined;
+  /** users.subscription_status. */
+  subscriptionStatus: string | null | undefined;
+}
+
+export interface Entitlements {
+  /**
+   * The capability row that applies: "free" unless the account is funded;
+   * a funded account gets "pro", or "team" when it is a grandfathered Team
+   * account. Pass THIS (never users.plan) to can() / limitFor() /
+   * isBoxSizeAllowed() / assertServerQuota() / keepWarm().
+   */
+  tier: Plan;
+  /** users.plan as stored, for display and analytics only. */
+  displayPlan: Plan;
+  /** Paid at least once (see isFundedAccount). */
+  funded: boolean;
+  /** Runs on promotional credit only (never funded): the promo restrictions apply. */
+  promoOnly: boolean;
+  capabilities: PlanCapabilities;
+}
+
+/**
+ * The capability tier for an account: "free" unless funded; a funded account
+ * gets "pro", or "team" when it is a grandfathered Team account. For callers
+ * that already hold `funded` (e.g. the dashboard's wallet signals).
+ */
+export function entitlementTier(plan: Plan | null | undefined, funded: boolean): Plan {
+  return !funded ? "free" : plan === "team" ? "team" : "pro";
+}
+
+/**
+ * The single decision behind every server-side gate. Pure: a never-paid row
+ * with plan='pro' (a lapsed trial) resolves to the Free-credit limits; a
+ * funded wallet or a live paying legacy subscription resolves to Pay as you
+ * go (or Team for grandfathered Team accounts).
+ */
+export function resolveEntitlements(input: EntitlementInput): Entitlements {
+  const displayPlan: Plan = input.plan ?? "free";
+  const funded = isFundedAccount(input.fundedAt, input.subscriptionStatus);
+  const tier = entitlementTier(displayPlan, funded);
+  return {
+    tier,
+    displayPlan,
+    funded,
+    promoOnly: !funded,
+    capabilities: PLAN_CAPABILITIES[tier],
+  };
 }

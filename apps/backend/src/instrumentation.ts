@@ -41,6 +41,22 @@ export async function register() {
       }, ms).unref?.();
     }
   }
+
+  // In-process scheduler (lib/scheduler): runs the /api/cron/* jobs from this
+  // container, so no external cron is needed. On by default in production,
+  // INTERNAL_SCHEDULER=0 turns it off; skipped during `next build` and tests.
+  // The process.env.NEXT_RUNTIME check stays inline: Next inlines it per
+  // bundle, which keeps the scheduler (postgres, node:os) out of the edge build.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    try {
+      const { startScheduler } = await import("./lib/scheduler");
+      startScheduler(process.env.NEXT_RUNTIME);
+    } catch (err) {
+      // Never block the boot on the scheduler.
+      console.error("[scheduler] could not load:", err);
+      Sentry.captureException(err, { tags: { area: "scheduler" } });
+    }
+  }
 }
 
 export const onRequestError = Sentry.captureRequestError;

@@ -1,3 +1,4 @@
+import { isPayingSubscription } from "@/lib/plan-features";
 import { PRICING } from "./pricing";
 
 // What an account running on the promotional sign-up credit alone may do
@@ -80,11 +81,12 @@ export function canUseMcpOnPromo(
  * still being paid ("active" / "past_due", not yet converted by the owner's
  * script) counts as funded. users.plan is deliberately NOT consulted: billing
  * no longer downgrades plans, so a trial that never paid can keep plan='pro'.
+ * Server-side gates read the same answer from getEntitlements().promoOnly
+ * (lib/wallet/entitlements.ts); both use plan-features isFundedAccount's rule.
  */
 export function isPromoOnly(
   wallet: { funded: boolean },
   subscriptionStatus?: string | null
 ): boolean {
-  if (wallet.funded) return false;
-  return subscriptionStatus !== "active" && subscriptionStatus !== "past_due";
+  return !wallet.funded && !isPayingSubscription(subscriptionStatus);
 }

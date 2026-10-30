@@ -8,7 +8,7 @@ const PATH = SECURITY_PATHS.fr;
 
 const TITLE = "Sécurité & RGPD";
 const DESCRIPTION =
-  "Comment TwinMCP protège vos serveurs MCP, vos clés API et vos données : secrets chiffrés en AES-256-GCM, une Upstash Box isolée par serveur, clés API hachées et limitables, journal d’audit, suppression du compte, sous-traitants. Aucune certification revendiquée.";
+  "Comment TwinMCP protège vos serveurs MCP, vos clés API et vos données : secrets chiffrés en AES-256-GCM, une Upstash Box isolée par serveur, clés API hachées et limitables, journal d’audit, suppression du compte, sous-traitants. Aucune certification revendiquée.";
 
 export const metadata: Metadata = {
   title: TITLE,

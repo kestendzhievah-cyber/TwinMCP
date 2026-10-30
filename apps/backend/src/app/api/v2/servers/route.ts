@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { servers, users, mcpServers, userServers } from "@/db/schema";
+import { servers, mcpServers, userServers } from "@/db/schema";
 import { badRequest, creditRequired, forbidden, serverError, unauthorized } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { createServerSchema, slugify } from "@/lib/validation/platform";
@@ -26,6 +26,7 @@ import {
 import { encryptConfig } from "@/lib/crypto/config-encryption";
 import { enqueue } from "@/lib/queue/qstash";
 import { trackServer } from "@/lib/analytics/server";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,11 +88,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const db = getDb();
-    const [me] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
+    // Gates come from the wallet (funded or not), never from users.plan: a
+    // trial that never paid can still carry plan='pro'.
+    const me = await getEntitlements(session.userId);
     if (!me) return unauthorized("User not found");
 
     // Every server runs on the prepaid wallet: no credit (or promotional credit
@@ -111,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     // "free" (Free credit, wallet never funded): 1 server, small box only.
     // "pro" (Pay as you go, funded): 50 servers, every size.
-    await assertServerQuota(session.userId, me.plan);
+    await assertServerQuota(session.userId, me.tier);
 
     // "local_agent" servers host no box — the user runs `ctx7 connect` and the
     // control plane relays to their machine. They skip box provisioning, sizing,
@@ -123,7 +122,7 @@ export async function POST(req: NextRequest) {
     // every size). Enforce here — the Zod schema accepts any valid enum value,
     // so without this an unfunded account could POST boxSize:"large".
     const boxSize = parsed.data.boxSize ?? "small";
-    if (!isLocal && !isBoxSizeAllowed(me.plan, boxSize)) {
+    if (!isLocal && !isBoxSizeAllowed(me.tier, boxSize)) {
       const required = minPlanForBoxSize(boxSize) ?? "team";
       throw new PlanRestrictionError(
         "box-size",
@@ -133,7 +132,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Region selection is a Team capability — don't let lower plans pin a region.
-    if (!isLocal && parsed.data.region !== undefined && !can(me.plan, "regionSelection")) {
+    if (!isLocal && parsed.data.region !== undefined && !can(me.tier, "regionSelection")) {
       const required = minPlanFor("regionSelection");
       throw new PlanRestrictionError(
         "region-selection",
@@ -210,7 +209,8 @@ export async function POST(req: NextRequest) {
         serverId: id,
         hostType,
         boxSize: isLocal ? null : boxSize,
-        plan: me.plan,
+        plan: me.displayPlan,
+        funded: me.funded,
         source: creationSource(req),
       },
     });

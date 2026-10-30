@@ -15,6 +15,7 @@ import {
 } from "@/lib/wallet/pricing";
 import { debit, hasCredit } from "@/lib/wallet/ledger";
 import { afterBalanceChange } from "@/lib/wallet/after-debit";
+import { isFundedAccount } from "@/lib/plan-features";
 
 // Compute metering and wallet enforcement (contract W1 compute side).
 //
@@ -88,7 +89,11 @@ export type MeterSource =
   | "cpu"
   /** No counters: wall-clock estimate from status / last_activity_at. */
   | "wallclock"
-  /** First sight of a box with no snapshot: record the counters, bill nothing. */
+  /**
+   * First sight of a box with no snapshot that predates metering (created
+   * before the wallet release / migration 0020): record the counters, bill
+   * nothing. Newer boxes are never baselined (see billsFromZero).
+   */
   | "baseline";
 
 export interface MeterDecision {
@@ -109,10 +114,62 @@ export interface MeterDecision {
 
 export interface MeterInput {
   snapshot: UsageSnapshot | null;
-  usage: Pick<BoxUsage, "totalCpuNs" | "totalComputeCostUsd" | "lastActivityAt" | "status">;
+  usage: Pick<BoxUsage, "totalCpuNs" | "totalComputeCostUsd" | "lastActivityAt" | "status"> & {
+    createdAt?: Date | null;
+  };
   size: BoxSize;
   now: Date;
+  /**
+   * No snapshot, but the box was created after metering started (see
+   * billsFromZero): its zero snapshot write failed, so bill it from zero
+   * (as if the snapshot were 0 / 0 at the box's creation) instead of
+   * baselining it for free.
+   */
+  billFromZero?: boolean;
   pricing?: Pricing;
+}
+
+/**
+ * Process start, the default "metering started" instant: every box this
+ * process creates is created by provisionServer, which writes a zero snapshot
+ * first (single container). Computed from uptime, not module load, so a box
+ * created before this module is first imported still counts.
+ */
+const PROCESS_STARTED_AT = new Date(
+  Date.now() -
+    Math.round((typeof process !== "undefined" && process.uptime ? process.uptime() : 0) * 1000)
+);
+
+/**
+ * The instant after which every box TwinMCP creates has a zero snapshot at
+ * creation: WALLET_METERING_SINCE (ISO date; set it to the time the wallet
+ * release went live to cover later restarts), else this process's start.
+ * Never set it earlier than the wallet release: a pre-wallet box would then be
+ * billed for its whole lifetime.
+ */
+export function meteringSince(
+  env: Record<string, string | undefined> = process.env,
+  processStartedAt: Date = PROCESS_STARTED_AT
+): Date {
+  const raw = env.WALLET_METERING_SINCE?.trim();
+  if (raw) {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return processStartedAt;
+}
+
+/**
+ * Whether a box with NO snapshot is billed from zero (true) or baselined at
+ * its current counters (false). Boxes created before metering started (before
+ * migration 0020 / the wallet release) have no snapshot by design: they are
+ * baselined, so compute they used under the old subscription is never billed.
+ * A box created after it should have had a zero snapshot; a missing one means
+ * that write failed, and baselining it would make its first sample free.
+ * Unknown creation time → baseline (never bill what may predate metering).
+ */
+export function billsFromZero(createdAt: Date | null | undefined, since: Date): boolean {
+  return !!createdAt && createdAt.getTime() >= since.getTime();
 }
 
 /**
@@ -137,16 +194,21 @@ export function awakeSecondsSince(
 }
 
 export function decideMeter({
-  snapshot,
+  snapshot: stored,
   usage,
   size,
   now,
+  billFromZero = false,
   pricing = PRICING,
 }: MeterInput): MeterDecision {
+  // A box created by provisionServer gets a zero snapshot at creation, so it
+  // is billed from its first CPU second. Without one, a box created after
+  // metering started is billed from zero too (its snapshot write failed); a
+  // box older than metering starts at its current counters (baseline).
+  const snapshot: UsageSnapshot | null =
+    stored ??
+    (billFromZero ? { totalCostUsd: 0, totalCpuNs: 0, sampledAt: usage.createdAt ?? now } : null);
   if (!snapshot) {
-    // A box created by provisionServer gets a zero snapshot at creation, so it
-    // is billed from its first CPU second. A box first seen here (older than
-    // metering, or created outside provisioning) starts at its current counters.
     return {
       source: "baseline",
       estimated: false,
@@ -268,13 +330,6 @@ export function effectiveTotalMicros(
 }
 
 /**
- * Legacy subscription states that mean "this account is PAYING right now" (a
- * subscriber the conversion script has not converted yet). `trialing` is NOT
- * one: a trial never paid anything.
- */
-const PAYING_SUBSCRIPTION = new Set(["active", "past_due"]);
-
-/**
  * A user is "funded" once they paid: wallet funded_at (first paid top-up or a
  * subscription conversion), or a legacy subscription still being paid. It is
  * NEVER derived from users.plan: billing no longer downgrades plans, so a
@@ -283,7 +338,8 @@ const PAYING_SUBSCRIPTION = new Set(["active", "past_due"]);
  * the promo kill switch never applies to them.
  */
 export function isFunded(fundedAt: Date | null, subscriptionStatus?: string | null): boolean {
-  return !!fundedAt || (!!subscriptionStatus && PAYING_SUBSCRIPTION.has(subscriptionStatus));
+  // One rule for every surface: lib/plan-features.ts isFundedAccount.
+  return isFundedAccount(fundedAt, subscriptionStatus);
 }
 
 export interface EnforceInput {
@@ -549,7 +605,8 @@ async function meterOne(
   now: Date
 ): Promise<MeterOutcome> {
   const db = getDb();
-  const d = decideMeter({ snapshot, usage, size: target.size, now });
+  const billFromZero = !snapshot && billsFromZero(usage.createdAt, meteringSince());
+  const d = decideMeter({ snapshot, usage, size: target.size, now, billFromZero });
   const values = {
     totalCostUsd: d.next.totalCostUsd.toFixed(6),
     totalCpuNs: d.next.totalCpuNs,
@@ -619,7 +676,10 @@ async function meterOne(
           deltaUsd: d.deltaUsd,
           ...(d.cpuNsDelta != null ? { cpuNs: d.cpuNsDelta } : {}),
           ...(d.awakeSeconds != null ? { awakeSeconds: Math.round(d.awakeSeconds) } : {}),
-          from: snapshot?.sampledAt.toISOString() ?? null,
+          from:
+            snapshot?.sampledAt.toISOString() ??
+            (billFromZero ? (usage.createdAt?.toISOString() ?? null) : null),
+          ...(billFromZero ? { missingSnapshot: true } : {}),
           to: now.toISOString(),
         },
         note: d.estimated ? "Compute (estimated from wall-clock time)" : "Compute",
@@ -953,6 +1013,18 @@ export interface EnforceRunResult {
   killSwitches: number;
   errors: number;
   reports: EnforceUserReport[];
+  /**
+   * Auto-recharges still "processing" whose webhook never came, settled
+   * against Stripe (lib/wallet/auto-recharge.ts reconcilePendingAutoRecharges).
+   * Null on a dry run.
+   */
+  autoRecharge: {
+    checked: number;
+    credited: number;
+    failed: number;
+    cleared: number;
+    errors: number;
+  } | null;
 }
 
 /**
@@ -986,7 +1058,20 @@ export async function runWalletEnforce(
     killSwitches: 0,
     errors: 0,
     reports: [],
+    autoRecharge: null,
   };
+
+  // A pending auto-recharge marker whose webhook was lost would block every
+  // new recharge: settle it against Stripe first (never throws). Runs even
+  // when no user has a box.
+  if (!dryRun) {
+    out.autoRecharge = await import("@/lib/wallet/auto-recharge")
+      .then((m) => m.reconcilePendingAutoRecharges(now))
+      .catch((err: unknown) => {
+        console.error("[wallet-enforce] auto-recharge reconciliation failed:", err);
+        return null;
+      });
+  }
 
   const boxed = await db
     .select({ id: servers.id, userId: servers.userId, status: servers.status })

@@ -44,7 +44,8 @@ export interface Pricing {
    * real cost (signupCreditEur / multiplier), or the kill switch could only
    * trip after the credit is already gone: by default 20% of it per UTC day
    * and 90% in total (with €10 and ×10: €0.20 and €0.90 of real cost, i.e.
-   * €2 and €9 of billed compute).
+   * €2 and €9 of billed compute). Overridable with WALLET_PROMO_DAILY_COST_CAP_EUR
+   * and WALLET_PROMO_TOTAL_COST_CAP_EUR (real-cost euros; see loadPricing).
    */
   promoDailyCostCapEur: number;
   promoTotalCostCapEur: number;
@@ -73,9 +74,29 @@ export function loadPricing(): Pricing {
     topupPresetsEur: [10, 25, 50, 100],
     maxTopupEur: 1000,
     overdraftEur: 0.5,
-    promoDailyCostCapEur: Math.round(promoRealEur * 0.2 * 1e6) / 1e6,
-    promoTotalCostCapEur: Math.round(promoRealEur * 0.9 * 1e6) / 1e6,
+    ...promoCostCaps(promoRealEur),
   };
+}
+
+/**
+ * The promo kill-switch caps, REAL-cost euros (before the multiplier):
+ * WALLET_PROMO_DAILY_COST_CAP_EUR / WALLET_PROMO_TOTAL_COST_CAP_EUR, else 20%
+ * and 90% of what the sign-up credit is worth in real cost. A knob that is
+ * not a positive number falls back to its default, and the daily cap never
+ * exceeds the total cap (it could otherwise never trip first).
+ */
+function promoCostCaps(promoRealEur: number): {
+  promoDailyCostCapEur: number;
+  promoTotalCostCapEur: number;
+} {
+  const round = (n: number) => Math.round(n * 1e6) / 1e6;
+  const positive = (name: string, fallback: number) => {
+    const n = envNumber(name, fallback);
+    return n > 0 ? n : fallback;
+  };
+  const total = round(positive("WALLET_PROMO_TOTAL_COST_CAP_EUR", promoRealEur * 0.9));
+  const daily = round(positive("WALLET_PROMO_DAILY_COST_CAP_EUR", promoRealEur * 0.2));
+  return { promoDailyCostCapEur: Math.min(daily, total), promoTotalCostCapEur: total };
 }
 
 export const PRICING: Readonly<Pricing> = Object.freeze(loadPricing());

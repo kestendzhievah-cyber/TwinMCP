@@ -5,6 +5,7 @@ import { ADS_CONSENT_EVENT } from "@/lib/analytics/consent";
 import {
   SIGNUP_CONVERSION,
   SUBSCRIPTION_CONVERSION,
+  topupConversionSendTo,
   trackAdsConversion,
   type AdsConversionInput,
 } from "@/lib/analytics/google-ads";
@@ -45,8 +46,10 @@ type ConversionProps = { transactionId: string; value: number; currency: string 
  * conversion it receives, so the success banner stripping ?topup and the
  * refreshes that follow (the page re-renders without a conversion) do not
  * unmount the consent listener before a visitor without consent can grant it.
- * TODO(owner): a dedicated "Recharge" conversion action; until its id exists
- * this reports to the existing "Abonnement" action.
+ * Reports to the "Recharge" action when NEXT_PUBLIC_GOOGLE_ADS_TOPUP_SEND_TO
+ * was set at build time, otherwise to the existing "Abonnement" action. The
+ * value is net of VAT, in EUR; transaction_id is the Checkout session id, so
+ * Google drops a repeat of the same top-up.
  */
 export function TopupConversion(props: {
   conversion: ConversionProps | null;
@@ -59,7 +62,15 @@ export function TopupConversion(props: {
     // Keyed on the session: a new top-up replaces the latched one.
   }, [incoming?.transactionId]);
   if (!latched) return null;
-  return <AdsConversion sendTo={SUBSCRIPTION_CONVERSION} {...latched} email={props.email} />;
+  return (
+    <AdsConversion
+      sendTo={topupConversionSendTo()}
+      transactionId={latched.transactionId}
+      value={latched.value}
+      currency={(latched.currency || "EUR").toUpperCase()}
+      email={props.email}
+    />
+  );
 }
 
 /** "Inscription", on the first onboarding visit after a confirmed sign-up. */

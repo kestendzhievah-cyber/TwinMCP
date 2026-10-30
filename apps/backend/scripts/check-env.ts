@@ -80,6 +80,8 @@ const GROUPS: Group[] = [
     required: [],
     optional: [
       "CRON_SECRET",
+      "INTERNAL_SCHEDULER",
+      "INTERNAL_SCHEDULER_SKIP",
       "ACTIVITY_LOG_DISABLED",
       "ACTIVITY_FLUSH_MS",
       "ACTIVITY_FLUSH_BATCH",
@@ -88,7 +90,8 @@ const GROUPS: Group[] = [
       "WEBHOOKS_DENY_SELF",
     ],
     breaks: [
-      "CRON_SECRET: /api/cron/{digest,churn,nudges,purge,meter-boxes,wallet-enforce,wallet-expiry,wallet-reminders} only callable from an admin session — no retention purge, no compute billing, no promo expiry from a scheduler",
+      "CRON_SECRET: /api/cron/* only callable from an admin session — fine while the in-process scheduler runs them (on by default in production)",
+      "INTERNAL_SCHEDULER=0 without an external scheduler: no retention purge, no compute billing, no promo expiry",
     ],
   },
   {

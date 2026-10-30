@@ -12,6 +12,7 @@ vi.mock("resend", () => ({
 }));
 
 import {
+  sendAdminDigest,
   sendAutoRechargeFailedEmail,
   sendLowBalanceEmail,
   sendPromoExpiringEmail,
@@ -120,5 +121,19 @@ describe("wallet emails", () => {
     await expect(
       sendLowBalanceEmail("a@b.co", { balance: "€1.00", autoRecharge: false })
     ).rejects.toThrow("Resend: rate limited");
+  });
+});
+
+describe("sendAdminDigest", () => {
+  it("throws when Resend reports an error, so churn/digest record a failure", async () => {
+    send.mockResolvedValue({ data: null, error: { message: "domain not verified" } });
+    await expect(sendAdminDigest("admin@example.com", "s", "<p>x</p>")).rejects.toThrow(
+      "Resend: domain not verified"
+    );
+  });
+
+  it("resolves when the email was accepted", async () => {
+    await expect(sendAdminDigest("admin@example.com", "s", "<p>x</p>")).resolves.toBeUndefined();
+    expect(last().to).toBe("admin@example.com");
   });
 });

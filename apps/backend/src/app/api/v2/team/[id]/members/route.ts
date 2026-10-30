@@ -6,6 +6,7 @@ import { teamspaces, teamspaceMembers, users } from "@/db/schema";
 import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { limitFor, minPlanForLimit } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { logAudit, clientIp } from "@/lib/audit/log";
 
 export const runtime = "nodejs";
@@ -44,12 +45,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return forbidden("Only the teamspace owner can add members.");
     }
 
-    const [me] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
-    const plan = me?.plan ?? "free";
+    // The tier comes from the wallet (getEntitlements), never users.plan.
+    const plan = (await getEntitlements(session.userId))?.tier ?? "free";
     const limit = limitFor(plan, "members");
 
     const [tally] = await db

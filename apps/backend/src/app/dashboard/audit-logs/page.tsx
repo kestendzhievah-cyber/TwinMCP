@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, ScrollText } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { auditLogs, users } from "@/db/schema";
+import { auditLogs } from "@/db/schema";
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { FundedCard } from "@/components/billing/funded-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +39,8 @@ export default async function AuditLogsPage({
   if (!user) return null;
 
   const db = getDb();
-  const [me] = await db
-    .select({ plan: users.plan })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-  const plan = me?.plan ?? "free";
+  // Retention follows the wallet tier, never users.plan.
+  const plan = (await getEntitlements(user.id))?.tier ?? "free";
   const retentionDays = PLAN_CAPABILITIES[plan].auditRetentionDays;
 
   // Page header (DESIGN.md §5): engraved title, italic scope line, double rule.

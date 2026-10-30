@@ -9,7 +9,7 @@ const PATH = comparePath("fr");
 
 const TITLE = "Comparer TwinMCP à Composio, Smithery et l’auto-hébergement";
 const DESCRIPTION =
-  "Des comparatifs honnêtes et sourcés de TwinMCP face à Composio, Smithery et l’auto-hébergement de vos serveurs MCP : ce que chacun fait mieux, sources datées, aucune note.";
+  "Des comparatifs honnêtes et sourcés de TwinMCP face à Composio, Smithery et l’auto-hébergement de vos serveurs MCP : ce que chacun fait mieux, sources datées, aucune note.";
 
 export const metadata: Metadata = {
   title: TITLE,

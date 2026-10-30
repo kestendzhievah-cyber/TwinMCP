@@ -54,7 +54,7 @@ const howToFr = howToSchema({
     },
     {
       name: "Provisionner un serveur",
-      text: "Créez un serveur : TwinMCP démarre un sandbox Upstash Box isolé.",
+      text: "Créez un serveur : TwinMCP démarre un sandbox Upstash Box isolé.",
     },
     {
       name: "Installer des MCP",
@@ -130,7 +130,7 @@ export default async function FrHomePage({
           locale="fr"
           variant="list"
           title="Questions fréquentes"
-          description="Sécurité, clients IA, offre gratuite : les réponses avant de commencer. Une question manque ? Écrivez à hello@twinmcp.fr."
+          description="Sécurité, clients IA, offre gratuite : les réponses avant de commencer. Une question manque ? Écrivez à hello@twinmcp.fr."
         />
       </div>
       <div className={CV}>

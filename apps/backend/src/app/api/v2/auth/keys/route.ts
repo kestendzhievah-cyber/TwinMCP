@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { apiKeys, servers, users } from "@/db/schema";
+import { apiKeys, servers } from "@/db/schema";
 import { generateApiKey } from "@/lib/auth";
 import {
   badRequest,
@@ -22,6 +22,7 @@ import {
   type KeyScope,
 } from "@/lib/auth/key-scope";
 import { limitFor, minPlanForLimit } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { checkAuthWriteLimit } from "@/lib/auth/rate-limit";
 import { checkExternalUserId } from "@/lib/vault/key-meta";
 import { audit, auditCtxFromRequest } from "@/lib/audit";
@@ -145,14 +146,11 @@ export async function POST(req: NextRequest) {
 
     // Enforce the per-plan API key allowance. Keys are account-level, so we
     // count the user's active (non-revoked) keys against their plan limit.
-    const [me] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
-    if (!me) return unauthorized("User not found");
+    // The tier comes from the wallet (getEntitlements), never users.plan.
+    const ent = await getEntitlements(session.userId);
+    if (!ent) return unauthorized("User not found");
 
-    const limit = limitFor(me.plan, "apiKeys");
+    const limit = limitFor(ent.tier, "apiKeys");
     // Replaced keys still in their 24 h rotation overlap don't hold a slot.
     const now = Date.now();
     const active = (
@@ -205,7 +203,7 @@ export async function POST(req: NextRequest) {
       event: "key_created",
       distinctId: session.userId,
       properties: {
-        plan: me.plan,
+        plan: ent.displayPlan,
         keyCount: active.length + 1,
         named: !!parsed.data.name,
         scope,

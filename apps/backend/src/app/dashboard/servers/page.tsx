@@ -3,10 +3,11 @@ import type { Route } from "next";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { servers, users } from "@/db/schema";
+import { servers } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { SERVER_QUOTAS } from "@/lib/quota";
 import { PLAN_CAPABILITIES, PLAN_LABELS } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { cn } from "@/lib/utils";
 import { CreateServerDialog } from "./create-dialog";
 import { TopUpInline } from "@/components/billing/top-up-inline";
@@ -33,12 +34,9 @@ export default async function ServersPage() {
   if (!user) return null;
 
   const db = getDb();
-  const [me] = await db
-    .select({ plan: users.plan })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-  const plan = me?.plan ?? "free";
+  // The tier comes from the wallet (getEntitlements), never users.plan, so
+  // the quota, label and dialog options match what POST /api/v2/servers allows.
+  const plan = (await getEntitlements(user.id))?.tier ?? "free";
   const quota = SERVER_QUOTAS[plan];
 
   const rows = await db

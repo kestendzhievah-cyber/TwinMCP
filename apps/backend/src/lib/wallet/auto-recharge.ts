@@ -275,11 +275,196 @@ export function pendingAutoRecharge(notified: unknown, now: Date): boolean {
   return Number.isFinite(at) && now.getTime() - at < PENDING_MAX_AGE_MS;
 }
 
-async function clearPendingAutoRecharge(userId: string): Promise<void> {
+// ---------------------------------------------------------------------------
+// Reconciliation of a still-pending recharge (lost webhook)
+// ---------------------------------------------------------------------------
+//
+// The marker is written when a PaymentIntent comes back "processing"; the
+// payment_intent.succeeded / payment_failed webhook settles and clears it. If
+// that webhook is lost, the marker would block every new recharge for
+// PENDING_MAX_AGE_MS. The enforce pass (compute-meter runWalletEnforce) asks
+// Stripe directly instead, once the webhook had a fair chance.
+
+/** Let the webhook settle first: a marker younger than this is left alone. */
+export const RECONCILE_MIN_AGE_MS = 15 * 60_000;
+/** A PaymentIntent still "processing" after this no longer blocks a new recharge. */
+export const PROCESSING_MAX_AGE_MS = 24 * 3_600_000;
+
+export interface PendingMarker {
+  /** PaymentIntent id, or null for a malformed marker. */
+  pi: string | null;
+  at: Date | null;
+}
+
+/** The pending marker stored in wallet_accounts.notified, or null when none. Pure. */
+export function readPendingMarker(notified: unknown): PendingMarker | null {
+  if (!notified || typeof notified !== "object" || Array.isArray(notified)) return null;
+  const v = (notified as Record<string, unknown>)[PENDING_KEY];
+  if (v === undefined || v === null) return null;
+  const rec = typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  const pi = typeof rec.pi === "string" && rec.pi.startsWith("pi_") ? rec.pi : null;
+  const ms = typeof rec.at === "string" ? Date.parse(rec.at) : NaN;
+  return { pi, at: Number.isFinite(ms) ? new Date(ms) : null };
+}
+
+export type ReconcileDecision =
+  /** Too early, or Stripe says it is still settling: leave the marker. */
+  | { action: "wait" }
+  /** Ask Stripe for the PaymentIntent's status. */
+  | { action: "retrieve"; pi: string }
+  /** Succeeded: credit it (idempotent, same key as the webhook) and clear. */
+  | { action: "credit"; pi: string }
+  /** Failed or canceled: clear the marker, switch auto-recharge off, tell the user. */
+  | { action: "fail"; pi: string; reason: string }
+  /** Malformed, unknown to Stripe, not ours, or processing for too long: clear the marker only. */
+  | { action: "clear"; reason: "malformed" | "not_found" | "stale_processing" | "foreign" };
+
+const FAILED_PI_STATUSES: ReadonlySet<string> = new Set([
+  "canceled",
+  "requires_payment_method",
+  // Off-session: nobody is there to authenticate, so it never completes.
+  "requires_action",
+]);
+
+/**
+ * What to do with a pending marker. Pure. Called twice: first without
+ * `stripe` (should we ask Stripe at all?), then with what Stripe returned:
+ * `status` (null when Stripe does not know the PaymentIntent) and whether the
+ * PaymentIntent really is this user's auto-recharge (`ours`).
+ */
+export function decidePendingReconcile(
+  marker: PendingMarker,
+  now: Date,
+  stripe?: { status: string | null; ours: boolean }
+): ReconcileDecision {
+  if (!marker.pi || !marker.at) return { action: "clear", reason: "malformed" };
+  const age = now.getTime() - marker.at.getTime();
+  if (!stripe) {
+    return age < RECONCILE_MIN_AGE_MS ? { action: "wait" } : { action: "retrieve", pi: marker.pi };
+  }
+  if (stripe.status === null) return { action: "clear", reason: "not_found" };
+  if (!stripe.ours) return { action: "clear", reason: "foreign" };
+  if (stripe.status === "succeeded") return { action: "credit", pi: marker.pi };
+  if (FAILED_PI_STATUSES.has(stripe.status)) {
+    return { action: "fail", pi: marker.pi, reason: stripe.status };
+  }
+  // processing / requires_confirmation / requires_capture: still settling.
+  return age > PROCESSING_MAX_AGE_MS
+    ? { action: "clear", reason: "stale_processing" }
+    : { action: "wait" };
+}
+
+/**
+ * Clear the marker only if it still names this PaymentIntent, so a late
+ * webhook or reconcile for an older PI never clears a newer, still-processing
+ * one (which would let a second recharge start). pi = null clears whatever
+ * marker is there (a failure with no PaymentIntent).
+ */
+async function clearPendingMarkerFor(userId: string, pi: string | null): Promise<void> {
   await getDb()
     .update(walletAccounts)
-    .set({ notified: sql`${walletAccounts.notified} - ${PENDING_KEY}` })
-    .where(eq(walletAccounts.userId, userId));
+    .set({ notified: sql`${walletAccounts.notified} - ${PENDING_KEY}`, updatedAt: new Date() })
+    .where(
+      and(
+        eq(walletAccounts.userId, userId),
+        pi === null
+          ? sql`(${walletAccounts.notified} -> ${PENDING_KEY}::text) is not null`
+          : sql`(${walletAccounts.notified} -> ${PENDING_KEY}::text ->> 'pi') = ${pi}::text`
+      )
+    );
+}
+
+export interface ReconcileResult {
+  checked: number;
+  credited: number;
+  failed: number;
+  cleared: number;
+  errors: number;
+}
+
+/**
+ * Settle auto-recharges whose webhook never arrived (wallet-enforce pass).
+ * Succeeded → credited through settleAutoRecharge (idempotency key
+ * `autorecharge:<pi>`, the webhook's own, so a late webhook is a no-op);
+ * failed / canceled → failAutoRecharge (clears the marker, switches
+ * auto-recharge off, emails once); still processing after
+ * PROCESSING_MAX_AGE_MS → marker cleared (a later webhook still credits it).
+ * Never throws; a per-user error is counted and the next pass retries.
+ */
+export async function reconcilePendingAutoRecharges(
+  now: Date = new Date(),
+  limit = 100
+): Promise<ReconcileResult> {
+  const out: ReconcileResult = { checked: 0, credited: 0, failed: 0, cleared: 0, errors: 0 };
+  if (!process.env.STRIPE_SECRET_KEY) return out;
+  let rows: Array<{ userId: string; notified: Record<string, unknown> | null }>;
+  try {
+    rows = await getDb()
+      .select({ userId: walletAccounts.userId, notified: walletAccounts.notified })
+      .from(walletAccounts)
+      .where(sql`(${walletAccounts.notified} -> ${PENDING_KEY}::text) is not null`)
+      .limit(limit);
+  } catch (err) {
+    console.error("[wallet/auto-recharge] reconcile read failed:", err);
+    out.errors++;
+    return out;
+  }
+
+  for (const row of rows) {
+    const marker = readPendingMarker(row.notified);
+    if (!marker) continue;
+    try {
+      let decision = decidePendingReconcile(marker, now);
+      let pi: Stripe.PaymentIntent | null = null;
+      if (decision.action === "retrieve") {
+        out.checked++;
+        try {
+          pi = await getStripe().paymentIntents.retrieve(decision.pi);
+        } catch (err) {
+          if ((err as { code?: unknown } | null)?.code !== "resource_missing") throw err;
+        }
+        decision = decidePendingReconcile(marker, now, {
+          status: pi?.status ?? null,
+          ours:
+            !!pi && pi.metadata?.kind === AUTO_RECHARGE_KIND && pi.metadata?.userId === row.userId,
+        });
+      }
+      switch (decision.action) {
+        case "wait":
+        case "retrieve":
+          break;
+        case "credit":
+          if (pi) {
+            await settleAutoRecharge(pi); // credits idempotently, then clears the marker
+            out.credited++;
+          }
+          break;
+        case "fail":
+          await failAutoRecharge(row.userId, `payment_${decision.reason}`, decision.pi);
+          // failAutoRecharge clears it too; this also covers a wallet whose
+          // auto-recharge was already off (no email then: nothing changed).
+          await clearPendingMarkerFor(row.userId, decision.pi);
+          out.failed++;
+          break;
+        case "clear":
+          await clearPendingMarkerFor(row.userId, marker.pi);
+          console.warn(
+            `[wallet/auto-recharge] pending marker cleared for ${row.userId} (${decision.reason}, ${marker.pi ?? "no PaymentIntent"})`
+          );
+          Sentry.captureMessage(
+            `auto-recharge pending marker cleared: ${decision.reason}`,
+            "warning"
+          );
+          out.cleared++;
+          break;
+      }
+    } catch (err) {
+      out.errors++;
+      console.error(`[wallet/auto-recharge] reconcile ${row.userId} failed:`, err);
+      Sentry.captureException(err, { tags: { area: "wallet", stage: "auto-recharge-reconcile" } });
+    }
+  }
+  return out;
 }
 
 /**
@@ -315,7 +500,7 @@ export async function failAutoRecharge(
   ref?: string | null
 ): Promise<void> {
   try {
-    await clearPendingAutoRecharge(userId);
+    await clearPendingMarkerFor(userId, ref ?? null);
     const flipped = await getDb()
       .update(walletAccounts)
       .set({ autoRechargeEnabled: false, updatedAt: new Date() })
@@ -367,7 +552,7 @@ export async function settleAutoRecharge(pi: Stripe.PaymentIntent): Promise<void
     },
   });
   await markFunded(userId);
-  await clearPendingAutoRecharge(userId);
+  await clearPendingMarkerFor(userId, pi.id);
 
   const calculation = pi.metadata.taxCalculation;
   if (calculation) {

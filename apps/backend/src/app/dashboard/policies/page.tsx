@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { teamspaceFilters, teamspaceMembers, teamspaces, users } from "@/db/schema";
+import { teamspaceFilters, teamspaceMembers, teamspaces } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { type Route } from "next";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 
 export default async function PoliciesPage() {
   const supabase = await createClient();
@@ -20,18 +21,19 @@ export default async function PoliciesPage() {
 
   const db = getDb();
 
-  const [memberships, [me]] = await Promise.all([
+  const [memberships, ent] = await Promise.all([
     db
       .select({ teamspaceId: teamspaceMembers.teamspaceId, role: teamspaceMembers.role })
       .from(teamspaceMembers)
       .where(eq(teamspaceMembers.userId, user.id)),
-    db.select({ plan: users.plan }).from(users).where(eq(users.id, user.id)).limit(1),
+    getEntitlements(user.id),
   ]);
 
   if (memberships.length === 0) {
     // Team workspaces are no longer sold: only grandfathered Team subscribers are
     // pointed at the Team page to create one. Everyone else gets a neutral notice.
-    if ((me?.plan ?? "free") !== "team") {
+    // Same gate as POST /api/v2/team: a funded grandfathered Team account.
+    if ((ent?.tier ?? "free") !== "team") {
       return (
         <div className="space-y-8">
           <div>

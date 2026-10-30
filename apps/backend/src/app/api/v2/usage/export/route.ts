@@ -1,9 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { users, usageMetrics, userServers, mcpServers } from "@/db/schema";
+import { usageMetrics, userServers, mcpServers } from "@/db/schema";
 import { forbidden, serverError } from "@/lib/errors";
 import { can, minPlanFor, requiredTierMessage } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { requireManagementUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -30,12 +31,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const db = getDb();
-    const [userRow] = await db
-      .select({ plan: users.plan })
-      .from(users)
-      .where(eq(users.id, session.userId))
-      .limit(1);
-    const plan = userRow?.plan ?? "free";
+    // The tier comes from the wallet (getEntitlements), never users.plan.
+    const plan = (await getEntitlements(session.userId))?.tier ?? "free";
     if (!can(plan, "usageExport")) {
       return forbidden(requiredTierMessage(minPlanFor("usageExport"), "Exporting usage"));
     }

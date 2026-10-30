@@ -1,9 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { usageEvents, users, usageMetrics, userServers, mcpServers } from "@/db/schema";
+import { usageEvents, usageMetrics, userServers, mcpServers } from "@/db/schema";
 import { serverError } from "@/lib/errors";
 import { can } from "@/lib/plan-features";
+import { getEntitlements } from "@/lib/wallet/entitlements";
 import { requireManagementUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -38,8 +39,8 @@ export async function GET(req: NextRequest) {
     );
 
     // All five reads are independent — run them as one concurrent batch.
-    const [userRows, dayCounts, perEndpoint, dailyRows, perMcp] = await Promise.all([
-      db.select({ plan: users.plan }).from(users).where(eq(users.id, session.userId)).limit(1),
+    const [ent, dayCounts, perEndpoint, dailyRows, perMcp] = await Promise.all([
+      getEntitlements(session.userId),
       db
         .select({ n: count() })
         .from(usageEvents)
@@ -79,7 +80,9 @@ export async function GET(req: NextRequest) {
         .groupBy(mcpServers.slug, mcpServers.name)
         .orderBy(desc(sql`sum(${usageMetrics.requestCount})`)),
     ]);
-    const plan = userRows[0]?.plan ?? "free";
+    // `plan` stays the stored label; the capability comes from the wallet tier.
+    const plan = ent?.displayPlan ?? "free";
+    const tier = ent?.tier ?? "free";
     const dayCount = dayCounts[0];
 
     // Zero-fill a bar per day so the chart is continuous.
@@ -100,7 +103,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       plan,
       days,
-      usageExport: can(plan, "usageExport"),
+      usageExport: can(tier, "usageExport"),
       last24h: dayCount?.n ?? 0,
       perEndpoint,
       runtime: {
