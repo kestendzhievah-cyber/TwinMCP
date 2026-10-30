@@ -3,6 +3,12 @@
 // (/api/mcp/<server>, contract D3), so both wake paused boxes, retry, bill,
 // rate-limit, answer errors and log tool calls in exactly the same way.
 //
+// Billing (contract W2): a billable tools/call (billable.ts) goes through
+// billingGate() BEFORE anything is woken or forwarded (per-minute abuse
+// limiter, then the wallet: 402 when empty), and is charged by
+// toolCallMeter() once the MCP has answered it (lib/wallet/call-meter.ts).
+// Proxy-side failures (waking, unreachable, outcome unknown) are not charged.
+//
 // Server-only (DB, Upstash Box, Sentry). The pure rules live next door:
 // billable.ts (what is billed), retry.ts (when a request may be resent),
 // aggregate.ts (naming, parsing, activity status), tool-policy.ts (D2).
@@ -14,14 +20,28 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema/core";
 import { userServers, type HostType, type ServerStatus } from "@/db/schema/platform";
 import type { AuthedContext } from "@/lib/auth";
-import { PROXY_ERROR, proxyError, proxyRateLimited } from "@/lib/errors";
-import { RuntimeGoneError, claimReprovision, resumeServer } from "@/lib/provisioning";
+import {
+  CREDIT_ERROR_DATA,
+  CREDIT_TOPUP_URL,
+  PROXY_ERROR,
+  proxyCreditExhausted,
+  proxyError,
+  proxyRateLimited,
+} from "@/lib/errors";
+import {
+  RuntimeGoneError,
+  claimReprovision,
+  isInsufficientCreditError,
+  resumeServer,
+  type InsufficientCreditError,
+} from "@/lib/provisioning";
 import { isPausedRuntime } from "@/lib/server-lifecycle";
 import { enqueue } from "@/lib/queue/qstash";
 import { decryptConfig } from "@/lib/crypto/config-encryption";
 import { MCP_STREAM_PATH } from "@/lib/upstash/mcp-bridge";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { notifyQuotaLimit } from "@/lib/billing/quota-nudge";
+import { recordMcpUsage } from "@/lib/usage-metrics";
+import { notifyCreditExhausted } from "@/lib/billing/quota-nudge";
+import { chargeToolCall, checkCallBurst, walletAllowsCall } from "@/lib/wallet/call-meter";
 import { trackServer } from "@/lib/analytics/server";
 import { isAgentOnline, relayToAgent } from "@/lib/agent/registry";
 import { cliCommand } from "@/lib/cli";
@@ -54,10 +74,101 @@ export interface RelayCtx {
   /** Is this message a tool call (lib/mcp/billable.ts)? */
   verdict: BillableVerdict;
   /**
-   * Usage metering for a billable request; a no-op otherwise. Fire-and-forget
-   * (an in-memory counter), never blocks the request.
+   * Usage metering for a billable request; a no-op otherwise. `ok` = the MCP
+   * answered it (usage_metrics, and the wallet charge — see toolCallMeter).
+   * Fire-and-forget (in-memory counters), never blocks the request.
    */
   meter: (ok: boolean) => void;
+}
+
+/**
+ * The `meter` of a request (RelayCtx.meter): for a billable tools/call, count
+ * it in usage_metrics (analytics, every outcome) and, when the MCP answered it
+ * (`ok`: a JSON-RPC result or a tool error), charge it to the wallet — at most
+ * once per request, whatever the call sites do. A no-op for overhead.
+ */
+export function toolCallMeter(
+  userId: string,
+  userServerId: string,
+  billable: boolean
+): (ok: boolean) => void {
+  let charged = false;
+  return (ok: boolean) => {
+    if (!billable) return;
+    recordMcpUsage(userServerId, ok);
+    if (ok && !charged) {
+      charged = true;
+      chargeToolCall(userId);
+    }
+  };
+}
+
+/**
+ * The billing gate of a billable tools/call, run before anything is woken or
+ * forwarded. Returns the answer to send, or null to go on:
+ *   1. the per-minute abuse limiter (429; in-process, so it works without Redis);
+ *   2. the wallet (402, code -32008), which fails CLOSED on any error.
+ * Overhead (initialize, tools/list…) is never gated. Other non-tool requests
+ * that make the MCP work (resources/read, prompts/get…) are not charged but
+ * need credit: an empty wallet gets the same 402.
+ */
+export async function billingGate(ctx: RelayCtx): Promise<NextResponse | null> {
+  if (!ctx.verdict.billable) {
+    if (ctx.verdict.needsCredit && !(await walletAllowsCall(ctx.auth.userId))) {
+      return creditExhausted(ctx);
+    }
+    return null;
+  }
+  const burst = checkCallBurst(ctx.auth.userId);
+  if (!burst.ok) {
+    ctx.meter(false);
+    trackRateLimited(ctx.auth);
+    return proxyRateLimited(ctx.requestId, ctx.verdict.rpcId, true, {
+      limit: burst.limit,
+      remaining: burst.remaining,
+      reset: burst.reset,
+      window: "minute",
+    });
+  }
+  if (!(await walletAllowsCall(ctx.auth.userId))) {
+    ctx.meter(false);
+    return creditExhausted(ctx);
+  }
+  return null;
+}
+
+/**
+ * 402: the wallet is empty. The zero-balance email / webhook / event are
+ * fire-and-forget (notifyCreditExhausted dedups per user per day and catches
+ * everything), never able to change or slow the response.
+ */
+export function creditExhausted(
+  ctx: Pick<RelayCtx, "auth" | "requestId" | "verdict">
+): NextResponse {
+  void notifyCreditExhausted(ctx.auth.userId, ctx.auth.plan);
+  return proxyCreditExhausted(ctx.requestId, ctx.verdict.rpcId);
+}
+
+/**
+ * 402 for a wake/resume refused by the wallet (resumeServer throws
+ * InsufficientCreditError): same body as the tools/call gate when the wallet
+ * is empty, the compute-cap wording when promotional credit hit its cap.
+ */
+export function computeRefused(
+  ctx: Pick<RelayCtx, "auth" | "requestId" | "verdict" | "meter">,
+  err: InsufficientCreditError
+): NextResponse {
+  ctx.meter(false);
+  if (err.reason === "no_credit") return creditExhausted(ctx);
+  return proxyError({
+    status: 402,
+    code: PROXY_ERROR.CREDIT_EXHAUSTED,
+    message: err.message,
+    requestId: ctx.requestId,
+    rpcId: ctx.verdict.rpcId,
+    data: CREDIT_ERROR_DATA,
+    extra: { topupUrl: CREDIT_TOPUP_URL },
+  });
 }
 
 /** A box-hosted MCP installation, as the proxy reads it from the DB. */
@@ -123,17 +234,17 @@ export function unauthorizedMcp(req: Request, requestId: string, rpcId: unknown)
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ---------------------------------------------------------------------------
-// Box forwarding: wake → endpoint → quota → forward → retry while it warms.
+// Box forwarding: wake → endpoint → forward → retry while it warms.
 // ---------------------------------------------------------------------------
 
 /**
- * Serve one request through a box-hosted MCP. The gates come in this order,
- * so a request that cannot be served never eats a Free day:
+ * Serve one request through a box-hosted MCP. A billable request must have
+ * passed billingGate() already (the routes call it first, so a call the
+ * wallet cannot pay never wakes a box). Then, in this order:
  *   1. a paused server (user Pause, contract K4) is woken in place;
  *   2. any other non-running server → 503;
  *   3. the endpoint + its bearer token are resolved (decrypted here only);
- *   4. a billable request is checked against the daily quota;
- *   5. forward, and on a connection error / gateway 5xx wake the box and resend
+ *   4. forward, and on a connection error / gateway 5xx wake the box and resend
  *      while it warms — a tool call only when the box provably never got it
  *      (lib/mcp/retry.ts), so a side-effecting tool cannot run twice.
  * Returns the upstream Response (the caller meters it and relays/reads it), or
@@ -222,17 +333,6 @@ export async function forwardToBox(
     };
   }
 
-  // Rate-limit real (box) MCP traffic at the proxy — the shared daily quota
-  // applies to tool calls. A rejected call is metered as an error so the
-  // dashboard shows quota hits.
-  if (ctx.verdict.billable) {
-    const rl = await checkRateLimit(ctx.auth.userId, ctx.auth.plan);
-    if (!rl.ok) {
-      ctx.meter(false);
-      return { ok: false, response: quotaExceeded(ctx, rl) };
-    }
-  }
-
   let attempt = await forwardOnce(endpoint, boxToken, fwd);
   let current = { endpoint, token: boxToken };
 
@@ -248,6 +348,9 @@ export async function forwardToBox(
       } catch (err) {
         if (err instanceof RuntimeGoneError) {
           return { ok: false, response: await runtimeGone(ctx, target.serverId) };
+        }
+        if (isInsufficientCreditError(err)) {
+          return { ok: false, response: computeRefused(ctx, err) };
         }
         console.error("[mcp proxy] resume failed:", err);
         Sentry.captureException(err, {
@@ -267,7 +370,7 @@ export async function forwardToBox(
   target.resolved = current;
 
   // Still waking: the request never ran, the client retries in a few seconds,
-  // so this is neither a quota hit nor an error worth a usage row.
+  // so this is neither a charge nor an error worth a usage row.
   if (shouldRetry(ctx.verdict, attempt.outcome)) return { ok: false, response: wakingUp(ctx) };
 
   // A tool call whose fate is unknown (our timeout, a 504, a dropped socket):
@@ -293,6 +396,7 @@ export async function wakeServer(ctx: RelayCtx, serverId: string): Promise<NextR
     return null;
   } catch (err) {
     if (err instanceof RuntimeGoneError) return runtimeGone(ctx, serverId);
+    if (isInsufficientCreditError(err)) return computeRefused(ctx, err);
     console.error("[mcp proxy] waking a paused server failed:", err);
     Sentry.captureException(err, {
       tags: { area: "mcp-proxy", stage: "wake-paused", requestId: ctx.requestId },
@@ -322,6 +426,8 @@ export function kickWake(serverId: string, requestId: string): Promise<boolean> 
     async (err: unknown) => {
       if (err instanceof RuntimeGoneError) {
         await reprovisionLostRuntime(serverId, requestId);
+      } else if (isInsufficientCreditError(err)) {
+        // Expected: the wallet refuses compute. Nothing to report.
       } else {
         console.error("[mcp proxy] background wake failed:", err);
         Sentry.captureException(err, {
@@ -364,31 +470,6 @@ export async function runtimeGone(ctx: RelayCtx, serverId: string): Promise<Next
     requestId: ctx.requestId,
     rpcId: ctx.verdict.rpcId,
     headers: { "retry-after": "30" },
-  });
-}
-
-/**
- * Daily quota exhausted. The 429 names the plan, the quota and the reset
- * (Retry-After + X-RateLimit-* headers) and, for Free accounts, the Pro
- * offer — the very text of lib/errors.ts rateLimited(), in a JSON-RPC
- * envelope with the request id. The quota-limit email and the `rate_limited`
- * event are fire-and-forget: never awaited, never able to change the response
- * (notifyQuotaLimit catches everything itself).
- */
-export function quotaExceeded(
-  ctx: RelayCtx,
-  rl: { limit: number; remaining: number; reset: number }
-): NextResponse {
-  const { auth } = ctx;
-  void notifyQuotaLimit(auth.userId, auth.plan, rl);
-  trackRateLimited(auth);
-  return proxyRateLimited(ctx.requestId, ctx.verdict.rpcId, true, {
-    plan: auth.plan,
-    limit: rl.limit,
-    remaining: rl.remaining,
-    reset: rl.reset,
-    // The free month comes with a FIRST subscription only.
-    trialEligible: auth.plan === "free" && !auth.hasStripeCustomer,
   });
 }
 
@@ -537,8 +618,9 @@ function copyHeader(src: Headers, dst: Headers, name: string, fallback?: string)
 // ---------------------------------------------------------------------------
 
 /**
- * Relay one POST body to the local agent. Offline is checked before the quota
- * (a call that cannot be relayed should not cost a Free request).
+ * Relay one POST body to the local agent. A billable request must have passed
+ * billingGate() already; it is charged (ctx.meter(true)) only when the agent
+ * answered it.
  */
 export async function callLocalAgent(
   ctx: RelayCtx,
@@ -549,14 +631,6 @@ export async function callLocalAgent(
   if (!isAgentOnline(key)) {
     ctx.meter(false);
     return agentOffline(ctx);
-  }
-
-  if (ctx.verdict.billable) {
-    const rl = await checkRateLimit(ctx.auth.userId, ctx.auth.plan);
-    if (!rl.ok) {
-      ctx.meter(false);
-      return quotaExceeded(ctx, rl);
-    }
   }
 
   try {
@@ -609,7 +683,7 @@ export const STALE_TOOLS_MAX_AGE_MS = 24 * 60 * 60_000;
 
 /** A verdict for protocol overhead the proxy sends itself (never billed). */
 export function overheadVerdict(rpcId: unknown): BillableVerdict {
-  return { billable: false, units: 0, rpcMethod: "tools/list", rpcId };
+  return { billable: false, needsCredit: false, units: 0, rpcMethod: "tools/list", rpcId };
 }
 
 export type BoxToolsProbe =
@@ -966,7 +1040,7 @@ export function recordTrackedCall(track: ToolCallTrack, res: Response, requestId
 
 const DAY_MS = 86_400_000;
 
-// `rate_limited`: once per account per UTC day.
+// `rate_limited` (the per-minute limiter): once per account per UTC day.
 let rateLimitedDay = -1;
 const rateLimitedToday = new Set<string>();
 
@@ -1014,7 +1088,8 @@ export function noteFirstToolCall(userId: string, mcpSlug: string): void {
 // ---------------------------------------------------------------------------
 // TwinMCP Docs — served by the control plane (no box), minimal MCP over
 // JSON-RPC. One tool, `get-context`, wrapping GET /api/v2/context (which
-// enforces its own rate limit, so the proxy does not count it again).
+// enforces its own rate limit). A get-context call is billed like any tool
+// call: gated by billingGate() and charged on success (onToolCallOk).
 // ---------------------------------------------------------------------------
 
 export const TWINMCP_DOCS_TOOLS: McpTool[] = [

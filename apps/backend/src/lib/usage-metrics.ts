@@ -7,9 +7,13 @@ function utcDayStart(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
-// In-process aggregation of per-(user_server, UTC day) request/error counters.
+// In-process aggregation of per-(user_server, UTC day) request/error counters,
+// for analytics (dashboard charts, admin console) only: since the prepaid
+// wallet (2026-10-29) money is charged by lib/wallet/call-meter.ts, never from
+// these counters, and nothing here gates a request.
 // The MCP proxy calls recordMcpUsage for every billable message (a `tools/call`,
-// see lib/mcp/billable.ts — protocol overhead is not counted); accumulating and
+// see lib/mcp/billable.ts — protocol overhead is not counted), whatever its
+// outcome (a 402 / 429 refusal counts as an error); accumulating and
 // flushing in batches turns one DB upsert per request into one upsert per
 // user_server/day every FLUSH_INTERVAL_MS. Trades a small window of counter loss
 // on a hard crash for a large drop in write volume.

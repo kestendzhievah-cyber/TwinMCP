@@ -15,13 +15,14 @@ import { trackPageServed } from "@/lib/analytics/server";
 import { JsonLd } from "@/components/seo/json-ld";
 import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
 import { marketingOffers } from "@/components/pricing/pricing-data";
+import { SIGNUP_OFFER } from "@/components/pricing/wallet-copy";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
 export const metadata: Metadata = {
   title: { absolute: "Hébergement de serveurs MCP, sans gérer l'infra — TwinMCP" },
   description:
-    "TwinMCP héberge vos serveurs Model Context Protocol dans des runtimes isolés. Installez des MCPs depuis le catalogue, connectez Cursor, Claude Code et Windsurf en 2 minutes. Offre gratuite — sans carte bancaire.",
+    "TwinMCP héberge vos serveurs Model Context Protocol dans des runtimes isolés. Installez des MCPs depuis le catalogue, connectez Cursor, Claude Code et Windsurf en 2 minutes. Paiement à l’usage, sans abonnement, crédit offert pour commencer.",
   alternates: {
     canonical: "/fr",
     languages: { en: "/", fr: "/fr", "x-default": "/" },
@@ -48,7 +49,7 @@ const howToFr = howToSchema({
   steps: [
     {
       name: "Créer un compte TwinMCP",
-      text: "Inscription gratuite, sans carte bancaire. Vous obtenez un serveur et l'accès au catalogue MCP.",
+      text: `Inscription avec ${SIGNUP_OFFER.fr}. Vous obtenez un serveur et l’accès au catalogue MCP.`,
       url: "/fr/inscription",
     },
     {
@@ -57,7 +58,7 @@ const howToFr = howToSchema({
     },
     {
       name: "Installer des MCP",
-      text: "Choisissez parmi plus de 70 MCP (Fetch, Wikipedia, Notion, Linear, Postgres, Slack…) ou, avec Pro, publiez votre propre paquet npm (Node.js) ou PyPI (Python). Les serveurs stdio sont reliés à Streamable HTTP dans le sandbox.",
+      text: "Choisissez parmi plus de 70 MCP (Fetch, Wikipedia, Notion, Linear, Postgres, Slack…) ou, une fois votre compte rechargé, publiez votre propre paquet npm (Node.js) ou PyPI (Python). Les serveurs stdio sont reliés à Streamable HTTP dans le sandbox.",
     },
     {
       name: "Connecter votre client IA",

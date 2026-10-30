@@ -1,5 +1,7 @@
 import Stripe from "stripe";
-import { PRO_TRIAL_DAYS } from "./plan-features";
+import { and, eq, isNull } from "drizzle-orm";
+import { getDb } from "@/db";
+import { users } from "@/db/schema";
 
 let _stripe: Stripe | null = null;
 
@@ -86,10 +88,6 @@ export function planActionForSubscription(opts: {
   return { kind: "none" };
 }
 
-// One month free on a first Pro subscription. An empty or unset TRIAL_DAYS
-// falls back to the shared default; set TRIAL_DAYS=0 to switch trials off.
-export const TRIAL_DAYS = process.env.TRIAL_DAYS ? Number(process.env.TRIAL_DAYS) : PRO_TRIAL_DAYS;
-
 /**
  * Stripe Tax is opt-in. Automatic tax + tax-ID collection are only enabled when
  * the account is actually configured for it (registrations/nexus); forcing it
@@ -97,6 +95,79 @@ export const TRIAL_DAYS = process.env.TRIAL_DAYS ? Number(process.env.TRIAL_DAYS
  * here so all Stripe config lives in one module.
  */
 export const TAX_ENABLED = process.env.STRIPE_TAX_ENABLED === "true";
+
+const PLACEHOLDER_EMAIL_SUFFIX = "@placeholder.twinmcp.fr";
+
+function deliverable(email: string | null | undefined): string | null {
+  return email && !email.endsWith(PLACEHOLDER_EMAIL_SUFFIX) ? email : null;
+}
+
+/**
+ * The account's Stripe customer id, created on first use (a top-up, or saving
+ * a card for auto-recharge). The id is persisted on users.stripe_customer_id
+ * with a conditional UPDATE, so two concurrent first top-ups converge on one
+ * customer: the loser re-reads the winner's id. The Stripe idempotency key
+ * also collapses a double click into a single customer object.
+ */
+export async function getOrCreateCustomer(userId: string, email: string | null): Promise<string> {
+  const db = getDb();
+  const [row] = await db
+    .select({ stripeCustomerId: users.stripeCustomerId, email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!row) throw new Error("user not found");
+  if (row.stripeCustomerId) return row.stripeCustomerId;
+
+  const address = deliverable(row.email) ?? deliverable(email);
+  const customer = await getStripe().customers.create(
+    { ...(address ? { email: address } : {}), metadata: { userId } },
+    { idempotencyKey: `twinmcp-customer:${userId}:${address ?? ""}` }
+  );
+
+  const claimed = await db
+    .update(users)
+    .set({ stripeCustomerId: customer.id })
+    .where(and(eq(users.id, userId), isNull(users.stripeCustomerId)))
+    .returning({ id: users.id });
+  if (claimed.length > 0) return customer.id;
+
+  // Lost the race to a concurrent request: use the id it stored.
+  const [again] = await db
+    .select({ stripeCustomerId: users.stripeCustomerId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return again?.stripeCustomerId ?? customer.id;
+}
+
+/** /api/health state of the Stripe account itself (no price id involved). */
+export type StripeAccountHealth = "configured" | "unconfigured" | "invalid" | "unreachable";
+
+/**
+ * Price-independent billing probe for /api/health: top-ups use inline
+ * price_data, so the only hard requirement is a working secret key. Bounded by
+ * `timeoutMs`, never throws, never returns a secret.
+ */
+export async function probeStripeAccount(timeoutMs = 1500): Promise<StripeAccountHealth> {
+  if (!process.env.STRIPE_SECRET_KEY) return "unconfigured";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      getStripe().balance.retrieve(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+      }),
+    ]);
+    return "configured";
+  } catch (err) {
+    const type = (err as { type?: unknown })?.type;
+    if (type === "StripeAuthenticationError" || type === "StripePermissionError") return "invalid";
+    return "unreachable";
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 // ---- Pure helpers for the webhook and the health probe ----------------------
 // Kept free of I/O so the money path stays unit-testable (__tests__/stripe.test.ts).
@@ -240,6 +311,9 @@ export function classifyPrice(
 }
 
 /**
+ * @deprecated Subscriptions are retired; use probeStripeAccount. Kept for the
+ * legacy /api/health fields until that route stops reporting price ids.
+ *
  * Probe one configured price (bounded by `timeoutMs`, never throws, never
  * returns the id or any secret). "invalid" only for an answer from Stripe
  * (unknown id, wrong mode, archived, wrong interval); a timeout or network

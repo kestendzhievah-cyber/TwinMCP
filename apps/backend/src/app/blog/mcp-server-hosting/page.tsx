@@ -3,6 +3,10 @@ import Link from "next/link";
 import { PostLayout } from "@/components/blog/post-layout";
 import { faqPageSchema } from "@/lib/seo/schema";
 import { getPostBySlug } from "@/lib/blog/posts";
+import { walletFacts } from "@/components/pricing/wallet-copy";
+
+// TwinMCP prices quoted below come from the wallet price list (lib/wallet/pricing.ts).
+const W = walletFacts("en");
 
 const SLUG = "mcp-server-hosting";
 const post = getPostBySlug(SLUG)!;
@@ -31,7 +35,7 @@ export const metadata: Metadata = {
 const faq = [
   {
     q: "What is the cheapest way to host an MCP server?",
-    a: "Local stdio is free — the server runs as a child of your IDE on your own machine. The cheapest hosted option in 2026 is a serverless function on Cloudflare Workers (free tier covers most personal use). A small Docker VPS on Hetzner costs around $5 per month. Managed MCP runtimes start at $0 (TwinMCP free tier) and scale with usage.",
+    a: "Local stdio is free — the server runs as a child of your IDE on your own machine. The cheapest hosted option in 2026 is a serverless function on Cloudflare Workers (free tier covers most personal use). A small Docker VPS on Hetzner costs around $5 per month. Managed MCP runtimes start at $0 (TwinMCP gives free credit at sign-up) and scale with usage.",
   },
   {
     q: "Can I run MCP servers in production without exposing them to the public internet?",
@@ -170,11 +174,11 @@ export default function Post() {
         Code, Windsurf, and Cline.
       </p>
       <p>
-        Cost on TwinMCP starts at €0 for one server on the free tier and scales to a flat €14.99 per
-        month for Pro (50 servers). Setup time is two minutes &mdash; pick a runtime, paste an
-        install command, hit go. The trade-off is platform lock-in: the deployment configuration is
-        platform-specific, and migrating off requires rebuilding the container yourself. (The MCP
-        server code itself is portable; only the provisioning glue is not.)
+        {`Cost on TwinMCP is pay as you go, with no subscription: new accounts get ${W.signupCredit} of free credit, then tool calls cost ${W.per1000Calls} per 1,000 and compute ${W.cpuHour.small} per active CPU-hour on a small server, from a prepaid balance (up to ${W.fundedServers} servers once funded).`}{" "}
+        Setup time is two minutes &mdash; pick a runtime, paste an install command, hit go. The
+        trade-off is platform lock-in: the deployment configuration is platform-specific, and
+        migrating off requires rebuilding the container yourself. (The MCP server code itself is
+        portable; only the provisioning glue is not.)
       </p>
       <p>
         Use a managed runtime when the server holds secrets, when it must be reachable from more
@@ -264,26 +268,27 @@ export default function Post() {
       <p>
         Ten tool calls per workday, each averaging 100 ms of compute. Local stdio: free. VPS Docker
         on Hetzner CX22: around $5 per month. Cloudflare Workers free tier: free (well under the
-        100k requests/day limit). Smithery: free. TwinMCP free tier: free. The decision here is
-        purely about features, not cost.
+        100k requests/day limit). Smithery: free. TwinMCP: covered by the sign-up credit. The
+        decision here is purely about features, not cost.
       </p>
       <h3>Scenario B &mdash; a team of ten, shared</h3>
       <p>
         Two hundred calls per workday across the team, each averaging 200 ms. Local stdio is not an
         option (no sharing). Hetzner CX22: around $5 per month (CPU and memory headroom is enormous
         at this volume). Cloudflare Workers: still under the free tier or about $5 on the paid plan.
-        TwinMCP Pro: €14.99 per month covers this volume (5,000 tool calls a day), but accounts are
-        single-user, with no member management or per-member access control. Smithery: free but does
-        not host private code, so this scenario only works if your Postgres MCP is a public, generic
-        one (which it is not, by definition).
+        {`TwinMCP: the calls cost ${W.per1000Calls} per 1,000 plus the active compute of the box, paid from a prepaid balance,`}{" "}
+        but accounts are single-user, with no member management or per-member access control.
+        Smithery: free but does not host private code, so this scenario only works if your Postgres
+        MCP is a public, generic one (which it is not, by definition).
       </p>
       <h3>Scenario C &mdash; production, customer-facing</h3>
       <p>
         Ten thousand calls per day, half of them with streaming responses. Hetzner: needs to scale
         to CPX31 (~$12/mo) and you are now managing real infrastructure. Cloudflare Workers: $5/mo
-        plus paid SSE add-ons; awkward for streaming. TwinMCP Pro: €14.99/mo flat, but capped at
-        5,000 tool calls a day per account, so this volume is beyond what it covers. Self-hosted
-        Kubernetes on AWS: $200&ndash;500/mo by the time you have HA, observability, and a runbook.
+        plus paid SSE add-ons; awkward for streaming.{" "}
+        {`TwinMCP: no daily cap; ${W.per1000Calls} per 1,000 calls plus active compute (${W.cpuHour.small} per CPU-hour on a small box, more on larger ones), with optional auto-recharge.`}{" "}
+        Self-hosted Kubernetes on AWS: $200&ndash;500/mo by the time you have HA, observability, and
+        a runbook.
       </p>
 
       <h2 id="security">Security and isolation</h2>

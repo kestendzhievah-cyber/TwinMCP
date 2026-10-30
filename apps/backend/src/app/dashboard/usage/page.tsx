@@ -1,22 +1,30 @@
+import { createClient } from "@/utils/supabase/server";
 import { Separator } from "@/components/ui/separator";
-import { getDailyLimit } from "@/lib/rate-limit";
 import { UsagePanel } from "./panel";
+import { CostSection } from "./cost-section";
 import { CustomersSection } from "./customers-section";
 
 export const dynamic = "force-dynamic";
 
-export default function UsagePage() {
+export default async function UsagePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="smallcaps tracking-sc text-2xl font-medium">Usage</h1>
         <p className="mt-1 text-sm italic text-muted-foreground">
-          Tool calls handled by your MCPs, error rate over time, and API activity.
+          What your usage costs per day, tool calls handled by your MCPs, error rate, and API
+          activity.
         </p>
         <Separator variant="double" className="mt-4" />
       </div>
-      {/* Pro's enforced quota (server only) so the near-limit prompt can name it. */}
-      <UsagePanel proDailyLimit={getDailyLimit("pro")} />
+      {/* Euros per day from the credit ledger (server-rendered). */}
+      {user && <CostSection userId={user.id} />}
+      <UsagePanel />
       {/* Agencies: tool calls per end customer (the id set on an MCP-proxy key). */}
       <CustomersSection />
     </div>

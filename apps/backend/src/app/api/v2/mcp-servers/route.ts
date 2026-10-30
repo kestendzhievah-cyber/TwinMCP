@@ -6,7 +6,7 @@ import { mcpServers, users } from "@/db/schema";
 import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { createMcpServerSchema } from "@/lib/validation/platform";
-import { can, minPlanFor, PLAN_LABELS } from "@/lib/plan-features";
+import { can, minPlanFor, requiredTierMessage } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
 
 export const runtime = "nodejs";
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     if (!me) return unauthorized("User not found");
     if (!can(me.plan, "publishMcp")) {
       const required = minPlanFor("publishMcp");
-      return forbidden(`Publishing MCPs requires the ${PLAN_LABELS[required]} plan.`);
+      return forbidden(requiredTierMessage(required, "Publishing MCPs"));
     }
 
     const id = randomUUID();

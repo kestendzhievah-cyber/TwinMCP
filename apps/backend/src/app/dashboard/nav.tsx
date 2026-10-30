@@ -12,8 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/marketing/logo";
 import type { Plan } from "@/db/schema/core";
-import { PLAN_LABELS } from "@/lib/plan-features";
-import { BILLING_HREF } from "@/lib/billing/upgrade-state";
+import { BILLING_HREF, formatCredit, type NudgeLevel } from "@/lib/billing/upgrade-state";
 import { track } from "@/lib/analytics/funnel";
 import {
   Activity,
@@ -46,7 +45,7 @@ const links = [
   { href: "/dashboard/team", label: "Team", icon: Users },
   { href: "/dashboard/usage", label: "Usage", icon: Activity },
   { href: "/dashboard/audit-logs", label: "Audit logs", icon: ScrollText },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { href: "/dashboard/billing", label: "Credits", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -65,7 +64,7 @@ export function DashboardNav({
   prospectsDue = 0,
   attentionCount = 0,
   showTeam = plan === "team",
-  trialEligible = false,
+  balance = null,
 }: {
   email: string;
   plan: Plan;
@@ -74,8 +73,8 @@ export function DashboardNav({
   attentionCount?: number;
   /** Team plan OR an existing teamspace membership (computed by the layout). */
   showTeam?: boolean;
-  /** Free account with no Stripe customer yet: the first month of Pro is free. */
-  trialEligible?: boolean;
+  /** The wallet as the layout read it (null: unavailable, the pill is hidden). */
+  balance?: { totalMicros: number; funded: boolean; level: NudgeLevel } | null;
 }) {
   const pathname = usePathname();
   const planLinks = visibleLinks(showTeam);
@@ -105,17 +104,18 @@ export function DashboardNav({
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
 
-  // The nav link is a nudge surface too: fire the viewed event once per mount
-  // so the per-source viewed → clicked ratio is defined for "nav".
+  // The "Add credit" link is a nudge surface too: fire the viewed event once
+  // per mount so the per-source viewed → clicked ratio is defined for "nav".
+  const showAddCredit = balance !== null && !balance.funded;
   const navViewed = useRef(false);
   useEffect(() => {
-    if (plan !== "free" || navViewed.current) return;
+    if (!showAddCredit || navViewed.current) return;
     navViewed.current = true;
     track({
       name: "upgrade_nudge_viewed",
-      properties: { source: "nav", level: "offer", reason: "offer" },
+      properties: { source: "nav", level: "offer", reason: "promo_only" },
     });
-  }, [plan]);
+  }, [showAddCredit]);
 
   // Make the mobile drawer behave like a modal dialog: Escape closes it, the
   // page behind is scroll-locked, focus moves into the drawer on open and back
@@ -142,33 +142,46 @@ export function DashboardNav({
     router.push("/");
   }
 
-  const planBadge = (
-    <Link href={"/dashboard/billing" as Route} aria-label={`Current plan: ${PLAN_LABELS[plan]}`}>
-      <Badge variant={plan === "free" ? "secondary" : plan === "pro" ? "success" : "gilt"}>
-        {PLAN_LABELS[plan]} plan
+  // The balance pill (header and sidebar): the total credit, tinted by the
+  // wallet decision the layout made — oxblood at zero, ochre when low, sage
+  // for a funded account, plain stock on free credit. Links to Credits.
+  const pillVariant =
+    balance?.level === "limit"
+      ? "destructive"
+      : balance?.level === "warning"
+        ? "warning"
+        : balance?.funded
+          ? "success"
+          : "secondary";
+  const balancePill = balance ? (
+    <Link
+      href={BILLING_HREF as Route}
+      onClick={() => setOpen(false)}
+      aria-label={`Credit balance: ${formatCredit(balance.totalMicros, { precise: false })}. Open Credits`}
+    >
+      <Badge variant={pillVariant} className="lining">
+        Credit · {formatCredit(balance.totalMicros, { precise: false })}
       </Badge>
     </Link>
-  );
+  ) : null;
 
-  // Free accounts: one small-caps link under the plan badge (sidebar and
-  // drawer; the mobile top bar stays one row), trial-aware. The label is the
-  // only thing that changes; the decision lives in the layout.
-  const upgradeLink =
-    plan === "free" ? (
-      <Link
-        href={BILLING_HREF as Route}
-        onClick={() => {
-          setOpen(false);
-          track({
-            name: "upgrade_cta_clicked",
-            properties: { source: "nav", level: "offer", reason: "offer" },
-          });
-        }}
-        className="smallcaps tracking-sc whitespace-nowrap text-xs text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
-      >
-        {trialEligible ? "Start free month" : "Upgrade to Pro"}
-      </Link>
-    ) : null;
+  // Accounts on free credit only: one small-caps link under the pill (sidebar
+  // and drawer; the mobile top bar stays one row).
+  const addCreditLink = showAddCredit ? (
+    <Link
+      href={BILLING_HREF as Route}
+      onClick={() => {
+        setOpen(false);
+        track({
+          name: "upgrade_cta_clicked",
+          properties: { source: "nav", level: "offer", reason: "promo_only" },
+        });
+      }}
+      className="smallcaps tracking-sc whitespace-nowrap text-xs text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+    >
+      Add credit
+    </Link>
+  ) : null;
 
   function NavLinks() {
     return (
@@ -232,7 +245,7 @@ export function DashboardNav({
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 md:hidden">
         <div className="flex min-w-0 items-center gap-3">
           <Logo tagline="Control Plane" />
-          {planBadge}
+          {balancePill}
         </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />
@@ -276,8 +289,8 @@ export function DashboardNav({
               </Button>
             </div>
             <div className="mb-6 flex flex-col items-start gap-2 border-b border-border px-2 pb-6">
-              {planBadge}
-              {upgradeLink}
+              {balancePill}
+              {addCreditLink}
             </div>
             <NavLinks />
             <NavFooter />
@@ -292,8 +305,8 @@ export function DashboardNav({
           <ThemeToggle />
         </div>
         <div className="rule-double mb-6 flex flex-col items-start gap-2 px-2 pt-5">
-          {planBadge}
-          {upgradeLink}
+          {balancePill}
+          {addCreditLink}
         </div>
         <NavLinks />
         <NavFooter />

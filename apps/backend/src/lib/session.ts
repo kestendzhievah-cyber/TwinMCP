@@ -106,6 +106,20 @@ export async function requireKeyManager(req: Request): Promise<SessionUser | Nex
   return s;
 }
 
+/**
+ * Money-moving actions (top-ups, auto-recharge settings, admin credit grants)
+ * must come from a signed-in human, never from a bearer API key: a leaked key
+ * would otherwise mint credit or charge a saved card off-session. Returns a
+ * ready-to-return 403 for an API-key session, null for a browser session.
+ */
+export function refuseApiKeySession(
+  s: SessionUser,
+  message = "Use the dashboard to change billing: API keys cannot move money."
+): NextResponse | null {
+  if (!s.apiKey) return null;
+  return NextResponse.json({ message, code: "api_key_not_allowed" }, { status: 403 });
+}
+
 async function resolveSession(req: Request): Promise<Resolved> {
   // Dev header — requires an explicit opt-in env var. Relying on NODE_ENV
   // was risky: a staging deploy mislabeled as "development" would silently

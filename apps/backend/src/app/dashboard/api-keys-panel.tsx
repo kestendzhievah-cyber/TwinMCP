@@ -29,8 +29,7 @@ import {
 import { AlertTriangle, CheckCircle2, Copy, Key, Plus, RefreshCw, Trash2 } from "lucide-react";
 import type { Plan } from "@/db/schema/core";
 import { limitFor, minPlanForLimit, PLAN_LABELS } from "@/lib/plan-features";
-import { trialCta } from "@/lib/billing/upgrade-state";
-import { UpgradeInline } from "@/components/billing/upgrade-inline";
+import { TopUpInline } from "@/components/billing/top-up-inline";
 
 interface Key {
   id: string;
@@ -60,16 +59,7 @@ function isRetiring(k: Key): boolean {
   );
 }
 
-export function ApiKeysPanel({
-  keys,
-  plan,
-  trialEligible = false,
-}: {
-  keys: Key[];
-  plan: Plan;
-  /** Free account with no Stripe customer yet: the upgrade link offers the free month. */
-  trialEligible?: boolean;
-}) {
+export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -229,7 +219,7 @@ export function ApiKeysPanel({
           <span className="lining font-medium not-italic text-foreground">
             {usedSlots}/{limit}
           </span>{" "}
-          used on the {PLAN_LABELS[plan]} plan.
+          used ({PLAN_LABELS[plan]}).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 pt-6">
@@ -276,13 +266,12 @@ export function ApiKeysPanel({
         </div>
         {atLimit &&
           (upgradeTo ? (
-            // A plan limit with a plan that lifts it: the tinted memo line, trial-aware.
-            <UpgradeInline
+            // A tier limit that a first top-up lifts: the tinted memo line.
+            <TopUpInline
               source="keys"
               level="offer"
               reason="keys_limit"
-              label={trialCta(trialEligible).label}
-              description={`${PLAN_LABELS[plan]} includes ${limit} API key${limit > 1 ? "s" : ""}. ${PLAN_LABELS[upgradeTo]} gives you ${limitFor(upgradeTo, "apiKeys")}.`}
+              description={`${PLAN_LABELS[plan]} accounts get ${limit} API key${limit > 1 ? "s" : ""}. A first top-up raises it to ${limitFor(upgradeTo, "apiKeys")}.`}
               className="lining"
             />
           ) : (

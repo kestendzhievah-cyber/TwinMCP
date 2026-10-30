@@ -15,8 +15,7 @@ import {
 } from "@/lib/compare/data";
 import { TRANSLATED_TWINS, localizedPath } from "@/lib/i18n/locales";
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
-import { getDailyLimit } from "@/lib/rate-limit";
-import { formatEur } from "@/components/pricing/pricing-data";
+import { RETIRED_PRICING_PHRASES, walletFacts } from "@/components/pricing/wallet-copy";
 import { OFFICIAL_MCPS, RETIRED_SLUGS } from "@/lib/servers/seed-catalog";
 import { INTERNAL_SLUGS, SERVERS } from "@/lib/servers/catalog";
 
@@ -144,17 +143,41 @@ describe("compare data: TwinMCP facts", () => {
     }
   });
 
-  it("prices and quotas come from the plan code", () => {
+  it("prices come from the wallet price list, allowances from the plan code", () => {
+    const en = walletFacts("en");
+    const fr = walletFacts("fr");
     const composio = getComparison("composio")!;
     const paid = composio.rows.find((r) => r.id === "paid")!.twinmcp;
     const freeRow = composio.rows.find((r) => r.id === "free")!.twinmcp;
-    expect(paid.en).toContain("€14.99");
-    expect(paid.en).toContain("€135");
-    expect(paid.en).toContain(getDailyLimit("pro").toLocaleString("en-US"));
-    expect(paid.en).toContain(`${PLAN_CAPABILITIES.pro.servers} servers`);
-    expect(paid.fr).toContain(formatEur(14.99, "fr"));
-    expect(paid.fr).toContain(formatEur(135, "fr"));
-    expect(freeRow.en).toContain(`${getDailyLimit("free")} tool calls a day`);
+    expect(paid.en).toContain(`${en.per1000Calls} per 1,000`);
+    expect(paid.en).toContain(en.cpuHour.small);
+    expect(paid.en).toContain(`from ${en.minTopup}`);
+    expect(paid.en).toContain("No subscription");
+    expect(paid.fr).toContain(`${fr.per1000Calls} les 1 000`);
+    expect(paid.fr).toContain("Sans abonnement");
+    expect(freeRow.en).toContain(`${en.signupCredit} of credit at sign-up`);
+    expect(freeRow.en).toContain(`${PLAN_CAPABILITIES.free.servers} small server`);
+    // Honest about the gap: Composio's free volume renews monthly, ours does not.
+    expect(freeRow.en).toMatch(/Composio's free volume is larger/);
+  });
+
+  it("no longer calls TwinMCP flat-priced or capped per day", () => {
+    for (const c of COMPARISONS) {
+      const text = [
+        ...twinmcpCopy(c),
+        c.description.en,
+        c.description.fr,
+        c.summary.en,
+        c.summary.fr,
+      ]
+        .concat(
+          c.faq.en.map((f) => f.a),
+          c.faq.fr.map((f) => f.a)
+        )
+        .join("\n");
+      for (const re of RETIRED_PRICING_PHRASES) expect(text, `${c.slug} ${re}`).not.toMatch(re);
+      expect(text, c.slug).not.toMatch(/forfait|daily cap|plafond quotidien/i);
+    }
   });
 
   it("concedes the other option's strengths", () => {

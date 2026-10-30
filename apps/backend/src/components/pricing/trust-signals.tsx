@@ -1,16 +1,20 @@
-import { CreditCard, RotateCcw, ShieldCheck } from "lucide-react";
+import { CreditCard, Gauge, Wallet } from "lucide-react";
 import type { Locale } from "@/lib/i18n/locales";
+import { walletFacts } from "./wallet-copy";
+
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
 
 const SIGNALS = {
   en: [
-    { icon: CreditCard, label: "No credit card for free tier" },
-    { icon: RotateCcw, label: "Pro: first month free, cancel before it ends" },
-    { icon: ShieldCheck, label: "Cancel anytime · self-serve" },
+    { icon: CreditCard, label: `${EN.signupCredit} free credit · no card` },
+    { icon: Wallet, label: "No subscription · pay only for what you use" },
+    { icon: Gauge, label: "Stops at zero · no surprise bills" },
   ],
   fr: [
-    { icon: CreditCard, label: "Sans carte bancaire pour l’offre gratuite" },
-    { icon: RotateCcw, label: "Pro : 1er mois offert, résiliable avant la fin" },
-    { icon: ShieldCheck, label: "Annulable à tout moment · en autonomie" },
+    { icon: CreditCard, label: `${FR.signupCredit} de crédit offert · sans carte` },
+    { icon: Wallet, label: "Sans abonnement · vous payez ce que vous utilisez" },
+    { icon: Gauge, label: "Arrêt à zéro · aucune facture surprise" },
   ],
 } as const;
 

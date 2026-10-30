@@ -3,7 +3,7 @@ import { and, desc, gte, notInArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { libraries, teamspaceFilters, teamspaceMembers } from "@/db/schema";
 import { authenticateRequest } from "@/lib/auth";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkAbuseLimit } from "@/lib/rate-limit";
 import { logUsage } from "@/lib/usage";
 import { badRequest, rateLimited, serverError, unauthorized } from "@/lib/errors";
 
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     return unauthorized();
   }
 
-  const rl = await checkRateLimit(auth.userId, auth.plan);
+  const rl = await checkAbuseLimit(auth.userId);
   if (!rl.ok) {
     logUsage({
       endpoint,
@@ -35,7 +35,8 @@ export async function GET(req: NextRequest) {
       limit: rl.limit,
       remaining: rl.remaining,
       reset: rl.reset,
-      trialEligible: auth.plan === "free" && !auth.hasStripeCustomer,
+      window: "minute",
+      unit: "requests",
     });
   }
 

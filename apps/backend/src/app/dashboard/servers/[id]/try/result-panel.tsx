@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { resultTexts, type TryResponse, type TryStatus } from "./protocol";
@@ -13,7 +14,8 @@ const STATUS: Record<TryStatus, { label: string; variant: BadgeProps["variant"] 
   error: { label: "Error", variant: "destructive" },
   waking: { label: "Waking up", variant: "info" },
   denied: { label: "Blocked by policy", variant: "destructive" },
-  rate_limited: { label: "Quota reached", variant: "warning" },
+  rate_limited: { label: "Rate limited", variant: "warning" },
+  no_credit: { label: "Credit used up", variant: "destructive" },
 };
 
 function pretty(value: unknown): string {
@@ -137,6 +139,11 @@ export function ResultPanel({ response, title }: { response: TryResponse; title:
               <p>{response.error.message}</p>
               <p className="lining mt-1 font-mono text-xs">code {response.error.code}</p>
             </div>
+            {response.status === "no_credit" && (
+              <Button asChild size="sm">
+                <Link href="/dashboard/billing">Top up</Link>
+              </Button>
+            )}
             {response.error.data !== undefined && (
               <InkBlock label="Error data">{pretty(response.error.data)}</InkBlock>
             )}

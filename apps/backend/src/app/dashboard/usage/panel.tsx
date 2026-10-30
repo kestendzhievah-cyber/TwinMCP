@@ -15,8 +15,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { WARN_PCT } from "@/lib/billing/upgrade-state";
-import { UpgradeInline } from "@/components/billing/upgrade-inline";
 
 interface DailyPoint {
   date: string;
@@ -37,7 +35,6 @@ interface PerEndpoint {
 interface UsageData {
   plan: string;
   days: number;
-  dailyLimit: number;
   usageExport: boolean;
   last24h: number;
   perEndpoint: PerEndpoint[];
@@ -54,10 +51,11 @@ const ROW_CAP = 15;
 const pctOf = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
 /**
- * @param proDailyLimit The enforced Pro quota (getDailyLimit("pro"), server
- *   only) for the near-limit prompt; without it the prompt omits the number.
+ * Tool calls and errors per day and per MCP, plus API activity. There is no
+ * daily quota any more (the prepaid balance is the limit): what usage costs
+ * is on the cost section above and on the Credits page.
  */
-export function UsagePanel({ proDailyLimit }: { proDailyLimit?: number } = {}) {
+export function UsagePanel() {
   const [days, setDays] = useState<number>(30);
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -132,23 +130,8 @@ export function UsagePanel({ proDailyLimit }: { proDailyLimit?: number } = {}) {
   const { runtime } = data;
   const today = runtime.daily[runtime.daily.length - 1];
   const todayReq = today?.requests ?? 0;
-  const limitPct = Math.min(100, pctOf(todayReq, data.dailyLimit));
   const errRate = pctOf(runtime.totals.errors, runtime.totals.requests);
   const empty = runtime.totals.requests === 0 && data.last24h === 0;
-  // Near or at the Free quota: the same thresholds as the layout strip
-  // (lib/billing/upgrade-state.ts). The panel does not know whether the free
-  // month is still available, so the label stays neutral.
-  const quotaLevel =
-    data.plan !== "free"
-      ? null
-      : limitPct >= 100
-        ? "limit"
-        : limitPct >= WARN_PCT
-          ? "warning"
-          : null;
-  const proLine = proDailyLimit
-    ? `Pro: ${fmt(proDailyLimit)} a day.`
-    : "Pro raises the daily limit.";
 
   return (
     <div className="space-y-6">
@@ -187,7 +170,7 @@ export function UsagePanel({ proDailyLimit }: { proDailyLimit?: number } = {}) {
           <Button asChild variant="outline">
             <a href="/dashboard/billing">
               <Lock className="h-4 w-4" />
-              Export CSV · Pro
+              Export CSV · paid credit
             </a>
           </Button>
         )}
@@ -201,44 +184,12 @@ export function UsagePanel({ proDailyLimit }: { proDailyLimit?: number } = {}) {
               <Gauge className="h-4 w-4" />
               Tool calls today
             </CardDescription>
-            <CardTitle className="lining text-3xl">
-              {fmt(todayReq)}{" "}
-              <span className="text-sm font-normal text-muted-foreground">
-                / {fmt(data.dailyLimit)}
-              </span>
-            </CardTitle>
+            <CardTitle className="lining text-3xl">{fmt(todayReq)}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-1.5 w-full bg-secondary">
-              <div
-                className={cn(
-                  "h-full transition-all",
-                  limitPct >= 100
-                    ? "bg-destructive"
-                    : limitPct >= WARN_PCT
-                      ? "bg-warning"
-                      : "bg-foreground"
-                )}
-                style={{ width: `${limitPct}%` }}
-              />
-            </div>
-            <p className="lining mt-2 text-xs italic text-muted-foreground">
-              {limitPct}% of your daily limit used · Resets at midnight UTC
+            <p className="lining text-xs italic text-muted-foreground">
+              Since midnight UTC. Each call that reaches your MCP is charged.
             </p>
-            {quotaLevel && (
-              <UpgradeInline
-                source="usage"
-                level={quotaLevel}
-                reason={quotaLevel === "limit" ? "quota_limit" : "quota_warning"}
-                label="Upgrade to Pro"
-                description={
-                  quotaLevel === "limit"
-                    ? `Limit reached: tool calls are rejected until midnight UTC. ${proLine}`
-                    : proLine
-                }
-                className="lining mt-3 text-xs"
-              />
-            )}
           </CardContent>
         </Card>
 

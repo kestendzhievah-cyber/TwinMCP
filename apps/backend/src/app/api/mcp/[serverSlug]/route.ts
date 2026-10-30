@@ -14,7 +14,6 @@ import {
 } from "@/lib/errors";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { isPausedRuntime } from "@/lib/server-lifecycle";
-import { recordMcpUsage } from "@/lib/usage-metrics";
 import { connKey, isAgentOnline } from "@/lib/agent/registry";
 import type { BillableVerdict } from "@/lib/mcp/billable";
 import {
@@ -55,6 +54,7 @@ import {
   STALE_TOOLS_MAX_AGE_MS,
   TWINMCP_DOCS_TOOLS,
   agentOffline,
+  billingGate,
   callLocalAgent,
   decryptEndpointToken,
   fetchAllBoxTools,
@@ -74,6 +74,7 @@ import {
   rememberToolIndex,
   sleep,
   toolCache,
+  toolCallMeter,
   toolIndexFor,
   toolCallUncertain,
   unauthorizedMcp,
@@ -95,8 +96,9 @@ export const dynamic = "force-dynamic";
 //           enabled MCP in parallel (8 s each, partial results + a `_meta`
 //           warning for an MCP that is waking); tools/call `<mcp>__<tool>` is
 //           routed to that MCP through the very code of the per-MCP endpoint
-//           (lib/mcp/relay.ts): same wake/retry, quota, billing (one tools/call
-//           = one billed call), tool policy (D2) and activity log (D1).
+//           (lib/mcp/relay.ts): same wake/retry, billing gate (per-minute
+//           limiter, wallet: 402 when empty), charge (one tools/call = one
+//           billed call), tool policy (D2) and activity log (D1).
 //           Notifications get a bodiless 202.
 //   GET     405 — the aggregate offers no server-initiated stream.
 //   DELETE  200 — nothing to tear down: the session id is ours and stateless.
@@ -681,9 +683,10 @@ async function callTool(ctx: AggCtx): Promise<Response> {
 
 /**
  * One tools/call to one MCP of the server, with the per-MCP endpoint's rules:
- * tool policy first (a refusal never reaches the quota), then the quota and
- * the forward (box: wake/retry; local agent; control-plane docs), one billed
- * call, the activity log, first-call activation.
+ * the billing gate first (per-minute limiter, then the wallet: nothing is
+ * woken for a call that cannot be paid), then the tool policy, then the
+ * forward (box: wake/retry; local agent; control-plane docs), one charged
+ * call once the MCP answered, the activity log, first-call activation.
  */
 async function routeToolCall(
   ctx: AggCtx,
@@ -702,6 +705,7 @@ async function routeToolCall(
 
   const verdict: BillableVerdict = {
     billable: true,
+    needsCredit: true,
     units: 1,
     rpcMethod: "tools/call",
     rpcId: ctx.rpcId,
@@ -710,8 +714,14 @@ async function routeToolCall(
     auth: ctx.auth,
     requestId: ctx.requestId,
     verdict,
-    meter: (ok) => recordMcpUsage(mcp.userServerId, ok),
+    meter: toolCallMeter(ctx.auth.userId, mcp.userServerId, true),
   };
+
+  // Billing gate (contract W2): 429 / 402 before anything is woken or
+  // forwarded, in router mode too (an HTTP-level refusal, like the 401).
+  const gated = await billingGate(relay);
+  if (gated) return gated;
+
   const body = buildForwardedToolCall(ctx.rpcId, params, toolName);
   const isDocs = mcp.mcpSlug === TWINMCP_DOCS_SLUG;
   const isLocal = !isDocs && ctx.server.hostType === "local_agent";
@@ -759,11 +769,10 @@ async function routeToolCall(
     }
   }
 
-  // TwinMCP Docs: served by the control plane; its backing /api/v2/context
-  // enforces the rate limit (not double-counted here), as on the per-MCP route.
+  // TwinMCP Docs: served by the control plane, as on the per-MCP route.
   if (isDocs) {
-    // Metered and logged from the real outcome: a failed lookup is answered
-    // as a 200 JSON-RPC error.
+    // Metered, charged and logged from the real outcome: a failed lookup is
+    // answered as a 200 JSON-RPC error and is not charged.
     return handleTwinMcpDocs(
       ctx.req,
       {

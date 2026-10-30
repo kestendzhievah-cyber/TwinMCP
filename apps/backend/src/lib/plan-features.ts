@@ -2,35 +2,29 @@ import type { Plan } from "@/db/schema/core";
 import type { BoxSize } from "@/db/schema/platform";
 
 /**
- * Single source of truth for what each subscription plan is allowed to do.
+ * Single source of truth for what each account tier is allowed to do.
  *
- * Both the server-side enforcement (API routes) and the client-side upsell UI
- * (dashboard) read from this table, so limits never drift between the API, the
- * marketing pricing page, and the gating UI. Keep the numbers in sync with
- * `components/pricing/pricing-data.ts` (the marketing-facing copy).
+ * Since 2026-10-29 TwinMCP sells no subscription: usage is paid from a prepaid
+ * wallet (lib/wallet/*), and the tier only says what the account may SET UP.
+ * The users.plan values are kept for backward compatibility:
+ *   - "free" = "Free credit": the wallet was never funded (it runs on the €10
+ *     sign-up credit, or on nothing). 1 small server, no publishing, and the
+ *     compute-heavy MCPs of lib/wallet/eligibility.ts stay locked.
+ *   - "pro"  = "Pay as you go": a first paid top-up (or a converted
+ *     subscription) funded the wallet. 50 servers, every box size, publishing.
+ *     Billing never moves an account back to "free".
+ *   - "team" = grandfathered, unchanged.
+ * There is no daily tool-call cap any more: the wallet balance is the limit
+ * (lib/rate-limit.ts keeps only a per-minute abuse limiter).
  *
- * Only Free and Pro are sold (SELLABLE_PLANS). Team is grandfathered: existing
- * Team subscribers keep their capabilities, label, Stripe mapping and webhook
- * handling, but no page, upsell or new checkout offers it any more. The upsell
- * helpers below (minPlanFor*) therefore point at a plan you can buy whenever one
- * grants the capability (see minPlanFor for the one exception).
- *
- * ENFORCEMENT IS NOT AUTOMATIC. The helpers below are pure predicates. Defining
- * a capability here gates nothing on its own — each one must be enforced where
- * it is used by calling the matching assertion in the relevant API route. As of
- * writing, `servers` is enforced (lib/quota.ts → api/v2/servers), and box size,
- * api keys, and members are enforced in their respective v2 routes.
+ * Both the server-side enforcement (API routes) and the dashboard read from
+ * this table. ENFORCEMENT IS NOT AUTOMATIC: each capability is enforced where
+ * it is used (servers → lib/quota.ts + api/v2/servers, box size → the v2
+ * servers routes, api keys, members, publishing → their v2 routes).
  *
  * This module imports types only — it is safe to import from both Server and
  * Client Components.
  */
-
-/**
- * Free trial granted on a FIRST Pro subscription (see api/v2/billing/checkout).
- * Shared by the marketing copy and the server; the TRIAL_DAYS env var can
- * override the server side, so keep both in sync if you change it.
- */
-export const PRO_TRIAL_DAYS = 30;
 
 const UNLIMITED = Number.POSITIVE_INFINITY;
 
@@ -62,6 +56,9 @@ export interface PlanCapabilities {
 }
 
 export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
+  // "Free credit" (wallet never funded): enough to try one small server on the
+  // sign-up credit. The compute-heavy MCPs are locked separately
+  // (lib/wallet/eligibility.ts PROMO_EXCLUDED_MCP_SLUGS).
   free: {
     servers: 1,
     boxSizes: ["small"],
@@ -74,10 +71,10 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
     usageExport: false,
     warmServers: false,
   },
-  // Pro is the one paid plan: the maximum, with reasonable-use caps. Members
-  // stay at 1 (team sharing isn't sold) and regionSelection stays off (the
-  // runtime doesn't apply a region yet). warmServers is additionally gated by
-  // the WARM_BOXES_ENABLED ops switch (see keepWarm) — never advertise it.
+  // "Pay as you go" (funded wallet): the maximum, with reasonable-use caps.
+  // Members stay at 1 (team sharing isn't sold) and regionSelection stays off
+  // (the runtime doesn't apply a region yet). warmServers is additionally gated
+  // by the WARM_BOXES_ENABLED ops switch (see keepWarm) — never advertise it.
   pro: {
     servers: 50,
     boxSizes: ["small", "medium", "large"],
@@ -108,16 +105,24 @@ export const PLAN_CAPABILITIES: Record<Plan, PlanCapabilities> = {
 /** Plan ordering, lowest → highest, for "requires at least X" gating. */
 export const PLAN_RANK: Record<Plan, number> = { free: 0, pro: 1, team: 2 };
 
-/** Display labels for the three plans (Team included, for grandfathered subscribers). */
-export const PLAN_LABELS: Record<Plan, string> = { free: "Free", pro: "Pro", team: "Team" };
+/**
+ * Display labels for the tiers (Team included, for grandfathered subscribers).
+ * "free" and "pro" are wallet states now, not plans: never append "plan".
+ */
+export const PLAN_LABELS: Record<Plan, string> = {
+  free: "Free credit",
+  pro: "Pay as you go",
+  team: "Team",
+};
 
 /**
- * Plans that can be bought today, lowest → highest. Upsell copy and new
- * checkouts only ever target these. Team is deliberately absent (grandfathered).
+ * Tiers an account can reach today, lowest → highest ("pro" by a first paid
+ * top-up). Upsell copy only ever targets these. Team is deliberately absent
+ * (grandfathered).
  */
 export const SELLABLE_PLANS: readonly Plan[] = ["free", "pro"];
 
-/** Whether a plan is still sold (Free or Pro). False for the grandfathered Team plan. */
+/** Whether a tier is still reachable (Free credit or Pay as you go). False for grandfathered Team. */
 export function isSellablePlan(plan: Plan): boolean {
   return SELLABLE_PLANS.includes(plan);
 }
@@ -159,7 +164,7 @@ export function allowedBoxSizes(plan: Plan): readonly BoxSize[] {
  * Pure so provisioning (the money path) and the dashboard UI make the SAME
  * decision. `enabled` is the WARM_BOXES_ENABLED ops switch: keep-alive boxes
  * require a paid Upstash plan, so warm boxes stay OFF until that's turned on —
- * even for Pro/Team. Because of that switch, never advertise always-on servers.
+ * even for funded and Team accounts. Because of that switch, never advertise always-on servers.
  * Read the switch with `process.env.WARM_BOXES_ENABLED === "true"`.
  */
 export function keepWarm(plan: Plan, enabled: boolean): boolean {
@@ -215,8 +220,21 @@ export function minPlanForLimit(capability: NumericCapability, needed: number): 
 }
 
 /**
+ * The upsell sentence for an action the account's tier does not allow:
+ * "pro" is reached by a first paid top-up, so it says so; Team (grandfathered,
+ * never sold) keeps the plan wording.
+ */
+export function requiredTierMessage(requiredPlan: Plan, what = "This action"): string {
+  if (requiredPlan === "pro") {
+    return `${what} needs a funded wallet: top up your TwinMCP credit to unlock it.`;
+  }
+  if (requiredPlan === "free") return `${what} is available on every account.`;
+  return `${what} requires the ${PLAN_LABELS[requiredPlan]} plan.`;
+}
+
+/**
  * Throw this from an API route (or a helper it calls) when an action exceeds
- * the user's plan; the route is expected to catch it and map it to a 403
+ * the user's tier; the route is expected to catch it and map it to a 403
  * response carrying `message`. `feature` is a human-readable label for logs.
  */
 export class PlanRestrictionError extends Error {
@@ -225,7 +243,7 @@ export class PlanRestrictionError extends Error {
     public readonly requiredPlan: Plan,
     message?: string
   ) {
-    super(message ?? `This action requires the ${PLAN_LABELS[requiredPlan]} plan.`);
+    super(message ?? requiredTierMessage(requiredPlan));
     this.name = "PlanRestrictionError";
   }
 }

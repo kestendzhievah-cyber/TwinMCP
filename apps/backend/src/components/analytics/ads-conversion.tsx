@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ADS_CONSENT_EVENT } from "@/lib/analytics/consent";
 import {
   SIGNUP_CONVERSION,
@@ -35,6 +35,31 @@ export function SubscriptionConversion(props: {
   email?: string | null;
 }) {
   return <AdsConversion sendTo={SUBSCRIPTION_CONVERSION} {...props} />;
+}
+
+type ConversionProps = { transactionId: string; value: number; currency: string };
+
+/**
+ * A paid wallet top-up, on /dashboard/billing?topup=success. Always rendered
+ * (pass null when there is nothing to report): it latches the first verified
+ * conversion it receives, so the success banner stripping ?topup and the
+ * refreshes that follow (the page re-renders without a conversion) do not
+ * unmount the consent listener before a visitor without consent can grant it.
+ * TODO(owner): a dedicated "Recharge" conversion action; until its id exists
+ * this reports to the existing "Abonnement" action.
+ */
+export function TopupConversion(props: {
+  conversion: ConversionProps | null;
+  email?: string | null;
+}) {
+  const [latched, setLatched] = useState<ConversionProps | null>(props.conversion);
+  const incoming = props.conversion;
+  useEffect(() => {
+    if (incoming) setLatched(incoming);
+    // Keyed on the session: a new top-up replaces the latched one.
+  }, [incoming?.transactionId]);
+  if (!latched) return null;
+  return <AdsConversion sendTo={SUBSCRIPTION_CONVERSION} {...latched} email={props.email} />;
 }
 
 /** "Inscription", on the first onboarding visit after a confirmed sign-up. */

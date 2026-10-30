@@ -26,8 +26,8 @@ export const WEBHOOK_EVENT_LABELS: Record<WebhookEventType, { label: string; hel
     help: "The background health check found a server's box gone.",
   },
   "quota.reached": {
-    label: "Daily quota reached",
-    help: "Tool calls started being rejected at your plan's daily limit (at most once a day).",
+    label: "Credit used up",
+    help: "Tool calls started being refused because your wallet is empty (at most once a day).",
   },
   "mcp.installed": {
     label: "MCP installed",

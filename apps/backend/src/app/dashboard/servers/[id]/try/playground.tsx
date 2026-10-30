@@ -53,6 +53,9 @@ import {
   type TryRequestBody,
   type TryResponse,
 } from "./protocol";
+import { formatEur, priceToolCallsMicros } from "@/lib/wallet/pricing";
+
+const CALL_PRICE = formatEur(priceToolCallsMicros(1), "en");
 import { ToolForm, textareaClass } from "./tool-form";
 import { ResultPanel } from "./result-panel";
 
@@ -188,8 +191,6 @@ export function ToolPlayground({
   mcps,
   disabledCount,
   lifecycle,
-  dailyLimit,
-  planName,
 }: {
   serverId: string;
   /** For the local-agent command in the offline notice. */
@@ -197,8 +198,6 @@ export function ToolPlayground({
   mcps: McpOption[];
   disabledCount: number;
   lifecycle: LifecycleState;
-  dailyLimit: number;
-  planName: string;
 }) {
   const [mcpSlug, setMcpSlug] = useState<string>(mcps[0]?.slug ?? "");
 
@@ -620,12 +619,9 @@ export function ToolPlayground({
                       </Button>
                     </div>
                     <p className="text-xs italic text-muted-foreground">
-                      Each run counts as one tool call against your daily quota (
-                      <span className="lining not-italic">
-                        {dailyLimit.toLocaleString("en-US")}
-                      </span>{" "}
-                      per day on the {planName} plan) and appears in your usage, like a call from
-                      your IDE.
+                      Each run is charged as one tool call (
+                      <span className="lining not-italic">{CALL_PRICE}</span> from your credit) and
+                      appears in your usage, like a call from your IDE.
                     </p>
                   </div>
 

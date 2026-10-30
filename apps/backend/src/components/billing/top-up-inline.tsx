@@ -10,31 +10,33 @@ import { maxMcpsForBoxSize } from "@/lib/plan-features";
 import { cn } from "@/lib/utils";
 
 /**
- * Small, contextual Free → Pro prompts: a one-line tinted callout
- * (UpgradeInline), a bare text link (UpgradeLink) and the marketplace
- * "box is full" toast. Every surface fires the same two funnel events —
- * `upgrade_nudge_viewed` once on mount and `upgrade_cta_clicked` on the CTA —
- * so the viewed → clicked ratio can be compared per `source`.
+ * Small, contextual "add credit" prompts: a one-line tinted callout
+ * (TopUpInline, e.g. "Top up to continue"), a bare text link (TopUpLink) and
+ * the marketplace "box is full" toast. Every surface fires the same two funnel
+ * events — `upgrade_nudge_viewed` once on mount and `upgrade_cta_clicked` on
+ * the CTA (the event names predate the wallet) — so the viewed → clicked ratio
+ * can be compared per `source`.
  *
- * Copy is the caller's: numbers must come from lib/plan-features.ts or the
- * server's getDailyLimit (never typed inline).
+ * Copy is the caller's: figures must come from lib/plan-features.ts or the
+ * wallet price list (lib/wallet/pricing.ts), never typed inline.
  */
 
 const LINK = "text-brand underline underline-offset-4 decoration-brand/40 hover:decoration-brand";
 
 // The tint recipe per level (DESIGN.md §5 callouts): hairline + 10 % tint +
 // text, with the memo rule on the left. The standing offer is navy (brand) —
-// gilt is reserved for the one seal of the view (the banner).
+// gilt is reserved for the one seal of a view.
 const TINT: Record<NudgeLevel, string> = {
   none: "border-brand/40 border-l-brand bg-brand/10 text-brand",
+  info: "border-info/40 border-l-info bg-info/10 text-info",
   offer: "border-brand/40 border-l-brand bg-brand/10 text-brand",
+  trial: "border-info/40 border-l-info bg-info/10 text-info",
   warning: "border-warning/40 border-l-warning bg-warning/10 text-warning",
   limit: "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive",
-  trial: "border-info/40 border-l-info bg-info/10 text-info",
   past_due: "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive",
 };
 
-interface NudgeIdentity {
+export interface NudgeIdentity {
   source: NudgeSource;
   level: NudgeLevel;
   /** Why the prompt is showing (NudgeReason or a surface-specific string). */
@@ -51,29 +53,31 @@ export function useNudgeViewed({ source, level, reason }: NudgeIdentity): void {
   }, [source, level, reason]);
 }
 
-export function trackUpgradeClick({ source, level, reason }: NudgeIdentity): void {
+export function trackTopUpClick({ source, level, reason }: NudgeIdentity): void {
   track({ name: "upgrade_cta_clicked", properties: { source, level, reason } });
 }
 
-interface UpgradeInlineProps extends NudgeIdentity {
-  /** CTA text — use trialCta(trialEligible).label when the surface knows it. */
-  label: string;
+interface TopUpInlineProps extends Partial<Omit<NudgeIdentity, "source">> {
+  source: NudgeSource;
+  /** CTA text. Defaults to "Top up to continue" at zero, "Add credit" otherwise. */
+  label?: string;
   href?: string;
   description?: React.ReactNode;
   className?: string;
 }
 
-/** A one-line tinted callout with the upgrade link at the end. */
-export function UpgradeInline({
+/** A one-line tinted callout with the top-up link at the end. */
+export function TopUpInline({
   source,
-  level,
-  reason,
+  level = "offer",
+  reason = "promo_only",
   label,
   href = BILLING_HREF,
   description,
   className,
-}: UpgradeInlineProps) {
+}: TopUpInlineProps) {
   useNudgeViewed({ source, level, reason });
+  const text = label ?? (level === "limit" ? "Top up to continue" : "Add credit");
   return (
     <p
       className={cn(
@@ -85,16 +89,16 @@ export function UpgradeInline({
       {description && <span className="min-w-0">{description}</span>}
       <Link
         href={href as Route}
-        onClick={() => trackUpgradeClick({ source, level, reason })}
+        onClick={() => trackTopUpClick({ source, level, reason })}
         className={cn("font-medium", LINK)}
       >
-        {label}
+        {text}
       </Link>
     </p>
   );
 }
 
-interface UpgradeLinkProps extends Partial<Omit<NudgeIdentity, "source">> {
+interface TopUpLinkProps extends Partial<Omit<NudgeIdentity, "source">> {
   source: NudgeSource;
   label: string;
   href?: string;
@@ -102,19 +106,19 @@ interface UpgradeLinkProps extends Partial<Omit<NudgeIdentity, "source">> {
 }
 
 /** The bare text-link variant, for a sentence that already explains itself. */
-export function UpgradeLink({
+export function TopUpLink({
   source,
   level = "offer",
-  reason = "offer",
+  reason = "promo_only",
   label,
   href = BILLING_HREF,
   className,
-}: UpgradeLinkProps) {
+}: TopUpLinkProps) {
   useNudgeViewed({ source, level, reason });
   return (
     <Link
       href={href as Route}
-      onClick={() => trackUpgradeClick({ source, level, reason })}
+      onClick={() => trackTopUpClick({ source, level, reason })}
       className={cn(LINK, className)}
     >
       {label}
@@ -124,8 +128,9 @@ export function UpgradeLink({
 
 /**
  * True when a 403 from POST /api/v2/servers/:id/mcps says a SMALL box is at
- * its MCP cap (the only size Free can run). Medium and large boxes keep the
- * server's own message, which already suggests a larger box.
+ * its MCP cap (the only size an account without paid credit can run). Medium
+ * and large boxes keep the server's own message, which already suggests a
+ * larger box.
  */
 export function isSmallBoxFull(message: string): boolean {
   return /\bsmall box can run\b/i.test(message);
@@ -133,18 +138,18 @@ export function isSmallBoxFull(message: string): boolean {
 
 /**
  * Marketplace: the small box is full. The toast carries one action that
- * points at Pro's larger boxes (sonner `action`), tracked like any CTA.
+ * points at Billing (larger boxes come with a first top-up), tracked like any CTA.
  */
 export function toastBoxFull(source: NudgeSource = "marketplace"): void {
   const id: NudgeIdentity = { source, level: "offer", reason: "box_capacity" };
   track({ name: "upgrade_nudge_viewed", properties: id });
   toast.error(
-    `This small box is full (${maxMcpsForBoxSize("small")} MCPs). Pro boxes run up to ${maxMcpsForBoxSize("large")}.`,
+    `This small box is full (${maxMcpsForBoxSize("small")} MCPs). With paid credit, larger boxes run up to ${maxMcpsForBoxSize("large")}.`,
     {
       action: {
-        label: "See Pro boxes",
+        label: "Add credit",
         onClick: () => {
-          trackUpgradeClick(id);
+          trackTopUpClick(id);
           window.location.href = BILLING_HREF;
         },
       },

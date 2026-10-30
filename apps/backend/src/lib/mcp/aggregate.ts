@@ -462,9 +462,10 @@ export type ToolCallStatus = "ok" | "error" | "denied" | "rate_limited";
 
 /**
  * The activity-log status (contract D1) of a tools/call from the response the
- * proxy sent: `denied` when the tool policy refused it, `rate_limited` on a
- * 429, `ok` below 400, else `error`. `errorCode` is the HTTP status of a
- * failed response, or the JSON-RPC code of a policy refusal (answered 200).
+ * proxy sent: `denied` when the tool policy refused it or when the wallet was
+ * empty (402, code CREDIT_EXHAUSTED_CODE), `rate_limited` on a 429, `ok`
+ * below 400, else `error`. `errorCode` is the HTTP status of a failed
+ * response, or the JSON-RPC code of a refusal made before forwarding.
  * An MCP's own JSON-RPC error inside a 200 counts as ok: the proxy streams
  * tool results without reading them.
  */
@@ -473,6 +474,7 @@ export function toolCallStatusFor(
   deniedCode?: number | null
 ): { status: ToolCallStatus; errorCode: number | null } {
   if (typeof deniedCode === "number") return { status: "denied", errorCode: deniedCode };
+  if (httpStatus === 402) return { status: "denied", errorCode: CREDIT_EXHAUSTED_CODE };
   if (httpStatus === 429) return { status: "rate_limited", errorCode: 429 };
   if (httpStatus < 400) return { status: "ok", errorCode: null };
   return { status: "error", errorCode: httpStatus };
@@ -484,6 +486,12 @@ export function toolCallStatusFor(
  * lib/errors.ts, which mirrors this value as TOOL_POLICY_DENIED).
  */
 export const TOOL_POLICY_DENIED_CODE = -32007;
+
+/**
+ * JSON-RPC code of a tools/call refused because the prepaid wallet is empty
+ * (contract W2, HTTP 402). Mirrored by PROXY_ERROR.CREDIT_EXHAUSTED.
+ */
+export const CREDIT_EXHAUSTED_CODE = -32008;
 
 // ─── per-process tool cache ──────────────────────────────────────────────────
 

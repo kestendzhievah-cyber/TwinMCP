@@ -3,10 +3,14 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servers, users, mcpServers, userServers } from "@/db/schema";
-import { badRequest, notFound, serverError } from "@/lib/errors";
+import { badRequest, creditRequired, notFound, serverError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin/prospects-lib";
 import { createServerSchema, slugify } from "@/lib/validation/platform";
-import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
+import {
+  TWINMCP_DOCS_SLUG,
+  assertComputeAllowed,
+  isInsufficientCreditError,
+} from "@/lib/provisioning";
 import { encryptConfig } from "@/lib/crypto/config-encryption";
 import { enqueue } from "@/lib/queue/qstash";
 import { logAudit, clientIp } from "@/lib/audit/log";
@@ -44,6 +48,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const boxSize = parsed.data.boxSize ?? "small";
   const slug = parsed.data.slug ?? slugify(parsed.data.name);
   if (!slug) return badRequest("Nom invalide (impossible d'en dériver un slug).");
+
+  // The box runs on the client's prepaid wallet: credit it first (Portefeuille
+  // section) when it is empty. Fails closed on a database error.
+  try {
+    await assertComputeAllowed(clientId);
+  } catch (err) {
+    if (isInsufficientCreditError(err)) {
+      return creditRequired(
+        "Le crédit TwinMCP de ce client est épuisé : créditez son portefeuille avant de créer un serveur."
+      );
+    }
+    console.error("[admin server create] credit check", err);
+    return serverError();
+  }
 
   const id = randomUUID();
   try {

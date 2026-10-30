@@ -6,11 +6,10 @@ import { getDb } from "@/db";
 import { servers, users } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { SERVER_QUOTAS } from "@/lib/quota";
-import { PLAN_CAPABILITIES } from "@/lib/plan-features";
-import { trialCta } from "@/lib/billing/upgrade-state";
+import { PLAN_CAPABILITIES, PLAN_LABELS } from "@/lib/plan-features";
 import { cn } from "@/lib/utils";
 import { CreateServerDialog } from "./create-dialog";
-import { UpgradeInline } from "@/components/billing/upgrade-inline";
+import { TopUpInline } from "@/components/billing/top-up-inline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -35,15 +34,12 @@ export default async function ServersPage() {
 
   const db = getDb();
   const [me] = await db
-    .select({ plan: users.plan, stripeCustomerId: users.stripeCustomerId })
+    .select({ plan: users.plan })
     .from(users)
     .where(eq(users.id, user.id))
     .limit(1);
   const plan = me?.plan ?? "free";
   const quota = SERVER_QUOTAS[plan];
-  // A first Pro subscription starts with the free month; a Stripe customer
-  // already used it (lib/billing/upgrade-state.ts).
-  const trialEligible = plan === "free" && !me?.stripeCustomerId;
 
   const rows = await db
     .select({
@@ -79,27 +75,21 @@ export default async function ServersPage() {
             <h1 className="smallcaps tracking-sc text-2xl font-medium">Servers</h1>
             <p className="mt-1 text-sm italic text-muted-foreground">
               <span className="lining">{active}</span> active ·{" "}
-              <span className="lining">{remaining}</span> remaining on{" "}
-              <span className="smallcaps font-medium capitalize not-italic text-foreground">
-                {plan}
-              </span>{" "}
-              plan
+              <span className="lining">{remaining}</span> remaining ·{" "}
+              <span className="smallcaps font-medium not-italic text-foreground">
+                {PLAN_LABELS[plan]}
+              </span>
             </p>
           </div>
-          <CreateServerDialog
-            plan={plan}
-            disabled={remaining === 0}
-            trialEligible={trialEligible}
-          />
+          <CreateServerDialog plan={plan} disabled={remaining === 0} />
         </div>
         <Separator variant="double" className="mt-4" />
         {atFreeLimit && (
-          <UpgradeInline
+          <TopUpInline
             source="servers"
             level="offer"
             reason="servers_limit"
-            label={trialCta(trialEligible).label}
-            description={`Free includes ${PLAN_CAPABILITIES.free.servers} server. Pro runs up to ${pro.servers} servers on ${proBoxes} boxes.`}
+            description={`Free credit accounts run ${PLAN_CAPABILITIES.free.servers} server. After a first top-up you can run up to ${pro.servers} servers on ${proBoxes} boxes.`}
             className="lining mt-4"
           />
         )}
@@ -109,12 +99,11 @@ export default async function ServersPage() {
         <EmptyState
           icon={Boxes}
           title="No servers yet"
-          description="A server is an isolated runtime where your MCPs live. The first one is free."
+          description="A server is an isolated runtime where your MCPs live. It runs on your TwinMCP credit."
           primaryAction={
             <CreateServerDialog
               plan={plan}
               disabled={remaining === 0}
-              trialEligible={trialEligible}
               trigger={
                 <Button size="lg" disabled={remaining === 0}>
                   <Plus className="h-4 w-4" />

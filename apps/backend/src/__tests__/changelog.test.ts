@@ -41,7 +41,7 @@ describe("changelog helpers", () => {
     expect(latestChangelogDate([entry("2026-08-09", "a"), entry("2026-09-01", "b")])).toBe(
       "2026-09-01"
     );
-    expect(latestChangelogDate()).toBe("2026-10-27");
+    expect(latestChangelogDate()).toBe("2026-10-29");
   });
 });
 
@@ -51,7 +51,7 @@ describe("CHANGELOG content", () => {
       expect(e.date, e.en.title).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(Number.isNaN(Date.parse(e.date)), e.date).toBe(false);
       expect(e.date >= "2026-08-01", e.date).toBe(true);
-      expect(e.date <= "2026-10-27", e.date).toBe(true);
+      expect(e.date <= "2026-10-29", e.date).toBe(true);
     }
   });
 

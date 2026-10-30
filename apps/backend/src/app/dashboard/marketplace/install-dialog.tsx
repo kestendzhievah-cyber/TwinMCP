@@ -1,13 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { Route } from "next";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useMcpConfigSchema } from "./use-config-schema";
 import { cliCommand } from "@/lib/cli";
 import type { Plan } from "@/db/schema/core";
-import { isSmallBoxFull, toastBoxFull } from "@/components/billing/upgrade-inline";
+import { isSmallBoxFull, toastBoxFull } from "@/components/billing/top-up-inline";
+import { PROMO_LOCKED_MCP_MESSAGE } from "@/lib/wallet/eligibility";
 import {
   Dialog,
   DialogContent,
@@ -71,12 +73,15 @@ export function InstallDialog({
   mcp,
   userServers,
   plan,
+  locked = false,
   onClose,
 }: {
   mcp: CatalogEntry | null;
   userServers: ServerOption[];
-  /** The account's plan: only Free gets the Pro toast when a small box is full. */
+  /** The account's tier: only Free credit gets the top-up toast when a small box is full. */
   plan: Plan;
+  /** Free credit account and a compute-heavy MCP: installable after a first top-up. */
+  locked?: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -160,8 +165,8 @@ export function InstallDialog({
       router.push(`/dashboard/servers/${serverId}` as Route);
     } else {
       const err = await res.json().catch(() => ({}));
-      // For a Free account a small box at its MCP cap is a plan limit, not an
-      // error: point at Pro's larger boxes instead of echoing the 403. Paid
+      // For a Free credit account a small box at its MCP cap is a tier limit,
+      // not an error: point at the larger boxes a top-up unlocks. Paid
       // plans keep the server's own message, which already names the real cap
       // and suggests a larger box.
       if (plan === "free" && res.status === 403 && isSmallBoxFull(String(err.message ?? ""))) {
@@ -178,6 +183,18 @@ export function InstallDialog({
           <DialogDescription className="not-italic">{mcp.description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
+          {locked && (
+            <p className="border border-warning/40 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-sm text-warning">
+              {PROMO_LOCKED_MCP_MESSAGE}.{" "}
+              <Link
+                href={"/dashboard/billing" as Route}
+                className="font-medium underline decoration-warning/40 underline-offset-4 hover:decoration-warning"
+              >
+                Top up
+              </Link>
+            </p>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="server">Target server</Label>
             {compatible.length === 0 ? (
@@ -291,7 +308,7 @@ export function InstallDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting || !serverId || schemaLoading}>
+            <Button type="submit" disabled={locked || submitting || !serverId || schemaLoading}>
               {submitting ? "Installing…" : "Install"}
             </Button>
           </DialogFooter>

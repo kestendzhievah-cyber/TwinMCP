@@ -27,6 +27,48 @@ import { emitWebhookEvent } from "@/lib/webhooks/emit";
 
 export const TWINMCP_DOCS_SLUG = "twinmcp-docs";
 
+/** Where users add credit; quoted in every "out of credit" message. */
+export const TOPUP_URL = "https://twinmcp.fr/dashboard/billing";
+
+/**
+ * The user may not start or wake compute: their wallet is empty, or their
+ * promotional credit hit its compute cost cap (lib/wallet/compute-meter.ts).
+ * Thrown by resumeServer and assertComputeAllowed; the MCP proxy maps it to
+ * HTTP 402 / JSON-RPC -32008 (contract W2), routes to a 402 response.
+ */
+export class InsufficientCreditError extends Error {
+  readonly code = "insufficient_credit" as const;
+  readonly httpStatus = 402;
+  readonly rpcCode = -32008;
+  readonly topupUrl = TOPUP_URL;
+  constructor(
+    readonly userId: string,
+    readonly reason: "no_credit" | "promo_cost_cap"
+  ) {
+    super(
+      reason === "no_credit"
+        ? `Your TwinMCP credit is used up. Top up at ${TOPUP_URL}`
+        : `Your promotional credit reached its compute limit. Add paid credit at ${TOPUP_URL} to keep this server running.`
+    );
+    this.name = "InsufficientCreditError";
+  }
+}
+
+export function isInsufficientCreditError(err: unknown): err is InsufficientCreditError {
+  return err instanceof InsufficientCreditError;
+}
+
+/**
+ * Refuse to start or wake compute for a user without credit (fails closed on a
+ * DB error). Routes that create or start a server call this before enqueuing
+ * provision-server so the user gets a 402 instead of a silent no-op.
+ */
+export async function assertComputeAllowed(userId: string): Promise<void> {
+  const { checkComputeAllowed } = await import("@/lib/wallet/compute-meter");
+  const block = await checkComputeAllowed(userId);
+  if (block) throw new InsufficientCreditError(userId, block);
+}
+
 // Re-exported for callers that resolve box log paths (e.g. the logs route).
 export { logFileForMcp };
 
@@ -248,6 +290,27 @@ export async function provisionServer(serverId: string): Promise<void> {
 
   // Last status written, for the status_changed webhook (D5).
   let current: ServerStatus = srv.status;
+
+  // No credit, no new compute: leave the server without a runtime ("stopped"),
+  // never create a box. Routes check first (assertComputeAllowed) to answer
+  // 402; this is the backstop for any path that enqueues directly.
+  try {
+    await assertComputeAllowed(srv.userId);
+  } catch (err) {
+    // Fail closed: any error from the credit check also means "no box".
+    const reason = isInsufficientCreditError(err) ? err.reason : "credit_check_failed";
+    if (!isInsufficientCreditError(err)) {
+      console.error(`[provision] credit check failed for ${serverId}:`, err);
+    }
+    console.warn(`[provision] server ${serverId} not provisioned: ${reason}`);
+    await db
+      .update(servers)
+      .set({ status: "stopped", updatedAt: new Date() })
+      .where(eq(servers.id, serverId));
+    notifyStatusChange(srv.userId, serverId, current, "stopped");
+    return;
+  }
+
   try {
     await db
       .update(servers)
@@ -303,6 +366,10 @@ export async function provisionServer(serverId: string): Promise<void> {
           throw err;
         }
       }
+      // A zero usage snapshot: the compute meter bills this box from its first
+      // CPU second (a box without a snapshot is only baselined). Never throws.
+      const { ensureZeroSnapshot } = await import("@/lib/wallet/compute-meter");
+      await ensureZeroSnapshot(boxId, serverId, srv.userId);
     }
 
     // Record the box id but stay in `provisioning` — we only go `running`
@@ -439,6 +506,14 @@ export async function destroyServerRuntime(serverId: string): Promise<void> {
   if (!srv) return;
 
   if (srv.boxId) {
+    // Bill the box's last usage first: its counters die with it. Bounded and
+    // never throws, so a metering problem cannot block the delete.
+    const { meterBoxBeforeDelete } = await import("@/lib/wallet/compute-meter");
+    await meterBoxBeforeDelete(srv.boxId, {
+      serverId: srv.id,
+      userId: srv.userId,
+      size: srv.boxSize,
+    });
     try {
       await getBoxClient().deleteBox(srv.boxId);
     } catch (err) {
@@ -846,6 +921,11 @@ async function doResumeServer(serverId: string): Promise<void> {
     .limit(1);
   if (!srv?.boxId) return;
   const boxId = srv.boxId;
+
+  // Waking a box spends compute: refuse without credit (or past the promo
+  // compute cap). The proxy maps this to 402 / -32008.
+  await assertComputeAllowed(srv.userId);
+
   const client = getBoxClient();
 
   let resumeErr: unknown = null;

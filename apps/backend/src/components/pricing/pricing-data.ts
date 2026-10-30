@@ -1,5 +1,13 @@
 import type { Locale } from "@/lib/i18n/locales";
-import { maxMcpsForBoxSize } from "@/lib/plan-features";
+import { PLAN_CAPABILITIES, maxMcpsForBoxSize } from "@/lib/plan-features";
+import { PRICE_TABLE, walletFacts } from "./wallet-copy";
+
+// Pricing since 2026-10-29: a prepaid wallet, no subscription (wallet-copy.ts
+// holds the marketing facts, lib/wallet/pricing.ts the prices). This module
+// keeps:
+//   - FEATURES, the before/after-first-top-up ledger on /plans and /fr/tarifs;
+//   - marketingOffers(), the JSON-LD offers of the home pages;
+//   - FREE_MCP_LIMIT / freeMcpsLabel, the free-credit server's MCP allowance.
 
 /**
  * Box-hosted MCPs a Free server (small box, lib/plan-features.ts) runs at once.
@@ -15,67 +23,14 @@ export function freeMcpsLabel(locale: Locale = "en"): string {
     : `Up to ${FREE_MCP_LIMIT} MCPs + TwinMCP Docs`;
 }
 
-// Two plans are sold: Free and Pro. Team is grandfathered for existing
-// subscribers only (lib/plan-features.ts, the Stripe webhook and the billing
-// mappings still know it) and is deliberately absent from every pricing surface.
+// The two account states, as comparison-table columns: "free" = not funded
+// yet (sign-up credit), "pro" = funded, pay as you go.
 export type PlanId = "free" | "pro";
-export type BillingCadence = "monthly" | "annual";
-
-export interface PlanTier {
-  id: PlanId;
-  name: string;
-  blurb: string;
-  monthlyUsd: number; // EUR, despite the legacy field name (matches the Stripe prices)
-  annualMonthlyUsd: number; // effective monthly price when billed annually
-  annualTotalEur: number; // what the yearly Stripe price charges, once a year
-  highlighted?: boolean;
-  cta: { label: string; href: string };
-  bullets: string[]; // marketing bullets shown on the card
-}
-
-// Pro billed annually: €135/yr = €11.25/mo vs €14.99 monthly ≈ 25% off
-// ("Save up to 25%" on the cadence toggle).
-export const ANNUAL_DISCOUNT_PCT = 25;
-
-// Quotas mirror lib/plan-features.ts (PLAN_CAPABILITIES) and the daily MCP
-// request limits in lib/rate-limit.ts. Only list what the product enforces.
-export const PLANS: PlanTier[] = [
-  {
-    id: "free",
-    name: "Free",
-    blurb: "Everything to evaluate the platform.",
-    monthlyUsd: 0,
-    annualMonthlyUsd: 0,
-    annualTotalEur: 0,
-    cta: { label: "Start free", href: "/sign-up?plan=free" },
-    bullets: ["1 server", freeMcpsLabel("en"), "50 tool calls / day", "Community support"],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    blurb: "Everything we offer, for developers shipping with AI every day.",
-    monthlyUsd: 14.99,
-    annualMonthlyUsd: 11.25, // €135/yr
-    annualTotalEur: 135,
-    highlighted: true,
-    cta: { label: "Try Pro free for 1 month", href: "/sign-up?plan=pro" },
-    bullets: [
-      "50 servers",
-      "All box sizes (small, medium, large)",
-      "5,000 tool calls / day",
-      "Publish your own MCPs",
-      "20 API keys",
-      "Audit logs · 90 days",
-      "Usage export",
-      "Priority email support",
-    ],
-  },
-];
 
 /**
- * Offers for JSON-LD (softwareApplicationSchema), derived from PLANS so the
- * structured data search engines index can never drift from the pricing page.
- * EUR, to match the real Stripe prices.
+ * Offers for JSON-LD (softwareApplicationSchema) on the home pages: the free
+ * sign-up credit (price 0) and the smallest prepaid top-up. Derived from the
+ * wallet price list, so structured data cannot drift from the pricing page.
  */
 export function marketingOffers(): {
   name: string;
@@ -83,30 +38,79 @@ export function marketingOffers(): {
   priceCurrency: string;
   url: string;
 }[] {
-  return PLANS.map((p) => ({
-    name: p.name,
-    price: String(p.monthlyUsd),
-    priceCurrency: "EUR",
-    url: "/plans",
-  }));
+  return [
+    { name: "Free sign-up credit", price: "0", priceCurrency: "EUR", url: "/plans" },
+    {
+      name: "Prepaid credit top-up",
+      price: String(PRICE_TABLE.minTopupEur),
+      priceCurrency: "EUR",
+      url: "/plans",
+    },
+  ];
 }
 
 export interface FeatureRow {
   group: string;
   label: string;
   description?: string;
+  /** "free" = before the first paid top-up (sign-up credit only), "pro" =
+   *  funded, pay as you go. The DB plan names are kept for compatibility. */
   values: Record<PlanId, string | boolean>;
 }
 
-// Free vs Pro, rows the runtime actually enforces. Region selection, members,
-// SSO, private deployment and uptime SLAs are not sold, so they are not listed.
+const W = walletFacts("en");
+
+/**
+ * The pricing ledger on /plans and /fr/tarifs: the account before and after
+ * its first paid top-up. Prices come from lib/wallet/pricing.ts, allowances
+ * from lib/plan-features.ts; only what the product enforces is listed.
+ * /fr/tarifs translates rows by their English label and values by their
+ * English text (comparison-table.tsx): keep both in sync.
+ */
 export const FEATURES: FeatureRow[] = [
+  // Credit and prices
+  {
+    group: "Credit",
+    label: "Credit",
+    description: `The sign-up credit is promotional: no card, one per person, spent before paid credit. Paid credit is topped up from ${W.minTopup}.`,
+    values: {
+      free: `${W.signupCredit} at sign-up, ${W.signupDays} days`,
+      pro: `Top-ups from ${W.minTopup}`,
+    },
+  },
+  {
+    group: "Credit",
+    label: "Tool calls",
+    description:
+      "Tool calls that reach your MCP server, tool errors included. Connecting, listing tools, pings and calls TwinMCP refuses are free.",
+    values: { free: `${W.per1000Calls} per 1,000`, pro: `${W.per1000Calls} per 1,000` },
+  },
+  {
+    group: "Credit",
+    label: "Compute",
+    description: `Active CPU time, as the box measures it: ${W.cpuHour.small} per CPU-hour on small; ${W.largerSizes}. A paused server uses none.`,
+    values: {
+      free: `${W.cpuHour.small} per CPU-hour`,
+      pro: `From ${W.cpuHour.small} per CPU-hour`,
+    },
+  },
+  {
+    group: "Credit",
+    label: "At zero balance",
+    description:
+      "Tool calls are refused (HTTP 402) and servers pause. Nothing is charged to a card unless you turned auto-recharge on.",
+    values: { free: "Calls stop", pro: "Calls stop, or auto-recharge" },
+  },
+
   // Runtime
   {
     group: "Runtime",
     label: "Servers",
     description: "Isolated MCP runtimes you can spin up.",
-    values: { free: "1", pro: "50" },
+    values: {
+      free: String(PLAN_CAPABILITIES.free.servers),
+      pro: String(PLAN_CAPABILITIES.pro.servers),
+    },
   },
   {
     group: "Runtime",
@@ -114,22 +118,14 @@ export const FEATURES: FeatureRow[] = [
     description: `small / medium / large per server: up to ${maxMcpsForBoxSize("small")}, ${maxMcpsForBoxSize("medium")} or ${maxMcpsForBoxSize("large")} MCPs at once.`,
     values: { free: "small", pro: "All sizes" },
   },
-  {
-    group: "Runtime",
-    // /fr/tarifs translates rows by their English label (comparison-table.tsx
-    // FEATURE_COPY_FR): keep both keys in sync. Only tool calls are counted
-    // (lib/mcp/billable.ts).
-    label: "Tool calls per day",
-    description:
-      "Tool calls across all your servers, per 24-hour window. Connecting and listing tools is free. At the cap, calls are refused until the window resets; nothing is billed.",
-    values: { free: "50", pro: "5,000" },
-  },
 
   // MCPs
   {
     group: "MCPs",
     label: "Official catalog",
-    values: { free: true, pro: true },
+    description:
+      "On free credit, MCPs that run shell commands, code or a headless browser are held back until your first top-up.",
+    values: { free: "Most MCPs", pro: true },
   },
   {
     group: "MCPs",
@@ -142,7 +138,10 @@ export const FEATURES: FeatureRow[] = [
   {
     group: "Access",
     label: "API keys",
-    values: { free: "3", pro: "20" },
+    values: {
+      free: String(PLAN_CAPABILITIES.free.apiKeys),
+      pro: String(PLAN_CAPABILITIES.pro.apiKeys),
+    },
   },
 
   // Observability
@@ -154,7 +153,7 @@ export const FEATURES: FeatureRow[] = [
   {
     group: "Observability",
     label: "Audit logs retention",
-    values: { free: "—", pro: "90 days" },
+    values: { free: "—", pro: `${PLAN_CAPABILITIES.pro.auditRetentionDays} days` },
   },
   {
     group: "Observability",
@@ -169,93 +168,3 @@ export const FEATURES: FeatureRow[] = [
     values: { free: "Community", pro: "Priority email" },
   },
 ];
-
-// English prints "€14.99"; French prints "14,99 €" with a non-breaking space,
-// matching the hand-written FR copy (teaser, FAQ). Whole amounts drop the
-// decimals ("€135", "135 €").
-export function formatEur(value: number, locale: Locale = "en"): string {
-  const digits = Number.isInteger(value) ? String(value) : value.toFixed(2);
-  if (locale === "fr") return `${digits.replace(".", ",")} €`;
-  return `€${digits}`;
-}
-
-export function formatPrice(
-  plan: PlanTier,
-  cadence: BillingCadence,
-  locale: Locale = "en"
-): string {
-  return formatEur(cadence === "annual" ? plan.annualMonthlyUsd : plan.monthlyUsd, locale);
-}
-
-/**
- * The line under an annual price, so the yearly charge is never a surprise:
- * "€135 billed yearly after your free month · €11.25/mo". `trial: false` (a
- * creator promo replaces the free month) drops "after your free month".
- * Null for the free plan.
- */
-export function annualBillingNote(
-  plan: PlanTier,
-  locale: Locale = "en",
-  opts: { trial: boolean } = { trial: true }
-): string | null {
-  if (plan.annualTotalEur <= 0) return null;
-  const total = formatEur(plan.annualTotalEur, locale);
-  const perMonth = formatEur(plan.annualMonthlyUsd, locale);
-  if (locale === "fr") {
-    return `${total} facturés à l’année${opts.trial ? " après votre mois offert" : ""} · ${perMonth}/mois`;
-  }
-  return `${total} billed yearly${opts.trial ? " after your free month" : ""} · ${perMonth}/mo`;
-}
-
-/** Short annual hint for compact cards (home teaser): "€11.25/mo billed yearly". */
-export function annualMonthlyHint(plan: PlanTier, locale: Locale = "en"): string | null {
-  if (plan.annualMonthlyUsd <= 0) return null;
-  const perMonth = formatEur(plan.annualMonthlyUsd, locale);
-  return locale === "fr"
-    ? `${perMonth}/mois en facturation annuelle`
-    : `${perMonth}/mo billed yearly`;
-}
-
-// French marketing copy per plan (prices, ids and hrefs stay in PLANS above).
-// English pages read PLANS directly; only the localized surfaces call planCopy.
-const PLAN_COPY_FR: Record<PlanId, { blurb: string; ctaLabel: string; bullets: string[] }> = {
-  free: {
-    blurb: "Tout pour évaluer la plateforme.",
-    ctaLabel: "Commencer gratuitement",
-    bullets: [
-      "1 serveur",
-      freeMcpsLabel("fr"),
-      "50 appels d’outils par jour",
-      "Support communautaire",
-    ],
-  },
-  pro: {
-    blurb: "Tout ce que nous proposons, pour les développeurs qui codent avec l’IA au quotidien.",
-    ctaLabel: "Essayer Pro 1 mois gratuit",
-    bullets: [
-      "50 serveurs",
-      "Toutes les tailles de box (small, medium, large)",
-      "5 000 appels d’outils par jour",
-      "Publiez vos propres MCP",
-      "20 clés API",
-      "Journaux d’audit · 90 jours",
-      "Export de l’usage",
-      "Support prioritaire par e-mail",
-    ],
-  },
-};
-
-export interface PlanCopy {
-  blurb: string;
-  ctaLabel: string;
-  bullets: string[];
-}
-
-// Returns the plan's marketing copy in the given locale (falls back to English).
-export function planCopy(plan: PlanTier, locale: Locale): PlanCopy {
-  if (locale === "fr") {
-    const fr = PLAN_COPY_FR[plan.id];
-    return { blurb: fr.blurb, ctaLabel: fr.ctaLabel, bullets: fr.bullets };
-  }
-  return { blurb: plan.blurb, ctaLabel: plan.cta.label, bullets: plan.bullets };
-}

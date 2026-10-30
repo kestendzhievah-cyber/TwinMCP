@@ -1,16 +1,19 @@
 import { describe, it, expect } from "vitest";
 import {
+  CREDIT_DOCS_URL,
+  CREDIT_EXHAUSTED_MESSAGE,
+  CREDIT_TOPUP_URL,
   PROXY_DOCS_URL,
   PROXY_ERROR,
   PROXY_REQUEST_ID_HEADER,
   jsonRpcErrorBody,
   newProxyRequestId,
+  proxyCreditExhausted,
   proxyError,
   proxyRateLimited,
   rateLimited,
   withProxyRequestId,
 } from "@/lib/errors";
-import { getDailyLimit } from "@/lib/rate-limit";
 import { SERVER_SCOPE_MESSAGE } from "@/lib/auth/key-scope";
 
 const RID = "11111111-2222-4333-8444-555555555555";
@@ -42,6 +45,12 @@ describe("jsonRpcErrorBody", () => {
       id: 7,
       error: { code: -32001, message: "waking", data: { requestId: RID, docsUrl: PROXY_DOCS_URL } },
     });
+  });
+
+  it("extra data overrides docsUrl and adds fields, requestId stays", () => {
+    expect(
+      jsonRpcErrorBody(1, -32008, "m", RID, { docsUrl: CREDIT_DOCS_URL, topupUrl: "t" }).error.data
+    ).toEqual({ requestId: RID, docsUrl: CREDIT_DOCS_URL, topupUrl: "t" });
   });
 
   it("keeps string ids and turns anything else into null", () => {
@@ -116,16 +125,15 @@ describe("proxyError", () => {
   });
 });
 
-describe("proxyRateLimited keeps the wave-1 429", () => {
+describe("proxyRateLimited (per-minute abuse limiter)", () => {
   const info = {
-    plan: "free" as const,
-    limit: getDailyLimit("free"),
+    limit: 600,
     remaining: 0,
-    reset: Date.now() + 3_600_000,
-    trialEligible: true,
+    reset: Date.now() + 30_000,
+    window: "minute" as const,
   };
 
-  it("same text, headers and quota fields as rateLimited(), plus the JSON-RPC envelope", async () => {
+  it("same text, headers and window fields as rateLimited(), plus the JSON-RPC envelope", async () => {
     const plain = rateLimited(true, info);
     const proxied = proxyRateLimited(RID, 9, true, info);
     expect(proxied.status).toBe(429);
@@ -136,10 +144,13 @@ describe("proxyRateLimited keeps the wave-1 429", () => {
     const a = await plain.json();
     const b = await proxied.json();
     expect(b.message).toBe(a.message);
+    expect(b.message).toContain("600 tool calls per minute");
     expect(b.limit).toBe(a.limit);
-    expect(b.upgradeUrl).toBe(a.upgradeUrl);
+    expect(b.window).toBe("minute");
+    expect(b.upgradeUrl).toBeUndefined();
     expect(b.error).toMatchObject({ code: PROXY_ERROR.RATE_LIMITED, message: a.message });
-    expect(b.error.data.requestId).toBe(RID);
+    expect(b.error.code).toBe(-32029);
+    expect(b.error.data).toEqual({ requestId: RID, docsUrl: PROXY_DOCS_URL });
     expect(b.id).toBe(9);
   });
 
@@ -147,6 +158,37 @@ describe("proxyRateLimited keeps the wave-1 429", () => {
     const res = proxyRateLimited(RID, null, true);
     expect(res.status).toBe(429);
     const body = await res.json();
-    expect(body.message).toMatch(/Rate limited or quota exceeded/);
+    expect(body.message).toMatch(/^Rate limited\./);
+  });
+});
+
+describe("proxyCreditExhausted (contract W2)", () => {
+  it("402, code -32008, the contract message and { requestId, docsUrl, topupUrl }", async () => {
+    const res = proxyCreditExhausted(RID, 12);
+    expect(res.status).toBe(402);
+    expect(res.headers.get(PROXY_REQUEST_ID_HEADER)).toBe(RID);
+    const body = await res.json();
+    expect(body).toEqual({
+      jsonrpc: "2.0",
+      id: 12,
+      error: {
+        code: -32008,
+        message: "Your TwinMCP credit is used up. Top up at https://twinmcp.fr/dashboard/billing",
+        data: {
+          requestId: RID,
+          docsUrl: "https://twinmcp.fr/docs#credit",
+          topupUrl: "https://twinmcp.fr/dashboard/billing",
+        },
+      },
+      // Plain JSON callers read the top-level fields.
+      message: CREDIT_EXHAUSTED_MESSAGE,
+      topupUrl: CREDIT_TOPUP_URL,
+    });
+    expect(PROXY_ERROR.CREDIT_EXHAUSTED).toBe(-32008);
+  });
+
+  it("echoes a string id and nulls a missing one", async () => {
+    expect((await proxyCreditExhausted(RID, "a").json()).id).toBe("a");
+    expect((await proxyCreditExhausted(RID, undefined).json()).id).toBeNull();
   });
 });

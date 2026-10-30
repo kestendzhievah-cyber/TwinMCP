@@ -68,7 +68,7 @@ export interface AuthedContext {
    */
   via?: "api_key" | "oauth";
   plan: "free" | "pro" | "team";
-  /** users.stripe_customer_id present: the first-month Pro trial is used up. */
+  /** users.stripe_customer_id present (the account has paid through Stripe before). */
   hasStripeCustomer: boolean;
 }
 

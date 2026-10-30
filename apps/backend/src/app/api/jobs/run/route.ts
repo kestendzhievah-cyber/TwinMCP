@@ -27,6 +27,9 @@ const jobSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("upgrade-nudges") }),
   z.object({ type: z.literal("purge-retention") }),
   z.object({ type: z.literal("webhook-deliver"), deliveryId: z.string() }),
+  z.object({ type: z.literal("meter-boxes") }),
+  z.object({ type: z.literal("wallet-enforce") }),
+  z.object({ type: z.literal("wallet-expiry") }),
 ]);
 
 export async function POST(req: NextRequest) {

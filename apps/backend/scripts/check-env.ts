@@ -88,7 +88,7 @@ const GROUPS: Group[] = [
       "WEBHOOKS_DENY_SELF",
     ],
     breaks: [
-      "CRON_SECRET: /api/cron/{digest,churn,nudges,purge} only callable from an admin session — no retention purge from a scheduler",
+      "CRON_SECRET: /api/cron/{digest,churn,nudges,purge,meter-boxes,wallet-enforce,wallet-expiry,wallet-reminders} only callable from an admin session — no retention purge, no compute billing, no promo expiry from a scheduler",
     ],
   },
   {
@@ -97,17 +97,47 @@ const GROUPS: Group[] = [
     breaks: ["IP encryption (GDPR audit trail)"],
   },
   {
-    // Names MUST match lib/stripe.ts (getPriceId). Pro monthly is the minimum
-    // for a working checkout; the rest are opt-in cadences/plans.
+    // Prepaid wallet (2026-10-29): top-ups use inline price_data, so no price
+    // id is needed. STRIPE_PRO_* / STRIPE_TEAM_* are LEGACY (only the old
+    // subscription webhooks and scripts/migrate-pro-to-wallet.ts read them).
     name: "Billing (Stripe)",
-    required: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRO_MONTHLY_PRICE_ID"],
+    required: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
     optional: [
+      "STRIPE_TAX_ENABLED",
+      "WALLET_TOPUP_TAX_BEHAVIOR",
+      "STRIPE_TOPUP_TAX_CODE",
+      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+      "STRIPE_PRO_MONTHLY_PRICE_ID",
       "STRIPE_PRO_YEARLY_PRICE_ID",
       "STRIPE_TEAM_MONTHLY_PRICE_ID",
       "STRIPE_TEAM_YEARLY_PRICE_ID",
-      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
     ],
-    breaks: ["/api/v2/billing/checkout, /api/v2/billing/portal, /api/webhooks/stripe"],
+    breaks: [
+      "/api/v2/wallet/topup, /api/v2/wallet/auto-recharge, /api/v2/billing/portal, /api/webhooks/stripe (paid top-ups never credited)",
+    ],
+  },
+  {
+    // Prepaid wallet knobs (lib/wallet/*). All have safe defaults except the
+    // pepper, which falls back to CONFIG_ENCRYPTION_KEY (rotating that key
+    // would then let every past email claim the sign-up credit again).
+    name: "Prepaid wallet — optional",
+    required: [],
+    optional: [
+      "SIGNUP_HASH_PEPPER",
+      "WALLET_ENFORCE_ENABLED",
+      "WALLET_COST_MULTIPLIER",
+      "WALLET_USD_EUR",
+      "WALLET_CALL_COST_EUR_PER_1000",
+      "MCP_CALLS_PER_MINUTE",
+      "RATE_LIMIT_PER_MINUTE",
+      "SIGNUP_CREDIT_MAX_PER_IP_DAY",
+      "SIGNUP_CREDIT_MAX_PER_SUBNET_DAY",
+      "SIGNUP_CREDIT_MAX_PER_DAY",
+    ],
+    breaks: [
+      "SIGNUP_HASH_PEPPER: sign-up credit dedupe keyed on CONFIG_ENCRYPTION_KEY instead",
+      "WALLET_ENFORCE_ENABLED!=true: empty wallets still pause, but free-credit runtimes are never deleted (no deletion warnings)",
+    ],
   },
   {
     // Comma-separated admin allowlist for /dashboard/admin analytics. Falls back

@@ -18,6 +18,8 @@ import {
 } from "@/components/docs/docs-facts";
 import { API_KEY_PLACEHOLDER, IDE_LABELS, MATRIX_CLIENTS } from "@/lib/mcp/client-config";
 import { TOOL_POLICY_DENIED_CODE } from "@/lib/mcp/aggregate";
+import { CREDIT_RPC_CODE, CreditDocsSection } from "@/components/pricing/credit-docs-section";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -50,9 +52,10 @@ const EYEBROW_RULES =
 const STEP =
   "flex gap-4 [counter-increment:step] before:grid before:h-9 before:w-9 before:shrink-0 before:place-items-center before:border before:border-border before:text-sm before:font-medium before:text-foreground before:content-[counter(step)] before:[font-variant-numeric:lining-nums]";
 
-// Plan facts from lib/rate-limit.ts + lib/plan-features.ts; key rules from
-// lib/auth/key-scope.ts. Never hand-typed.
+// Account facts from lib/plan-features.ts, prices from lib/wallet/pricing.ts
+// (via wallet-copy.ts); key rules from lib/auth/key-scope.ts. Never hand-typed.
 const FACTS = docsPlanFacts();
+const WALLET = walletFacts("fr");
 const n = (v: number) => formatCount(v, "fr");
 const OVERLAP_HOURS = rotationOverlapHours();
 
@@ -204,11 +207,11 @@ export default function DocsPageFr() {
               <div className="py-5 last:pb-0">
                 <h3 className="text-2xl font-medium">Votre propre MCP</h3>
                 <p className="mt-2 text-base leading-7">
-                  Avec l&apos;offre {FACTS.customMcpPlan}, la page <strong>Publish an MCP</strong>{" "}
-                  empaquette n&apos;importe quel serveur MCP stdio — un paquet npm lancé avec{" "}
-                  <code>npx</code> ou un paquet PyPI lancé avec <code>uvx</code> — pour
-                  l&apos;installer sur vos serveurs comme un connecteur du catalogue. Il est
-                  joignable par la même URL Streamable HTTP que les autres.
+                  Une fois votre compte alimenté (après une première recharge), la page{" "}
+                  <strong>Publish an MCP</strong> empaquette n&apos;importe quel serveur MCP stdio —
+                  un paquet npm lancé avec <code>npx</code> ou un paquet PyPI lancé avec{" "}
+                  <code>uvx</code> — pour l&apos;installer sur vos serveurs comme un connecteur du
+                  catalogue. Il est joignable par la même URL Streamable HTTP que les autres.
                 </p>
               </div>
             </div>
@@ -236,8 +239,8 @@ export default function DocsPageFr() {
             <p className="mt-3 text-base leading-7 text-muted-foreground">
               Chaque requête MCP porte une clé TwinMCP (préfixe <code>ctx7sk_</code>) dans
               l&apos;en-tête <code>Authorization: Bearer</code>. Les clés se créent dans{" "}
-              <strong>Dashboard → API keys</strong> : {n(FACTS.freeKeys)} clés avec l&apos;offre
-              Free, {n(FACTS.proKeys)} avec Pro.
+              <strong>Dashboard → API keys</strong> : {n(FACTS.freeKeys)} clés avant votre première
+              recharge, {n(FACTS.proKeys)} ensuite.
             </p>
 
             <div className="mt-6 divide-y divide-border">
@@ -321,6 +324,8 @@ export default function DocsPageFr() {
             </div>
           </section>
 
+          <CreditDocsSection locale="fr" />
+
           <section id="depannage" className="py-12">
             {/* Same anchor as the English page, which the proxy's error.data.docsUrl
                 targets, so /fr/docs#troubleshooting lands here too. */}
@@ -376,19 +381,33 @@ export default function DocsPageFr() {
                 </p>
               </div>
 
-              <div id="erreur-429" className="py-6">
-                <h3 className="text-2xl font-medium">« Daily limit reached » (HTTP 429)</h3>
+              <div id="erreur-402" className="py-6">
+                <h3 className="text-2xl font-medium">
+                  « Your TwinMCP credit is used up » (HTTP 402, JSON-RPC {CREDIT_RPC_CODE})
+                </h3>
                 <p className="mt-2 text-base leading-7">
-                  Les appels d&apos;outils du jour sont épuisés : {n(FACTS.freeDaily)} par jour avec
-                  l&apos;offre Free, {n(FACTS.proDaily)} par jour avec Pro. Seuls les{" "}
-                  <code>tools/call</code> sont comptés — <code>initialize</code>,{" "}
-                  <code>tools/list</code>, les notifications, les pings et le test de connexion du
-                  tableau de bord sont gratuits. Le quota repart à 00 h 00 UTC ; le message indique
-                  l&apos;heure de remise à zéro, et la réponse porte les en-têtes{" "}
-                  <code>Retry-After</code> (en secondes), <code>X-RateLimit-Limit</code>,{" "}
-                  <code>X-RateLimit-Remaining</code> et <code>X-RateLimit-Reset</code> (horodatage
-                  Unix en secondes). Pour davantage d&apos;appels, passez à l&apos;offre supérieure
-                  dans <strong>Dashboard → Billing</strong>.
+                  Votre solde est à zéro : l&apos;appel d&apos;outil a été refusé avant
+                  d&apos;atteindre le MCP, et il n&apos;est pas facturé. Seuls les{" "}
+                  <code>tools/call</code> sont refusés — <code>initialize</code>,{" "}
+                  <code>tools/list</code>, les notifications et les pings répondent toujours.
+                  Rechargez à partir de {WALLET.minTopup} dans <strong>Dashboard → Billing</strong>{" "}
+                  (le champ <code>error.data.topupUrl</code> de l&apos;erreur y mène), puis
+                  réessayez. Pour l&apos;éviter, activez la recharge automatique. Voir{" "}
+                  <a href="#credit" className={LINK}>
+                    Crédit et tarifs
+                  </a>
+                  .
+                </p>
+              </div>
+
+              <div id="erreur-429" className="py-6">
+                <h3 className="text-2xl font-medium">« Too many requests » (HTTP 429)</h3>
+                <p className="mt-2 text-base leading-7">
+                  Trop d&apos;appels d&apos;outils en peu de temps depuis un même compte : une
+                  limite par minute protège la plateforme des boucles qui s&apos;emballent. Il
+                  n&apos;y a pas de plafond journalier : seul votre solde limite le volume.
+                  Patientez un instant puis réessayez ; si la réponse porte <code>Retry-After</code>{" "}
+                  (en secondes), attendez ce délai.
                 </p>
               </div>
 
@@ -507,9 +526,11 @@ export default function DocsPageFr() {
             <ul role="list" className="mt-6 divide-y divide-border border-y border-border">
               <li className="py-3 leading-7">
                 <Link href={"/fr/tarifs" as Route} className={LINK}>
-                  Offres et quotas
+                  Tarifs
                 </Link>{" "}
-                <span className="text-muted-foreground">— Free et Pro.</span>
+                <span className="text-muted-foreground">
+                  — la grille tarifaire, ce que permettent {WALLET.signupCredit} et un estimateur.
+                </span>
               </li>
               <li className="py-3 leading-7">
                 <Link href={"/docs/api-reference" as Route} className={LINK}>

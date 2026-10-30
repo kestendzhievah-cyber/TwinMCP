@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { ArrowRight } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 
 export const metadata: Metadata = {
   title: "Conditions d'utilisation",
@@ -15,7 +16,15 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "13 octobre 2026";
+const LAST_UPDATED = "29 octobre 2026";
+
+// Montants cités au §3, depuis la grille du portefeuille (lib/wallet/pricing.ts).
+const W = walletFacts("fr");
+const SIGNUP_CREDIT = W.signupCredit;
+const SIGNUP_DAYS = W.signupDays;
+const MIN_TOPUP = W.minTopup;
+const MAX_TOPUP = W.maxTopup;
+const OVERDRAFT = W.overdraft;
 
 // Typeset as a document on the card stock (docs/DESIGN.md §4–5): a centred
 // header over the double rule, numbered sections with hanging small-caps
@@ -59,7 +68,7 @@ export default function TermsPage() {
           </h1>
           <div aria-hidden className="mx-auto mt-6 h-px w-12 bg-foreground/40" />
           <p className="lining mt-6 text-sm italic text-muted-foreground">
-            Dernière mise à jour : {LAST_UPDATED}
+            Dernière mise à jour : {LAST_UPDATED}
           </p>
         </div>
         <Separator variant="double" className="mt-10" />
@@ -125,81 +134,131 @@ export default function TermsPage() {
           </div>
         </section>
 
+        {/* TODO(legal-review, 2026-10-29): le §3 a été réécrit pour le crédit
+            prépayé (plus d'abonnement, crédit promotionnel d'inscription, recharges
+            payantes, recharge automatique, conversion des abonnements). Chaque
+            paragraphe du §3 doit être relu par un juriste, et le propriétaire doit
+            confirmer : remboursement du crédit payé à la clôture du compte, TVA des
+            recharges (bon à usage unique) et du crédit promotionnel, et le parcours
+            de rétractation au regard de l'ordonnance n° 2026-2. */}
         <section className={SECTION}>
           <h2 className={H2}>
-            <span className={NUM}>3.</span> Plans et facturation
+            <span className={NUM}>3.</span> Crédit prépayé et paiement
           </h2>
           <div className={SUBSECTIONS}>
             <div className={SUBSECTION}>
               <h3 className={H3}>
-                <span className={SUBNUM}>3.1</span> Plan gratuit
+                <span className={SUBNUM}>3.1</span> Crédit prépayé
               </h3>
               <p>
-                Le plan Free est fourni sans frais et sans carte bancaire. Il inclut un quota limité
-                décrit sur la <Link href={"/plans" as Route}>page tarifaire</Link>. Nous pouvons
-                modifier ces limites avec un préavis de 30 jours.
+                Le Service se paie depuis un solde prépayé en euros (le <strong>« crédit »</strong>)
+                rattaché à ton Compte. Il n&apos;y a pas d&apos;abonnement et rien ne se renouvelle.
+                Ton usage du Service (appels d&apos;outils et temps de calcul, tels qu&apos;indiqués
+                sur la <Link href={"/fr/tarifs" as Route}>page tarifaire</Link>) est déduit de ton
+                crédit aux prix en vigueur au moment de l&apos;usage.
+              </p>
+              <p>
+                Quand ton crédit atteint zéro, le Service cesse de traiter les requêtes facturables
+                et tes serveurs sont mis en pause. Le calcul déjà en cours à ce moment peut faire
+                passer ton solde légèrement sous zéro, de {OVERDRAFT} au plus ; ce montant est
+                déduit de ta recharge suivante. Nous ne le prélevons jamais sur ton moyen de
+                paiement, sauf si tu as activé la recharge automatique (§3.3).
               </p>
             </div>
             <div className={SUBSECTION}>
               <h3 className={H3}>
-                <span className={SUBNUM}>3.2</span> Plans payants
+                <span className={SUBNUM}>3.2</span> Crédit promotionnel d&apos;inscription
               </h3>
               <p>
-                Les abonnements Pro et Team sont facturés mensuellement ou annuellement via Stripe.
-                Le paiement est dû à l&apos;avance et non remboursable une fois la période entamée,
-                sauf mention contraire (cf. §3.3 et, pour les consommateurs, §3.5).
+                Un nouveau Compte peut recevoir {SIGNUP_CREDIT} de crédit promotionnel, sans
+                paiement ni carte, valable {SIGNUP_DAYS} jours à compter de l&apos;inscription, une
+                seule fois par personne. Le crédit promotionnel est une réduction sur le Service :
+                il n&apos;a <strong>aucune valeur monétaire</strong>, n&apos;est{" "}
+                <strong>ni remboursable ni cessible</strong> et ne peut pas être échangé. Il est
+                utilisé avant tout crédit payé, et la part non utilisée à la fin de sa validité
+                expire. Jusqu&apos;à la première recharge payante, il ne peut être utilisé que dans
+                les limites indiquées sur la page tarifaire (un petit serveur ; certains MCP qui
+                exécutent du code ou un navigateur sont exclus). Nous pouvons refuser ou annuler un
+                crédit promotionnel obtenu au moyen de plusieurs comptes, d&apos;adresses e-mail
+                jetables ou de tout autre abus.
               </p>
             </div>
             <div className={SUBSECTION}>
               <h3 className={H3}>
-                <span className={SUBNUM}>3.3</span> Remboursements (garantie commerciale)
+                <span className={SUBNUM}>3.3</span> Recharges, paiement et recharge automatique
               </h3>
               <p>
-                Tu peux demander un remboursement intégral dans les 7 jours suivant la souscription
-                initiale d&apos;un plan payant. Au-delà, le plan reste actif jusqu&apos;au terme de
-                la période payée et aucun remboursement prorata n&apos;est accordé. Cette garantie
-                commerciale s&apos;ajoute au droit légal de rétractation des consommateurs (§3.5) et
-                ne le remplace pas.
+                Tu achètes du crédit payé en rechargeant ton solde par carte via Stripe, de{" "}
+                {MIN_TOPUP} à {MAX_TOPUP} par recharge. Le montant, et la TVA éventuellement
+                applicable, est affiché avant le paiement ; le crédit est ajouté une fois le
+                paiement confirmé.
+              </p>
+              <p>
+                La recharge automatique est facultative et désactivée par défaut. Si tu
+                l&apos;actives, tu nous autorises à débiter la carte enregistrée du montant de
+                recharge choisi chaque fois que ton solde passe sous le seuil choisi, sans dépasser
+                le plafond mensuel que tu as fixé. Tu peux la modifier ou la désactiver à tout
+                moment depuis ta page de facturation.
               </p>
             </div>
             <div className={SUBSECTION}>
               <h3 className={H3}>
-                <span className={SUBNUM}>3.4</span> Changements de prix
+                <span className={SUBNUM}>3.4</span> Validité du crédit payé et remboursements
               </h3>
               <p>
-                Toute modification des tarifs s&apos;applique à partir de la prochaine période de
-                facturation, avec un préavis minimum de 30 jours.
+                Le crédit payé n&apos;a pas de date d&apos;expiration : il reste disponible tant que
+                ton Compte est ouvert. Sauf disposition légale contraire, notamment le droit de
+                rétractation (§3.6), le crédit déjà utilisé n&apos;est pas remboursable.
               </p>
             </div>
             <div className={SUBSECTION}>
               <h3 className={H3}>
-                <span className={SUBNUM}>3.5</span> Droit de rétractation (consommateurs)
+                <span className={SUBNUM}>3.5</span> Changements de prix
+              </h3>
+              <p>
+                Nous pouvons modifier nos prix avec un préavis minimum de 30 jours. Les nouveaux
+                prix ne s&apos;appliquent qu&apos;à l&apos;usage postérieur à leur entrée en vigueur
+                ; le crédit déjà acheté conserve sa valeur en euros.
+              </p>
+            </div>
+            <div className={SUBSECTION}>
+              <h3 className={H3}>
+                <span className={SUBNUM}>3.6</span> Droit de rétractation (consommateurs)
               </h3>
               <p>
                 Si tu es un consommateur, tu disposes d&apos;un délai de <strong>14 jours</strong> à
-                compter de la souscription d&apos;un abonnement payant pour te rétracter, sans avoir
-                à motiver ta décision (articles L221-18 et suivants du Code de la consommation).
+                compter de chaque recharge payante pour te rétracter de cet achat, sans avoir à
+                motiver ta décision (articles L221-18 et suivants du Code de la consommation).
               </p>
               <p>
-                En souscrivant un abonnement, tu demandes <strong>expressément</strong> que le
-                Service te soit fourni immédiatement, sans attendre l&apos;expiration du délai de
-                rétractation. Si tu exerces ton droit de rétractation après ce début
-                d&apos;exécution, tu restes redevable du prix correspondant au service déjà fourni
-                jusqu&apos;à la notification de ta rétractation, calculé au prorata ; le solde
-                t&apos;est remboursé dans les 14 jours, sur le moyen de paiement utilisé (article
-                L221-25).
+                En rechargeant, tu demandes <strong>expressément</strong> que le crédit soit
+                utilisable immédiatement, avant la fin du délai de rétractation. Si tu te rétractes,
+                la part de cette recharge que tu n&apos;as pas utilisée t&apos;est remboursée dans
+                les 14 jours, sur le moyen de paiement utilisé ; la part déjà utilisée pour te
+                fournir le Service reste due (article L221-25).
               </p>
               <p>
                 Pour exercer ce droit, envoie-nous une déclaration dénuée d&apos;ambiguïté à{" "}
                 <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>, depuis l&apos;adresse email
-                associée à ton compte. Tu peux utiliser le modèle suivant (non obligatoire) :
+                associée à ton compte. Tu peux utiliser le modèle suivant (non obligatoire) :
               </p>
               <p className={MODEL}>
                 <em>
-                  « Je vous notifie par la présente ma rétractation du contrat portant sur
-                  l&apos;abonnement TwinMCP souscrit le [date de souscription]. Nom : [ton nom].
-                  Email du compte : [email]. Date : [date du jour]. »
+                  « Je vous notifie par la présente ma rétractation de la recharge de crédit TwinMCP
+                  effectuée le [date de la recharge]. Nom : [ton nom]. Email du compte : [email].
+                  Date : [date du jour]. »
                 </em>
+              </p>
+            </div>
+            <div className={SUBSECTION}>
+              <h3 className={H3}>
+                <span className={SUBNUM}>3.7</span> Anciens abonnements
+              </h3>
+              <p>
+                Les abonnements Pro et Team souscrits avant le 29 octobre 2026 sont convertis en
+                crédit : la part non utilisée de la période payée en cours est ajoutée à ton solde
+                en crédit payé, l&apos;abonnement est résilié pour ne plus se renouveler, et tu es
+                informé des montants par email.
               </p>
             </div>
           </div>
@@ -210,17 +269,17 @@ export default function TermsPage() {
             <span className={NUM}>4.</span> Usage acceptable
           </h2>
           <div className={BODY}>
-            <p>Tu t&apos;engages à ne pas :</p>
+            <p>Tu t&apos;engages à ne pas :</p>
             <ul className={LIST}>
               <li>
                 héberger ou diffuser du contenu illégal, malveillant ou portant atteinte aux droits
-                de tiers ;
+                de tiers ;
               </li>
               <li>
-                contourner les quotas, limites de débit, ou mécanismes de sécurité du Service ;
+                contourner les quotas, limites de débit, ou mécanismes de sécurité du Service ;
               </li>
-              <li>utiliser le Service pour attaquer, scanner ou surcharger des systèmes tiers ;</li>
-              <li>revendre ou redistribuer l&apos;accès au Service sans autorisation écrite ;</li>
+              <li>utiliser le Service pour attaquer, scanner ou surcharger des systèmes tiers ;</li>
+              <li>revendre ou redistribuer l&apos;accès au Service sans autorisation écrite ;</li>
               <li>tenter de rétro-ingénierer, désassembler ou cloner le Service.</li>
             </ul>
           </div>
@@ -249,8 +308,11 @@ export default function TermsPage() {
           </h2>
           <div className={BODY}>
             <p>
-              Nous visons une disponibilité de 99,9 % sur les plans Pro et Team. Aucun SLA
-              contractuel n&apos;est garanti sur le plan Free. Les maintenances planifiées sont
+              {/* TODO(legal-review, 2026-10-29): disponibilité reformulée après la
+                  suppression des offres. */}
+              Nous visons une disponibilité de 99,9 % pour les comptes alimentés par une recharge
+              payante. Aucun SLA contractuel n&apos;est garanti, en particulier pour les comptes qui
+              n&apos;utilisent que le crédit promotionnel. Les maintenances planifiées sont
               annoncées au moins 24 h à l&apos;avance.
             </p>
           </div>
@@ -258,15 +320,22 @@ export default function TermsPage() {
 
         <section className={SECTION}>
           <h2 className={H2}>
-            <span className={NUM}>7.</span> Résiliation
+            <span className={NUM}>7.</span> Fermeture du compte
           </h2>
+          {/* TODO(legal-review, 2026-10-29): §7 réécrit pour le crédit prépayé (plus
+              d'abonnement à résilier). Le sort du crédit payé non utilisé à la
+              fermeture (remboursement) reste à confirmer avec le juriste (§3.4). */}
           <div className={BODY}>
             <p>
-              Tu peux résilier ton abonnement à tout moment depuis l&apos;onglet Billing du
-              dashboard ; la résiliation prend effet à la fin de la période de facturation en cours
-              et ton compte repasse alors au plan gratuit. Tu peux aussi supprimer ton compte et
-              toutes les données associées immédiatement depuis{" "}
-              <strong>Paramètres → Supprimer le compte</strong>.
+              Il n&apos;y a pas d&apos;abonnement à résilier. Tu peux fermer ton Compte à tout
+              moment depuis <strong>Paramètres → Supprimer le compte</strong> ; la fermeture est
+              immédiate et supprime les données associées, à l&apos;exception des écritures
+              comptables (recharges, factures) que la loi nous oblige à conserver.
+            </p>
+            <p>
+              Tant qu&apos;il reste du crédit payé sur ton Compte, la fermeture se fait en nous
+              écrivant à <a href="mailto:hello@twinmcp.fr">hello@twinmcp.fr</a>, afin de régler le
+              sort de ce crédit (§3.4). Le crédit promotionnel non utilisé est perdu à la fermeture.
             </p>
           </div>
         </section>

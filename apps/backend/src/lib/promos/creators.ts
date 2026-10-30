@@ -39,47 +39,11 @@ export interface CreatorCampaign {
   expiresAt?: string;
 }
 
-// Stub entry — replace promotionCodeId + handle after running
-// scripts/create-promo-code.ts. Slug becomes the public URL: /p/<slug>.
-export const CREATORS: CreatorCampaign[] = [
-  {
-    slug: "youtuber",
-    displayName: "YouTuber Partner",
-    handle: "@youtuber",
-    channelUrl: "https://youtube.com/@youtuber",
-    promotionCodeId: process.env.STRIPE_PROMO_YOUTUBER_ID ?? "",
-    humanCode: "YT-1MOIS",
-    plan: "pro",
-    cadence: "monthly",
-    freeMonths: 1,
-    hero: {
-      en: {
-        eyebrow: "Partner offer",
-        title: "1 month of TwinMCP Pro, on us.",
-        description:
-          "Spin up to 50 MCP servers on any box size, publish your own MCPs, and ship with your AI agent in production — first month free, cancel anytime.",
-        bullets: [
-          "50 servers",
-          "All box sizes (small, medium, large)",
-          "5,000 MCP requests / day",
-          "Publish your own MCPs",
-        ],
-      },
-      fr: {
-        eyebrow: "Offre partenaire",
-        title: "1 mois de TwinMCP Pro offert.",
-        description:
-          "Lancez jusqu’à 50 serveurs MCP sur toutes les tailles de box, publiez vos propres MCP et passez en production avec votre agent IA. Premier mois offert, sans engagement.",
-        bullets: [
-          "50 serveurs",
-          "Toutes les tailles de box (small, medium, large)",
-          "5 000 requêtes MCP par jour",
-          "Publiez vos propres MCP",
-        ],
-      },
-    },
-  },
-];
+// Retired 2026-10-29: these campaigns were Stripe coupons on the Pro
+// subscription, which no longer exists (prepaid wallet). With no entry, every
+// /p/<slug> landing 404s. A future partner offer would be a wallet credit
+// (ledger kind 'admin_grant'), not a coupon, and needs its own design.
+export const CREATORS: CreatorCampaign[] = [];
 
 export function getCreator(slug: string): CreatorCampaign | undefined {
   const c = CREATORS.find((x) => x.slug === slug);

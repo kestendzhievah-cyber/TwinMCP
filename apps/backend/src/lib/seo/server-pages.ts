@@ -30,9 +30,9 @@ import {
   type CategoryKey,
   type ServerEntry,
 } from "@/lib/servers/catalog";
-import { PLAN_CAPABILITIES, PRO_TRIAL_DAYS } from "@/lib/plan-features";
-import { getDailyLimit } from "@/lib/rate-limit";
-import { PLANS, formatEur } from "@/components/pricing/pricing-data";
+import { PLAN_CAPABILITIES } from "@/lib/plan-features";
+import { walletFacts } from "@/components/pricing/wallet-copy";
+import { canUseMcpOnPromo } from "@/lib/wallet/eligibility";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -62,8 +62,8 @@ export const EXAMPLE_SERVER = { en: "my-server", fr: "mon-serveur" } as const sa
 /** Where the troubleshooting section lives (components/docs/docs-facts.ts). */
 const DOCS_PATH: Record<Locale, string> = { en: "/docs", fr: "/fr/docs" };
 const SIGN_UP_PATH: Record<Locale, string> = {
-  en: "/sign-up?plan=free",
-  fr: "/fr/inscription?plan=free",
+  en: "/sign-up",
+  fr: "/fr/inscription",
 };
 const PRICING_PATH: Record<Locale, string> = { en: "/plans", fr: "/fr/tarifs" };
 
@@ -197,27 +197,41 @@ export function configFields(entry: ServerEntry, locale: Locale): ConfigFieldVie
 
 // ─── Plan facts (from the code that enforces them) ───────────────────────────
 
+/**
+ * The prepaid-wallet facts the catalogue pages quote: allowances from
+ * lib/plan-features.ts ("free" = not funded yet, "pro" = funded), prices from
+ * lib/wallet/pricing.ts through components/pricing/wallet-copy.ts.
+ */
 export interface PlanFacts {
+  /** Servers on the sign-up credit (before the first top-up). */
   freeServers: number;
-  freeDaily: string;
+  /** Servers once the account is funded. */
   proServers: number;
-  proDaily: string;
-  proMonthly: string;
-  proAnnual: string;
-  trialDays: number;
+  /** "€10": the sign-up credit. */
+  signupCredit: string;
+  /** Days the sign-up credit is valid. */
+  signupDays: number;
+  /** "€10": the smallest top-up. */
+  minTopup: string;
+  /** "€0.10": price of 1,000 tool calls. */
+  per1000Calls: string;
+  /** Price of one active CPU-hour on a small box. */
+  cpuHourSmall: string;
+  /** Tool calls the sign-up credit pays for on its own. */
+  creditCalls: string;
 }
 
 export function planFacts(locale: Locale): PlanFacts {
-  const pro = PLANS.find((p) => p.id === "pro")!;
-  const n = (v: number) => v.toLocaleString(locale === "fr" ? "fr-FR" : "en-US");
+  const w = walletFacts(locale);
   return {
     freeServers: PLAN_CAPABILITIES.free.servers,
-    freeDaily: n(getDailyLimit("free")),
     proServers: PLAN_CAPABILITIES.pro.servers,
-    proDaily: n(getDailyLimit("pro")),
-    proMonthly: formatEur(pro.monthlyUsd, locale),
-    proAnnual: formatEur(pro.annualTotalEur, locale),
-    trialDays: PRO_TRIAL_DAYS,
+    signupCredit: w.signupCredit,
+    signupDays: w.signupDays,
+    minTopup: w.minTopup,
+    per1000Calls: w.per1000Calls,
+    cpuHourSmall: w.cpuHour.small,
+    creditCalls: w.creditCalls,
   };
 }
 
@@ -558,14 +572,21 @@ function faqFor(
     });
   }
 
-  // 3. Plan — from plan-features.ts, rate-limit.ts and pricing-data.ts.
+  // 3. Price — from plan-features.ts, lib/wallet/pricing.ts (via
+  //    wallet-copy.ts) and lib/wallet/eligibility.ts (MCPs held back from the
+  //    sign-up credit).
+  const onCredit = canUseMcpOnPromo(entry.slug, { isOfficial: true });
+  const pricesEn = `After that you pay as you go from a prepaid balance (top-ups from ${p.minTopup}, no subscription): tool calls cost ${p.per1000Calls} per 1,000 and compute ${p.cpuHourSmall} per active CPU-hour on a small server.`;
+  const pricesFr = `Ensuite, vous payez à l’usage depuis un solde prépayé (recharges dès ${p.minTopup}, sans abonnement) : les appels d’outils coûtent ${p.per1000Calls} les 1 000 et le calcul ${p.cpuHourSmall} par heure de CPU actif sur un petit serveur.`;
   out.push({
-    q: fr
-      ? `Puis-je héberger ${name} avec l’offre gratuite ?`
-      : `Can I host ${name} on the Free plan?`,
-    a: fr
-      ? `Oui. L’offre Free comprend ${p.freeServers} serveur et ${p.freeDaily} appels d’outils par jour, sans carte bancaire. Pro coûte ${p.proMonthly} par mois (ou ${p.proAnnual} par an) pour ${p.proServers} serveurs et ${p.proDaily} appels d’outils par jour ; un premier abonnement Pro commence par ${p.trialDays} jours gratuits. Seuls les appels d’outils comptent.`
-      : `Yes. The Free plan includes ${p.freeServers} server and ${p.freeDaily} tool calls a day, with no credit card. Pro costs ${p.proMonthly} a month (or ${p.proAnnual} a year) for ${p.proServers} servers and ${p.proDaily} tool calls a day; a first Pro subscription starts with ${p.trialDays} days free. Only tool calls count.`,
+    q: fr ? `Puis-je essayer ${name} gratuitement ?` : `Can I try ${name} for free?`,
+    a: onCredit
+      ? fr
+        ? `Oui. Chaque nouveau compte reçoit ${p.signupCredit} de crédit offert, valable ${p.signupDays} jours, sans carte bancaire, pour ${p.freeServers} serveur. ${pricesFr}`
+        : `Yes. Every new account gets ${p.signupCredit} of free credit, valid ${p.signupDays} days, with no credit card, for ${p.freeServers} server. ${pricesEn}`
+      : fr
+        ? `Pas avec le crédit offert seul : ${name} peut exécuter du code ou piloter un navigateur, il demande donc un compte alimenté par une première recharge (dès ${p.minTopup}). Le crédit d’inscription de ${p.signupCredit} reste utilisable pour les autres MCP du catalogue. ${pricesFr}`
+        : `Not on the free credit alone: ${name} can run code or drive a browser, so it needs an account funded by a first top-up (from ${p.minTopup}). The ${p.signupCredit} sign-up credit still covers the rest of the catalogue. ${pricesEn}`,
   });
 
   return out;
@@ -869,11 +890,11 @@ function troubleshootingFor(
     });
   }
   items.push({
-    title: fr ? "« Daily limit reached » (HTTP 429)" : "“Daily limit reached” (HTTP 429)",
+    title: fr ? "« Credit used up » (HTTP 402)" : "“Credit used up” (HTTP 402)",
     text: fr
-      ? `Vous avez utilisé les appels d’outils du jour : ${p.freeDaily} par jour en Free, ${p.proDaily} en Pro. Seuls les appels d’outils comptent.`
-      : `You have used the day's tool calls: ${p.freeDaily} a day on Free, ${p.proDaily} on Pro. Only tool calls count.`,
-    href: anchor("error-429"),
+      ? `Votre solde TwinMCP est à zéro : les appels d’outils sont refusés avant d’atteindre ${server.name}. Rechargez à partir de ${p.minTopup} depuis la page de facturation, puis réessayez.`
+      : `Your TwinMCP balance is at zero, so tool calls are refused before they reach ${server.name}. Top up from ${p.minTopup} on the billing page, then retry.`,
+    href: anchor("error-402"),
   });
   return items;
 }

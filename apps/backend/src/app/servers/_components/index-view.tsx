@@ -17,8 +17,8 @@ import { COPY } from "./copy";
 import { Breadcrumbs, HostCta } from "./parts";
 
 const SIGN_UP: Record<Locale, string> = {
-  en: "/sign-up?plan=free",
-  fr: "/fr/inscription?plan=free",
+  en: "/sign-up",
+  fr: "/fr/inscription",
 };
 const PRICING: Record<Locale, string> = { en: "/plans", fr: "/fr/tarifs" };
 

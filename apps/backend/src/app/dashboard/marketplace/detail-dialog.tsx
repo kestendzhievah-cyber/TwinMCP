@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CodeSnippet } from "@/components/marketing/code-snippet";
-import { Check, ExternalLink } from "lucide-react";
+import { Check, ExternalLink, Lock } from "lucide-react";
 import {
   API_KEY_PLACEHOLDER,
   IDE_LABELS,
@@ -32,6 +32,7 @@ import {
 import { parseSchema, type CatalogEntry, type ServerOption } from "./install-dialog";
 import { useMcpConfigSchema } from "./use-config-schema";
 import { cliCommand } from "@/lib/cli";
+import { PROMO_LOCKED_BADGE, PROMO_LOCKED_MCP_MESSAGE } from "@/lib/wallet/eligibility";
 
 const IDE_KEYS = Object.keys(IDE_LABELS) as IdeKey[];
 
@@ -45,12 +46,15 @@ export function DetailDialog({
   mcp,
   userServers,
   installed,
+  locked = false,
   onClose,
   onInstall,
 }: {
   mcp: CatalogEntry | null;
   userServers: ServerOption[];
   installed: { serverId: string; serverName: string }[];
+  /** Free credit account and a compute-heavy MCP: installable after a first top-up. */
+  locked?: boolean;
   onClose: () => void;
   onInstall: (mcp: CatalogEntry) => void;
 }) {
@@ -88,6 +92,12 @@ export function DetailDialog({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
             {mcp.isOfficial && <Badge variant="gilt">official</Badge>}
             {local && <Badge variant="info">local</Badge>}
+            {locked && (
+              <Badge variant="warning">
+                <Lock aria-hidden className="h-3 w-3" />
+                {PROMO_LOCKED_BADGE}
+              </Badge>
+            )}
             <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
               {mcp.category && (
                 <>
@@ -127,6 +137,13 @@ export function DetailDialog({
               ))}
             </div>
           </div>
+        )}
+
+        {locked && (
+          <p className="border border-warning/40 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-sm text-warning">
+            {PROMO_LOCKED_MCP_MESSAGE}. It runs code or a browser on demand, so it is not available
+            on the free sign-up credit.
+          </p>
         )}
 
         {local && (
@@ -217,7 +234,11 @@ export function DetailDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             Close
           </Button>
-          {userServers.length === 0 ? (
+          {locked && !isInstalled ? (
+            <Button asChild>
+              <Link href={"/dashboard/billing" as Route}>Top up to install</Link>
+            </Button>
+          ) : userServers.length === 0 ? (
             <Button asChild>
               <Link href={"/dashboard/servers" as Route}>Create a server first</Link>
             </Button>

@@ -43,6 +43,8 @@ interface ClientRow {
   mcps: number;
   mcpRequests30d: number;
   mrr: number;
+  /** Wallet balance in euros (paid + unexpired promo); <= 0 means calls are refused. */
+  balanceEur: number;
   crmStatus: string | null;
   health: string;
 }
@@ -74,7 +76,13 @@ const eur = new Intl.NumberFormat("fr-FR", {
   currency: "EUR",
   maximumFractionDigits: 0,
 });
-const PLAN_LABEL: Record<Plan, string> = { free: "Free", pro: "Pro", team: "Team" };
+const eur2 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+// users.plan since the wallet: "pro" = funded (a first paid top-up), "free" = free credit only.
+const PLAN_LABEL: Record<Plan, string> = {
+  free: "Non financé",
+  pro: "Financé",
+  team: "Team (ancien)",
+};
 const planVariant = (p: Plan): "secondary" | "success" => (p === "free" ? "secondary" : "success");
 
 export function ClientsPanel() {
@@ -84,6 +92,7 @@ export function ClientsPanel() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
+  const [zeroOnly, setZeroOnly] = useState(false);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -106,12 +115,13 @@ export function ClientsPanel() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const rows = data?.clients ?? [];
+    const all = data?.clients ?? [];
+    const rows = zeroOnly ? all.filter((c) => c.balanceEur <= 0) : all;
     if (!q) return rows;
     return rows.filter(
       (c) => c.email.toLowerCase().includes(q) || (c.name?.toLowerCase().includes(q) ?? false)
     );
-  }, [data, query]);
+  }, [data, query, zeroOnly]);
 
   if (loading) {
     return (
@@ -161,7 +171,7 @@ export function ClientsPanel() {
         />
         <Kpi
           icon={<Activity className="h-4 w-4" />}
-          label="MRR estimé"
+          label="Recharges nettes 30 j"
           value={eur.format(totals.mrr)}
         />
       </div>
@@ -178,6 +188,13 @@ export function ClientsPanel() {
             />
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant={zeroOnly ? "default" : "outline"}
+              aria-pressed={zeroOnly}
+              onClick={() => setZeroOnly((v) => !v)}
+            >
+              Solde nul
+            </Button>
             {/* CSV of Free users for an upgrade campaign (merge fields of the email). */}
             <Button asChild variant="outline">
               <a href="/api/v2/admin/clients/export?plan=free" download>
@@ -218,7 +235,13 @@ export function ClientsPanel() {
                   >
                     Appels 30j
                   </TableHead>
-                  <TableHead className="w-24 pr-6 text-right">MRR</TableHead>
+                  <TableHead className="w-24 text-right">Solde</TableHead>
+                  <TableHead
+                    className="w-24 pr-6 text-right"
+                    title="Recharges payées sur 30 jours, nettes des remboursements et litiges"
+                  >
+                    Recharges 30 j
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -259,8 +282,13 @@ export function ClientsPanel() {
                     </TableCell>
                     <TableCell className="text-right">{c.mcps}</TableCell>
                     <TableCell className="text-right">{nf.format(c.mcpRequests30d)}</TableCell>
+                    <TableCell
+                      className={cn("text-right", c.balanceEur <= 0 && "text-destructive")}
+                    >
+                      {eur2.format(c.balanceEur)}
+                    </TableCell>
                     <TableCell className="pr-6 text-right">
-                      {c.mrr > 0 ? eur.format(c.mrr) : "—"}
+                      {c.mrr !== 0 ? eur.format(c.mrr) : "—"}
                     </TableCell>
                   </TableRow>
                 ))}

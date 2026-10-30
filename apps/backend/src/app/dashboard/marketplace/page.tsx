@@ -9,6 +9,8 @@ import { Store } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { RefreshCatalogButton } from "./refresh-button";
+import { getWallet } from "@/lib/wallet/ledger";
+import { isPromoOnly } from "@/lib/wallet/eligibility";
 
 export default async function MarketplacePage() {
   const supabase = await createClient();
@@ -74,7 +76,7 @@ export default async function MarketplacePage() {
 
   // Catalog, the user's servers, their installs and the plan are independent —
   // run in parallel instead of four sequential round-trips. The plan decides
-  // whether a full small box shows the Pro toast (Free) or the server's own
+  // whether a full small box shows the top-up toast (unfunded) or the server's own
   // "use a larger box" message (paid plans).
   const [catalog, userServers, installedRows, [me]] = await Promise.all([
     loadCatalog(),
@@ -97,9 +99,19 @@ export default async function MarketplacePage() {
       .from(installedTable)
       .innerJoin(servers, eq(servers.id, installedTable.serverId))
       .where(eq(servers.userId, user.id)),
-    db.select({ plan: users.plan }).from(users).where(eq(users.id, user.id)).limit(1),
+    db
+      .select({ plan: users.plan, subscriptionStatus: users.subscriptionStatus })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1),
   ]);
   const plan = me?.plan ?? "free";
+  // Promo-only = wallet never funded (lib/wallet/eligibility.ts), NOT plan:
+  // a lapsed trial can keep plan='pro'. The API enforces the same rule; this
+  // only decides which cards show the lock. A wallet read error shows locks.
+  const promoOnly = await getWallet(user.id)
+    .then((w) => isPromoOnly(w, me?.subscriptionStatus ?? null))
+    .catch(() => true);
 
   const installed: InstalledMap = {};
   for (const row of installedRows) {
@@ -130,7 +142,12 @@ export default async function MarketplacePage() {
         />
       ) : (
         <div className="space-y-12">
-          <McpBundles catalog={catalog} userServers={userServers} plan={plan} />
+          <McpBundles
+            catalog={catalog}
+            userServers={userServers}
+            plan={plan}
+            promoOnly={promoOnly}
+          />
           <div className="space-y-4">
             <h2 className="smallcaps tracking-sc flex items-center gap-4 text-xl font-medium after:h-px after:flex-1 after:bg-border after:content-['']">
               All MCPs
@@ -140,6 +157,7 @@ export default async function MarketplacePage() {
               userServers={userServers}
               installed={installed}
               plan={plan}
+              promoOnly={promoOnly}
             />
           </div>
         </div>

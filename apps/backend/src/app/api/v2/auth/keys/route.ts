@@ -21,7 +21,7 @@ import {
   KEY_SCOPES,
   type KeyScope,
 } from "@/lib/auth/key-scope";
-import { limitFor, minPlanForLimit, PLAN_LABELS } from "@/lib/plan-features";
+import { limitFor, minPlanForLimit } from "@/lib/plan-features";
 import { checkAuthWriteLimit } from "@/lib/auth/rate-limit";
 import { checkExternalUserId } from "@/lib/vault/key-meta";
 import { audit, auditCtxFromRequest } from "@/lib/audit";
@@ -163,9 +163,9 @@ export async function POST(req: NextRequest) {
     ).filter((k) => countsTowardKeyLimit(k, now));
     if (active.length >= limit) {
       const required = minPlanForLimit("apiKeys", active.length + 1);
-      const upsell = required ? ` Upgrade to ${PLAN_LABELS[required]} for more.` : "";
+      const upsell = required ? " Top up your TwinMCP credit to raise it." : "";
       return forbidden(
-        `You've reached your plan's limit of ${limit} API key${limit > 1 ? "s" : ""}.${upsell}`
+        `You've reached your account's limit of ${limit} API key${limit > 1 ? "s" : ""}.${upsell}`
       );
     }
 

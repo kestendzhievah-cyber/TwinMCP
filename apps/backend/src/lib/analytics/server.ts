@@ -17,9 +17,12 @@ const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posth
  * - signup_completed{via:"server", method, locale?, ...attribution}
  * - server_created, mcp_installed{mcpSlug}, key_created, first_tool_call{mcpSlug}
  * - rate_limited{plan}
- * - trial_started{cadence}, trial_converted{cadence, amount}, plan_upgraded,
- *   promo_redeemed, subscription_canceled{reason}, checkout_expired
- * - upgrade_email_sent (Free → Pro nudges)
+ * - wallet_topup{amount, currency, $revenue, first, source}, topup_checkout_started
+ *   {amountEur, saveCard}, auto_recharge_failed{reason}, credit_exhausted (402),
+ *   signup_credit_granted / signup_credit_refused{reason}, wallet_email_sent
+ * - plan_upgraded (first paid top-up), checkout_expired{kind}
+ * - legacy subscriptions: trial_started, trial_converted, promo_redeemed,
+ *   subscription_canceled{reason}, upgrade_email_sent
  * - page_served{path, locale, utm_*, gclid_present, referrer_host} (cookieless)
  */
 export type ServerFunnelEventName =
@@ -29,6 +32,13 @@ export type ServerFunnelEventName =
   | "key_created"
   | "first_tool_call"
   | "rate_limited"
+  | "wallet_topup"
+  | "topup_checkout_started"
+  | "auto_recharge_failed"
+  | "credit_exhausted"
+  | "signup_credit_granted"
+  | "signup_credit_refused"
+  | "wallet_email_sent"
   | "trial_started"
   | "trial_converted"
   | "plan_upgraded"

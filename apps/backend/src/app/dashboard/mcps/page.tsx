@@ -2,8 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { mcpServers, users } from "@/db/schema";
-import { can, minPlanFor } from "@/lib/plan-features";
-import { UpgradeCard } from "@/components/billing/upgrade-card";
+import { can, isSellablePlan, minPlanFor } from "@/lib/plan-features";
+import { FundedCard } from "@/components/billing/funded-card";
 import { Separator } from "@/components/ui/separator";
 import { PublishMcpPanel } from "./panel";
 
@@ -53,10 +53,10 @@ export default async function McpsPage() {
       </div>
 
       {!canPublish && mcps.length === 0 ? (
-        <UpgradeCard
-          title="Publishing MCPs is a paid feature"
+        <FundedCard
+          title="Publishing MCPs needs paid credit"
           description="Package your own MCP servers, install them on your boxes, and share them in the marketplace."
-          requiredPlan={minPlanFor("publishMcp")}
+          unavailable={!isSellablePlan(minPlanFor("publishMcp"))}
         />
       ) : (
         <PublishMcpPanel mcps={mcps} canPublish={canPublish} />

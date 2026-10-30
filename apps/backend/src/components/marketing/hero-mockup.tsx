@@ -77,7 +77,9 @@ export function HeroMockup() {
           <div className="mb-3 flex items-end justify-between border-b-[3px] border-double border-border pb-3">
             <div>
               <p className="smallcaps tracking-sc text-sm font-medium">Servers</p>
-              <p className="lining text-xs italic text-muted-foreground">3 servers · Pro plan</p>
+              <p className="lining text-xs italic text-muted-foreground">
+                3 servers · Pay as you go
+              </p>
             </div>
             <span className="smallcaps tracking-sc border border-primary bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
               New server

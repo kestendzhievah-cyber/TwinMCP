@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { PROXY_ERROR } from "@/lib/errors";
-import { TOOL_POLICY_DENIED_CODE } from "@/lib/mcp/aggregate";
+import {
+  CREDIT_EXHAUSTED_CODE,
+  TOOL_POLICY_DENIED_CODE,
+  toolCallStatusFor,
+} from "@/lib/mcp/aggregate";
 import { RPC_CODES } from "@/components/docs/docs-facts";
 
 describe("proxy JSON-RPC error codes", () => {
@@ -28,9 +32,20 @@ describe("proxy JSON-RPC error codes", () => {
     expect(TOOL_POLICY_DENIED_CODE).not.toBe(PROXY_ERROR.UNAUTHORIZED);
   });
 
+  it("the credit refusal (402) has its own code, mirrored by aggregate.ts", () => {
+    expect(PROXY_ERROR.CREDIT_EXHAUSTED).toBe(-32008);
+    expect(CREDIT_EXHAUSTED_CODE).toBe(PROXY_ERROR.CREDIT_EXHAUSTED);
+  });
+
+  it("a 402 is logged as denied with the credit code, a 429 as rate_limited", () => {
+    expect(toolCallStatusFor(402)).toEqual({ status: "denied", errorCode: -32008 });
+    expect(toolCallStatusFor(429)).toEqual({ status: "rate_limited", errorCode: 429 });
+  });
+
   it("the docs quote the codes the proxy emits", () => {
     expect(RPC_CODES.notReady).toBe(PROXY_ERROR.UNAVAILABLE);
     expect(RPC_CODES.uncertain).toBe(PROXY_ERROR.OUTCOME_UNKNOWN);
     expect(RPC_CODES.wrongServer).toBe(PROXY_ERROR.KEY_RESTRICTED);
+    expect(RPC_CODES.noCredit).toBe(PROXY_ERROR.CREDIT_EXHAUSTED);
   });
 });

@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PasswordStrength } from "@/components/auth/password-strength";
-import { FREE_MCP_LIMIT, PLANS } from "@/components/pricing/pricing-data";
+import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
+import { SIGNUP_OFFER, walletFacts } from "@/components/pricing/wallet-copy";
 import { createClient } from "@/utils/supabase/client";
 import { track } from "@/lib/analytics/funnel";
 import { readAttribution } from "@/lib/analytics/attribution";
@@ -26,16 +27,17 @@ import { authPath } from "@/lib/i18n/auth-paths";
 type SignupPlan = "free" | "pro";
 type SignupCadence = "monthly" | "yearly";
 
-// Team is no longer sold: an old link carrying plan=team signs up for Pro
-// instead, with the same cadence and promo handling.
+// Subscriptions are retired (prepaid wallet since 2026-10-29). An old link
+// carrying plan=pro / plan=team is a "pay as you go" intent: the account still
+// gets the sign-up credit, then lands on the Credits page to top up.
 function normalizePlan(plan: string | null): SignupPlan | null {
   if (plan === "pro" || plan === "team") return "pro";
   if (plan === "free") return "free";
   return null;
 }
 const planLabels: Record<SignupPlan, string> = {
-  free: "Free",
-  pro: "Pro",
+  free: "Free credit",
+  pro: "Pay as you go",
 };
 // The plan seal follows the dashboard's plan badge (DESIGN.md §5 sidebar):
 // secondary for free, success for paid.
@@ -44,12 +46,8 @@ const planSeals: Record<SignupPlan, "secondary" | "success"> = {
   pro: "success",
 };
 
-// Pro prices come from the pricing table, which mirrors the Stripe prices.
-const PRO_TIER = PLANS.find((p) => p.id === "pro");
-const PRO_MONTHLY = PRO_TIER?.monthlyUsd ?? 14.99;
-const PRO_YEARLY = PRO_TIER ? Math.round(PRO_TIER.annualMonthlyUsd * 12) : 135;
-const eurEn = (n: number) => `€${Number.isInteger(n) ? n : n.toFixed(2)}`;
-const eurFr = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(2).replace(".", ",")} €`;
+// Sign-up credit facts, from the wallet price list (lib/wallet/pricing.ts).
+const W = { en: walletFacts("en"), fr: walletFacts("fr") };
 
 /**
  * Where the confirmation email sends the user back. The paid intent (plan,
@@ -81,15 +79,12 @@ function callbackUrl(opts: {
 const COPY = {
   en: {
     title: "Create your TwinMCP account",
-    subtitleFree: "Free forever, no credit card. Your first server ready in about 2 minutes.",
-    subtitlePaid: (cadence: SignupCadence) =>
-      `Your account starts a free month of Pro. Card required, then ${
-        cadence === "yearly" ? `${eurEn(PRO_YEARLY)}/year` : `${eurEn(PRO_MONTHLY)}/month`
-      }. Cancel anytime.`,
-    subtitlePromo:
-      "Create your account, confirm your email, then complete checkout with your offer applied. Cancel anytime.",
+    subtitleFree: `${SIGNUP_OFFER.en}, valid ${W.en.signupDays} days. Your first server ready in about 2 minutes.`,
+    subtitlePaid: (_cadence: SignupCadence) =>
+      `Pay as you go, no subscription. Your account starts with ${W.en.signupCredit} of free credit; once you confirm your email you land on the Credits page to top up from ${W.en.minTopup}.`,
+    subtitlePromo: `Pay as you go, no subscription. Your account starts with ${W.en.signupCredit} of free credit; once you confirm your email you land on the Credits page.`,
     planSeal: (plan: SignupPlan) => `Signing up for ${planLabels[plan]}`,
-    freeLine: `1 server · up to ${FREE_MCP_LIMIT} MCPs + TwinMCP Docs · No credit card`,
+    freeLine: `1 server · up to ${FREE_MCP_LIMIT} MCPs + TwinMCP Docs · ${W.en.signupCredit} free credit, no card`,
     email: "Email",
     emailPlaceholder: "you@company.com",
     password: "Password",
@@ -109,7 +104,7 @@ const COPY = {
     checkTitle: "Check your email",
     checkLead: "A confirmation link has been sent to",
     checkTail: "Click it to activate your account.",
-    checkTailPaid: "Click it to activate your account and open the secure checkout.",
+    checkTailPaid: "Click it to activate your account and open the Credits page.",
     checkSpam: "Nothing yet? Check your spam or promotions folder.",
     resendIn: (s: number) => `Resend in ${s}s`,
     resend: "Resend link",
@@ -122,17 +117,12 @@ const COPY = {
   },
   fr: {
     title: "Créez votre compte TwinMCP",
-    subtitleFree:
-      "Gratuit pour toujours, sans carte bancaire. Votre premier serveur prêt en 2 minutes environ.",
-    subtitlePaid: (cadence: SignupCadence) =>
-      `Votre compte démarre par un mois gratuit de Pro. Carte bancaire requise, puis ${
-        cadence === "yearly" ? `${eurFr(PRO_YEARLY)} par an` : `${eurFr(PRO_MONTHLY)} par mois`
-      }. Résiliable à tout moment.`,
-    subtitlePromo:
-      "Créez votre compte, confirmez votre e-mail, puis finalisez le paiement avec votre offre appliquée. Résiliable à tout moment.",
-    planSeal: (plan: SignupPlan) =>
-      plan === "free" ? "Offre gratuite" : `Offre ${planLabels[plan]}`,
-    freeLine: `1 serveur · jusqu’à ${FREE_MCP_LIMIT} MCP + TwinMCP Docs · Sans carte bancaire`,
+    subtitleFree: `${SIGNUP_OFFER.fr}, valable ${W.fr.signupDays} jours. Votre premier serveur prêt en 2 minutes environ.`,
+    subtitlePaid: (_cadence: SignupCadence) =>
+      `Paiement à l’usage, sans abonnement. Votre compte démarre avec ${W.fr.signupCredit} de crédit offert ; une fois votre e-mail confirmé, vous arrivez sur la page Crédits pour recharger à partir de ${W.fr.minTopup}.`,
+    subtitlePromo: `Paiement à l’usage, sans abonnement. Votre compte démarre avec ${W.fr.signupCredit} de crédit offert ; une fois votre e-mail confirmé, vous arrivez sur la page Crédits.`,
+    planSeal: (plan: SignupPlan) => (plan === "free" ? "Crédit offert" : "Paiement à l’usage"),
+    freeLine: `1 serveur · jusqu’à ${FREE_MCP_LIMIT} MCP + TwinMCP Docs · ${W.fr.signupCredit} de crédit offert, sans carte`,
     email: "E-mail",
     emailPlaceholder: "vous@entreprise.fr",
     password: "Mot de passe",
@@ -152,7 +142,7 @@ const COPY = {
     checkTitle: "Vérifiez votre boîte mail",
     checkLead: "Un lien de confirmation a été envoyé à",
     checkTail: "Cliquez dessus pour activer votre compte.",
-    checkTailPaid: "Cliquez dessus pour activer votre compte et ouvrir le paiement sécurisé.",
+    checkTailPaid: "Cliquez dessus pour activer votre compte et ouvrir la page Crédits.",
     checkSpam: "Rien reçu ? Regardez dans vos spams ou l'onglet Promotions.",
     resendIn: (s: number) => `Renvoyer dans ${s} s`,
     resend: "Renvoyer le lien",

@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servers, users, mcpServers, userServers } from "@/db/schema";
-import { badRequest, forbidden, serverError, unauthorized } from "@/lib/errors";
+import { badRequest, creditRequired, forbidden, serverError, unauthorized } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { createServerSchema, slugify } from "@/lib/validation/platform";
 import { assertServerQuota, QuotaExceededError } from "@/lib/quota";
@@ -13,10 +13,16 @@ import {
   minPlanFor,
   minPlanForBoxSize,
   PlanRestrictionError,
-  PLAN_LABELS,
+  PLAN_CAPABILITIES,
+  requiredTierMessage,
 } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
-import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
+import {
+  TWINMCP_DOCS_SLUG,
+  TOPUP_URL,
+  assertComputeAllowed,
+  isInsufficientCreditError,
+} from "@/lib/provisioning";
 import { encryptConfig } from "@/lib/crypto/config-encryption";
 import { enqueue } from "@/lib/queue/qstash";
 import { trackServer } from "@/lib/analytics/server";
@@ -88,6 +94,23 @@ export async function POST(req: NextRequest) {
       .limit(1);
     if (!me) return unauthorized("User not found");
 
+    // Every server runs on the prepaid wallet: no credit (or promotional credit
+    // past its compute cap), no new server. Fails CLOSED on a database error.
+    try {
+      await assertComputeAllowed(session.userId);
+    } catch (err) {
+      if (isInsufficientCreditError(err)) {
+        return creditRequired(
+          err.reason === "no_credit"
+            ? `Your TwinMCP credit is used up. Top up at ${TOPUP_URL} to create a server.`
+            : err.message
+        );
+      }
+      throw err;
+    }
+
+    // "free" (Free credit, wallet never funded): 1 server, small box only.
+    // "pro" (Pay as you go, funded): 50 servers, every size.
     await assertServerQuota(session.userId, me.plan);
 
     // "local_agent" servers host no box — the user runs `ctx7 connect` and the
@@ -96,16 +119,16 @@ export async function POST(req: NextRequest) {
     const hostType = parsed.data.hostType ?? "upstash_box";
     const isLocal = hostType === "local_agent";
 
-    // Box size is plan-gated (free: small, pro: +medium, team: all). Enforce
-    // here — the Zod schema accepts any valid enum value, so without this a
-    // free user could POST boxSize:"large" and provision an oversized box.
+    // Box size is tier-gated (Free credit: small only; Pay as you go and Team:
+    // every size). Enforce here — the Zod schema accepts any valid enum value,
+    // so without this an unfunded account could POST boxSize:"large".
     const boxSize = parsed.data.boxSize ?? "small";
     if (!isLocal && !isBoxSizeAllowed(me.plan, boxSize)) {
       const required = minPlanForBoxSize(boxSize) ?? "team";
       throw new PlanRestrictionError(
         "box-size",
         required,
-        `The ${boxSize} box size requires the ${PLAN_LABELS[required]} plan.`
+        requiredTierMessage(required, `The ${boxSize} box size`)
       );
     }
 
@@ -115,7 +138,7 @@ export async function POST(req: NextRequest) {
       throw new PlanRestrictionError(
         "region-selection",
         required,
-        `Choosing a deployment region requires the ${PLAN_LABELS[required]} plan.`
+        requiredTierMessage(required, "Choosing a deployment region")
       );
     }
 
@@ -201,9 +224,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ id, slug, status: initialStatus }, { status: 201 });
   } catch (err) {
-    if (err instanceof QuotaExceededError || err instanceof PlanRestrictionError) {
-      return forbidden(err.message);
+    if (err instanceof QuotaExceededError) {
+      const funded = PLAN_CAPABILITIES.pro.servers;
+      return forbidden(
+        err.limit < funded
+          ? `Free credit accounts run ${err.limit} server${err.limit === 1 ? "" : "s"}. Top up your TwinMCP credit to run up to ${funded}.`
+          : `You already run ${err.limit} servers, the most an account can. Delete one to create another.`
+      );
     }
+    if (err instanceof PlanRestrictionError) return forbidden(err.message);
     if (err instanceof Error && /unique/i.test(err.message)) {
       return badRequest("Slug already in use for one of your servers");
     }

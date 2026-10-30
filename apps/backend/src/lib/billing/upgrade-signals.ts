@@ -1,56 +1,62 @@
 import { cache } from "react";
-import { and, count, eq, gte, ne, sql } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import { getDb } from "@/db";
-import { users, usageMetrics, userServers, servers, type Plan } from "@/db/schema";
-import { getDailyLimit } from "@/lib/rate-limit";
-import type { UpgradeSignals } from "./upgrade-state";
+import { users, servers, type Plan } from "@/db/schema";
+import { walletAccounts } from "@/db/schema/wallet";
+import type { WalletSignals } from "./upgrade-state";
+import { NOTIFIED_KEYS, isFunded, killSwitchActive } from "@/lib/wallet/compute-meter";
 
 /**
- * The inputs of computeUpgradeNudge() for a signed-in dashboard user, loaded
- * once per request: the layout (banner + nav link) and the overview page both
- * call this, and React's cache() dedupes the three queries between them.
+ * The inputs of computeWalletNudge() for a signed-in dashboard user, loaded
+ * once per request: the layout (banner + balance pill) and the overview page
+ * both call this, and React's cache() dedupes the queries between them.
  *
- * usedToday is today's tool calls: only `tools/call` counts toward the daily
- * cap (lib/mcp/billable.ts), and only those are metered into usage_metrics.
- * It is summed per UTC day exactly as the Usage page does; the cap itself is
- * enforced in Redis by lib/rate-limit.ts, so this is the displayed figure,
- * not the enforcement counter. Both activity
- * signals are best effort: a hiccup on usage_metrics or servers must never
- * 500 the whole dashboard, so each falls back to "no signal".
+ * The wallet row is read straight from wallet_accounts (the same columns
+ * lib/wallet/ledger.ts getWallet reads); promo credit past its expiry counts
+ * as 0. A wallet that cannot be read sets walletAvailable=false so every
+ * surface stays quiet: a dashboard read must never 500, and it is not the
+ * enforcement point (the proxy's hasCredit fails closed on its own).
  */
-export interface LoadedUpgradeSignals extends UpgradeSignals {
+export interface LoadedWalletSignals extends WalletSignals {
   plan: Plan;
   now: Date;
+  hasStripeCustomer: boolean;
 }
 
 const noSignal = (what: string) => (err: unknown) => {
   console.warn(`[dashboard] ${what} signal unavailable:`, err);
-  return [] as { n: number }[];
+  return null;
 };
 
-export const loadUpgradeSignals = cache(async (userId: string): Promise<LoadedUpgradeSignals> => {
+export const loadWalletSignals = cache(async (userId: string): Promise<LoadedWalletSignals> => {
   const db = getDb();
   const now = new Date();
-  const utcDayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
-  const [[row], [usage], [serverRow]] = await Promise.all([
+  const [userRows, walletRows, serverRows] = await Promise.all([
     db
       .select({
         plan: users.plan,
         subscriptionStatus: users.subscriptionStatus,
-        currentPeriodEnd: users.currentPeriodEnd,
-        cancelAtPeriodEnd: users.cancelAtPeriodEnd,
         stripeCustomerId: users.stripeCustomerId,
+        stripeSubscriptionId: users.stripeSubscriptionId,
       })
       .from(users)
       .where(eq(users.id, userId))
-      .limit(1),
+      .limit(1)
+      .catch(noSignal("user")),
     db
-      .select({ n: sql<number>`coalesce(sum(${usageMetrics.requestCount}), 0)::int` })
-      .from(usageMetrics)
-      .innerJoin(userServers, eq(usageMetrics.userServerId, userServers.id))
-      .where(and(eq(userServers.userId, userId), gte(usageMetrics.periodStart, utcDayStart)))
-      .catch(noSignal("usage")),
+      .select({
+        paidMicros: walletAccounts.paidMicros,
+        promoMicros: walletAccounts.promoMicros,
+        promoExpiresAt: walletAccounts.promoExpiresAt,
+        fundedAt: walletAccounts.fundedAt,
+        autoRechargeEnabled: walletAccounts.autoRechargeEnabled,
+        notified: walletAccounts.notified,
+      })
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1)
+      .catch(noSignal("wallet")),
     db
       .select({ n: count() })
       .from(servers)
@@ -58,16 +64,37 @@ export const loadUpgradeSignals = cache(async (userId: string): Promise<LoadedUp
       .catch(noSignal("servers")),
   ]);
 
-  const plan = row?.plan ?? "free";
+  const row = userRows?.[0];
+  const plan: Plan = row?.plan ?? "free";
+  // null = the query failed; [] = no wallet row yet (a zero balance).
+  const walletAvailable = walletRows !== null && userRows !== null;
+  const w = walletRows?.[0];
+  const promoExpiresAt = w?.promoExpiresAt ?? null;
+  const promoLive = promoExpiresAt ? promoExpiresAt.getTime() > now.getTime() : true;
+  // Funded = a first paid top-up (funded_at) or a legacy subscription still
+  // being paid; never users.plan alone (billing no longer downgrades it, so a
+  // converted trial can keep 'pro' without having paid). Same rule as the
+  // compute meter's isFunded.
+  const funded = isFunded(w?.fundedAt ?? null, row?.subscriptionStatus ?? null);
+  const capFlag = (w?.notified as Record<string, unknown> | undefined)?.[NOTIFIED_KEYS.killSwitch];
+  const promoCap = killSwitchActive(capFlag, now, funded)
+    ? (capFlag as { reason?: string }).reason === "total"
+      ? "total"
+      : "daily"
+    : null;
+
   return {
     plan,
-    usedToday: usage?.n ?? 0,
-    dailyLimit: getDailyLimit(plan),
-    proDailyLimit: getDailyLimit("pro"),
-    serverCount: serverRow?.n ?? 0,
+    walletAvailable,
+    paidMicros: Number(w?.paidMicros ?? 0),
+    promoMicros: promoLive ? Number(w?.promoMicros ?? 0) : 0,
+    promoExpiresAt,
+    funded,
+    promoCap,
+    autoRechargeEnabled: Boolean(w?.autoRechargeEnabled),
+    serverCount: Number(serverRows?.[0]?.n ?? 0),
     subscriptionStatus: row?.subscriptionStatus ?? null,
-    currentPeriodEnd: row?.currentPeriodEnd ?? null,
-    cancelAtPeriodEnd: row?.cancelAtPeriodEnd ?? false,
+    hasSubscription: Boolean(row?.stripeSubscriptionId),
     hasStripeCustomer: Boolean(row?.stripeCustomerId),
     now,
   };

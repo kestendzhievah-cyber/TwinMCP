@@ -27,6 +27,16 @@ describe("conversionFromCheckoutSession", () => {
     });
   });
 
+  it("reports a top-up net of VAT (exclusive tax: total minus tax)", () => {
+    const topup: CheckoutSessionLike = {
+      ...base,
+      amount_total: 1200,
+      total_details: { amount_tax: 200 },
+      metadata: { userId: "user-1", kind: "wallet_topup" },
+    };
+    expect(conversionFromCheckoutSession(topup, "user-1")?.value).toBe(10);
+  });
+
   it("ignores a session that belongs to another user", () => {
     expect(conversionFromCheckoutSession(base, "user-2")).toBeNull();
   });

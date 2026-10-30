@@ -2,10 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
-import { users } from "@/db/schema/core";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
 import { Separator } from "@/components/ui/separator";
-import { getDailyLimit } from "@/lib/rate-limit";
 import { lifecycleState } from "@/lib/server-lifecycle";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { ServerNav } from "../activity/server-nav";
@@ -14,8 +12,6 @@ import { ToolPlayground } from "./playground";
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Playground · TwinMCP" };
-
-const PLAN_NAMES = { free: "Free", pro: "Pro", team: "Team" } as const;
 
 export default async function TryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,7 +22,7 @@ export default async function TryPage({ params }: { params: Promise<{ id: string
   if (!user) redirect(`/sign-in?returnTo=/dashboard/servers/${encodeURIComponent(id)}/try`);
 
   const db = getDb();
-  const [[srv], [me], installations] = await Promise.all([
+  const [[srv], installations] = await Promise.all([
     db
       .select({
         id: servers.id,
@@ -39,7 +35,6 @@ export default async function TryPage({ params }: { params: Promise<{ id: string
       .from(servers)
       .where(and(eq(servers.id, id), eq(servers.userId, user.id)))
       .limit(1),
-    db.select({ plan: users.plan }).from(users).where(eq(users.id, user.id)).limit(1),
     db
       .select({
         enabled: userServers.enabled,
@@ -53,7 +48,6 @@ export default async function TryPage({ params }: { params: Promise<{ id: string
   ]);
   if (!srv) notFound();
 
-  const plan = me?.plan ?? "free";
   // TwinMCP Docs is served by the control plane with an API key, not by the
   // box: it is tried from an IDE, not here. Disabled MCPs cannot be called.
   const runnable = installations
@@ -83,8 +77,8 @@ export default async function TryPage({ params }: { params: Promise<{ id: string
         <h2 className="smallcaps tracking-sc text-lg font-medium">Playground</h2>
         <p className="max-w-2xl text-sm italic text-muted-foreground">
           List the tools of an MCP on this server and run one with a generated form. Calls run for
-          real, with the configuration you saved, and go through the same quota and tool policy as
-          your IDE.
+          real, with the configuration you saved, and are charged and go through the same tool
+          policy as your IDE.
         </p>
       </div>
 
@@ -94,8 +88,6 @@ export default async function TryPage({ params }: { params: Promise<{ id: string
         mcps={runnable}
         disabledCount={disabledCount}
         lifecycle={lifecycleState(srv)}
-        dailyLimit={getDailyLimit(plan)}
-        planName={PLAN_NAMES[plan]}
       />
     </div>
   );

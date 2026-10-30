@@ -190,8 +190,10 @@ describe("solutions paths", () => {
     expect(solutionPath(dev, "fr")).toBe("/fr/solutions/developpeurs");
     expect(guidedSetupHref(dev, "en")).toBe("/demo?bundle=dev");
     expect(guidedSetupHref(dev, "fr")).toBe("/fr/demo?bundle=dev");
-    expect(signUpHref("en", "free")).toBe("/sign-up?plan=free");
-    expect(signUpHref("fr", "pro")).toBe("/fr/inscription?plan=pro");
+    // No plan at sign-up any more: every account starts on the sign-up credit.
+    expect(signUpHref("en", "free")).toBe("/sign-up");
+    expect(signUpHref("fr", "pro")).toBe("/fr/inscription");
+    expect(signUpHref("en")).toBe("/sign-up");
   });
 
   it("gives symmetric hreflang pairs with an English x-default", () => {

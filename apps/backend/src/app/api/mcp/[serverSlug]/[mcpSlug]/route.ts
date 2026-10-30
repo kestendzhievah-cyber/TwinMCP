@@ -7,7 +7,6 @@ import { authenticateRequest } from "@/lib/auth";
 import { SERVER_SCOPE_MESSAGE, keyAllowsServer } from "@/lib/auth/key-scope";
 import { PROXY_ERROR, newProxyRequestId, proxyError, withProxyRequestId } from "@/lib/errors";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
-import { recordMcpUsage } from "@/lib/usage-metrics";
 import { isBillableRequest } from "@/lib/mcp/billable";
 import { connKey, isAgentOnline } from "@/lib/agent/registry";
 import {
@@ -31,6 +30,7 @@ import {
   POLICY_TOOLS_MAX_AGE_MS,
   TWINMCP_DOCS_TOOLS,
   agentOffline,
+  billingGate,
   callLocalAgent,
   fetchAllBoxTools,
   forwardToBox,
@@ -45,6 +45,7 @@ import {
   rememberToolsFromBody,
   requestsCursor,
   toolCache,
+  toolCallMeter,
   unauthorizedMcp,
   type BoxForward,
   type BoxTarget,
@@ -132,10 +133,9 @@ async function proxyRequest(
   const { serverSlug, mcpSlug } = await params;
 
   // Read the body once and classify the message before any gate. Only a
-  // `tools/call` consumes the daily quota and lands in usage_metrics; the
+  // `tools/call` is billed to the wallet and lands in usage_metrics; the
   // protocol overhead around it (initialize, tools/list, notifications, ping,
-  // the GET stream, DELETE) is relayed for free — it used to burn a third of a
-  // Free day before the first real call.
+  // the GET stream, DELETE) is relayed for free.
   const bodyText = method === "POST" ? await req.text() : undefined;
   const verdict = isBillableRequest(method, bodyText ?? null);
   const fail = (status: number, code: number, message: string, headers?: HeadersInit) =>
@@ -173,7 +173,8 @@ async function proxyRequest(
   }
 
   // From here on the request belongs to a known server: a tools/call is
-  // logged whatever happens to it (refused, rate-limited, failed or served).
+  // logged whatever happens to it (refused, rate-limited, unpaid, failed or
+  // served).
   const toolName = verdict.billable ? toolCallName(bodyText) : null;
   if (verdict.billable) {
     out.track = newToolCallTrack(auth, {
@@ -195,9 +196,8 @@ async function proxyRequest(
   }
   if (!row.enabled) return fail(409, PROXY_ERROR.CONFLICT, "MCP is disabled");
 
-  const meter = (ok: boolean) => {
-    if (verdict.billable) recordMcpUsage(row.userServerId, ok);
-  };
+  // usage_metrics + the wallet charge, once the MCP has answered the call.
+  const meter = toolCallMeter(auth.userId, row.userServerId, verdict.billable);
   const ctx: ProxyCtx = {
     req,
     auth,
@@ -214,7 +214,7 @@ async function proxyRequest(
   };
 
   // One tool call per request: a JSON-RPC batch carrying several tools/call
-  // would otherwise be metered and rate-limited as one (MCP 2025-06-18 removed
+  // would otherwise be charged and rate-limited as one (MCP 2025-06-18 removed
   // batching; current clients never send one).
   if (verdict.units > 1) {
     return fail(
@@ -224,6 +224,12 @@ async function proxyRequest(
     );
   }
 
+  // Billing gate (contract W2), before any branch wakes or forwards anything:
+  // the per-minute abuse limiter (429), then the wallet (402 when empty, fails
+  // closed). Logged as `rate_limited` / `denied` (aggregate.ts toolCallStatusFor).
+  const gated = await billingGate(ctx);
+  if (gated) return gated;
+
   // Local-agent MCP: served by the user's own machine over a live relay, not a
   // box. Skip every box gate and route to the connected agent.
   if (row.hostType === "local_agent") {
@@ -231,8 +237,8 @@ async function proxyRequest(
   }
 
   // TwinMCP Docs is served by the control plane (no box). It is stateless and
-  // offers no server→client SSE stream, so only POST is meaningful. Its rate
-  // limit is enforced by its backing /api/v2/context (not double-counted here).
+  // offers no server→client SSE stream, so only POST is meaningful. A
+  // get-context call is charged like any tool call, on success only.
   if (mcpSlug === TWINMCP_DOCS_SLUG) {
     if (method !== "POST") {
       return new NextResponse(null, { status: 405, headers: { Allow: "POST" } });
@@ -247,7 +253,8 @@ async function proxyRequest(
       return deny(ctx);
     }
     // Metered from the call's real outcome: a failed lookup is answered as a
-    // 200 JSON-RPC error, and must count (and be logged) as a failure.
+    // 200 JSON-RPC error, and must count (and be logged) as a failure — and
+    // is not charged.
     return handleTwinMcpDocs(
       req,
       rpc,
@@ -283,9 +290,9 @@ async function proxyRequest(
     headers: bridgeHeaders(req, method),
   };
 
-  // Tool policy (contract D2): a refused tools/call never reaches the box, nor
-  // the quota. read_only needs the MCP's annotations: the cached tools/list,
-  // else one fetched now (free overhead, through the same wake/retry path).
+  // Tool policy (contract D2): a refused tools/call never reaches the box and
+  // is not charged. read_only needs the MCP's annotations: the cached
+  // tools/list, else one fetched now (free overhead, same wake/retry path).
   if (verdict.billable && !isUnrestricted(ctx.policy)) {
     let known: McpTool[] | null = null;
     if (policyNeedsToolAnnotations(ctx.policy)) {

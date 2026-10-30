@@ -165,7 +165,7 @@ export default async function ServerActivityPage({
         <h2 className="smallcaps tracking-sc text-lg font-medium">Activity</h2>
         <p className="text-sm italic text-muted-foreground">
           Every tool call through this server&apos;s MCP endpoints, newest first, kept{" "}
-          <span className="lining">{retentionDays}</span> days on your plan.
+          <span className="lining">{retentionDays}</span> days on your account.
           {plan === "free" && retentionDays < proDays && (
             <>
               {" "}
@@ -173,7 +173,7 @@ export default async function ServerActivityPage({
                 href={"/dashboard/billing" as Route}
                 className="not-italic text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
               >
-                Pro keeps <span className="lining">{proDays}</span> days
+                A first top-up keeps <span className="lining">{proDays}</span> days
               </Link>
               .
             </>

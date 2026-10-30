@@ -54,8 +54,8 @@ export function SettingsPanel({
       if (!res.ok) throw new Error(String(res.status));
       toast.success(
         next
-          ? "Pro offers, plan-limit and trial emails turned on"
-          : "Pro offers, plan-limit and trial emails turned off"
+          ? "Credit tips and reminder emails turned on"
+          : "Credit tips and reminder emails turned off"
       );
     } catch {
       setEmailNudges(previous);
@@ -165,7 +165,8 @@ export function SettingsPanel({
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
             </span>
             <span>
-              Email me about Pro offers, when I hit a plan limit, or before my free month ends
+              Email me setup tips, low-balance alerts and reminders before my free credit expires.
+              Receipts and out-of-credit warnings are always sent.
             </span>
           </label>
         </CardContent>

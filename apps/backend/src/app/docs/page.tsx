@@ -20,6 +20,8 @@ import {
 } from "@/components/docs/docs-facts";
 import { API_KEY_PLACEHOLDER, IDE_LABELS, MATRIX_CLIENTS } from "@/lib/mcp/client-config";
 import { TOOL_POLICY_DENIED_CODE } from "@/lib/mcp/aggregate";
+import { CREDIT_RPC_CODE, CreditDocsSection } from "@/components/pricing/credit-docs-section";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -51,9 +53,10 @@ const EYEBROW_RULES =
 const STEP =
   "flex gap-4 [counter-increment:step] before:grid before:h-9 before:w-9 before:shrink-0 before:place-items-center before:border before:border-border before:text-sm before:font-medium before:text-foreground before:content-[counter(step)] before:[font-variant-numeric:lining-nums]";
 
-// Plan facts from lib/rate-limit.ts + lib/plan-features.ts; key rules from
-// lib/auth/key-scope.ts. Never hand-typed.
+// Account facts from lib/plan-features.ts, prices from lib/wallet/pricing.ts
+// (via wallet-copy.ts); key rules from lib/auth/key-scope.ts. Never hand-typed.
 const FACTS = docsPlanFacts();
+const WALLET = walletFacts("en");
 const n = (v: number) => formatCount(v, "en");
 const OVERLAP_HOURS = rotationOverlapHours();
 
@@ -196,10 +199,11 @@ export default function DocsPage() {
               <div className="py-5 last:pb-0">
                 <h3 className="text-2xl font-medium">Your own MCP</h3>
                 <p className="mt-2 text-base leading-7">
-                  On the {FACTS.customMcpPlan} plan, <strong>Publish an MCP</strong> packages any
-                  stdio MCP server — an npm package run with <code>npx</code> or a PyPI package run
-                  with <code>uvx</code> — so you can install it on your servers like a marketplace
-                  MCP. It is reached over the same Streamable HTTP URL as every other MCP.
+                  Once your account is funded (after a first top-up),{" "}
+                  <strong>Publish an MCP</strong> packages any stdio MCP server — an npm package run
+                  with <code>npx</code> or a PyPI package run with <code>uvx</code> — so you can
+                  install it on your servers like a marketplace MCP. It is reached over the same
+                  Streamable HTTP URL as every other MCP.
                 </p>
               </div>
             </div>
@@ -226,8 +230,8 @@ export default function DocsPage() {
             <p className="mt-3 text-base leading-7 text-muted-foreground">
               Every MCP request carries a TwinMCP key (prefix <code>ctx7sk_</code>) in the{" "}
               <code>Authorization: Bearer</code> header. Create keys in{" "}
-              <strong>Dashboard → API keys</strong>: the Free plan includes {n(FACTS.freeKeys)}{" "}
-              keys, Pro {n(FACTS.proKeys)}.
+              <strong>Dashboard → API keys</strong>: {n(FACTS.freeKeys)} keys before your first
+              top-up, {n(FACTS.proKeys)} after it.
             </p>
 
             <div className="mt-6 divide-y divide-border">
@@ -304,6 +308,8 @@ export default function DocsPage() {
             </div>
           </section>
 
+          <CreditDocsSection locale="en" />
+
           <section id="api" className="py-12">
             <h2 className="text-3xl font-medium">REST API reference</h2>
             <p className="mt-3 text-base leading-7 text-muted-foreground">
@@ -368,17 +374,31 @@ export default function DocsPage() {
                 </p>
               </div>
 
-              <div id="error-429" className="py-6">
-                <h3 className="text-2xl font-medium">“Daily limit reached” (HTTP 429)</h3>
+              <div id="error-402" className="py-6">
+                <h3 className="text-2xl font-medium">
+                  “Your TwinMCP credit is used up” (HTTP 402, JSON-RPC {CREDIT_RPC_CODE})
+                </h3>
                 <p className="mt-2 text-base leading-7">
-                  You have used the day&apos;s tool calls: {n(FACTS.freeDaily)} per day on Free,{" "}
-                  {n(FACTS.proDaily)} per day on Pro. Only <code>tools/call</code> counts —{" "}
-                  <code>initialize</code>, <code>tools/list</code>, notifications, pings and the
-                  dashboard&apos;s connection test are free. The quota resets at 00:00 UTC; the
-                  message states the reset time, and the response carries <code>Retry-After</code>{" "}
-                  (seconds), <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code> and{" "}
-                  <code>X-RateLimit-Reset</code> (Unix seconds). For more calls, upgrade under{" "}
-                  <strong>Dashboard → Billing</strong>.
+                  Your balance is at zero, so the tool call was refused before it reached the MCP,
+                  and it was not charged. Only <code>tools/call</code> is refused —{" "}
+                  <code>initialize</code>, <code>tools/list</code>, notifications and pings still
+                  answer. Top up from {WALLET.minTopup} under <strong>Dashboard → Billing</strong>{" "}
+                  (the error&apos;s <code>error.data.topupUrl</code> links there), then retry. To
+                  avoid it, turn on auto-recharge. See{" "}
+                  <a href="#credit" className={LINK}>
+                    Credits &amp; pricing
+                  </a>
+                  .
+                </p>
+              </div>
+
+              <div id="error-429" className="py-6">
+                <h3 className="text-2xl font-medium">“Too many requests” (HTTP 429)</h3>
+                <p className="mt-2 text-base leading-7">
+                  Too many tool calls in a short time from one account: a per-minute limit protects
+                  the platform from runaway loops. There is no daily cap — your balance is the only
+                  limit on volume. Wait a moment and retry; when the response carries{" "}
+                  <code>Retry-After</code> (seconds), wait that long.
                 </p>
               </div>
 
@@ -491,9 +511,11 @@ export default function DocsPage() {
             <ul role="list" className="mt-6 divide-y divide-border border-y border-border">
               <li className="py-3 leading-7">
                 <Link href="/plans" className={LINK}>
-                  Pricing &amp; quotas
+                  Pricing
                 </Link>{" "}
-                <span className="text-muted-foreground">— Free and Pro plans.</span>
+                <span className="text-muted-foreground">
+                  — the price list, what {WALLET.signupCredit} buys, and a cost estimator.
+                </span>
               </li>
               <li className="py-3 leading-7">
                 <a

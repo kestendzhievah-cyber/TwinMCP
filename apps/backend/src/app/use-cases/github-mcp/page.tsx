@@ -75,15 +75,15 @@ const faq = [
   },
   {
     q: "Can I run a GitHub MCP on TwinMCP at all?",
-    a: "Yes, on Pro, if the server you want ships as an npm or PyPI package: publish it as your own MCP with its npx or uvx start command. It runs in your isolated server and stays private to your account. You pick and maintain the package; check that it is still maintained before you rely on it.",
+    a: "Yes, once your account is funded (a first top-up), if the server you want ships as an npm or PyPI package: publish it as your own MCP with its npx or uvx start command. It runs in your isolated server and stays private to your account. You pick and maintain the package; check that it is still maintained before you rely on it.",
   },
   {
     q: "How scoped should my GitHub token be?",
     a: "Use a fine-grained personal access token, restrict it to the repositories the AI should access, and grant read-only permissions by default. Add write permissions (issues, pull requests) only if you specifically want the model to create them.",
   },
   {
-    q: "What works on the Free plan?",
-    a: "The official catalogue on one small server, with 50 tool calls a day. That includes the Git MCP (inspect a repository inside your box) and the GitLab MCP. Publishing your own MCP, which a GitHub MCP needs, is a Pro feature; your first Pro subscription starts with 30 days free.",
+    q: "What works on the free sign-up credit?",
+    a: "The official catalogue on one small server, paid from your free credit. That includes the Git MCP (inspect a repository inside your box) and the GitLab MCP. Publishing your own MCP, which a GitHub MCP needs, unlocks with your first top-up.",
   },
   {
     q: "What happens if my GitHub token expires?",

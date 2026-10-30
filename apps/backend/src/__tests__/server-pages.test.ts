@@ -34,7 +34,7 @@ import { COPY } from "@/app/servers/_components/copy";
 import { FR_SERVER_CLIENT_GUIDE_SLUGS, hasFrenchVersion, localizedPath } from "@/lib/i18n/locales";
 import { localeSwitchTargets } from "@/lib/i18n/switch";
 import { API_KEY_PLACEHOLDER, MATRIX_CLIENTS } from "@/lib/mcp/client-config";
-import { getDailyLimit } from "@/lib/rate-limit";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 
 const LOCALES = ["en", "fr"] as const;
@@ -219,13 +219,24 @@ describe("per-MCP pages", () => {
     }
   });
 
-  it("quotes the enforced plan numbers", () => {
+  it("quotes the sign-up credit and the wallet prices", () => {
+    const w = walletFacts("en");
     const d = buildServerPage(getServerBySlug("memory")!, "en");
     const plan = d.faq[2]!.a;
+    expect(plan).toMatch(/^Yes\./);
     expect(plan).toContain(`${PLAN_CAPABILITIES.free.servers} server`);
-    expect(plan).toContain(`${getDailyLimit("free")} tool calls a day`);
-    expect(plan).toContain(`${PLAN_CAPABILITIES.pro.servers} servers`);
-    expect(plan).toContain("€14.99");
+    expect(plan).toContain(`${w.signupCredit} of free credit, valid ${w.signupDays} days`);
+    expect(plan).toContain(`${w.per1000Calls} per 1,000`);
+    expect(plan).not.toMatch(/€14\.99|a day|Free plan/);
+  });
+
+  it("does not promise the sign-up credit for MCPs it excludes", () => {
+    const shell = getServerBySlug("shell");
+    if (!shell) return;
+    const plan = buildServerPage(shell, "en").faq[2]!.a;
+    expect(plan).toMatch(/^Not on the free credit alone/);
+    const fr = buildServerPage(shell, "fr").faq[2]!.a;
+    expect(fr).toMatch(/^Pas avec le crédit offert seul/);
   });
 
   it("promises nothing the product does not sell", () => {
@@ -332,7 +343,7 @@ describe("per-MCP × client pages", () => {
   it("points troubleshooting at the docs anchors", () => {
     const en = buildClientPage(getServerBySlug("fetch")!, "cursor", "en");
     expect(en.troubleshooting.map((x) => x.href)).toEqual(
-      expect.arrayContaining(["/docs#error-401", "/docs#error-503", "/docs#error-429"])
+      expect.arrayContaining(["/docs#error-401", "/docs#error-503", "/docs#error-402"])
     );
     const fr = buildClientPage(getServerBySlug("fetch")!, "cursor", "fr");
     for (const x of fr.troubleshooting) expect(x.href).toBe("/fr/docs#troubleshooting");

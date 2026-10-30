@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { formatEurAmount } from "@/lib/wallet/pricing";
 
 interface Point {
   date: string;
@@ -74,6 +75,7 @@ interface AdminStats {
 
 const REFRESH_MS = 15_000;
 const fmt = (n: number) => n.toLocaleString();
+
 const pctOf = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
 function relTime(iso: string, nowMs: number): string {
@@ -209,9 +211,9 @@ export function AdminAnalyticsPanel() {
         />
         <Kpi
           icon={<CreditCard className="h-4 w-4" />}
-          label="Paying users · MRR (est.)"
-          value={`${fmt(users.paying)} · €${revenue.mrrEstimate.toLocaleString()}`}
-          sub={`${users.byPlan.pro} Pro · ${users.byPlan.team} Team`}
+          label="Funded users · net top-ups 30d"
+          value={`${fmt(users.paying)} · ${formatEurAmount(revenue.mrrEstimate)}`}
+          sub={`${users.byPlan.pro} funded · ${users.byPlan.team} Team (legacy)`}
         />
         <Kpi
           icon={<Server className="h-4 w-4" />}
@@ -270,11 +272,11 @@ export function AdminAnalyticsPanel() {
           <CardContent>
             <ul className="divide-y divide-border text-sm">
               <li className="flex items-center justify-between gap-3 py-2.5">
-                <Badge variant="secondary">Free</Badge>
+                <Badge variant="secondary">Free credit</Badge>
                 <span className="lining font-medium">{fmt(users.byPlan.free)}</span>
               </li>
               <li className="flex items-center justify-between gap-3 py-2.5">
-                <Badge variant="success">Pro</Badge>
+                <Badge variant="success">Funded</Badge>
                 <span className="lining font-medium">{fmt(users.byPlan.pro)}</span>
               </li>
               <li className="flex items-center justify-between gap-3 py-2.5">

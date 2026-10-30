@@ -2,6 +2,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { UseCaseLayout } from "@/components/use-cases/use-case-layout";
 import { getUseCaseBySlug } from "@/lib/use-cases/registry";
+import { FUNDED_UNLOCKS, SIGNUP_OFFER, WALLET_SUMMARY } from "@/components/pricing/wallet-copy";
 
 const SLUG = "cursor-mcp-hosting";
 const useCase = getUseCaseBySlug(SLUG)!;
@@ -35,8 +36,8 @@ const benefits = [
 
 const steps = [
   {
-    title: "Sign up for the free tier",
-    body: "No credit card. You get one server slot and access to the full MCP marketplace immediately.",
+    title: "Sign up with free credit",
+    body: `${SIGNUP_OFFER.en}. You get one server slot and access to the full MCP marketplace immediately.`,
   },
   {
     title: "Create a server and install an MCP",
@@ -66,8 +67,8 @@ const faq = [
     a: "Node.js, Python, Go, Ruby, and Rust — the runtimes pre-installed on Upstash Box. Any npm or pip package that runs on a regular machine runs on TwinMCP without modification.",
   },
   {
-    q: "Is the free tier enough to evaluate Cursor MCP hosting?",
-    a: "Yes. The free tier includes one server, the marketplace catalogue, live logs, and 50 tool calls per day, with no credit card. When you outgrow it, Pro raises that to 50 servers and 5,000 tool calls per day.",
+    q: "Is the free credit enough to evaluate Cursor MCP hosting?",
+    a: `Yes. ${WALLET_SUMMARY.en} ${FUNDED_UNLOCKS.en}`,
   },
   {
     q: "How do I rotate the Cursor MCP API key?",

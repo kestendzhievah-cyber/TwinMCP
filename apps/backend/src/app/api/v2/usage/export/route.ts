@@ -3,7 +3,7 @@ import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users, usageMetrics, userServers, mcpServers } from "@/db/schema";
 import { forbidden, serverError } from "@/lib/errors";
-import { can, minPlanFor, PLAN_LABELS } from "@/lib/plan-features";
+import { can, minPlanFor, requiredTierMessage } from "@/lib/plan-features";
 import { requireManagementUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -37,9 +37,7 @@ export async function GET(req: NextRequest) {
       .limit(1);
     const plan = userRow?.plan ?? "free";
     if (!can(plan, "usageExport")) {
-      return forbidden(
-        `Exporting usage requires the ${PLAN_LABELS[minPlanFor("usageExport")]} plan.`
-      );
+      return forbidden(requiredTierMessage(minPlanFor("usageExport"), "Exporting usage"));
     }
 
     const rangeStart = new Date(utcDayStart(new Date()).getTime() - (days - 1) * 86_400_000);

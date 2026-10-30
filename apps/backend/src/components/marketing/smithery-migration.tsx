@@ -14,7 +14,7 @@ import {
 import { Section } from "@/components/marketing/section";
 import { CodeSnippet } from "@/components/marketing/code-snippet";
 import { Faq } from "@/components/marketing/faq";
-import { PLANS, formatPrice } from "@/components/pricing/pricing-data";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 import {
   API_KEY_PLACEHOLDER,
   buildClientConfig,
@@ -22,8 +22,7 @@ import {
   serverConfigLabel,
   type IdeKey,
 } from "@/lib/mcp/client-config";
-import { PLAN_CAPABILITIES, PRO_TRIAL_DAYS } from "@/lib/plan-features";
-import { getDailyLimit } from "@/lib/rate-limit";
+import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { CATALOGUE_COUNT, getComparison } from "@/lib/compare/data";
 import type { Locale } from "@/lib/i18n/locales";
 
@@ -40,7 +39,7 @@ import type { Locale } from "@/lib/i18n/locales";
 // lib/mcp/client-config.ts (one URL per server, recommended; per-MCP URLs
 // still available), lib/auth/key-scope.ts (account keys, full or mcp_proxy,
 // optionally bound to one server), lib/vault (shared {{secret:NAME}} values)
-// and components/pricing/pricing-data.ts. No SLA, no region choice, no team
+// and components/pricing/wallet-copy.ts (prices from lib/wallet/pricing.ts). No SLA, no region choice, no team
 // sharing, no always-on promise.
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
@@ -53,18 +52,21 @@ export const MIGRATION_PATHS = {
 
 const SIGN_UP = { en: "/sign-up", fr: "/fr/inscription" } as const satisfies Record<Locale, string>;
 
-function signUpHref(locale: Locale, plan: "free" | "pro"): Route {
-  return `${SIGN_UP[locale]}?plan=${plan}` as Route;
+const PRICING_PATH = { en: "/plans", fr: "/fr/tarifs" } as const satisfies Record<Locale, string>;
+
+function signUpHref(locale: Locale): Route {
+  return SIGN_UP[locale] as Route;
+}
+
+function pricingHref(locale: Locale): Route {
+  return PRICING_PATH[locale] as Route;
 }
 
 // Plan facts, derived from the single sources of truth so the copy cannot drift.
 const free = PLAN_CAPABILITIES.free;
 const pro = PLAN_CAPABILITIES.pro;
-const freePlan = PLANS.find((p) => p.id === "free")!;
-const proPlan = PLANS.find((p) => p.id === "pro")!;
-const PRO_YEARLY_EUR = Math.round(proPlan.annualMonthlyUsd * 12);
-const FREE_DAILY = getDailyLimit("free");
-const PRO_DAILY = getDailyLimit("pro");
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
 
 // ─── Smithery shutdown facts (single source: lib/compare/data.ts) ────────────
 
@@ -135,13 +137,13 @@ const COPY = {
       title:
         "Smithery shuts down on 31 October. Move your MCP servers to TwinMCP in a few minutes.",
       lead: "Most MCPs hosted on Smithery are open-source packages, so the code itself does not change. What moves is the hosting, the secrets and one block of client config. TwinMCP runs each server in its own isolated sandbox and gives it one URL that serves all its MCPs, reached with an API key from your account.",
-      primary: "Start free",
-      secondary: "Try Pro free for a month",
+      primary: `Start with ${EN.signupCredit} free`,
+      secondary: "See pricing",
       facts: [
-        "Free plan",
+        `${EN.signupCredit} of free credit`,
         `${free.servers} server`,
         "No credit card",
-        `Pro: first ${PRO_TRIAL_DAYS} days free`,
+        "No subscription",
       ],
     },
     shutdown: {
@@ -205,7 +207,7 @@ const COPY = {
       ],
       differ: [
         `A smaller catalogue: ${CATALOGUE_COUNT} MCPs, not an open registry. Browse it on the public catalogue page before you move anything.`,
-        "Your own MCP, or one outside the catalogue: publish it on Pro from an npm or PyPI package. It stays private to your account. Servers that only ship as a Docker image cannot run in the sandbox.",
+        "Your own MCP, or one outside the catalogue: publish it from an npm or PyPI package once your account is funded. It stays private to your account. Servers that only ship as a Docker image cannot run in the sandbox.",
         "No uptime SLA.",
         "Idle servers sleep: the first request after a pause takes a few seconds longer.",
         "On the server URL, tool names are prefixed with the MCP's slug (<mcp>__<tool>). A server with many tools can add ?mode=router to list three meta-tools instead.",
@@ -213,35 +215,37 @@ const COPY = {
     },
     offer: {
       eyebrow: "The offer",
-      title: "Try it free, then take the first month of Pro on us",
+      title: `Try it on ${EN.signupCredit} of free credit, then pay as you go`,
       description:
-        "No migration fee and no contract. Start on Free to check your MCPs work, move to Pro when you need more than one server.",
+        "No migration fee, no contract and no subscription. Use the free credit to check your MCPs work, then top up when you need more than one server.",
       free: {
-        name: "Free",
-        price: formatPrice(freePlan, "monthly", "en"),
-        cadence: "forever",
+        name: "Free credit",
+        price: EN.signupCredit,
+        cadence: `on sign-up, valid ${EN.signupDays} days`,
         bullets: [
           `${free.servers} small server`,
-          `${FREE_DAILY} tool calls a day`,
+          `About ${EN.creditCalls} tool calls’ worth, before compute`,
           `${free.apiKeys} API keys`,
           "No credit card",
         ],
-        cta: "Start free",
+        cta: `Get ${EN.signupCredit} of free credit`,
       },
       pro: {
-        name: "Pro",
-        seal: "First month free",
-        price: formatPrice(proPlan, "monthly", "en"),
-        cadence: `a month, or €${PRO_YEARLY_EUR} a year`,
+        name: "Pay as you go",
+        seal: "No subscription",
+        price: EN.minTopup,
+        cadence: "minimum top-up",
         bullets: [
           `${pro.servers} servers, all box sizes`,
-          `${PRO_DAILY.toLocaleString("en-US")} tool calls a day`,
+          `Tool calls ${EN.per1000Calls} per 1,000`,
+          `Compute from ${EN.cpuHour.small} per active CPU-hour`,
           `${pro.apiKeys} API keys`,
           "Publish your own MCPs",
           `Audit logs · ${pro.auditRetentionDays} days`,
         ],
-        trial: `First subscription: ${PRO_TRIAL_DAYS} days free. Card required, nothing charged for ${PRO_TRIAL_DAYS} days, cancel anytime.`,
-        cta: "Try Pro free for a month",
+        trial:
+          "Prepaid: at zero, calls stop and nothing is charged to a card unless you turn on auto-recharge.",
+        cta: "See the price list",
       },
     },
     faq: {
@@ -264,13 +268,13 @@ const COPY = {
       title:
         "Smithery ferme le 31 octobre. Déplacez vos serveurs MCP vers TwinMCP en quelques minutes.",
       lead: "La plupart des MCP hébergés sur Smithery sont des paquets open source : leur code ne change pas. Ce que vous déplacez, c’est l’hébergement, les secrets et un bloc de configuration client. TwinMCP fait tourner chaque serveur dans son propre sandbox isolé et lui donne une seule URL qui sert tous ses MCP, appelée avec une clé API de votre compte.",
-      primary: "Commencer gratuitement",
-      secondary: "Essayer Pro 1 mois gratuit",
+      primary: `Démarrer avec ${FR.signupCredit} offerts`,
+      secondary: "Voir les tarifs",
       facts: [
-        "Offre Free",
+        `${FR.signupCredit} de crédit offert`,
         `${free.servers} serveur`,
         "Sans carte bancaire",
-        `Pro : ${PRO_TRIAL_DAYS} premiers jours offerts`,
+        "Sans abonnement",
       ],
     },
     shutdown: {
@@ -334,7 +338,7 @@ const COPY = {
       ],
       differ: [
         `Un catalogue plus restreint : ${CATALOGUE_COUNT} MCP, pas un registre ouvert. Parcourez-le sur la page publique du catalogue avant de déplacer quoi que ce soit.`,
-        "Votre propre MCP, ou un MCP hors catalogue : publiez-le sur Pro à partir d’un paquet npm ou PyPI. Il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox.",
+        "Votre propre MCP, ou un MCP hors catalogue : publiez-le à partir d’un paquet npm ou PyPI une fois votre compte alimenté. Il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox.",
         "Pas de SLA de disponibilité.",
         "Les serveurs inactifs se mettent en veille : la première requête après une pause prend quelques secondes de plus.",
         "Sur l’URL du serveur, les noms d’outils sont préfixés par le slug du MCP (<mcp>__<tool>). Un serveur avec beaucoup d’outils peut ajouter ?mode=router pour n’exposer que trois méta-outils.",
@@ -342,35 +346,37 @@ const COPY = {
     },
     offer: {
       eyebrow: "L’offre",
-      title: "Essayez gratuitement, puis profitez du premier mois de Pro offert",
+      title: `Essayez avec ${FR.signupCredit} de crédit offert, puis payez à l’usage`,
       description:
-        "Ni frais de migration ni engagement. Commencez sur Free pour vérifier que vos MCP fonctionnent, passez à Pro quand un serveur ne suffit plus.",
+        "Ni frais de migration, ni engagement, ni abonnement. Utilisez le crédit offert pour vérifier que vos MCP fonctionnent, puis rechargez quand un serveur ne suffit plus.",
       free: {
-        name: "Free",
-        price: formatPrice(freePlan, "monthly", "fr"),
-        cadence: "pour toujours",
+        name: "Crédit offert",
+        price: FR.signupCredit,
+        cadence: `à l’inscription, valable ${FR.signupDays} jours`,
         bullets: [
           `${free.servers} petit serveur (small)`,
-          `${FREE_DAILY} appels d’outils par jour`,
+          `L’équivalent d’environ ${FR.creditCalls} appels d’outils, hors calcul`,
           `${free.apiKeys} clés API`,
           "Sans carte bancaire",
         ],
-        cta: "Commencer gratuitement",
+        cta: `Recevoir ${FR.signupCredit} de crédit offert`,
       },
       pro: {
-        name: "Pro",
-        seal: "Premier mois offert",
-        price: formatPrice(proPlan, "monthly", "fr"),
-        cadence: `par mois, ou ${PRO_YEARLY_EUR} € par an`,
+        name: "Paiement à l’usage",
+        seal: "Sans abonnement",
+        price: FR.minTopup,
+        cadence: "recharge minimale",
         bullets: [
           `${pro.servers} serveurs, toutes les tailles de box`,
-          `${PRO_DAILY.toLocaleString("fr-FR")} appels d’outils par jour`,
+          `Appels d’outils ${FR.per1000Calls} les 1 000`,
+          `Calcul dès ${FR.cpuHour.small} par heure de CPU actif`,
           `${pro.apiKeys} clés API`,
           "Publiez vos propres MCP",
           `Journaux d’audit · ${pro.auditRetentionDays} jours`,
         ],
-        trial: `Premier abonnement : ${PRO_TRIAL_DAYS} jours offerts. Carte demandée, rien n’est prélevé pendant ${PRO_TRIAL_DAYS} jours, résiliable à tout moment.`,
-        cta: "Essayer Pro 1 mois gratuit",
+        trial:
+          "Prépayé : à zéro, les appels s’arrêtent et rien n’est prélevé sur une carte, sauf si vous activez la recharge automatique.",
+        cta: "Voir la grille tarifaire",
       },
     },
     faq: {
@@ -402,11 +408,11 @@ export const SMITHERY_MIGRATION_FAQ: Record<Locale, { q: string; a: string }[]> 
     },
     {
       q: "What if my MCP is not in the TwinMCP catalogue?",
-      a: `The catalogue holds ${CATALOGUE_COUNT} MCPs. If yours is not there and it is published as an npm or PyPI package, you can publish it as your own MCP on Pro; it stays private to your account. Servers that only ship as a Docker image cannot run in the sandbox today.`,
+      a: `The catalogue holds ${CATALOGUE_COUNT} MCPs. If yours is not there and it is published as an npm or PyPI package, you can publish it as your own MCP once your account is funded (after your first top-up); it stays private to your account. Servers that only ship as a Docker image cannot run in the sandbox today.`,
     },
     {
       q: "How much does it cost?",
-      a: `Free costs nothing: ${free.servers} small server, ${FREE_DAILY} tool calls a day, no credit card. Pro is €14.99 a month or €${PRO_YEARLY_EUR} a year for ${pro.servers} servers, every box size and ${PRO_DAILY.toLocaleString("en-US")} tool calls a day. Your first Pro subscription starts with ${PRO_TRIAL_DAYS} days free: the card is required, nothing is charged during the trial, and you can cancel anytime.`,
+      a: `There is no subscription. Every new account gets ${EN.signupCredit} of free credit, valid ${EN.signupDays} days, no card: ${free.servers} small server to test your migration. After that you top up a prepaid balance from ${EN.minTopup}, which unlocks ${pro.servers} servers and every box size. Tool calls cost ${EN.per1000Calls} per 1,000 and compute ${EN.cpuHour.small} per active CPU-hour on a small server. At zero, calls stop: no surprise bills.`,
     },
     {
       q: "Are my secrets safe on TwinMCP?",
@@ -424,11 +430,11 @@ export const SMITHERY_MIGRATION_FAQ: Record<Locale, { q: string; a: string }[]> 
     },
     {
       q: "Et si mon MCP n’est pas dans le catalogue TwinMCP ?",
-      a: `Le catalogue compte ${CATALOGUE_COUNT} MCP. Si le vôtre n’y est pas et qu’il est publié en paquet npm ou PyPI, vous pouvez le publier comme votre propre MCP sur Pro ; il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox aujourd’hui.`,
+      a: `Le catalogue compte ${CATALOGUE_COUNT} MCP. Si le vôtre n’y est pas et qu’il est publié en paquet npm ou PyPI, vous pouvez le publier comme votre propre MCP une fois votre compte alimenté (après votre première recharge) ; il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox aujourd’hui.`,
     },
     {
       q: "Combien ça coûte ?",
-      a: `Free ne coûte rien : ${free.servers} petit serveur, ${FREE_DAILY} appels d’outils par jour, sans carte bancaire. Pro coûte 14,99 € par mois ou ${PRO_YEARLY_EUR} € par an pour ${pro.servers} serveurs, toutes les tailles de box et ${PRO_DAILY.toLocaleString("fr-FR")} appels d’outils par jour. Votre premier abonnement Pro commence par ${PRO_TRIAL_DAYS} jours offerts : la carte est demandée, rien n’est prélevé pendant l’essai et vous pouvez résilier à tout moment.`,
+      a: `Il n’y a pas d’abonnement. Chaque nouveau compte reçoit ${FR.signupCredit} de crédit offert, valable ${FR.signupDays} jours, sans carte : ${free.servers} petit serveur pour tester votre migration. Ensuite, vous rechargez un solde prépayé à partir de ${FR.minTopup}, ce qui débloque ${pro.servers} serveurs et toutes les tailles de box. Les appels d’outils coûtent ${FR.per1000Calls} les 1 000 et le calcul ${FR.cpuHour.small} par heure de CPU actif sur un petit serveur. À zéro, les appels s’arrêtent : aucune facture surprise.`,
     },
     {
       q: "Mes secrets sont-ils protégés sur TwinMCP ?",
@@ -464,13 +470,13 @@ export function MigrationHero({ locale = "en" }: LocaleProps) {
         <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl">{t.lead}</p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button asChild size="lg">
-            <Link href={signUpHref(locale, "free")} data-cta-location="smithery_migration_hero">
+            <Link href={signUpHref(locale)} data-cta-location="smithery_migration_hero">
               {t.primary}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href={signUpHref(locale, "pro")} data-cta-location="smithery_migration_hero_pro">
+            <Link href={pricingHref(locale)} data-cta-location="smithery_migration_hero_pricing">
               {t.secondary}
             </Link>
           </Button>
@@ -625,7 +631,7 @@ export function KeepAndDiffer({ locale = "en" }: LocaleProps) {
   );
 }
 
-/** (d) The offer: Free to try, first month of Pro free. The one gilt seal of the page. */
+/** (d) The offer: free credit to try, then pay as you go. The one gilt seal of the page. */
 export function MigrationOffer({ locale = "en" }: LocaleProps) {
   const t = COPY[locale].offer;
   return (
@@ -646,7 +652,7 @@ export function MigrationOffer({ locale = "en" }: LocaleProps) {
             ))}
           </ul>
           <Button asChild variant="outline" className="mt-8">
-            <Link href={signUpHref(locale, "free")} data-cta-location="smithery_migration_offer">
+            <Link href={signUpHref(locale)} data-cta-location="smithery_migration_offer">
               {t.free.cta}
             </Link>
           </Button>
@@ -673,7 +679,7 @@ export function MigrationOffer({ locale = "en" }: LocaleProps) {
             {t.pro.trial}
           </p>
           <Button asChild className="mt-6">
-            <Link href={signUpHref(locale, "pro")} data-cta-location="smithery_migration_offer_pro">
+            <Link href={pricingHref(locale)} data-cta-location="smithery_migration_offer_pricing">
               {t.pro.cta}
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -714,13 +720,13 @@ export function MigrationFinalCta({ locale = "en" }: LocaleProps) {
         <p className="max-w-xl text-balance text-lg text-muted-foreground">{t.lead}</p>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row">
           <Button asChild size="lg">
-            <Link href={signUpHref(locale, "free")} data-cta-location="smithery_migration_final">
+            <Link href={signUpHref(locale)} data-cta-location="smithery_migration_final">
               {hero.primary}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href={signUpHref(locale, "pro")} data-cta-location="smithery_migration_final_pro">
+            <Link href={pricingHref(locale)} data-cta-location="smithery_migration_final_pricing">
               {hero.secondary}
             </Link>
           </Button>

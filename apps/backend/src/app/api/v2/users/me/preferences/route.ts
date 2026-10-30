@@ -11,8 +11,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Email preferences live in users.metadata (jsonb) — no migration:
-//   emailNudges: boolean   absent = true (upgrade offers, quota and trial emails)
-// Every outbound nudge email checks this flag before sending.
+//   emailNudges: boolean   absent = true (sign-up credit, low-balance, promo-expiring
+//   and activation emails). Money-critical wallet emails (zero balance, failed
+//   auto-recharge, runtime deletion, conversion, receipts) ignore it.
 
 const preferencesSchema = z.object({
   emailNudges: z.boolean(),

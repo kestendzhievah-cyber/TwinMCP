@@ -48,6 +48,7 @@ import { countsTowardKeyLimit, isKeyUsable, type KeyScope } from "@/lib/auth/key
 import type { HostType, ServerStatus } from "@/db/schema/platform";
 import { AdminCreateServerDialog } from "./admin-create-server-dialog";
 import { AdminInstallMcpDialog } from "./admin-install-mcp-dialog";
+import { WalletSection } from "./wallet-section";
 
 type Plan = "free" | "pro" | "team";
 
@@ -114,7 +115,12 @@ interface Detail {
 }
 
 const nf = new Intl.NumberFormat("fr-FR");
-const PLAN_LABEL: Record<Plan, string> = { free: "Free", pro: "Pro", team: "Team" };
+// users.plan since the wallet: "pro" = funded (a first paid top-up), "free" = free credit only.
+const PLAN_LABEL: Record<Plan, string> = {
+  free: "Non financé",
+  pro: "Financé",
+  team: "Team (ancien)",
+};
 const dateFmt = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
   month: "short",
@@ -324,11 +330,14 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
         />
         <Kpi
           icon={<CreditCard className="h-4 w-4" />}
-          label="Abonnement"
+          label="Abonnement (ancien)"
           value={user.subscriptionStatus ?? "—"}
           sub={user.currentPeriodEnd ? `jusqu'au ${fmtDate(user.currentPeriodEnd)}` : undefined}
         />
       </div>
+
+      {/* Prepaid wallet: balances, ledger, admin grant / adjustment. */}
+      <WalletSection clientId={clientId} />
 
       {/* Usage */}
       <Card>
@@ -340,8 +349,8 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
             Usage MCP · 14 jours
           </CardTitle>
           <CardDescription className="pl-12">
-            Appels d’outils (tools/call) traités pour le client, par jour. Seuls ces appels comptent
-            dans le quota journalier.
+            Appels d’outils (tools/call) traités pour le client, par jour. Chaque appel qui atteint
+            le MCP est débité du crédit.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">

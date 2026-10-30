@@ -25,9 +25,9 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import type { Plan } from "@/db/schema/core";
-import { allowedBoxSizes, minPlanForBoxSize, PLAN_LABELS } from "@/lib/plan-features";
-import { trialCta } from "@/lib/billing/upgrade-state";
-import { UpgradeLink } from "@/components/billing/upgrade-inline";
+import { allowedBoxSizes } from "@/lib/plan-features";
+import { PROMO_LOCKED_BADGE } from "@/lib/wallet/eligibility";
+import { TopUpLink } from "@/components/billing/top-up-inline";
 import { cliCommand, localAgentCommand } from "@/lib/cli";
 
 const BOX_SIZES = [
@@ -42,16 +42,9 @@ interface CreateServerDialogProps {
   plan: Plan;
   disabled?: boolean;
   trigger?: React.ReactNode;
-  /** Free account with no Stripe customer yet: the upgrade link offers the free month. */
-  trialEligible?: boolean;
 }
 
-export function CreateServerDialog({
-  plan,
-  disabled,
-  trigger,
-  trialEligible = false,
-}: CreateServerDialogProps) {
+export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -154,12 +147,13 @@ export function CreateServerDialog({
                   </SelectTrigger>
                   <SelectContent>
                     {BOX_SIZES.map((s) => {
+                      // Free credit (wallet never funded): small only. A first
+                      // top-up unlocks every size (the API enforces this too).
                       const allowed = allowedBoxSizes(plan).includes(s.value);
-                      const required = minPlanForBoxSize(s.value);
                       return (
                         <SelectItem key={s.value} value={s.value} disabled={!allowed}>
                           {s.label}
-                          {!allowed && required ? ` · ${PLAN_LABELS[required]}` : ""}
+                          {!allowed ? ` · ${PROMO_LOCKED_BADGE}` : ""}
                         </SelectItem>
                       );
                     })}
@@ -167,12 +161,12 @@ export function CreateServerDialog({
                 </Select>
                 {allowedBoxSizes(plan).length < BOX_SIZES.length && (
                   <p className="text-xs italic text-muted-foreground">
-                    Larger boxes are included in Pro.{" "}
-                    <UpgradeLink
+                    Medium and large boxes unlock with your first top-up.{" "}
+                    <TopUpLink
                       source="servers"
                       level="offer"
-                      reason="offer"
-                      label={trialCta(trialEligible).label}
+                      reason="box_size"
+                      label="Top up"
                       className="not-italic"
                     />
                   </p>

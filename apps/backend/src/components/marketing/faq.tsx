@@ -6,7 +6,11 @@ import {
 } from "@/components/ui/accordion";
 import type { Locale } from "@/lib/i18n/locales";
 import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 import { Section } from "./section";
+
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
 
 export interface FaqItem {
   q: string;
@@ -14,24 +18,25 @@ export interface FaqItem {
 }
 
 // Plain-text variant exported for JSON-LD FAQPage schema reuse. The home FAQ
-// answers the objections that stop a sign-up: price, what happens after the
-// free tier, setup, clients, security — facts only.
+// answers the objections that stop a sign-up: price (prepaid wallet, prices
+// from lib/wallet/pricing.ts), what happens when the credit runs out, setup,
+// clients, security — facts only.
 export const defaultFaqItems: { q: string; a: string }[] = [
   {
     q: "How much does TwinMCP cost?",
-    a: `The Free plan is free forever: 1 server and up to ${FREE_MCP_LIMIT} MCPs plus TwinMCP Docs, no credit card. Pro is €14.99 a month for 50 servers, every box size and 5,000 tool calls a day, and your first month is free on a first subscription: a card is required, nothing is charged for 30 days, and if you cancel before the month ends you pay nothing. Annual billing saves up to 25%. Pro can be cancelled anytime.`,
+    a: `You pay as you go, with no subscription. Every new account gets ${EN.signupCredit} of free credit, no card, valid ${EN.signupDays} days: enough for ${EN.creditServers} server with up to ${FREE_MCP_LIMIT} MCPs plus TwinMCP Docs. After that you top up a prepaid balance from ${EN.minTopup}. Tool calls cost ${EN.per1000Calls} per 1,000 and compute ${EN.cpuHour.small} per active CPU-hour on a small server.`,
   },
   {
-    q: "Does connecting my IDE use up my quota?",
-    a: "No. Only tool calls count — the requests where your AI actually asks an MCP to do something. Connecting, listing tools, pings and session handshakes are free, so reconnecting a client or switching IDEs never eats into your daily calls.",
+    q: "Does connecting my IDE use up my credit?",
+    a: "No. Only tool calls are charged — the requests where your AI actually asks an MCP to do something. Connecting, listing tools, pings and session handshakes are free, so reconnecting a client or switching IDEs costs nothing.",
   },
   {
     q: "Can I get a surprise bill?",
-    a: "No. The price is flat: €0 on Free, €14.99 a month (or €135 a year) on Pro, with no per-call charges. When you reach the daily cap (50 tool calls on Free, 5,000 on Pro), further calls are refused with a clear limit-reached error until the 24-hour window resets. Nothing is billed for them.",
+    a: "No. TwinMCP is prepaid: you can only spend the credit in your balance. When it reaches zero, tool calls are refused with a clear message and your servers pause. Nothing is charged to a card unless you turn on auto-recharge, which has a monthly cap you set.",
   },
   {
-    q: "What happens when I outgrow the Free plan?",
-    a: "Nothing changes on its own. The Free plan doesn't expire and never turns into a paid subscription — with no card on file, nothing can be charged. When one server is no longer enough, you upgrade to Pro from the dashboard, whenever you decide.",
+    q: "What happens when the free credit runs out?",
+    a: `Nothing is charged: with no card on file, nothing can be. Calls stop until you top up from ${EN.minTopup}, whenever you decide. Your first top-up also unlocks up to ${EN.fundedServers} servers and every box size.`,
   },
   {
     q: "Do I need Docker or a VPS?",
@@ -39,7 +44,7 @@ export const defaultFaqItems: { q: string; a: string }[] = [
   },
   {
     q: "Can I host an MCP server that isn't in the catalogue?",
-    a: "Yes, on Pro. Publish any MCP server shipped as an npm or PyPI package, stdio servers included: TwinMCP installs it in your isolated server, bridges stdio to Streamable HTTP and gives it a URL like any catalogue MCP. It stays private to your account. Servers that only ship as a Docker image cannot run in the sandbox today.",
+    a: "Yes, once your account is funded (after your first top-up). Publish any MCP server shipped as an npm or PyPI package, stdio servers included: TwinMCP installs it in your isolated server, bridges stdio to Streamable HTTP and gives it a URL like any catalogue MCP. It stays private to your account. Servers that only ship as a Docker image cannot run in the sandbox today.",
   },
   {
     q: "Which AI clients are supported?",
@@ -61,20 +66,20 @@ export const defaultFaqItems: { q: string; a: string }[] = [
 
 export const frFaqItems: { q: string; a: string }[] = [
   {
-    q: "Combien coûte TwinMCP ?",
-    a: `L’offre Free est gratuite pour toujours : 1 serveur et jusqu’à ${FREE_MCP_LIMIT} MCP plus TwinMCP Docs, sans carte bancaire. Pro coûte 14,99 € par mois pour 50 serveurs, toutes les tailles de box et 5 000 appels d’outils par jour, et le premier mois est offert sur un premier abonnement : la carte est demandée, rien n’est prélevé pendant 30 jours, et si vous résiliez avant la fin du mois vous ne payez rien. La facturation annuelle vous fait économiser jusqu’à 25 %. Pro est résiliable à tout moment.`,
+    q: "Combien coûte TwinMCP ?",
+    a: `Vous payez à l’usage, sans abonnement. Chaque nouveau compte reçoit ${FR.signupCredit} de crédit offert, sans carte, valable ${FR.signupDays} jours : de quoi faire tourner ${FR.creditServers} serveur avec jusqu’à ${FREE_MCP_LIMIT} MCP plus TwinMCP Docs. Ensuite, vous rechargez un solde prépayé à partir de ${FR.minTopup}. Les appels d’outils coûtent ${FR.per1000Calls} les 1 000 et le calcul ${FR.cpuHour.small} par heure de CPU actif sur un petit serveur.`,
   },
   {
-    q: "Connecter mon IDE consomme-t-il mon quota ?",
-    a: "Non. Seuls les appels d’outils comptent : les requêtes où votre IA demande réellement à un MCP de faire quelque chose. La connexion, la liste des outils, les pings et l’ouverture de session sont gratuits ; reconnecter un client ou changer d’IDE n’entame donc jamais vos appels du jour.",
+    q: "Connecter mon IDE consomme-t-il mon crédit ?",
+    a: "Non. Seuls les appels d’outils sont facturés : les requêtes où votre IA demande réellement à un MCP de faire quelque chose. La connexion, la liste des outils, les pings et l’ouverture de session sont gratuits ; reconnecter un client ou changer d’IDE ne coûte donc rien.",
   },
   {
-    q: "Puis-je recevoir une facture surprise ?",
-    a: "Non. Le prix est fixe : 0 € sur Free, 14,99 € par mois (ou 135 € par an) sur Pro, sans aucune facturation à l’appel. Une fois le plafond journalier atteint (50 appels d’outils sur Free, 5 000 sur Pro), les appels suivants sont refusés avec un message de limite atteinte jusqu’à la réinitialisation de la fenêtre de 24 heures. Rien ne vous est facturé pour autant.",
+    q: "Puis-je recevoir une facture surprise ?",
+    a: "Non. TwinMCP est prépayé : vous ne pouvez dépenser que le crédit de votre solde. Quand il arrive à zéro, les appels d’outils sont refusés avec un message clair et vos serveurs se mettent en pause. Rien n’est prélevé sur une carte, sauf si vous activez la recharge automatique, plafonnée chaque mois au montant que vous fixez.",
   },
   {
-    q: "Que se passe-t-il quand l’offre gratuite ne suffit plus ?",
-    a: "Rien ne change sans votre accord. L’offre Free n’expire pas et ne se transforme jamais en abonnement payant : sans carte enregistrée, rien ne peut vous être facturé. Quand un serveur ne suffit plus, vous passez à Pro depuis le tableau de bord, au moment où vous le décidez.",
+    q: "Que se passe-t-il quand le crédit offert est épuisé ?",
+    a: `Rien n’est prélevé : sans carte enregistrée, rien ne peut l’être. Les appels s’arrêtent jusqu’à ce que vous rechargiez, à partir de ${FR.minTopup}, au moment où vous le décidez. Votre première recharge débloque aussi jusqu’à ${FR.fundedServers} serveurs et toutes les tailles de box.`,
   },
   {
     q: "Faut-il Docker ou un VPS ?",
@@ -82,7 +87,7 @@ export const frFaqItems: { q: string; a: string }[] = [
   },
   {
     q: "Puis-je héberger un serveur MCP absent du catalogue ?",
-    a: "Oui, avec Pro. Publiez n’importe quel serveur MCP distribué en paquet npm ou PyPI, serveurs stdio compris : TwinMCP l’installe dans votre serveur isolé, fait le pont entre stdio et Streamable HTTP et lui donne une URL comme à n’importe quel MCP du catalogue. Il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox pour l’instant.",
+    a: "Oui, une fois votre compte alimenté (après votre première recharge). Publiez n’importe quel serveur MCP distribué en paquet npm ou PyPI, serveurs stdio compris : TwinMCP l’installe dans votre serveur isolé, fait le pont entre stdio et Streamable HTTP et lui donne une URL comme à n’importe quel MCP du catalogue. Il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox pour l’instant.",
   },
   {
     q: "Quels clients IA sont compatibles ?",

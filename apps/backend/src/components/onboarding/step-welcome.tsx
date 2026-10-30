@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { PRO_TRIAL_DAYS } from "@/lib/plan-features";
+import { formatDate } from "@/lib/format";
+import { minTopupLabel } from "@/lib/wallet/pricing";
 import type { IdeKey } from "@/lib/mcp/client-config";
 
 // The IDE choice is the same set the config generator knows (lib/mcp/client-
@@ -22,14 +25,23 @@ const ides: Array<{ id: IdePreference; label: string; hint: string }> = [
   { id: "other", label: "Other", hint: "Generic JSON-RPC client" },
 ];
 
+/**
+ * What the sign-up credit did for this account (app/onboarding/page.tsx):
+ * granted (amount + expiry), refused (why, with a top-up link), or the
+ * account is already funded.
+ */
+export type SignupCreditView =
+  | { status: "granted"; amount: string; expiresAt: string | null }
+  | { status: "refused"; message: string; reason?: string }
+  | { status: "funded" };
+
 interface StepWelcomeProps {
   selected: IdePreference | null;
   onSelect: (ide: IdePreference) => void;
   onContinue: () => void;
   onBack?: () => void;
-  selectedPlan?: string | null;
-  /** The user just came back from a Pro checkout: say so instead of "selected plan". */
-  proTrial?: boolean;
+  /** The sign-up credit line (null: say nothing). */
+  credit?: SignupCreditView | null;
 }
 
 export function StepWelcome({
@@ -37,8 +49,7 @@ export function StepWelcome({
   onSelect,
   onContinue,
   onBack,
-  selectedPlan,
-  proTrial = false,
+  credit = null,
 }: StepWelcomeProps) {
   return (
     <div className="space-y-8">
@@ -49,20 +60,7 @@ export function StepWelcome({
         <p className="mt-2 text-base text-muted-foreground">
           A few quick choices and you&apos;ll have a live MCP server wired into your IDE.
         </p>
-        {proTrial ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Badge variant="success">Pro trial active</Badge>
-            <span className="lining text-sm italic text-muted-foreground">
-              Nothing is charged for {PRO_TRIAL_DAYS} days — cancel anytime from Billing.
-            </span>
-          </div>
-        ) : (
-          selectedPlan && (
-            <Badge variant="brand" className="mt-4 capitalize">
-              Selected plan: {selectedPlan}
-            </Badge>
-          )
-        )}
+        {credit && <CreditLine credit={credit} />}
       </div>
 
       <div>
@@ -110,5 +108,47 @@ export function StepWelcome({
         </Button>
       </div>
     </div>
+  );
+}
+
+const TOP_UP = "text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand";
+
+/** One memo line under the welcome title (DESIGN.md §5 callouts). */
+function CreditLine({ credit }: { credit: SignupCreditView }) {
+  if (credit.status === "granted") {
+    return (
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <Badge variant="success" className="lining">
+          {credit.amount} of free credit added
+        </Badge>
+        <span className="lining text-sm italic text-muted-foreground">
+          {credit.expiresAt ? `Valid until ${formatDate(credit.expiresAt)}. ` : ""}No card needed.
+        </span>
+      </div>
+    );
+  }
+  if (credit.status === "funded") {
+    return (
+      <div className="mt-4">
+        <Badge variant="success">Pay as you go</Badge>
+      </div>
+    );
+  }
+  // Unconfirmed address: the action is to confirm it, not to pay.
+  if (credit.reason === "unverified") {
+    return (
+      <p className="mt-4 border border-l-2 border-info/40 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+        {credit.message}
+      </p>
+    );
+  }
+  return (
+    <p className="mt-4 border border-l-2 border-info/40 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+      {credit.message}{" "}
+      <Link href={"/dashboard/billing" as Route} className={cn("font-medium", TOP_UP)}>
+        Top up from {minTopupLabel()}
+      </Link>{" "}
+      to start.
+    </p>
   );
 }

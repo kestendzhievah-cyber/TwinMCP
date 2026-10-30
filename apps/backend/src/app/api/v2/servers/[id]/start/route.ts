@@ -1,14 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
+import { badRequest, creditRequired, forbidden, notFound, serverError } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { enqueue } from "@/lib/queue/qstash";
 import {
   RuntimeGoneError,
+  assertComputeAllowed,
   claimProvision,
   claimReprovision,
+  isInsufficientCreditError,
   resumeServer,
 } from "@/lib/provisioning";
 import { isPausedRuntime, lifecycleActions } from "@/lib/server-lifecycle";
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ ok: true, status: "running" });
       } catch (err) {
         if (!(err instanceof RuntimeGoneError)) throw err;
+        await assertComputeAllowed(session.userId);
         // The paused box was reaped upstream: fall through to a fresh one.
         Sentry.captureMessage(`paused box of server ${id} was gone on resume`, "warning");
         if (await claimReprovision(id)) {
@@ -78,6 +81,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ ok: true, status: "provisioning", runtimeRecreated: true });
       }
     }
+
+    // A fresh runtime is compute: refuse it up front without credit (fails
+    // closed), so the user gets a 402 rather than a server that stays stopped.
+    await assertComputeAllowed(session.userId);
 
     // Conditional claim: a double click (or two tabs) enqueues one job only.
     if (!(await claimProvision(id))) {
@@ -100,6 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (err) {
     if (err instanceof NotFoundError) return notFound(err.message);
     if (err instanceof ForbiddenError) return forbidden(err.message);
+    if (isInsufficientCreditError(err)) return creditRequired(err.message);
     console.error("[server start]", err);
     return serverError();
   }

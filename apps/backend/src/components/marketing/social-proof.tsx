@@ -33,7 +33,7 @@ const COPY = {
       {
         icon: RotateCcw,
         title: "No commitment",
-        body: "The Free plan is free forever. Pro starts with a free month on a first subscription: cancel before it ends and you pay nothing, or cancel anytime after.",
+        body: "No subscription to cancel. You start on free credit with no card, then top up a prepaid balance only if you want more. At zero, calls stop: nothing is charged unless you turn auto-recharge on.",
       },
     ],
   },
@@ -64,7 +64,7 @@ const COPY = {
       {
         icon: RotateCcw,
         title: "Sans engagement",
-        body: "L’offre Free est gratuite pour toujours. Pro commence par un mois offert sur un premier abonnement : résiliez avant la fin et vous ne payez rien, ou à tout moment ensuite.",
+        body: "Aucun abonnement à résilier. Vous démarrez avec du crédit offert, sans carte, puis rechargez un solde prépayé seulement si vous en voulez plus. À zéro, les appels s’arrêtent : rien n’est prélevé, sauf si vous activez la recharge automatique.",
       },
     ],
   },

@@ -30,7 +30,15 @@ export type Job =
   | { type: "purge-retention" }
   // One outbound webhook delivery attempt (lib/webhooks/deliver.ts). Retries
   // are scheduled by deliver.ts itself (enqueue with delaySeconds).
-  | { type: "webhook-deliver"; deliveryId: string };
+  | { type: "webhook-deliver"; deliveryId: string }
+  // Prepaid wallet (schedule each with a QStash cron, see TODO.md):
+  // every 5 min — bill box compute from the Upstash usage counters.
+  | { type: "meter-boxes" }
+  // every 5 min, after meter-boxes — pause boxes at zero balance / promo caps,
+  // promo-only deletion countdown.
+  | { type: "wallet-enforce" }
+  // hourly — write off expired promotional credit.
+  | { type: "wallet-expiry" };
 
 const JOB_PATH = "/api/jobs/run";
 
@@ -100,6 +108,8 @@ export async function runJob(job: Job): Promise<void> {
       await provisionServer(job.serverId);
       return;
     case "destroy-server":
+      // destroyServerRuntime meters the box (final usage snapshot + debit)
+      // before deleteBox: a deleted box loses its usage counters.
       await destroyServerRuntime(job.serverId);
       return;
     case "install-mcp":
@@ -138,6 +148,35 @@ export async function runJob(job: Job): Promise<void> {
       // retry on top would double-send.
       const { deliverWebhook } = await import("@/lib/webhooks/deliver");
       await deliverWebhook(job.deliveryId);
+      return;
+    }
+    case "meter-boxes": {
+      const { runMeterBoxes } = await import("@/lib/wallet/compute-meter");
+      const r = await runMeterBoxes();
+      console.info(
+        `[queue] meter-boxes: ${r.metered}/${r.boxes} box(es), ${r.charged} charge(s), ${r.errors} error(s)${r.skipped ? ` (skipped: ${r.skipped})` : ""}`
+      );
+      return;
+    }
+    case "wallet-enforce": {
+      const { runWalletEnforce } = await import("@/lib/wallet/compute-meter");
+      const r = await runWalletEnforce();
+      // Auto-recharges a transient Stripe error left undone.
+      const { retryDueAutoRecharges } = await import("@/lib/wallet/auto-recharge");
+      await retryDueAutoRecharges().catch((err) =>
+        console.error("[queue] auto-recharge retry failed:", err)
+      );
+      console.info(
+        `[queue] wallet-enforce${r.destructive ? "" : " (pause only)"}: ${r.users} user(s), ${r.paused} paused, ${r.deleted} runtime(s) deleted, ${r.warnings} warning(s), ${r.killSwitches} kill switch(es), ${r.errors} error(s)`
+      );
+      return;
+    }
+    case "wallet-expiry": {
+      const { expirePromos } = await import("@/lib/wallet/ledger");
+      const r = await expirePromos();
+      console.info(
+        `[queue] wallet-expiry: ${r.expired} promo balance(s) expired${r.truncated ? " (truncated)" : ""}`
+      );
       return;
     }
     default: {

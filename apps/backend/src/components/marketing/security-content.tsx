@@ -92,8 +92,8 @@ function controls(locale: Locale): Control[] {
     {
       name: fr ? "Journal d’audit" : "Audit log",
       body: fr
-        ? `Création, rotation et révocation de clés, changements de serveurs et de MCP, changements d’offre : ces actions sur votre compte sont journalisées, y compris celles que notre équipe fait pour vous lors d’une installation accompagnée. Sur Pro, le tableau de bord affiche les ${AUDIT_DAYS} derniers jours.`
-        : `Key creation, rotation and revocation, server and MCP changes, plan changes: these actions on your account are logged, including those our team performs for you during a guided setup. On Pro, the dashboard shows the last ${AUDIT_DAYS} days.`,
+        ? `Création, rotation et révocation de clés, changements de serveurs et de MCP, changements d’offre : ces actions sur votre compte sont journalisées, y compris celles que notre équipe fait pour vous lors d’une installation accompagnée. Une fois le compte alimenté (après la première recharge), le tableau de bord affiche les ${AUDIT_DAYS} derniers jours.`
+        : `Key creation, rotation and revocation, server and MCP changes, plan changes: these actions on your account are logged, including those our team performs for you during a guided setup. Once your account is funded (after your first top-up), the dashboard shows the last ${AUDIT_DAYS} days.`,
     },
     // Contract K2 — app/api/mcp/[serverSlug]/[mcpSlug]/route.ts sets
     // x-twinmcp-request-id on every response and error.data.requestId on
@@ -111,8 +111,8 @@ function controls(locale: Locale): Control[] {
     {
       name: fr ? "Suppression du compte" : "Account deletion",
       body: fr
-        ? "Depuis Paramètres, la suppression du compte arrête et détruit vos box, annule votre abonnement, efface serveurs, clés, historique d’usage et identité de connexion. Les lignes du journal d’audit conservées pour raisons légales sont anonymisées (identifiant et adresse IP retirés)."
-        : "From Settings, deleting your account stops and destroys your boxes, cancels your subscription and erases servers, keys, usage history and your sign-in identity. Audit-log rows kept for legal reasons are anonymised (user id and IP address removed).",
+        ? "Depuis Paramètres, la suppression du compte arrête et détruit vos box, annule tout abonnement encore actif, efface serveurs, clés, historique d’usage et identité de connexion. Les lignes du journal d’audit conservées pour raisons légales sont anonymisées (identifiant et adresse IP retirés)."
+        : "From Settings, deleting your account stops and destroys your boxes, cancels any subscription still active and erases servers, keys, usage history and your sign-in identity. Audit-log rows kept for legal reasons are anonymised (user id and IP address removed).",
     },
     // lib/analytics/consent.ts — separate "analytics" (PostHog) and "ads"
     // (Google Ads) choices; posthog-js and gtag.js load only after opt-in
@@ -167,7 +167,7 @@ const PROCESSORS: Processor[] = [
   },
   {
     name: "Stripe",
-    purpose: { en: "Payments and subscriptions", fr: "Paiements et abonnements" },
+    purpose: { en: "Payments (credit top-ups)", fr: "Paiements (recharges de crédit)" },
   },
   {
     name: "Resend",

@@ -243,7 +243,7 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
                 >
                   <Zap className="h-4 w-4 shrink-0" />
                   <span>
-                    <span className="smallcaps tracking-sc font-medium">Upgrade to Pro</span> for
+                    <span className="smallcaps tracking-sc font-medium">Add credit</span> for
                     always-on servers — no cold start on the first request.
                   </span>
                 </Link>

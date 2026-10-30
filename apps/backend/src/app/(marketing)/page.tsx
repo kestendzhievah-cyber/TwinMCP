@@ -15,11 +15,12 @@ import { trackPageServed } from "@/lib/analytics/server";
 import { JsonLd } from "@/components/seo/json-ld";
 import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
 import { marketingOffers } from "@/components/pricing/pricing-data";
+import { SIGNUP_OFFER } from "@/components/pricing/wallet-copy";
 
 export const metadata: Metadata = {
   title: { absolute: "MCP Server Hosting Without Managing Infra — TwinMCP" },
   description:
-    "Host any MCP server — from the catalogue, stdio included, or your own npm or PyPI package — in an isolated sandbox, reachable from Cursor, Claude Code, VS Code and every MCP client. Flat price, free tier, no credit card.",
+    "Host any MCP server — from the catalogue, stdio included, or your own npm or PyPI package — in an isolated sandbox, reachable from Cursor, Claude Code, VS Code and every MCP client. Pay as you go, no subscription, free credit to start.",
   // Mirror the FR home's hreflang so the pair points both ways (the FR page
   // advertises en/fr/x-default; without this the EN page would drop the fr alt).
   alternates: {
@@ -39,7 +40,7 @@ const homeHowTo = howToSchema({
   steps: [
     {
       name: "Create a TwinMCP account",
-      text: "Sign up for free — no credit card required. You get one server and access to the MCP catalogue.",
+      text: `Sign up with ${SIGNUP_OFFER.en}. You get one server and access to the MCP catalogue.`,
       url: "/sign-up",
     },
     {
@@ -48,7 +49,7 @@ const homeHowTo = howToSchema({
     },
     {
       name: "Install MCPs",
-      text: "Choose from 70+ MCPs (Fetch, Wikipedia, Notion, Linear, Postgres, Slack…) or, on Pro, publish your own npm (Node.js) or PyPI (Python) package. Stdio servers are bridged to Streamable HTTP inside the sandbox.",
+      text: "Choose from 70+ MCPs (Fetch, Wikipedia, Notion, Linear, Postgres, Slack…) or, once your account is funded, publish your own npm (Node.js) or PyPI (Python) package. Stdio servers are bridged to Streamable HTTP inside the sandbox.",
     },
     {
       name: "Connect your AI client",
@@ -86,7 +87,7 @@ export default async function HomePage({
         data={[
           softwareApplicationSchema({
             description:
-              "TwinMCP hosts any Model Context Protocol server — from the catalogue, stdio included, or your own npm or PyPI package — in an isolated sandbox reachable over Streamable HTTP from every MCP client. Flat monthly price, no usage meters.",
+              "TwinMCP hosts any Model Context Protocol server — from the catalogue, stdio included, or your own npm or PyPI package — in an isolated sandbox reachable over Streamable HTTP from every MCP client. Pay as you go, no subscription.",
             offers: marketingOffers(),
           }),
           faqPageSchema(defaultFaqItems),

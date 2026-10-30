@@ -9,7 +9,7 @@ const toolsCall = (id: string | number = 1) =>
 
 describe("isBillableRequest — single JSON-RPC requests", () => {
   it("bills a POST tools/call and echoes its method and id", () => {
-    expect(isBillableRequest("POST", toolsCall(7))).toEqual({
+    expect(isBillableRequest("POST", toolsCall(7))).toMatchObject({
       billable: true,
       units: 1,
       rpcMethod: "tools/call",
@@ -42,7 +42,7 @@ describe("isBillableRequest — single JSON-RPC requests", () => {
 
   it("does not bill notifications (no id) and reports a null id", () => {
     const v = isBillableRequest("POST", rpc("notifications/initialized"));
-    expect(v).toEqual({
+    expect(v).toMatchObject({
       billable: false,
       units: 0,
       rpcMethod: "notifications/initialized",
@@ -53,7 +53,7 @@ describe("isBillableRequest — single JSON-RPC requests", () => {
   it("does not bill a JSON-RPC response or a message without a method", () => {
     expect(
       isBillableRequest("POST", JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} }))
-    ).toEqual({
+    ).toMatchObject({
       billable: false,
       units: 0,
       rpcMethod: null,
@@ -85,7 +85,7 @@ describe("isBillableRequest — single JSON-RPC requests", () => {
 
   it("ignores a non-string method", () => {
     const v = isBillableRequest("POST", JSON.stringify({ jsonrpc: "2.0", id: 1, method: 42 }));
-    expect(v).toEqual({ billable: false, units: 0, rpcMethod: null, rpcId: 1 });
+    expect(v).toMatchObject({ billable: false, units: 0, rpcMethod: null, rpcId: 1 });
   });
 });
 
@@ -93,7 +93,7 @@ describe("isBillableRequest — HTTP methods without a billable body", () => {
   it.each(["GET", "DELETE", "PUT", "PATCH", "OPTIONS", "HEAD"])(
     "never bills %s, even with a tools/call body",
     (method) => {
-      expect(isBillableRequest(method, toolsCall())).toEqual({
+      expect(isBillableRequest(method, toolsCall())).toMatchObject({
         billable: false,
         units: 0,
         rpcMethod: null,
@@ -106,7 +106,7 @@ describe("isBillableRequest — HTTP methods without a billable body", () => {
 
 describe("isBillableRequest — malformed or empty bodies", () => {
   it.each([null, undefined, "", "   ", "\n"])("treats %j as not billable", (body) => {
-    expect(isBillableRequest("POST", body)).toEqual({
+    expect(isBillableRequest("POST", body)).toMatchObject({
       billable: false,
       units: 0,
       rpcMethod: null,
@@ -117,7 +117,7 @@ describe("isBillableRequest — malformed or empty bodies", () => {
   it.each(["{not json", '{"method": "tools/call"', "tools/call", "<xml/>", "{]"])(
     "treats invalid JSON %j as not billable",
     (body) => {
-      expect(isBillableRequest("POST", body)).toEqual({
+      expect(isBillableRequest("POST", body)).toMatchObject({
         billable: false,
         units: 0,
         rpcMethod: null,
@@ -135,7 +135,7 @@ describe("isBillableRequest — malformed or empty bodies", () => {
   );
 
   it("tolerates surrounding whitespace around valid JSON", () => {
-    expect(isBillableRequest("POST", `\n  ${toolsCall(3)}  \n`)).toEqual({
+    expect(isBillableRequest("POST", `\n  ${toolsCall(3)}  \n`)).toMatchObject({
       billable: true,
       units: 1,
       rpcMethod: "tools/call",
@@ -147,7 +147,7 @@ describe("isBillableRequest — malformed or empty bodies", () => {
 describe("isBillableRequest — JSON-RPC batches", () => {
   it("bills a batch when any element is a tools/call and reports that element", () => {
     const batch = `[${rpc("ping", 1)}, ${toolsCall(2)}, ${rpc("tools/list", 3)}]`;
-    expect(isBillableRequest("POST", batch)).toEqual({
+    expect(isBillableRequest("POST", batch)).toMatchObject({
       billable: true,
       units: 1,
       rpcMethod: "tools/call",
@@ -175,7 +175,7 @@ describe("isBillableRequest — JSON-RPC batches", () => {
 
   it("does not bill a batch of overhead and reports its first element", () => {
     const batch = `[${rpc("initialize", 9)}, ${rpc("notifications/initialized")}]`;
-    expect(isBillableRequest("POST", batch)).toEqual({
+    expect(isBillableRequest("POST", batch)).toMatchObject({
       billable: false,
       units: 0,
       rpcMethod: "initialize",
@@ -184,7 +184,7 @@ describe("isBillableRequest — JSON-RPC batches", () => {
   });
 
   it("treats an empty batch as not billable", () => {
-    expect(isBillableRequest("POST", "[]")).toEqual({
+    expect(isBillableRequest("POST", "[]")).toMatchObject({
       billable: false,
       units: 0,
       rpcMethod: null,
@@ -194,7 +194,7 @@ describe("isBillableRequest — JSON-RPC batches", () => {
 
   it("skips non-object elements and still finds the tools/call", () => {
     const batch = `[42, "x", null, ${toolsCall(5)}]`;
-    expect(isBillableRequest("POST", batch)).toEqual({
+    expect(isBillableRequest("POST", batch)).toMatchObject({
       billable: true,
       units: 1,
       rpcMethod: "tools/call",
@@ -203,11 +203,53 @@ describe("isBillableRequest — JSON-RPC batches", () => {
   });
 
   it("reports nulls for a batch made only of non-objects", () => {
-    expect(isBillableRequest("POST", "[1, 2, 3]")).toEqual({
+    expect(isBillableRequest("POST", "[1, 2, 3]")).toMatchObject({
       billable: false,
       units: 0,
       rpcMethod: null,
       rpcId: null,
     });
+  });
+});
+
+describe("isBillableRequest — needsCredit (work that is not charged as a tool call)", () => {
+  it.each(["resources/read", "prompts/get", "completion/complete", "sampling/createMessage"])(
+    "%s needs credit but is not billed",
+    (method) => {
+      const v = isBillableRequest("POST", rpc(method, 1));
+      expect(v.billable).toBe(false);
+      expect(v.needsCredit).toBe(true);
+    }
+  );
+
+  it.each([
+    "initialize",
+    "ping",
+    "tools/list",
+    "resources/list",
+    "resources/templates/list",
+    "prompts/list",
+    "logging/setLevel",
+    "notifications/initialized",
+    "notifications/cancelled",
+  ])("%s stays free of any wallet check", (method) => {
+    expect(isBillableRequest("POST", rpc(method, 1)).needsCredit).toBe(false);
+  });
+
+  it("a tools/call needs credit; GET, responses and garbage do not", () => {
+    expect(isBillableRequest("POST", toolsCall()).needsCredit).toBe(true);
+    expect(isBillableRequest("GET", rpc("resources/read", 1)).needsCredit).toBe(false);
+    expect(
+      isBillableRequest("POST", JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} })).needsCredit
+    ).toBe(false);
+    expect(isBillableRequest("POST", "{not json").needsCredit).toBe(false);
+  });
+
+  it("a batch needs credit when any element does", () => {
+    const batch = JSON.stringify([
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      { jsonrpc: "2.0", id: 2, method: "resources/read", params: { uri: "file:///x" } },
+    ]);
+    expect(isBillableRequest("POST", batch)).toMatchObject({ billable: false, needsCredit: true });
   });
 });

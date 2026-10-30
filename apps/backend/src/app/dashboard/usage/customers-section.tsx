@@ -189,7 +189,7 @@ export function CustomersSection() {
               <Button asChild variant="outline">
                 <a href="/dashboard/billing">
                   <Lock className="h-4 w-4" />
-                  Download CSV · Pro
+                  Download CSV · paid credit
                 </a>
               </Button>
             ))}
@@ -197,8 +197,8 @@ export function CustomersSection() {
 
         {data && (
           <p className="lining text-xs italic text-muted-foreground">
-            {day(data.from)} to {day(data.to)} (UTC). Your plan keeps {data.retentionDays} days of
-            tool-call activity, so this table covers at most the last {data.retentionDays} days
+            {day(data.from)} to {day(data.to)} (UTC). Your account keeps {data.retentionDays} days
+            of tool-call activity, so this table covers at most the last {data.retentionDays} days
             {data.clamped ? "; the range was shortened to fit" : ""}. Errors include denied and
             rate-limited calls.
           </p>

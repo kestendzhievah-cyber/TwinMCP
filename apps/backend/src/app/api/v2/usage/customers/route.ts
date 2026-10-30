@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { apiKeys, users } from "@/db/schema/core";
 import { toolCalls } from "@/db/schema/activity";
 import { badRequest, forbidden, serverError } from "@/lib/errors";
-import { can, minPlanFor, PLAN_LABELS } from "@/lib/plan-features";
+import { can, minPlanFor, requiredTierMessage } from "@/lib/plan-features";
 import { requireManagementUser } from "@/lib/session";
 import {
   CUSTOMER_ROWS_MAX,
@@ -46,9 +46,7 @@ export async function GET(req: NextRequest) {
     const plan = userRow?.plan ?? "free";
 
     if (wantsCsv && !can(plan, "usageExport")) {
-      return forbidden(
-        `Exporting usage requires the ${PLAN_LABELS[minPlanFor("usageExport")]} plan.`
-      );
+      return forbidden(requiredTierMessage(minPlanFor("usageExport"), "Exporting usage"));
     }
 
     const range = parseCustomerUsageRange(url.searchParams, plan);

@@ -723,7 +723,7 @@ export const SOLUTIONS: readonly Solution[] = [
         },
         {
           q: "Can it connect to our bank or accounting software?",
-          a: "Not with this pack. It covers public market data and arithmetic. Other catalogue MCPs, or your own npm or PyPI MCP on Pro, can be added to the same server; ask about it in a guided setup.",
+          a: "Not with this pack. It covers public market data and arithmetic. Other catalogue MCPs, or your own npm or PyPI MCP once your account is funded, can be added to the same server; ask about it in a guided setup.",
         },
         {
           q: "Is this investment advice?",
@@ -774,7 +774,7 @@ export const SOLUTIONS: readonly Solution[] = [
         },
         {
           q: "Peut-il se connecter à notre banque ou à notre logiciel comptable ?",
-          a: "Pas avec ce pack. Il couvre les données de marché publiques et le calcul. D’autres MCP du catalogue, ou votre propre MCP npm ou PyPI sur Pro, peuvent être ajoutés au même serveur ; parlez-en lors d’une installation accompagnée.",
+          a: "Pas avec ce pack. Il couvre les données de marché publiques et le calcul. D’autres MCP du catalogue, ou votre propre MCP npm ou PyPI une fois votre compte alimenté, peuvent être ajoutés au même serveur ; parlez-en lors d’une installation accompagnée.",
         },
         {
           q: "Est-ce un conseil en investissement ?",
@@ -850,9 +850,14 @@ export function guidedSetupHref(solution: Solution, locale: Locale): string {
   return `${DEMO_BASE[locale]}?bundle=${encodeURIComponent(solution.bundleId)}`;
 }
 
-/** Sign-up link for the self-serve path, with the plan intent. */
-export function signUpHref(locale: Locale, plan: "free" | "pro"): string {
-  return `${SIGN_UP_BASE[locale]}?plan=${plan}`;
+/**
+ * Sign-up link for the self-serve path. Since the prepaid wallet replaced the
+ * subscription (2026-10-29) there is no plan to pick at sign-up: every account
+ * starts on the sign-up credit, so the plan intent is accepted and ignored
+ * (?plan=pro used to resume a Pro checkout after sign-up).
+ */
+export function signUpHref(locale: Locale, _plan?: "free" | "pro"): string {
+  return SIGN_UP_BASE[locale];
 }
 
 /** Canonical + hreflang alternates (symmetric pairs, x-default = English). */

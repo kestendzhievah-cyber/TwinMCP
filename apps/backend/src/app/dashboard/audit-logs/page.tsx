@@ -7,7 +7,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { auditLogs, users } from "@/db/schema";
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
-import { UpgradeCard } from "@/components/billing/upgrade-card";
+import { FundedCard } from "@/components/billing/funded-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,15 +65,14 @@ export default async function AuditLogsPage({
     </div>
   );
 
-  // Free plan has 0-day retention — the feature is Pro (the only plan sold).
+  // Unfunded accounts have 0-day retention — a first top-up unlocks the feature.
   if (retentionDays === 0) {
     return (
       <div className="space-y-8">
         {header}
-        <UpgradeCard
-          title="Audit logs are a paid feature"
-          description={`See who did what on your account — API-key creation, server changes, billing events — retained for ${PLAN_CAPABILITIES.pro.auditRetentionDays} days on Pro.`}
-          requiredPlan="pro"
+        <FundedCard
+          title="Audit logs need paid credit"
+          description={`See who did what on your account — API-key creation, server changes, billing events — retained for ${PLAN_CAPABILITIES.pro.auditRetentionDays} days once your account is funded.`}
         />
       </div>
     );

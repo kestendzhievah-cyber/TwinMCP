@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { and, count, eq, ne } from "drizzle-orm";
 import { getDb } from "@/db";
-import { mcpServers, userServers } from "@/db/schema";
+import { mcpServers, userServers, users } from "@/db/schema";
 import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
@@ -18,6 +18,8 @@ import { maxMcpsForBoxSize } from "@/lib/plan-features";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { trackServer } from "@/lib/analytics/server";
 import { emitWebhookEvent } from "@/lib/webhooks/emit";
+import { getWallet } from "@/lib/wallet/ledger";
+import { canUseMcpOnPromo, isPromoOnly, PROMO_LOCKED_MCP_MESSAGE } from "@/lib/wallet/eligibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -90,6 +92,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           ? "This tool runs in a cloud box — install it on a standard server, not a local-agent one."
           : "This tool runs locally via the agent — install it on a local-agent server."
       );
+    }
+
+    // Promo-only accounts (wallet never funded: running on the sign-up credit)
+    // cannot install the MCPs that turn a box into a general-purpose computer
+    // (shell, code interpreter, headless browser): free credit must not buy
+    // arbitrary compute. Checked only for those MCPs, so a normal install
+    // costs no extra query.
+    if (!canUseMcpOnPromo(mcp.slug, { startCmd: mcp.startCmd, isOfficial: mcp.isOfficial })) {
+      const [[me], wallet] = await Promise.all([
+        db
+          .select({ subscriptionStatus: users.subscriptionStatus })
+          .from(users)
+          .where(eq(users.id, session.userId))
+          .limit(1),
+        getWallet(session.userId),
+      ]);
+      if (isPromoOnly(wallet, me?.subscriptionStatus ?? null)) {
+        return forbidden(PROMO_LOCKED_MCP_MESSAGE);
+      }
     }
 
     // Capacity guard: every box-hosted MCP runs at once, so too many OOM the box

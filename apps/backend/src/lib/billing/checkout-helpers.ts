@@ -1,4 +1,5 @@
-// Pure, client-safe helpers for lib/billing/checkout.ts: no database, Stripe
+// Pure, client-safe checkout helpers (wallet top-ups, card setup, the retired
+// subscription return URLs still read by the billing page): no database, Stripe
 // or Sentry imports, so they can be unit-tested directly and imported by the
 // webhook and auth code without pulling the Stripe client.
 
@@ -72,5 +73,27 @@ export function checkoutReturnUrls(origin: string, from: CheckoutFrom) {
   return {
     success_url: `${base}/dashboard/billing?status=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${base}/dashboard/billing?status=canceled`,
+  };
+}
+
+/**
+ * Where Stripe sends the user after a wallet top-up (lib/wallet/topup.ts).
+ * The success URL carries the session id so the billing page can verify the
+ * payment (and fire the ads conversion) server-side.
+ */
+export function topupReturnUrls(origin: string) {
+  const base = origin.replace(/\/$/, "");
+  return {
+    success_url: `${base}/dashboard/billing?topup=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${base}/dashboard/billing?topup=canceled`,
+  };
+}
+
+/** Where Stripe sends the user after saving a card for auto-recharge (setup mode). */
+export function cardSetupReturnUrls(origin: string) {
+  const base = origin.replace(/\/$/, "");
+  return {
+    success_url: `${base}/dashboard/billing?card=saved&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${base}/dashboard/billing?card=canceled`,
   };
 }

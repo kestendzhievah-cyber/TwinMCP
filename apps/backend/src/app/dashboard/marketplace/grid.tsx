@@ -14,10 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, Search } from "lucide-react";
+import { Check, Lock, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Plan } from "@/db/schema/core";
 import { compareFeatured } from "@/lib/mcp/bundles";
+import { canUseMcpOnPromo, PROMO_LOCKED_BADGE } from "@/lib/wallet/eligibility";
 import { InstallDialog, type CatalogEntry, type ServerOption } from "./install-dialog";
 import { DetailDialog } from "./detail-dialog";
 
@@ -89,13 +90,21 @@ export function McpCatalogGrid({
   userServers,
   installed,
   plan,
+  promoOnly,
 }: {
   catalog: MarketplaceEntry[];
   userServers: ServerOption[];
   installed: InstalledMap;
-  /** The account's plan: only Free gets the Pro toast when a small box is full. */
+  /**
+   * The account's tier. "free" = Free credit (wallet never funded): the
+   * compute-heavy MCPs show locked until a first top-up (the API enforces it).
+   */
   plan: Plan;
+  /** Wallet never funded (computed server-side): compute-heavy MCPs show locked. */
+  promoOnly: boolean;
 }) {
+  const isLocked = (mcp: CatalogEntry) =>
+    promoOnly && !canUseMcpOnPromo(mcp.slug, { isOfficial: mcp.isOfficial });
   const [picking, setPicking] = useState<CatalogEntry | null>(null);
   const [detail, setDetail] = useState<CatalogEntry | null>(null);
   const [query, setQuery] = useState("");
@@ -270,6 +279,7 @@ export function McpCatalogGrid({
             const local = mcp.hostMode === "local";
             const on = installed[mcp.id] ?? [];
             const isInstalled = on.length > 0;
+            const locked = isLocked(mcp);
             return (
               <Card
                 key={mcp.id}
@@ -294,6 +304,12 @@ export function McpCatalogGrid({
                         <Badge variant="success">
                           <Check aria-hidden className="h-3 w-3" />
                           installed
+                        </Badge>
+                      )}
+                      {locked && (
+                        <Badge variant="warning">
+                          <Lock aria-hidden className="h-3 w-3" />
+                          {PROMO_LOCKED_BADGE}
                         </Badge>
                       )}
                       {local ? (
@@ -330,6 +346,10 @@ export function McpCatalogGrid({
                           {on.length > 1 ? `Installed · ${on.length} servers` : "Installed · View"}
                         </Link>
                       </Button>
+                    ) : locked ? (
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href={"/dashboard/billing" as Route}>Top up to install</Link>
+                      </Button>
                     ) : userServers.length === 0 ? (
                       <Button asChild variant="outline" className="w-full">
                         <Link href={"/dashboard/servers" as Route}>Create a server first</Link>
@@ -363,6 +383,7 @@ export function McpCatalogGrid({
         mcp={detail}
         userServers={userServers}
         installed={detail ? (installed[detail.id] ?? []) : []}
+        locked={detail ? isLocked(detail) : false}
         onClose={() => setDetail(null)}
         onInstall={(mcp) => {
           setDetail(null);
@@ -373,6 +394,7 @@ export function McpCatalogGrid({
         mcp={picking}
         userServers={userServers}
         plan={plan}
+        locked={picking ? isLocked(picking) : false}
         onClose={() => setPicking(null)}
       />
     </>

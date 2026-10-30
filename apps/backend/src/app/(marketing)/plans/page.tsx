@@ -9,58 +9,66 @@ import { TrustSignals } from "@/components/pricing/trust-signals";
 import { ComparisonTable } from "@/components/pricing/comparison-table";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
-import { productPricingSchema, faqPageSchema, breadcrumbListSchema } from "@/lib/seo/schema";
-import { FREE_MCP_LIMIT, PLANS } from "@/components/pricing/pricing-data";
+import { faqPageSchema, breadcrumbListSchema } from "@/lib/seo/schema";
+import {
+  FUNDED_UNLOCKS,
+  SIGNUP_OFFER,
+  walletFacts,
+  walletProductSchema,
+} from "@/components/pricing/wallet-copy";
 
-const proMonthly = PLANS.find((p) => p.id === "pro")?.monthlyUsd ?? 14.99;
+// Every price on this page comes from lib/wallet/pricing.ts through
+// components/pricing/wallet-copy.ts (publicPriceTable, whatTenEuroBuys).
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
+const W = walletFacts("en");
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `Free forever (1 server, up to ${FREE_MCP_LIMIT} MCPs + TwinMCP Docs, no credit card). Pro €${proMonthly}/mo: 50 servers, all box sizes, 5,000 tool calls a day.`,
+  description: `Pay as you go, no subscription. ${W.signupCredit} of free credit at sign-up, no card. Tool calls ${W.per1000Calls} per 1,000, compute from ${W.cpuHour.small} per active CPU-hour. Stops at zero: no surprise bills.`,
   alternates: {
     canonical: "/plans",
     languages: { en: "/plans", fr: "/fr/tarifs", "x-default": "/plans" },
   },
   openGraph: {
-    title: "TwinMCP Pricing — start free, upgrade only when you outgrow it",
-    description:
-      "Compare Free and Pro — servers, box sizes, daily tool calls, audit logs, support.",
+    title: `TwinMCP Pricing — pay as you go, ${W.signupCredit} free to start`,
+    description: `A prepaid balance, no subscription. ${W.signupCredit} of free credit at sign-up, top-ups from ${W.minTopup}, and calls stop at zero.`,
     url: "/plans",
   },
 };
 
 const pricingFaq: FaqItem[] = [
   {
-    q: "How does the free month of Pro work?",
-    a: "Your first Pro subscription starts with 30 days free. You enter a card at checkout but are not charged during the trial; cancel anytime before it ends and you pay nothing. Otherwise Pro renews at €14.99 a month (or the annual price you picked). The free month applies once per customer; a creator promo link replaces it with that link's own offer.",
+    q: `How does the ${W.signupCredit} sign-up credit work?`,
+    a: `Every new account gets ${W.signupCredit} of promotional credit, without a card. It is valid ${W.signupDays} days from sign-up, one per person, and it is spent before any credit you buy. It runs ${W.creditServers} small server with the catalogue MCPs, except those that run shell commands, code or a headless browser: they wait for your first top-up. Unused promotional credit expires at the end of the ${W.signupDays} days; it has no cash value.`,
   },
   {
-    q: "How does annual billing work?",
-    a: "You pay 12 months up front and save up to 25% versus monthly. On a first subscription the first month is free, and the year is charged when it ends. If you cancel, the plan keeps running until the end of the period already paid; no prorated refunds.",
+    q: "What exactly is charged?",
+    a: `Two things. Tool calls that reach your MCP server cost ${W.per1000Calls} per 1,000, tool errors included. Compute is the active CPU time your server uses, as the box measures it: ${W.cpuHour.small} per CPU-hour on a small server; ${W.largerSizes}. Connecting a client, listing tools and pings are not charged as tool calls, but the CPU time they use is part of compute; calls TwinMCP refuses are not charged. A paused server uses no CPU time, an awake but idle one very little, and servers pause on their own after a period without activity.`,
   },
   {
-    q: "Can I switch plans later?",
-    a: "Anytime, from /dashboard/billing. Upgrading to Pro takes effect as soon as checkout completes. Cancelling Pro takes effect at the end of the current billing period, so you keep what you paid for until then; your account then returns to Free.",
+    q: "What happens when my balance reaches zero?",
+    a: `Tool calls are refused with HTTP 402 and a clear message pointing to the billing page, and your servers pause. Nothing is charged to a card unless you turned auto-recharge on, so there is no surprise bill. Compute that was already running when the balance hit zero can take it slightly below zero (at most ${W.overdraft}); that is taken from your next top-up. Top up and you can start your servers again.`,
   },
   {
-    q: "What counts toward the daily quota?",
-    a: "Only tool calls — the requests where your AI actually asks an MCP to do something. Connecting, listing tools, pings and session handshakes are free, so reconnecting a client or switching IDEs never uses up your quota.",
+    q: "How do top-ups work?",
+    a: `From the billing page, pick ${W.presets.join(", ")} or any amount from ${W.minTopup} to ${W.maxTopup}, and pay by card through Stripe. VAT is calculated at checkout where it applies. ${FUNDED_UNLOCKS.en}`,
   },
   {
-    q: "What happens if I exceed my quota?",
-    a: "Quotas are soft caps: existing servers keep running, but new ones (and new MCP installs above the limit) are blocked until you upgrade. Tool calls above the daily quota (50 on Free, 5,000 on Pro) are refused with a limit-reached error until the 24-hour window resets.",
+    q: "What is auto-recharge?",
+    a: "An option, off by default. When your balance falls below a threshold you choose, TwinMCP tops it up with the amount you chose, on the card you saved, up to a monthly cap you set. You can change it or turn it off at any time from the billing page.",
   },
   {
-    q: "Can usage ever cost me more than the plan price?",
-    a: "No. The price is flat: €0 on Free, €14.99 a month or €135 a year on Pro. There are no per-call charges and no overage billing: at the daily cap, calls pause until the window resets, and nothing is charged for them.",
+    q: "Does credit expire?",
+    a: `The sign-up credit expires ${W.signupDays} days after sign-up. Credit you paid for has no expiry date: it remains available while your account is open.`,
   },
   {
-    q: "Do you offer discounts?",
-    a: "50% off for verified non-profits, students, and active maintainers of public OSS MCPs. Email hello@twinmcp.fr with proof.",
+    q: "Is there a subscription or a monthly fee?",
+    a: "No. Nothing renews and nothing is billed on a schedule. You pay when you top up, and your balance goes down with the tool calls and the compute your servers use.",
   },
   {
-    q: "What happens to my data when I cancel?",
-    a: "When Pro ends, your account returns to Free. Your oldest small server keeps running; the other servers (and any medium or large box) are stopped: their runtime is shut down and files written inside it are not kept, but the servers themselves, their installed MCPs and settings, your account and your API keys stay, and upgrading again lets you start them. Audit logs are only shown on Pro.",
+    q: "I had a Pro subscription. What happens to it?",
+    a: "Pro subscriptions are being converted to credit: the unused part of your current period is added to your balance as paid credit, the subscription is cancelled so it no longer renews, and you get an email with the amounts. Your servers, MCPs and API keys stay as they are.",
   },
 ];
 
@@ -73,37 +81,34 @@ export default function PlansPage() {
             { name: "Home", url: "/" },
             { name: "Pricing", url: "/plans" },
           ]),
-          productPricingSchema({
-            name: "TwinMCP",
-            description:
-              "Hosted Model Context Protocol runtimes for AI coding agents — Free and Pro plans.",
-            tiers: PLANS.map((p) => ({
-              id: p.id,
-              name: p.name,
-              description: p.blurb,
-              priceMonthlyUsd: p.monthlyUsd,
-              priceAnnualMonthlyUsd: p.annualMonthlyUsd,
-              url: `/plans#${p.id}`,
-            })),
-          }),
+          walletProductSchema({ siteUrl: SITE_URL, path: "/plans", locale: "en" }),
           faqPageSchema(pricingFaq.map((f) => ({ q: f.q, a: f.a as string }))),
         ]}
       />
       <TrackOnMount name="pricing_view" />
-      {/* Hero + cards + toggle. The header is written out (not Section's
-          title prop, which renders an h2) so the page has a real h1, set in
-          the same style as every other section title. */}
+      {/* Hero, price list and estimator. The header is written out (not
+          Section's title prop, which renders an h2) so the page has a real
+          h1, set in the same style as every other section title. */}
       <Section>
         <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
           <p className="eyebrow mb-4 flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']">
             Pricing
           </p>
           <h1 className="text-3xl font-medium md:text-4xl">
-            Pay for what you run, not what you might
+            Pay as you go. {W.signupCredit} free to start.
           </h1>
           <p className="mt-4 text-balance text-lg text-muted-foreground">
-            Free tier is real — no expiry, no card. Upgrade only when you outgrow the quota.
+            No subscription. You top up a prepaid balance and pay only for what your servers use:
+            tool calls and active CPU time. At zero, everything stops: no surprise bills.
           </p>
+          <div className="mt-8 flex justify-center">
+            <Button asChild size="lg">
+              <Link href={"/sign-up" as Route} data-cta-location="pricing_hero">
+                Get {W.signupCredit} of free credit
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
         <PricingExperience />
         {/* The section's address line: facts between two hairlines. */}
@@ -112,12 +117,12 @@ export default function PlansPage() {
         </div>
       </Section>
 
-      {/* Comparison table */}
+      {/* Before and after the first top-up */}
       <Section
         bordered
-        eyebrow="Compare plans"
-        title="Every feature, side by side"
-        description="No asterisks, no upsell pop-ups. What you see is what runs in the runtime."
+        eyebrow="Your account"
+        title="Free credit, then pay as you go"
+        description="Same prices before and after your first top-up. Funding the account lifts the limits that keep the free credit from being abused."
       >
         <ComparisonTable />
       </Section>
@@ -139,17 +144,17 @@ export default function PlansPage() {
           </h2>
           <div className="h-px w-12 bg-foreground/40" />
           <p className="max-w-xl text-balance text-lg text-muted-foreground">
-            Start free. Upgrade when (and only when) it pays for itself.
+            Start with {W.signupCredit} on us. Top up only when you need more.
           </p>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href={"/sign-up?plan=free" as Route}>
-                Start free · no credit card
+              <Link href={"/sign-up" as Route} data-cta-location="pricing_final">
+                {SIGNUP_OFFER.en}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href={"/docs" as Route}>Read the docs first</Link>
+              <Link href={"/docs#credit" as Route}>How credit works</Link>
             </Button>
           </div>
         </div>

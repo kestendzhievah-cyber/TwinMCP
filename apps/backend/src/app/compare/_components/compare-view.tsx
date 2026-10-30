@@ -38,9 +38,9 @@ const COPY = {
     isNotHeading: "TwinMCP is not",
     is: [
       "A host for MCP servers: each server you create runs in its own isolated micro-VM.",
-      `A catalogue of ${CATALOGUE_COUNT} MCP servers, plus your own npm or PyPI packages on Pro, stdio included.`,
+      `A catalogue of ${CATALOGUE_COUNT} MCP servers, plus your own npm or PyPI packages once your account is funded, stdio included.`,
       "One URL per MCP or per server, with API keys you can limit to the MCP proxy.",
-      "A flat price: Free, or Pro by the month or the year, with a daily tool-call cap and no per-call charge.",
+      "Pay as you go from a prepaid balance: tool calls and compute are charged, there is no subscription, and calls stop at zero.",
     ],
     isNot: [
       "A SaaS integration platform with managed OAuth for your end users.",
@@ -67,7 +67,7 @@ const COPY = {
     otherTitle: "Other comparisons",
     finalTitle: "Try it on a real server",
     finalLead:
-      "The Free plan needs no credit card. If you would rather be walked through it, book a guided setup.",
+      "You start on free credit, with no card. If you would rather be walked through it, book a guided setup.",
     start: "Start free",
     demo: "Guided setup",
     signUp: "/sign-up?plan=free",
@@ -91,9 +91,9 @@ const COPY = {
     isNotHeading: "TwinMCP n’est pas",
     is: [
       "Un hébergeur de serveurs MCP : chaque serveur que vous créez tourne dans sa propre micro-VM isolée.",
-      `Un catalogue de ${CATALOGUE_COUNT} serveurs MCP, plus vos propres paquets npm ou PyPI sur Pro, stdio compris.`,
+      `Un catalogue de ${CATALOGUE_COUNT} serveurs MCP, plus vos propres paquets npm ou PyPI une fois votre compte rechargé, stdio compris.`,
       "Une URL par MCP ou par serveur, avec des clés API limitables au proxy MCP.",
-      "Un forfait : Free, ou Pro au mois ou à l’année, avec un plafond quotidien d’appels d’outils et aucun tarif à l’appel.",
+      "Un paiement à l’usage sur un solde prépayé : appels d’outils et calcul sont facturés, sans abonnement, et les appels s’arrêtent à zéro.",
     ],
     isNot: [
       "Une plateforme d’intégration SaaS avec OAuth géré pour vos utilisateurs finaux.",
@@ -120,7 +120,7 @@ const COPY = {
     otherTitle: "Les autres comparatifs",
     finalTitle: "Essayez sur un vrai serveur",
     finalLead:
-      "L’offre Free ne demande pas de carte bancaire. Si vous préférez être guidé, réservez une installation accompagnée.",
+      "Vous démarrez avec du crédit offert, sans carte bancaire. Si vous préférez être guidé, réservez une installation accompagnée.",
     start: "Commencer gratuitement",
     demo: "Installation accompagnée",
     signUp: "/fr/inscription?plan=free",

@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Section } from "@/components/marketing/section";
 import { Faq } from "@/components/marketing/faq";
 import { DemoRequestForm, type DemoPack } from "@/components/marketing/demo-request-form";
-import { PLANS } from "@/components/pricing/pricing-data";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 import { MCP_BUNDLES } from "@/lib/mcp-bundles";
-import { PLAN_CAPABILITIES, PRO_TRIAL_DAYS } from "@/lib/plan-features";
-import { getDailyLimit } from "@/lib/rate-limit";
+import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { solutionForBundle } from "@/lib/solutions/data";
 import type { Locale } from "@/lib/i18n/locales";
 import type { DemoTopic } from "@/lib/sales/demo-request";
@@ -21,32 +20,19 @@ import type { DemoTopic } from "@/lib/sales/demo-request";
 //     (app/api/v2/admin/clients/[id]/servers/**, one-click packs from
 //     lib/mcp-bundles.ts); every admin action is logged on the CLIENT's audit
 //     log (logAudit({ userId: clientId, … }) in those routes), shown for
-//     PLAN_CAPABILITIES.pro.auditRetentionDays on Pro (dashboard/audit-logs);
+//     PLAN_CAPABILITIES.pro.auditRetentionDays once funded (dashboard/audit-logs);
 //   - API keys are created by the account owner only (no admin route mints
 //     keys), shown once, stored as a SHA-256 hash (lib/auth.ts hashKey);
 //   - MCP config secrets are AES-256-GCM encrypted (lib/crypto/config-encryption.ts);
-//   - plan facts: lib/plan-features.ts, lib/rate-limit.ts, pricing-data.ts.
+//   - account facts: lib/plan-features.ts; prices: lib/wallet/pricing.ts via
+//     components/pricing/wallet-copy.ts (prepaid wallet, no subscription).
 // The setup fee has NO number on purpose: it is quoted after the call.
 // No SLA, no response-time promise, no region choice, no team sharing.
 
 const free = PLAN_CAPABILITIES.free;
 const pro = PLAN_CAPABILITIES.pro;
-const proPlan = PLANS.find((p) => p.id === "pro")!;
-const FREE_DAILY = getDailyLimit("free");
-const PRO_DAILY = getDailyLimit("pro");
-
-function fmt(n: number, locale: Locale): string {
-  return n.toLocaleString(locale === "fr" ? "fr-FR" : "en-US").replace(/ /g, " ");
-}
-
-function proPrice(locale: Locale): { monthly: string; yearly: string } {
-  return locale === "fr"
-    ? {
-        monthly: `${proPlan.monthlyUsd.toFixed(2).replace(".", ",")} €`,
-        yearly: `${proPlan.annualTotalEur} €`,
-      }
-    : { monthly: `€${proPlan.monthlyUsd.toFixed(2)}`, yearly: `€${proPlan.annualTotalEur}` };
-}
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
 
 /** English names of the admin packs come from the solution pages
  *  (lib/solutions/data.ts), so a pack keeps one name across the funnel;
@@ -61,7 +47,6 @@ const SECURITY = { en: "/security", fr: "/fr/securite" } as const;
 // ─── Copy ────────────────────────────────────────────────────────────────────
 
 function copy(locale: Locale) {
-  const price = proPrice(locale);
   if (locale === "fr") {
     return {
       hero: {
@@ -69,7 +54,7 @@ function copy(locale: Locale) {
         title: "Nous installons vos serveurs MCP pour vous.",
         lead: "Pour les équipes qui préfèrent ne pas tout câbler elles-mêmes : nous créons votre serveur TwinMCP, installons les MCP dont vous avez besoin et les connectons à votre client IA avec vous. Les mêmes serveurs hébergés qu’en libre-service, sur votre propre compte.",
         primary: "Demander une installation",
-        secondary: "Démarrer seul, gratuitement",
+        secondary: `Démarrer seul avec ${FR.signupCredit} offerts`,
       },
       setup: {
         eyebrow: "Ce que nous installons",
@@ -77,11 +62,11 @@ function copy(locale: Locale) {
         items: [
           {
             name: "Votre serveur",
-            body: `Un serveur TwinMCP sur votre compte, dans sa propre Upstash Box isolée. Taille small sur Free ; small, medium ou large sur Pro, selon ce qu’il fait tourner.`,
+            body: `Un serveur TwinMCP sur votre compte, dans sa propre Upstash Box isolée. Taille small avec le crédit offert ; small, medium ou large une fois le compte alimenté, selon ce qu’il fait tourner.`,
           },
           {
             name: "Un pack de MCP",
-            body: "Nous partons d’un des packs ci-dessous et l’ajustons : n’importe quel MCP du catalogue, et sur Pro votre propre serveur stdio publié sur npm ou PyPI, qui reste privé à votre compte.",
+            body: "Nous partons d’un des packs ci-dessous et l’ajustons : n’importe quel MCP du catalogue et, une fois le compte alimenté, votre propre serveur stdio publié sur npm ou PyPI, qui reste privé à votre compte.",
           },
           {
             name: "Vos clés API",
@@ -102,11 +87,11 @@ function copy(locale: Locale) {
         steps: [
           {
             name: "L’appel",
-            body: "Ce que votre client IA doit faire, les outils et les données dont il a besoin, qui l’utilisera. Vous créez ensuite votre compte TwinMCP (Free suffit pour commencer).",
+            body: "Ce que votre client IA doit faire, les outils et les données dont il a besoin, qui l’utilisera. Vous créez ensuite votre compte TwinMCP (le crédit offert suffit pour commencer).",
           },
           {
             name: "L’installation",
-            body: `Nous créons le serveur et installons les MCP sur votre compte depuis notre console d’administration. Chaque action est inscrite dans votre journal d’audit (visible ${pro.auditRetentionDays} jours sur Pro).`,
+            body: `Nous créons le serveur et installons les MCP sur votre compte depuis notre console d’administration. Chaque action est inscrite dans votre journal d’audit (visible ${pro.auditRetentionDays} jours une fois le compte alimenté).`,
           },
           {
             name: "La remise en main",
@@ -116,9 +101,9 @@ function copy(locale: Locale) {
       },
       cost: {
         eyebrow: "Prix",
-        title: "L’offre Pro + des frais d’installation uniques, chiffrés après l’appel",
-        body: `Pro coûte ${price.monthly} par mois ou ${price.yearly} par an : ${pro.servers} serveurs, toutes les tailles de box, ${fmt(PRO_DAILY, "fr")} appels d’outils par jour, ${pro.apiKeys} clés API. Un premier abonnement Pro commence par ${PRO_TRIAL_DAYS} jours offerts. Les frais d’installation dépendent de ce qu’il y a à connecter : nous vous les indiquons après l’appel.`,
-        freeNote: `Pour un seul serveur, Free peut suffire : ${free.servers} petit serveur, ${fmt(FREE_DAILY, "fr")} appels d’outils par jour, ${free.apiKeys} clés API.`,
+        title: "Votre usage, prépayé + des frais d’installation uniques, chiffrés après l’appel",
+        body: `Sans abonnement : votre compte paie à l’usage depuis un solde prépayé, rechargé à partir de ${FR.minTopup}. Les appels d’outils coûtent ${FR.per1000Calls} les 1 000 et le calcul ${FR.cpuHour.small} par heure de CPU actif sur un petit serveur. Un compte alimenté a droit à ${pro.servers} serveurs, toutes les tailles de box et ${pro.apiKeys} clés API. Les frais d’installation dépendent de ce qu’il y a à connecter : nous vous les indiquons après l’appel.`,
+        freeNote: `Pour un seul serveur, le crédit offert peut suffire au départ : ${FR.signupCredit} à l’inscription, valables ${FR.signupDays} jours, ${free.servers} petit serveur, ${free.apiKeys} clés API.`,
       },
       form: {
         eyebrow: "Votre demande",
@@ -139,7 +124,7 @@ function copy(locale: Locale) {
       title: "We set up your MCP servers for you.",
       lead: "For teams that would rather not wire it all themselves: we create your TwinMCP server, install the MCPs you need and connect them to your AI client with you. The same hosted servers as self-serve, on your own account.",
       primary: "Request a guided setup",
-      secondary: "Start free on your own",
+      secondary: `Start on your own with ${EN.signupCredit} free`,
     },
     setup: {
       eyebrow: "What we set up",
@@ -147,11 +132,11 @@ function copy(locale: Locale) {
       items: [
         {
           name: "Your server",
-          body: `A TwinMCP server on your account, in its own isolated Upstash Box. Small on Free; small, medium or large on Pro, sized for what it runs.`,
+          body: `A TwinMCP server on your account, in its own isolated Upstash Box. Small on the free credit; small, medium or large once your account is funded, sized for what it runs.`,
         },
         {
           name: "A pack of MCPs",
-          body: "We start from one of the packs below and adjust it: any MCP from the catalogue and, on Pro, your own stdio server published on npm or PyPI, which stays private to your account.",
+          body: "We start from one of the packs below and adjust it: any MCP from the catalogue and, once your account is funded, your own stdio server published on npm or PyPI, which stays private to your account.",
         },
         {
           name: "Your API keys",
@@ -172,11 +157,11 @@ function copy(locale: Locale) {
       steps: [
         {
           name: "The call",
-          body: "What your AI client should do, which tools and data it needs, who will use it. You then create your TwinMCP account (Free is enough to start).",
+          body: "What your AI client should do, which tools and data it needs, who will use it. You then create your TwinMCP account (the free credit is enough to start).",
         },
         {
           name: "The setup",
-          body: `We create the server and install the MCPs on your account from our admin console. Every action is written to your audit log (visible for ${pro.auditRetentionDays} days on Pro).`,
+          body: `We create the server and install the MCPs on your account from our admin console. Every action is written to your audit log (visible for ${pro.auditRetentionDays} days once your account is funded).`,
         },
         {
           name: "The handover",
@@ -186,9 +171,9 @@ function copy(locale: Locale) {
     },
     cost: {
       eyebrow: "Cost",
-      title: "The Pro plan + a one-time setup fee quoted after the call",
-      body: `Pro is ${price.monthly} a month or ${price.yearly} a year: ${pro.servers} servers, every box size, ${fmt(PRO_DAILY, "en")} tool calls a day, ${pro.apiKeys} API keys. A first Pro subscription starts with ${PRO_TRIAL_DAYS} days free. The setup fee depends on what there is to connect: we quote it after the call.`,
-      freeNote: `For a single server, Free may be enough: ${free.servers} small server, ${fmt(FREE_DAILY, "en")} tool calls a day, ${free.apiKeys} API keys.`,
+      title: "Prepaid usage + a one-time setup fee quoted after the call",
+      body: `No subscription: your account pays as it goes from a prepaid balance, topped up from ${EN.minTopup}. Tool calls cost ${EN.per1000Calls} per 1,000 and compute ${EN.cpuHour.small} per active CPU-hour on a small server. A funded account gets ${pro.servers} servers, every box size and ${pro.apiKeys} API keys. The setup fee depends on what there is to connect: we quote it after the call.`,
+      freeNote: `For a single server, the free credit may be enough to start: ${EN.signupCredit} at sign-up, valid ${EN.signupDays} days, ${free.servers} small server, ${free.apiKeys} API keys.`,
     },
     form: {
       eyebrow: "Your request",
@@ -213,7 +198,7 @@ export const DEMO_FAQ: Record<Locale, { q: string; a: string }[]> = {
     },
     {
       q: "Which tools can you connect?",
-      a: "Any MCP from the TwinMCP catalogue and, on Pro, any MCP server published as an npm or PyPI package, including servers that only speak stdio: each server runs in its own isolated box and your AI client reaches it over Streamable HTTP. Servers shipped only as a Docker image cannot run today.",
+      a: "Any MCP from the TwinMCP catalogue and, once your account is funded, any MCP server published as an npm or PyPI package, including servers that only speak stdio: each server runs in its own isolated box and your AI client reaches it over Streamable HTTP. Servers shipped only as a Docker image cannot run today.",
     },
     {
       q: "Can we take it over afterwards?",
@@ -221,7 +206,7 @@ export const DEMO_FAQ: Record<Locale, { q: string; a: string }[]> = {
     },
     {
       q: "What does it cost?",
-      a: `The Pro plan (${proPrice("en").monthly} a month or ${proPrice("en").yearly} a year, first ${PRO_TRIAL_DAYS} days free on a first subscription) plus a one-time setup fee that we quote after the call, once we know what there is to connect.`,
+      a: `Your usage, paid from a prepaid balance (top-ups from ${EN.minTopup}, tool calls ${EN.per1000Calls} per 1,000, compute from ${EN.cpuHour.small} per active CPU-hour, no subscription), plus a one-time setup fee that we quote after the call, once we know what there is to connect.`,
     },
   ],
   fr: [
@@ -231,7 +216,7 @@ export const DEMO_FAQ: Record<Locale, { q: string; a: string }[]> = {
     },
     {
       q: "Quels outils pouvez-vous connecter ?",
-      a: "N’importe quel MCP du catalogue TwinMCP et, sur Pro, tout serveur MCP publié en paquet npm ou PyPI, y compris ceux qui ne parlent que stdio : chaque serveur tourne dans sa propre box isolée et votre client IA l’atteint en Streamable HTTP. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner aujourd’hui.",
+      a: "N’importe quel MCP du catalogue TwinMCP et, une fois le compte alimenté, tout serveur MCP publié en paquet npm ou PyPI, y compris ceux qui ne parlent que stdio : chaque serveur tourne dans sa propre box isolée et votre client IA l’atteint en Streamable HTTP. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner aujourd’hui.",
     },
     {
       q: "Pourrons-nous reprendre la main ensuite ?",
@@ -239,7 +224,7 @@ export const DEMO_FAQ: Record<Locale, { q: string; a: string }[]> = {
     },
     {
       q: "Combien ça coûte ?",
-      a: `L’offre Pro (${proPrice("fr").monthly} par mois ou ${proPrice("fr").yearly} par an, ${PRO_TRIAL_DAYS} premiers jours offerts sur un premier abonnement) plus des frais d’installation uniques, chiffrés après l’appel, une fois connu ce qu’il y a à connecter.`,
+      a: `Votre usage, payé depuis un solde prépayé (recharges dès ${FR.minTopup}, appels d’outils ${FR.per1000Calls} les 1 000, calcul dès ${FR.cpuHour.small} par heure de CPU actif, sans abonnement), plus des frais d’installation uniques, chiffrés après l’appel, une fois connu ce qu’il y a à connecter.`,
     },
   ],
 };
@@ -293,10 +278,7 @@ export function DemoContent({
               </a>
             </Button>
             <Button asChild size="lg" variant="ghost">
-              <Link
-                href={`${SIGN_UP[locale]}?plan=free` as Route}
-                data-cta-location="demo_hero_self_serve"
-              >
+              <Link href={SIGN_UP[locale] as Route} data-cta-location="demo_hero_self_serve">
                 {t.hero.secondary}
               </Link>
             </Button>

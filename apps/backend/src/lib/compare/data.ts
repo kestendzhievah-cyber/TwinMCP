@@ -6,7 +6,8 @@
 //     protocol carries a source id; each source has a URL and the date it was
 //     checked. When a source changes, update the row and CHECKED_ON together.
 //   - Statements about TwinMCP come from code: lib/plan-features.ts,
-//     lib/rate-limit.ts, components/pricing/pricing-data.ts,
+//     lib/wallet/pricing.ts via components/pricing/wallet-copy.ts (prepaid
+//     wallet since 2026-10-29: usage-based, no subscription, stops at zero),
 //     lib/mcp/client-config.ts (per-MCP URL, whole-server URL, ?mode=router),
 //     lib/auth/key-scope.ts (full | mcp_proxy, optionally bound to a server),
 //     lib/servers/seed-catalog.ts (catalogue size, derived below).
@@ -19,8 +20,7 @@
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { OFFICIAL_MCPS, RETIRED_SLUGS } from "@/lib/servers/seed-catalog";
 import { INTERNAL_SLUGS } from "@/lib/servers/catalog";
-import { getDailyLimit } from "@/lib/rate-limit";
-import { PLANS, formatEur } from "@/components/pricing/pricing-data";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 import type { Locale } from "@/lib/i18n/locales";
 
 type L<T> = Record<Locale, T>;
@@ -42,38 +42,17 @@ export const CATALOGUE_COUNT = OFFICIAL_MCPS.filter(
 
 const free = PLAN_CAPABILITIES.free;
 const pro = PLAN_CAPABILITIES.pro;
-const proPlan = PLANS.find((p) => p.id === "pro")!;
-const FREE_DAILY = getDailyLimit("free");
-const PRO_DAILY = getDailyLimit("pro");
-
-function n(value: number, locale: Locale): string {
-  // fr-FR groups with a narrow no-break space; a plain no-break space renders
-  // the same in Garamond and keeps the copy predictable.
-  return value.toLocaleString(locale === "fr" ? "fr-FR" : "en-US").replace(/ /g, " ");
-}
-
-const PRICE = {
-  en: {
-    free: formatEur(0, "en"),
-    monthly: formatEur(proPlan.monthlyUsd, "en"),
-    yearly: formatEur(proPlan.annualTotalEur, "en"),
-  },
-  fr: {
-    free: formatEur(0, "fr"),
-    monthly: formatEur(proPlan.monthlyUsd, "fr"),
-    yearly: formatEur(proPlan.annualTotalEur, "fr"),
-  },
-} as const;
+const W = { en: walletFacts("en"), fr: walletFacts("fr") } as const;
 
 /** TwinMCP's pricing line, shared by the three comparisons. */
 const TWINMCP_PRICE: L<string> = {
-  en: `Flat. Free: ${PRICE.en.free}, ${free.servers} small server, ${FREE_DAILY} tool calls a day. Pro: ${PRICE.en.monthly} a month or ${PRICE.en.yearly} a year, ${pro.servers} servers, ${n(PRO_DAILY, "en")} tool calls a day. No per-call charge: past the daily cap, calls are refused until the window resets, never billed.`,
-  fr: `Forfait. Free : ${PRICE.fr.free}, ${free.servers} petit serveur, ${FREE_DAILY} appels d’outils par jour. Pro : ${PRICE.fr.monthly} par mois ou ${PRICE.fr.yearly} par an, ${pro.servers} serveurs, ${n(PRO_DAILY, "fr")} appels d’outils par jour. Aucun tarif à l’appel : au-delà du plafond quotidien, les appels sont refusés jusqu’à la remise à zéro, jamais facturés.`,
+  en: `No subscription: a prepaid balance, topped up from ${W.en.minTopup}. Tool calls ${W.en.per1000Calls} per 1,000; compute per active CPU-hour, ${W.en.cpuHour.small} on a small server (${W.en.largerSizes}). At zero, calls stop: nothing is billed beyond the balance unless you turn on auto-recharge, which has a monthly cap.`,
+  fr: `Sans abonnement : un solde prépayé, rechargé à partir de ${W.fr.minTopup}. Appels d’outils ${W.fr.per1000Calls} les 1 000 ; calcul à l’heure de CPU actif, ${W.fr.cpuHour.small} sur un petit serveur (${W.fr.largerSizes}). À zéro, les appels s’arrêtent : rien n’est facturé au-delà du solde, sauf si vous activez la recharge automatique, plafonnée chaque mois.`,
 };
 
 const TWINMCP_OWN_MCP: L<string> = {
-  en: "On Pro, publish any MCP server shipped as an npm or PyPI package, stdio included: TwinMCP installs it in your isolated server and bridges it to Streamable HTTP. It stays private to your account. Servers that only ship as a Docker image cannot run.",
-  fr: "Sur Pro, publiez tout serveur MCP distribué en paquet npm ou PyPI, stdio compris : TwinMCP l’installe dans votre serveur isolé et le relie en Streamable HTTP. Il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner.",
+  en: "Once your account is funded (after a first top-up), publish any MCP server shipped as an npm or PyPI package, stdio included: TwinMCP installs it in your isolated server and bridges it to Streamable HTTP. It stays private to your account. Servers that only ship as a Docker image cannot run.",
+  fr: "Une fois votre compte alimenté (après une première recharge), publiez tout serveur MCP distribué en paquet npm ou PyPI, stdio compris : TwinMCP l’installe dans votre serveur isolé et le relie en Streamable HTTP. Il reste privé à votre compte. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner.",
 };
 
 const TWINMCP_SECRETS: L<string> = {
@@ -192,8 +171,8 @@ const COMPOSIO: Comparison = {
     fr: "TwinMCP ou Composio : comparatif honnête",
   },
   description: {
-    en: "Composio connects AI agents to 1,500+ apps with managed authentication and per-call pricing. TwinMCP hosts any MCP server, stdio included, in an isolated micro-VM for a flat price. Sourced facts, and when each one is the better choice.",
-    fr: "Composio relie les agents IA à plus de 1 500 applications avec authentification gérée et tarif à l’appel. TwinMCP héberge n’importe quel serveur MCP, stdio compris, dans une micro-VM isolée, au forfait. Faits sourcés, et quand choisir l’un ou l’autre.",
+    en: "Composio connects AI agents to 1,500+ apps with managed authentication and per-call pricing. TwinMCP hosts any MCP server, stdio included, in an isolated micro-VM, paid from a prepaid balance. Sourced facts, and when each one is the better choice.",
+    fr: "Composio relie les agents IA à plus de 1 500 applications avec authentification gérée et tarif à l’appel. TwinMCP héberge n’importe quel serveur MCP, stdio compris, dans une micro-VM isolée, payé depuis un solde prépayé. Faits sourcés, et quand choisir l’un ou l’autre.",
   },
   eyebrow: { en: "TwinMCP vs Composio", fr: "TwinMCP ou Composio" },
   headline: {
@@ -205,8 +184,8 @@ const COMPOSIO: Comparison = {
     fr: "Composio est une plateforme d’outils : un grand catalogue d’applications SaaS dont l’authentification est gérée pour vos utilisateurs. TwinMCP est un hébergeur : il fait tourner des serveurs MCP, ceux de son catalogue ou vos propres paquets stdio, chacun dans sa micro-VM isolée. Si vous avez besoin du premier, Composio est le meilleur choix. Cette page dit où passe la frontière.",
   },
   summary: {
-    en: "1,500+ apps with managed auth and a per-call meter, against any MCP server hosted in its own micro-VM for a flat price.",
-    fr: "Plus de 1 500 applications avec authentification gérée et compteur à l’appel, face à n’importe quel serveur MCP hébergé dans sa micro-VM, au forfait.",
+    en: "1,500+ apps with managed auth, monthly plans and a per-call meter, against any MCP server hosted in its own micro-VM, paid as you go from a prepaid balance.",
+    fr: "Plus de 1 500 applications avec authentification gérée, offres mensuelles et compteur à l’appel, face à n’importe quel serveur MCP hébergé dans sa micro-VM, payé à l’usage depuis un solde prépayé.",
   },
   rows: [
     {
@@ -276,20 +255,20 @@ const COMPOSIO: Comparison = {
     },
     {
       id: "free",
-      criterion: { en: "Free tier", fr: "Offre gratuite" },
+      criterion: { en: "Free to start", fr: "Pour démarrer gratuitement" },
       them: {
         en: "Hobby: $0, 100,000 tool calls a month, hard-capped, no credit card. Calls through Composio-managed apps count against it, with 20K free a month.",
         fr: "Hobby : 0 $, 100 000 appels d’outils par mois, plafond strict, sans carte bancaire. Les appels via les applications gérées par Composio y sont décomptés, avec 20 000 gratuits par mois.",
       },
       twinmcp: {
-        en: `Free: ${free.servers} small server, ${FREE_DAILY} tool calls a day, no credit card. Composio's free volume is much larger.`,
-        fr: `Free : ${free.servers} petit serveur, ${FREE_DAILY} appels d’outils par jour, sans carte bancaire. Le volume gratuit de Composio est bien plus grand.`,
+        en: `${W.en.signupCredit} of credit at sign-up, once, valid ${W.en.signupDays} days, no credit card: ${free.servers} small server, about ${W.en.creditCalls} tool calls’ worth before the compute they use. Composio's free volume is larger and renews every month.`,
+        fr: `${W.fr.signupCredit} de crédit à l’inscription, une seule fois, valables ${W.fr.signupDays} jours, sans carte bancaire : ${free.servers} petit serveur, l’équivalent d’environ ${W.fr.creditCalls} appels d’outils, hors temps de calcul. Le volume gratuit de Composio est plus grand et se renouvelle chaque mois.`,
       },
       sources: [SRC.composioPricing.id],
     },
     {
       id: "paid",
-      criterion: { en: "Paid plan", fr: "Offre payante" },
+      criterion: { en: "Paid usage", fr: "Usage payant" },
       them: {
         en: "Pro: $29 a month with usage credit included, then $0.0003 per tool call. Composio-managed apps add $0.0002 per call past their free allowance. Add-ons such as BAA, IP allowlist and zero data retention are billed per call.",
         fr: "Pro : 29 $ par mois, crédit d’usage inclus, puis 0,0003 $ par appel d’outil. Les applications gérées par Composio ajoutent 0,0002 $ par appel au-delà de leur quota gratuit. Les options (BAA, liste d’IP autorisées, zéro rétention des données) sont facturées à l’appel.",
@@ -330,14 +309,14 @@ const COMPOSIO: Comparison = {
     en: [
       "Your MCP server is a stdio package on npm or PyPI, open source or your own, and you do not want to deploy and run it yourself.",
       "You want each server in its own isolated micro-VM, with its own encrypted secrets.",
-      "You prefer a flat monthly price with a daily cap to a per-call meter.",
+      "You prefer a prepaid balance that stops at zero, with no subscription, to a monthly plan with overage billing.",
       "You want one URL for all of a server's tools, router mode for large tool sets, and API keys you can limit to the MCP proxy and bind to one server.",
       "You want to be helped in French: the site, the docs and email support are in French and English, and a guided setup is available on request.",
     ],
     fr: [
       "Votre serveur MCP est un paquet stdio sur npm ou PyPI, open source ou le vôtre, et vous ne voulez pas le déployer ni l’exploiter vous-même.",
       "Vous voulez chaque serveur dans sa propre micro-VM isolée, avec ses propres secrets chiffrés.",
-      "Vous préférez un forfait mensuel avec plafond quotidien à un compteur à l’appel.",
+      "Vous préférez un solde prépayé qui s’arrête à zéro, sans abonnement, à une offre mensuelle avec dépassement facturé.",
       "Vous voulez une seule URL pour tous les outils d’un serveur, le mode routeur pour les gros ensembles d’outils, et des clés API limitées au proxy MCP et liées à un serveur.",
       "Vous voulez être accompagné en français : le site, la documentation et le support par e-mail sont en français et en anglais, et une installation accompagnée est possible sur demande.",
     ],
@@ -354,11 +333,11 @@ const COMPOSIO: Comparison = {
       },
       {
         q: "Which one is cheaper?",
-        a: `It depends on your volume. Composio's Hobby plan includes 100,000 tool calls a month for $0; TwinMCP Free allows ${FREE_DAILY} a day. Above the free tiers, Composio Pro is $29 a month with usage credit, then $0.0003 per tool call; TwinMCP Pro is a flat ${PRICE.en.monthly} a month (or ${PRICE.en.yearly} a year) for up to ${n(PRO_DAILY, "en")} tool calls a day, with no per-call charge. Composio's current rates are on composio.dev/pricing.`,
+        a: `It depends on your volume and on how much compute your servers use. Composio's Hobby plan includes 100,000 tool calls a month for $0; TwinMCP gives ${W.en.signupCredit} of credit once, at sign-up. Above that, Composio Pro is $29 a month with usage credit, then $0.0003 per tool call; TwinMCP has no subscription: tool calls cost ${W.en.per1000Calls} per 1,000 and compute ${W.en.cpuHour.small} per active CPU-hour on a small server, paid from a prepaid balance that stops at zero. Composio's current rates are on composio.dev/pricing; TwinMCP's estimator is on its pricing page.`,
       },
       {
         q: "Does TwinMCP have SOC 2 like Composio?",
-        a: `No. TwinMCP holds no certification and offers no SLA. Its security page documents what it does: one isolated micro-VM per server, secrets encrypted with AES-256-GCM, hashed API keys that can be scoped to the MCP proxy, and audit logs kept ${pro.auditRetentionDays} days on Pro. If a certification is a hard requirement, Composio fits better.`,
+        a: `No. TwinMCP holds no certification and offers no SLA. Its security page documents what it does: one isolated micro-VM per server, secrets encrypted with AES-256-GCM, hashed API keys that can be scoped to the MCP proxy, and audit logs kept ${pro.auditRetentionDays} days once the account is funded. If a certification is a hard requirement, Composio fits better.`,
       },
       {
         q: "Can I use both?",
@@ -376,11 +355,11 @@ const COMPOSIO: Comparison = {
       },
       {
         q: "Lequel coûte le moins cher ?",
-        a: `Cela dépend de votre volume. L’offre Hobby de Composio inclut 100 000 appels d’outils par mois pour 0 $ ; TwinMCP Free en permet ${FREE_DAILY} par jour. Au-delà des offres gratuites, Composio Pro coûte 29 $ par mois avec crédit d’usage, puis 0,0003 $ par appel d’outil ; TwinMCP Pro est un forfait de ${PRICE.fr.monthly} par mois (ou ${PRICE.fr.yearly} par an) pour ${n(PRO_DAILY, "fr")} appels d’outils par jour, sans tarif à l’appel. Les tarifs à jour de Composio sont sur composio.dev/pricing.`,
+        a: `Cela dépend de votre volume et du calcul que consomment vos serveurs. L’offre Hobby de Composio inclut 100 000 appels d’outils par mois pour 0 $ ; TwinMCP offre ${W.fr.signupCredit} de crédit une seule fois, à l’inscription. Au-delà, Composio Pro coûte 29 $ par mois avec crédit d’usage, puis 0,0003 $ par appel d’outil ; TwinMCP n’a pas d’abonnement : les appels d’outils coûtent ${W.fr.per1000Calls} les 1 000 et le calcul ${W.fr.cpuHour.small} par heure de CPU actif sur un petit serveur, payés depuis un solde prépayé qui s’arrête à zéro. Les tarifs à jour de Composio sont sur composio.dev/pricing ; l’estimateur de TwinMCP est sur sa page tarifs.`,
       },
       {
         q: "TwinMCP a-t-il SOC 2 comme Composio ?",
-        a: `Non. TwinMCP ne détient aucune certification et ne propose pas de SLA. Sa page sécurité décrit ce qu’il fait : une micro-VM isolée par serveur, des secrets chiffrés en AES-256-GCM, des clés API hachées qu’on peut limiter au proxy MCP, et des journaux d’audit conservés ${pro.auditRetentionDays} jours sur Pro. Si une certification est indispensable, Composio convient mieux.`,
+        a: `Non. TwinMCP ne détient aucune certification et ne propose pas de SLA. Sa page sécurité décrit ce qu’il fait : une micro-VM isolée par serveur, des secrets chiffrés en AES-256-GCM, des clés API hachées qu’on peut limiter au proxy MCP, et des journaux d’audit conservés ${pro.auditRetentionDays} jours une fois le compte alimenté. Si une certification est indispensable, Composio convient mieux.`,
       },
       {
         q: "Peut-on utiliser les deux ?",
@@ -547,13 +526,13 @@ const SMITHERY: Comparison = {
       "You ran open-source or stdio MCP servers behind Smithery's URLs and need a new host for them.",
       "You want your MCP secrets stored server-side and encrypted, not copied into every laptop's config.",
       "You want one dashboard that writes the config for Cursor, Claude Desktop, Claude Code, VS Code, Windsurf, Cline and Zed.",
-      "You want to start free and move to Pro only when one server is not enough.",
+      `You want to start on ${W.en.signupCredit} of free credit and top up only when one server is not enough.`,
     ],
     fr: [
       "Vos serveurs MCP open source ou stdio tournaient derrière les URL de Smithery et il leur faut un nouvel hébergeur.",
       "Vous voulez des secrets MCP stockés côté serveur et chiffrés, plutôt que copiés dans la configuration de chaque poste.",
       "Vous voulez un tableau de bord qui écrit la configuration pour Cursor, Claude Desktop, Claude Code, VS Code, Windsurf, Cline et Zed.",
-      "Vous voulez commencer gratuitement et ne passer à Pro que quand un serveur ne suffit plus.",
+      `Vous voulez commencer avec ${W.fr.signupCredit} de crédit offert et ne recharger que quand un serveur ne suffit plus.`,
     ],
   },
   faq: {
@@ -568,7 +547,7 @@ const SMITHERY: Comparison = {
       },
       {
         q: "Is TwinMCP's catalogue as large as Smithery's registry?",
-        a: `No. TwinMCP's catalogue holds ${CATALOGUE_COUNT} MCP servers, not an open registry. For a server outside it, publish its npm or PyPI package as your own MCP on Pro. Servers that only ship as a Docker image cannot run in the sandbox.`,
+        a: `No. TwinMCP's catalogue holds ${CATALOGUE_COUNT} MCP servers, not an open registry. For a server outside it, publish its npm or PyPI package as your own MCP once your account is funded. Servers that only ship as a Docker image cannot run in the sandbox.`,
       },
       {
         q: "How do I move from Smithery to TwinMCP?",
@@ -586,7 +565,7 @@ const SMITHERY: Comparison = {
       },
       {
         q: "Le catalogue TwinMCP est-il aussi grand que le registre Smithery ?",
-        a: `Non. Le catalogue TwinMCP compte ${CATALOGUE_COUNT} serveurs MCP, ce n’est pas un registre ouvert. Pour un serveur absent, publiez son paquet npm ou PyPI comme MCP privé sur Pro. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox.`,
+        a: `Non. Le catalogue TwinMCP compte ${CATALOGUE_COUNT} serveurs MCP, ce n’est pas un registre ouvert. Pour un serveur absent, publiez son paquet npm ou PyPI comme MCP privé une fois votre compte alimenté. Les serveurs distribués uniquement en image Docker ne peuvent pas tourner dans le sandbox.`,
       },
       {
         q: "Comment passer de Smithery à TwinMCP ?",
@@ -617,8 +596,8 @@ const SELF_HOSTING: Comparison = {
     fr: "TwinMCP ou auto-héberger ses serveurs MCP",
   },
   description: {
-    en: "Self-hosting MCP servers gives you full control and full operations: TLS, auth, isolation, secrets, uptime. TwinMCP runs them for a flat price, with trade-offs it states. When each one is the better choice.",
-    fr: "Auto-héberger ses serveurs MCP, c’est tout le contrôle et toute l’exploitation : TLS, authentification, isolation, secrets, disponibilité. TwinMCP les fait tourner au forfait, avec des limites qu’il annonce. Quand choisir l’un ou l’autre.",
+    en: "Self-hosting MCP servers gives you full control and full operations: TLS, auth, isolation, secrets, uptime. TwinMCP runs them pay as you go, with trade-offs it states. When each one is the better choice.",
+    fr: "Auto-héberger ses serveurs MCP, c’est tout le contrôle et toute l’exploitation : TLS, authentification, isolation, secrets, disponibilité. TwinMCP les fait tourner en paiement à l’usage, avec des limites qu’il annonce. Quand choisir l’un ou l’autre.",
   },
   eyebrow: { en: "TwinMCP vs self-hosting", fr: "TwinMCP ou auto-hébergement" },
   headline: {
@@ -697,12 +676,12 @@ const SELF_HOSTING: Comparison = {
       id: "availability",
       criterion: { en: "Availability", fr: "Disponibilité" },
       them: {
-        en: "Always on if you keep it on, with no daily cap. Uptime is yours to run.",
-        fr: "Allumé en permanence si vous le gardez allumé, sans plafond quotidien. La disponibilité est à votre charge.",
+        en: "Always on if you keep it on. Uptime is yours to run.",
+        fr: "Allumé en permanence si vous le gardez allumé. La disponibilité est à votre charge.",
       },
       twinmcp: {
-        en: "Idle servers sleep: the first request after a pause takes a few seconds longer. Daily tool-call cap per plan. No SLA.",
-        fr: "Les serveurs inactifs se mettent en veille : la première requête après une pause prend quelques secondes de plus. Plafond quotidien d’appels d’outils selon l’offre. Pas de SLA.",
+        en: "Idle servers sleep: the first request after a pause takes a few seconds longer. Calls stop when the prepaid balance reaches zero. No SLA.",
+        fr: "Les serveurs inactifs se mettent en veille : la première requête après une pause prend quelques secondes de plus. Les appels s’arrêtent quand le solde prépayé atteint zéro. Pas de SLA.",
       },
       sources: [],
     },
@@ -714,8 +693,8 @@ const SELF_HOSTING: Comparison = {
         fr: "Ce que vous mettez en place.",
       },
       twinmcp: {
-        en: `Live logs per server, a tool-call activity log (metadata only, ${free.activityRetentionDays} days on Free, ${pro.activityRetentionDays} on Pro) and audit logs kept ${pro.auditRetentionDays} days on Pro.`,
-        fr: `Journaux en direct par serveur, un journal d’activité des appels d’outils (métadonnées seulement, ${free.activityRetentionDays} jours sur Free, ${pro.activityRetentionDays} sur Pro) et des journaux d’audit conservés ${pro.auditRetentionDays} jours sur Pro.`,
+        en: `Live logs per server, a tool-call activity log (metadata only, ${free.activityRetentionDays} days before the first top-up, ${pro.activityRetentionDays} after) and audit logs kept ${pro.auditRetentionDays} days on a funded account.`,
+        fr: `Journaux en direct par serveur, un journal d’activité des appels d’outils (métadonnées seulement, ${free.activityRetentionDays} jours avant la première recharge, ${pro.activityRetentionDays} après) et des journaux d’audit conservés ${pro.auditRetentionDays} jours sur un compte alimenté.`,
       },
       sources: [],
     },
@@ -749,13 +728,13 @@ const SELF_HOSTING: Comparison = {
       "Compliance requires the servers to run in your own network, VPC or region.",
       "You already run infrastructure, and one more container is trivial for your team.",
       "Your MCP server only ships as a Docker image.",
-      "You need it always on, with no cold start and no daily cap.",
+      "You need it always on, with no cold start.",
     ],
     fr: [
       "La conformité impose que les serveurs tournent dans votre propre réseau, VPC ou région.",
       "Vous exploitez déjà de l’infrastructure, et un conteneur de plus ne coûte rien à votre équipe.",
       "Votre serveur MCP n’est distribué qu’en image Docker.",
-      "Il vous le faut allumé en permanence, sans démarrage à froid ni plafond quotidien.",
+      "Il vous le faut allumé en permanence, sans démarrage à froid.",
     ],
   },
   chooseTwinmcp: {
@@ -763,20 +742,20 @@ const SELF_HOSTING: Comparison = {
       "Nobody on your team wants to run TLS, authentication, process supervision and stdio bridging for MCP servers.",
       "You want per-server isolation and encrypted secrets without designing them.",
       "You want the config for seven AI clients generated for you.",
-      "You want to start free and keep the option to leave: the MCP code stays portable.",
+      `You want to start on ${W.en.signupCredit} of free credit and keep the option to leave: the MCP code stays portable.`,
     ],
     fr: [
       "Personne dans votre équipe ne veut gérer TLS, authentification, supervision des processus et pont stdio pour des serveurs MCP.",
       "Vous voulez l’isolation par serveur et des secrets chiffrés sans avoir à les concevoir.",
       "Vous voulez qu’on génère pour vous la configuration de sept clients IA.",
-      "Vous voulez commencer gratuitement en gardant la porte ouverte : le code MCP reste portable.",
+      `Vous voulez commencer avec ${W.fr.signupCredit} de crédit offert en gardant la porte ouverte : le code MCP reste portable.`,
     ],
   },
   faq: {
     en: [
       {
         q: "Is self-hosting cheaper than TwinMCP?",
-        a: `In money, it can be: a small server of your own may cost less than ${PRICE.en.monthly} a month. In time, you run TLS, authentication, updates, logs and isolation yourself. TwinMCP Free costs nothing for ${free.servers} small server and ${FREE_DAILY} tool calls a day, so you can compare on a real server first.`,
+        a: `In money, it can be, especially for a server that is busy all day: TwinMCP charges for active CPU time (${W.en.cpuHour.small} per CPU-hour on a small server) and tool calls (${W.en.per1000Calls} per 1,000), while a small VPS costs the same however busy it is. In time, you run TLS, authentication, updates, logs and isolation yourself. TwinMCP gives ${W.en.signupCredit} of free credit at sign-up, so you can compare on a real server first.`,
       },
       {
         q: "Can I move from TwinMCP to self-hosting later?",
@@ -784,7 +763,7 @@ const SELF_HOSTING: Comparison = {
       },
       {
         q: "What can self-hosting do that TwinMCP cannot?",
-        a: "Run servers that only ship as a Docker image, keep them always on with no daily cap, place them in a region or network you choose, and back them with an SLA you set yourself. TwinMCP does none of these today.",
+        a: "Run servers that only ship as a Docker image, keep them always on, place them in a region or network you choose, and back them with an SLA you set yourself. TwinMCP does none of these today.",
       },
       {
         q: "How does TwinMCP run a stdio MCP server?",
@@ -794,7 +773,7 @@ const SELF_HOSTING: Comparison = {
     fr: [
       {
         q: "L’auto-hébergement coûte-t-il moins cher que TwinMCP ?",
-        a: `En argent, c’est possible : un petit serveur à vous peut coûter moins de ${PRICE.fr.monthly} par mois. En temps, vous gérez vous-même TLS, authentification, mises à jour, journaux et isolation. TwinMCP Free ne coûte rien pour ${free.servers} petit serveur et ${FREE_DAILY} appels d’outils par jour : vous pouvez d’abord comparer sur un vrai serveur.`,
+        a: `En argent, c’est possible, surtout pour un serveur occupé toute la journée : TwinMCP facture le temps CPU actif (${W.fr.cpuHour.small} par heure CPU sur un petit serveur) et les appels d’outils (${W.fr.per1000Calls} les 1 000), alors qu’un petit VPS coûte le même prix quelle que soit sa charge. En temps, vous gérez vous-même TLS, authentification, mises à jour, journaux et isolation. TwinMCP offre ${W.fr.signupCredit} de crédit à l’inscription : vous pouvez d’abord comparer sur un vrai serveur.`,
       },
       {
         q: "Peut-on passer de TwinMCP à l’auto-hébergement plus tard ?",
@@ -802,7 +781,7 @@ const SELF_HOSTING: Comparison = {
       },
       {
         q: "Que permet l’auto-hébergement que TwinMCP ne permet pas ?",
-        a: "Faire tourner des serveurs distribués uniquement en image Docker, les garder allumés en permanence sans plafond quotidien, les placer dans la région ou le réseau de votre choix, et les adosser à un SLA que vous fixez vous-même. TwinMCP ne fait rien de cela aujourd’hui.",
+        a: "Faire tourner des serveurs distribués uniquement en image Docker, les garder allumés en permanence, les placer dans la région ou le réseau de votre choix, et les adosser à un SLA que vous fixez vous-même. TwinMCP ne fait rien de cela aujourd’hui.",
       },
       {
         q: "Comment TwinMCP fait-il tourner un serveur MCP stdio ?",

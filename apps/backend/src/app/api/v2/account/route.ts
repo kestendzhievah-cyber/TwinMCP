@@ -11,6 +11,9 @@ import { getBoxClient } from "@/lib/upstash/box-client";
 import { getStripe } from "@/lib/stripe";
 import { clearAuthCache } from "@/lib/auth";
 import { dropAgentsForUser } from "@/lib/agent/registry";
+import { meterBoxBeforeDelete } from "@/lib/wallet/compute-meter";
+import { credit, getWallet } from "@/lib/wallet/ledger";
+import { formatEur } from "@/lib/wallet/pricing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,21 +25,58 @@ export async function DELETE(req: NextRequest) {
   try {
     const db = getDb();
 
+    // Paid credit is the customer's money: the terms keep it available while
+    // the account is open, and what happens to it at closure (refund) is
+    // settled by hand. Refuse a self-service deletion while any remains; a
+    // wallet read error refuses too (fail closed).
+    const wallet = await getWallet(session.userId);
+    if (wallet.paidMicros > 0) {
+      return NextResponse.json(
+        {
+          code: "paid_credit_remaining",
+          message: `You still have ${formatEur(wallet.paidMicros, "en")} of paid credit. Email hello@twinmcp.fr to close your account so we can settle it first.`,
+        },
+        { status: 409 }
+      );
+    }
+
     // Tear down running Upstash Boxes first — otherwise the server rows are
     // cascade-deleted with the user and the boxes keep running (and billing).
+    // Each box's last usage is billed first: its counters die with it.
     const owned = await db
-      .select({ boxId: servers.boxId })
+      .select({ id: servers.id, boxId: servers.boxId, boxSize: servers.boxSize })
       .from(servers)
       .where(eq(servers.userId, session.userId));
     await Promise.allSettled(
       owned
         .filter((s) => s.boxId)
-        .map((s) =>
-          getBoxClient()
+        .map(async (s) => {
+          await meterBoxBeforeDelete(s.boxId!, {
+            serverId: s.id,
+            userId: session.userId,
+            size: s.boxSize,
+          });
+          await getBoxClient()
             .deleteBox(s.boxId!)
-            .catch((err) => console.error("[account DELETE] box teardown failed:", err))
-        )
+            .catch((err) => console.error("[account DELETE] box teardown failed:", err));
+        })
     );
+
+    // A negative balance (usage already happened) is written off. Record it in
+    // the ledger, which outlives the user row (user_id becomes NULL), so the
+    // books show why the debt was never recovered.
+    const after = await getWallet(session.userId);
+    if (after.paidMicros < 0) {
+      await credit({
+        userId: session.userId,
+        amountMicros: -after.paidMicros,
+        bucket: "paid",
+        kind: "adjustment",
+        idempotencyKey: `account_closed:${session.userId}`,
+        note: "Account closed: negative balance written off",
+        units: { writtenOffMicros: -after.paidMicros },
+      });
+    }
 
     // Cancel the Stripe subscription — the user row (with its stripe ids) is
     // about to be deleted, so the webhook could no longer reconcile it.

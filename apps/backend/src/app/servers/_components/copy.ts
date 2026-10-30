@@ -3,6 +3,10 @@
 
 import type { Locale } from "@/lib/i18n/locales";
 import { LOCAL_AGENT } from "@/lib/seo/server-pages";
+import { walletFacts } from "@/components/pricing/wallet-copy";
+
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
 
 export const COPY = {
   en: {
@@ -28,7 +32,7 @@ export const COPY = {
     indexCtaTitle: "Host any of these MCP servers",
     ownTitle: "Not in the catalogue?",
     ownText:
-      "On Pro you can publish your own MCP server from an npm or PyPI package and host it the same way.",
+      "Once your account is funded (after a first top-up), you can publish your own MCP server from an npm or PyPI package and host it the same way.",
     // Server page
     whatItDoes: "What it does",
     packageLabel: "Package",
@@ -63,8 +67,8 @@ export const COPY = {
     clientsTitle: (name: string) => `${name} in your client`,
     ctaEyebrow: "Managed MCP hosting",
     ctaTitle: (name: string) => `Host ${name} on TwinMCP`,
-    ctaText: "Free plan: one server, no credit card.",
-    ctaPrimary: "Start free →",
+    ctaText: `${EN.signupCredit} of free credit at sign-up, no credit card. Then pay only for what you use.`,
+    ctaPrimary: `Start with ${EN.signupCredit} free →`,
     ctaSecondary: "See pricing",
     // Client page
     setupGuide: "Setup guide",
@@ -100,7 +104,7 @@ export const COPY = {
     indexCtaTitle: "Hébergez n’importe lequel de ces serveurs MCP",
     ownTitle: "Absent du catalogue ?",
     ownText:
-      "Avec Pro, vous pouvez publier votre propre serveur MCP à partir d’un paquet npm ou PyPI et l’héberger de la même façon.",
+      "Une fois votre compte alimenté (après une première recharge), vous pouvez publier votre propre serveur MCP à partir d’un paquet npm ou PyPI et l’héberger de la même façon.",
     whatItDoes: "Ce qu’il fait",
     packageLabel: "Paquet",
     commandLabel: "TwinMCP le lance avec",
@@ -135,8 +139,8 @@ export const COPY = {
     clientsTitle: (name: string) => `${name} dans votre client`,
     ctaEyebrow: "Hébergement MCP géré",
     ctaTitle: (name: string) => `Hébergez ${name} sur TwinMCP`,
-    ctaText: "Offre gratuite : un serveur, sans carte bancaire.",
-    ctaPrimary: "Commencer gratuitement →",
+    ctaText: `${FR.signupCredit} de crédit offert à l’inscription, sans carte bancaire. Ensuite, vous ne payez que ce que vous utilisez.`,
+    ctaPrimary: `Démarrer avec ${FR.signupCredit} offerts →`,
     ctaSecondary: "Voir les tarifs",
     setupGuide: "Guide d’installation",
     configTitle: (client: string) => `La configuration ${client}`,

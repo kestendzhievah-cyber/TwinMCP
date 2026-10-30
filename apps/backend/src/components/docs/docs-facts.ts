@@ -1,13 +1,11 @@
 // Facts quoted by the docs pages (EN /docs, FR /fr/docs), derived from the
 // modules that enforce them so the copy cannot drift from the product:
-//   - daily tool-call quotas  → lib/rate-limit.ts (getDailyLimit)
-//   - plan allowances         → lib/plan-features.ts
+//   - account allowances      → lib/plan-features.ts (before / after a first top-up)
 //   - key scopes and rotation → lib/auth/key-scope.ts (contract K1)
 //   - proxy error shape       → contract K2 (x-twinmcp-request-id, error.data)
 // Pure module: no React, safe to unit-test.
 
-import { getDailyLimit } from "@/lib/rate-limit";
-import { PLAN_CAPABILITIES, PLAN_LABELS, minPlanFor } from "@/lib/plan-features";
+import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import {
   MANAGEMENT_SCOPE_MESSAGE,
   ROTATION_OVERLAP_MS,
@@ -29,6 +27,8 @@ export const RPC_CODES = {
   uncertain: -32002,
   /** Key bound to another server (HTTP 403, contract K2). */
   wrongServer: -32003,
+  /** The TwinMCP credit is used up (HTTP 402, contract W2). */
+  noCredit: -32008,
 } as const;
 
 export { MANAGEMENT_SCOPE_MESSAGE, SERVER_SCOPE_MESSAGE };
@@ -46,20 +46,15 @@ export function rotationOverlapHours(): number {
 }
 
 export interface DocsPlanFacts {
-  freeDaily: number;
-  proDaily: number;
+  /** API keys before the first top-up. */
   freeKeys: number;
+  /** API keys once the wallet is funded. */
   proKeys: number;
-  /** Plan label required to package your own MCP ("Pro"). */
-  customMcpPlan: string;
 }
 
 export function docsPlanFacts(): DocsPlanFacts {
   return {
-    freeDaily: getDailyLimit("free"),
-    proDaily: getDailyLimit("pro"),
     freeKeys: PLAN_CAPABILITIES.free.apiKeys,
     proKeys: PLAN_CAPABILITIES.pro.apiKeys,
-    customMcpPlan: PLAN_LABELS[minPlanFor("publishMcp")],
   };
 }

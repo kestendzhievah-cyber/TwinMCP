@@ -8,29 +8,26 @@ import { Faq, type FaqItem } from "@/components/marketing/faq";
 import { PricingExperience } from "@/components/pricing/pricing-experience";
 import { TrustSignals } from "@/components/pricing/trust-signals";
 import { ComparisonTable } from "@/components/pricing/comparison-table";
-import { FREE_MCP_LIMIT, PLANS, planCopy } from "@/components/pricing/pricing-data";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
-import { productPricingSchema, faqPageSchema, breadcrumbListSchema } from "@/lib/seo/schema";
+import { faqPageSchema, breadcrumbListSchema } from "@/lib/seo/schema";
 import { trackPageServed } from "@/lib/analytics/server";
-import { PRO_TRIAL_DAYS } from "@/lib/plan-features";
-import { getDailyLimit } from "@/lib/rate-limit";
+import {
+  FUNDED_UNLOCKS,
+  SIGNUP_OFFER,
+  walletFacts,
+  walletProductSchema,
+} from "@/components/pricing/wallet-copy";
 
-// French twin of /plans. Same facts (pricing-data.ts, plan-features.ts,
-// rate-limit.ts), same components with locale="fr" (the comparison ledger
-// included: its French rows live in components/pricing/comparison-table.tsx).
+// French twin of /plans. Same facts (lib/wallet/pricing.ts through
+// components/pricing/wallet-copy.ts, lib/plan-features.ts), same components
+// with locale="fr".
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 const PATH = "/fr/tarifs";
+const W = walletFacts("fr");
 
-const proMonthly = PLANS.find((p) => p.id === "pro")?.monthlyUsd ?? 14.99;
-const proMonthlyFr = proMonthly.toFixed(2).replace(".", ",");
-const proYearly = PLANS.find((p) => p.id === "pro")?.annualTotalEur ?? 135;
-const frInt = (n: number) => n.toLocaleString("fr-FR");
-const FREE_CALLS = frInt(getDailyLimit("free"));
-const PRO_CALLS = frInt(getDailyLimit("pro"));
-
-const DESCRIPTION = `Offre gratuite pour toujours (1 serveur, jusqu’à ${FREE_MCP_LIMIT} MCP + TwinMCP Docs, sans carte bancaire). Pro à ${proMonthlyFr} €/mois : 50 serveurs, toutes les tailles de box, ${PRO_CALLS} appels d’outils par jour. Premier mois offert sur un premier abonnement.`;
+const DESCRIPTION = `Paiement à l’usage, sans abonnement. ${W.signupCredit} de crédit offert à l’inscription, sans carte. Appels d’outils ${W.per1000Calls} les 1 000, calcul dès ${W.cpuHour.small} par heure de CPU actif. Arrêt à zéro : aucune facture surprise.`;
 
 export const metadata: Metadata = {
   title: "Tarifs",
@@ -43,45 +40,44 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "TwinMCP",
     url: `${SITE_URL}${PATH}`,
-    title: "Tarifs TwinMCP — commencez gratuitement, passez à Pro quand vous en avez besoin",
-    description:
-      "Comparez Free et Pro : serveurs, tailles de box, appels d’outils par jour, journaux d’audit, support.",
+    title: `Tarifs TwinMCP — paiement à l’usage, ${W.signupCredit} offerts pour commencer`,
+    description: `Un solde prépayé, sans abonnement. ${W.signupCredit} de crédit offert à l’inscription, recharges dès ${W.minTopup}, et les appels s’arrêtent à zéro.`,
     locale: "fr_FR",
   },
 };
 
 const pricingFaqFr: FaqItem[] = [
   {
-    q: "Comment fonctionne le mois offert de Pro ?",
-    a: `Votre premier abonnement Pro commence par ${PRO_TRIAL_DAYS} jours offerts. Vous saisissez une carte au moment du paiement, mais rien n’est prélevé pendant l’essai ; résiliez avant la fin et vous ne payez rien. Sinon, Pro se renouvelle à ${proMonthlyFr} € par mois (ou au tarif annuel choisi). Le mois offert s’applique une seule fois par client ; un lien promo de créateur le remplace par sa propre offre.`,
+    q: `Comment fonctionne le crédit d’inscription de ${W.signupCredit} ?`,
+    a: `Chaque nouveau compte reçoit ${W.signupCredit} de crédit promotionnel, sans carte bancaire. Il est valable ${W.signupDays} jours à compter de l’inscription, un par personne, et il est consommé avant tout crédit acheté. Il fait tourner ${W.creditServers} petit serveur avec les MCP du catalogue, sauf ceux qui exécutent des commandes shell, du code ou un navigateur headless : ils attendent votre première recharge. Le crédit promotionnel non utilisé expire au bout des ${W.signupDays} jours ; il n’a aucune valeur monétaire.`,
   },
   {
-    q: "Comment fonctionne la facturation annuelle ?",
-    a: "Vous payez 12 mois d’avance et économisez jusqu’à 25 % par rapport au mensuel. Sur un premier abonnement, le premier mois est offert et l’année est prélevée à sa fin. En cas de résiliation, l’offre court jusqu’à la fin de la période déjà payée ; aucun remboursement au prorata.",
+    q: "Qu’est-ce qui est facturé exactement ?",
+    a: `Deux choses. Les appels d’outils qui atteignent votre serveur MCP coûtent ${W.per1000Calls} les 1 000, erreurs d’outil comprises. Le calcul correspond au temps CPU actif utilisé par votre serveur, tel que la box le mesure : ${W.cpuHour.small} par heure CPU sur un serveur small ; ${W.largerSizes}. La connexion d’un client, la liste des outils et les pings ne sont pas facturés comme appels d’outils, mais le temps CPU qu’ils utilisent fait partie du calcul ; les appels refusés par TwinMCP ne sont pas facturés. Un serveur en pause ne consomme pas de temps CPU, un serveur éveillé mais inactif très peu, et les serveurs se mettent en pause d’eux-mêmes après une période sans activité.`,
   },
   {
-    q: "Puis-je changer d’offre plus tard ?",
-    a: "À tout moment, depuis /dashboard/billing. Le passage à Pro prend effet dès que le paiement est validé. La résiliation de Pro prend effet à la fin de la période en cours : vous gardez ce que vous avez payé jusque-là, puis votre compte revient à Free.",
+    q: "Que se passe-t-il quand mon solde arrive à zéro ?",
+    a: `Les appels d’outils sont refusés avec une erreur HTTP 402 et un message clair qui renvoie vers la page de facturation, et vos serveurs se mettent en pause. Rien n’est prélevé sur une carte, sauf si vous avez activé la recharge automatique : pas de facture surprise. Le calcul déjà en cours au moment du passage à zéro peut faire descendre le solde légèrement sous zéro (${W.overdraft} au plus) ; ce montant est déduit de votre prochaine recharge. Rechargez et vous pouvez relancer vos serveurs.`,
   },
   {
-    q: "Qu’est-ce qui compte dans le quota journalier ?",
-    a: "Uniquement les appels d’outils : les requêtes où votre IA demande réellement à un MCP de faire quelque chose. La connexion, la liste des outils, les pings et l’ouverture de session sont gratuits ; reconnecter un client ou changer d’IDE n’entame donc jamais votre quota.",
+    q: "Comment fonctionnent les recharges ?",
+    a: `Depuis la page de facturation, choisissez ${W.presets.join(", ")} ou tout montant entre ${W.minTopup} et ${W.maxTopup}, et payez par carte via Stripe. La TVA est calculée au paiement quand elle s’applique. ${FUNDED_UNLOCKS.fr}`,
   },
   {
-    q: "Que se passe-t-il si je dépasse mon quota ?",
-    a: `Les quotas sont des plafonds souples : vos serveurs existants continuent de tourner, mais la création de nouveaux serveurs (et l’installation de MCP au-delà de la limite) est bloquée jusqu’au passage à l’offre supérieure. Les appels d’outils au-delà du quota journalier (${FREE_CALLS} sur Free, ${PRO_CALLS} sur Pro) sont refusés jusqu’à la réinitialisation de la fenêtre de 24 heures. Nous ne facturons jamais automatiquement un dépassement.`,
+    q: "Qu’est-ce que la recharge automatique ?",
+    a: "Une option, désactivée par défaut. Quand votre solde passe sous un seuil que vous choisissez, TwinMCP le recharge du montant choisi, sur la carte enregistrée, dans la limite d’un plafond mensuel que vous fixez. Vous pouvez la modifier ou la couper à tout moment depuis la page de facturation.",
   },
   {
-    q: "L’usage peut-il me coûter plus que le prix de l’offre ?",
-    a: `Non. Le prix est fixe : 0 € sur Free, ${proMonthlyFr} € par mois ou ${proYearly} € par an sur Pro. Aucun appel n’est facturé à l’unité et il n’y a pas de dépassement payant : au plafond journalier, les appels sont suspendus jusqu’à la réinitialisation de la fenêtre, sans aucun frais.`,
+    q: "Le crédit expire-t-il ?",
+    a: `Le crédit d’inscription expire ${W.signupDays} jours après l’inscription. Le crédit que vous avez payé n’a pas de date d’expiration : il reste disponible tant que votre compte est ouvert.`,
   },
   {
-    q: "Proposez-vous des réductions ?",
-    a: "50 % de réduction pour les associations, les étudiants et les mainteneurs actifs de MCP open source publics, sur justificatif. Écrivez à hello@twinmcp.fr.",
+    q: "Y a-t-il un abonnement ou des frais mensuels ?",
+    a: "Non. Rien ne se renouvelle et rien n’est facturé à échéance. Vous payez quand vous rechargez, et votre solde baisse avec les appels d’outils et le calcul que vos serveurs utilisent.",
   },
   {
-    q: "Que deviennent mes données si je résilie ?",
-    a: "Quand Pro prend fin, votre compte revient à Free. Votre plus ancien petit serveur continue de tourner ; les autres serveurs (et toute box medium ou large) sont arrêtés : leur environnement d’exécution est supprimé et les fichiers écrits à l’intérieur ne sont pas conservés, mais les serveurs eux-mêmes, leurs MCP installés et leurs réglages, votre compte et vos clés API restent, et un nouvel abonnement vous permet de les redémarrer. Les journaux d’audit ne s’affichent que sur Pro.",
+    q: "J’avais un abonnement Pro. Que devient-il ?",
+    a: "Les abonnements Pro sont convertis en crédit : la part non utilisée de votre période en cours est ajoutée à votre solde en crédit payé, l’abonnement est résilié pour qu’il ne se renouvelle plus, et vous recevez un e-mail avec les montants. Vos serveurs, MCP et clés API restent tels quels.",
   },
 ];
 
@@ -103,29 +99,34 @@ export default async function TarifsPage({ searchParams }: { searchParams: Searc
             { name: "Accueil", url: "/fr" },
             { name: "Tarifs", url: PATH },
           ]),
-          productPricingSchema({
-            name: "TwinMCP",
-            description:
-              "Runtimes Model Context Protocol hébergés pour les agents de codage IA — offres Free et Pro.",
-            tiers: PLANS.map((p) => ({
-              id: p.id,
-              name: p.name,
-              description: planCopy(p, "fr").blurb,
-              priceMonthlyUsd: p.monthlyUsd,
-              priceAnnualMonthlyUsd: p.annualMonthlyUsd,
-              url: `${PATH}#${p.id}`,
-            })),
-          }),
+          walletProductSchema({ siteUrl: SITE_URL, path: PATH, locale: "fr" }),
           faqPageSchema(pricingFaqFr.map((f) => ({ q: f.q, a: f.a as string }))),
         ]}
       />
       <TrackOnMount name="pricing_view" />
 
-      <Section
-        eyebrow="Tarifs"
-        title="Payez ce qui tourne, pas ce qui pourrait tourner"
-        description="L’offre gratuite est réelle : sans limite de durée, sans carte. Passez à Pro seulement quand le quota ne suffit plus."
-      >
+      <Section>
+        <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+          <p className="eyebrow mb-4 flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']">
+            Tarifs
+          </p>
+          <h1 className="text-3xl font-medium md:text-4xl">
+            Payez à l’usage. {W.signupCredit} offerts pour commencer.
+          </h1>
+          <p className="mt-4 text-balance text-lg text-muted-foreground">
+            Sans abonnement. Vous rechargez un solde prépayé et ne payez que ce que vos serveurs
+            utilisent : les appels d’outils et le temps CPU actif. À zéro, tout s’arrête : aucune
+            facture surprise.
+          </p>
+          <div className="mt-8 flex justify-center">
+            <Button asChild size="lg">
+              <Link href={"/fr/inscription" as Route} data-cta-location="tarifs_hero">
+                Recevoir {W.signupCredit} de crédit offert
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
         <PricingExperience locale="fr" />
         <div className="mx-auto mt-12 max-w-3xl border-y border-border py-4">
           <TrustSignals locale="fr" />
@@ -134,9 +135,9 @@ export default async function TarifsPage({ searchParams }: { searchParams: Searc
 
       <Section
         bordered
-        eyebrow="Comparer les offres"
-        title="Toutes les fonctionnalités, côte à côte"
-        description="Pas d’astérisque, pas de pop-up de vente. Ce que vous voyez est ce qui tourne dans le runtime."
+        eyebrow="Votre compte"
+        title="Crédit offert, puis paiement à l’usage"
+        description="Les mêmes prix avant et après votre première recharge. Alimenter le compte lève les limites qui protègent le crédit offert des abus."
       >
         <ComparisonTable locale="fr" />
       </Section>
@@ -146,7 +147,7 @@ export default async function TarifsPage({ searchParams }: { searchParams: Searc
         items={pricingFaqFr}
         eyebrow="FAQ tarifs"
         title="Vos questions sur les tarifs"
-        description="Si une réponse manque, écrivez à hello@twinmcp.fr : nous lisons tout."
+        description="Si une réponse manque, écrivez à hello@twinmcp.fr : nous lisons tout."
         id="faq-tarifs"
       />
 
@@ -157,17 +158,17 @@ export default async function TarifsPage({ searchParams }: { searchParams: Searc
           </h2>
           <div className="h-px w-12 bg-foreground/40" />
           <p className="max-w-xl text-balance text-lg text-muted-foreground">
-            Commencez gratuitement. Passez à Pro quand (et seulement quand) il se rentabilise.
+            Commencez avec {W.signupCredit} offerts. Rechargez seulement quand il vous en faut plus.
           </p>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href={"/fr/inscription?plan=free" as Route} data-cta-location="tarifs_final">
-                Commencer gratuitement · sans carte
+              <Link href={"/fr/inscription" as Route} data-cta-location="tarifs_final">
+                {SIGNUP_OFFER.fr.charAt(0).toUpperCase() + SIGNUP_OFFER.fr.slice(1)}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href={"/fr/docs" as Route}>Lire la documentation</Link>
+              <Link href={"/fr/docs#credit" as Route}>Comment fonctionne le crédit</Link>
             </Button>
           </div>
         </div>

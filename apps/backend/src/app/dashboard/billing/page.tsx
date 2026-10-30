@@ -1,18 +1,33 @@
+import { eq } from "drizzle-orm";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { BillingActions } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { SubscriptionConversion } from "@/components/analytics/ads-conversion";
+import { TopupConversion } from "@/components/analytics/ads-conversion";
 import { getCheckoutConversion } from "@/lib/billing/checkout-conversion";
-import { getDailyLimit } from "@/lib/rate-limit";
+import { computeWalletNudge } from "@/lib/billing/upgrade-state";
+import { getWallet, decodeLedgerCursor, listLedger, type WalletView } from "@/lib/wallet/ledger";
+import { AUTO_RECHARGE_LIMITS } from "@/lib/wallet/auto-recharge";
+import { PRICING, publicPriceTable, whatTenEuroBuys } from "@/lib/wallet/pricing";
+import { CreditsActions } from "./actions";
+import { LedgerTable } from "./ledger-table";
+import { PriceTable } from "./price-table";
 
-export default async function BillingPage({
+export const dynamic = "force-dynamic";
+
+const LEDGER_PAGE = 25;
+
+/**
+ * Credits (the old Billing page): prepaid balance, top-ups, auto-recharge,
+ * the ledger and the price list. Server-rendered from Postgres — the balance
+ * is never read from a cache here, and a read failure says so instead of
+ * showing €0.
+ */
+export default async function CreditsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; session_id?: string }>;
+  searchParams: Promise<{ topup?: string; session_id?: string; cursor?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -20,56 +35,119 @@ export default async function BillingPage({
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const { topup, session_id: sessionId, cursor: cursorParam } = await searchParams;
+  const cursor = cursorParam ? decodeLedgerCursor(cursorParam) : null;
+
   const db = getDb();
-  const [userRow] = await db
-    .select({
-      plan: users.plan,
-      subscriptionStatus: users.subscriptionStatus,
-      currentPeriodEnd: users.currentPeriodEnd,
-      cancelAtPeriodEnd: users.cancelAtPeriodEnd,
-      stripeCustomerId: users.stripeCustomerId,
-    })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
+  const [userRows, wallet, ledger] = await Promise.all([
+    db
+      .select({
+        plan: users.plan,
+        subscriptionStatus: users.subscriptionStatus,
+        stripeCustomerId: users.stripeCustomerId,
+        stripeSubscriptionId: users.stripeSubscriptionId,
+      })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1),
+    getWallet(user.id).catch((err: unknown): WalletView | null => {
+      console.error("[credits] wallet read failed", err);
+      return null;
+    }),
+    listLedger(user.id, { cursor, limit: LEDGER_PAGE }).catch((err: unknown) => {
+      console.error("[credits] ledger read failed", err);
+      return null;
+    }),
+  ]);
+  const me = userRows[0];
+  const plan = me?.plan ?? "free";
 
-  const plan = userRow?.plan ?? "free";
-
-  // Stripe returns here after a successful checkout (success_url). Verify the
-  // session server-side, then report the Google Ads conversion client-side.
-  const { status, session_id: sessionId } = await searchParams;
+  // Stripe returns here after a paid top-up (success_url carries the session).
+  // Verify the session server-side, then report the Google Ads conversion
+  // client-side: value = what was paid, transaction_id = the session id.
   const conversion =
-    status === "success" && sessionId ? await getCheckoutConversion(sessionId, user.id) : null;
+    topup === "success" && sessionId ? await getCheckoutConversion(sessionId, user.id) : null;
+
+  const nudge = computeWalletNudge({
+    plan,
+    walletAvailable: wallet !== null,
+    paidMicros: wallet?.paidMicros ?? 0,
+    promoMicros: wallet?.promoMicros ?? 0,
+    promoExpiresAt: wallet?.promoExpiresAt ?? null,
+    funded: Boolean(wallet?.funded) || plan === "pro" || plan === "team",
+    autoRechargeEnabled: wallet?.autoRecharge.enabled ?? false,
+    serverCount: 0,
+    subscriptionStatus: me?.subscriptionStatus ?? null,
+    hasSubscription: Boolean(me?.stripeSubscriptionId),
+  });
+  const funded = Boolean(wallet?.funded);
 
   return (
     <div className="space-y-8">
-      {/* Page header: name line top-left, the current plan in the card's top-right corner, a double rule under. */}
+      {/* Page header: name line top-left, the account mode in the top-right corner, a double rule under. */}
       <div>
         <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
           <div>
-            <h1 className="smallcaps tracking-sc text-2xl font-medium">Billing</h1>
-            <p className="mt-1 text-sm italic text-muted-foreground">Your plan and subscription.</p>
+            <h1 className="smallcaps tracking-sc text-2xl font-medium">Credits</h1>
+            <p className="mt-1 text-sm italic text-muted-foreground">
+              Prepaid, pay as you go. No subscription.
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="smallcaps tracking-sc text-xs text-muted-foreground">
-              Current plan
-            </span>
-            <Badge variant={plan === "free" ? "secondary" : "success"} className="capitalize">
-              {plan}
+            <span className="smallcaps tracking-sc text-xs text-muted-foreground">Account</span>
+            <Badge variant={funded ? "success" : "secondary"}>
+              {funded ? "Pay as you go" : "Free credit"}
             </Badge>
           </div>
         </div>
         <Separator variant="double" className="mt-4" />
       </div>
-      {conversion && <SubscriptionConversion {...conversion} email={user.email} />}
-      <BillingActions
-        plan={plan}
-        currentPeriodEnd={userRow?.currentPeriodEnd?.toISOString() ?? null}
-        cancelAtPeriodEnd={userRow?.cancelAtPeriodEnd ?? false}
-        subscriptionStatus={userRow?.subscriptionStatus ?? null}
-        hasStripeCustomer={Boolean(userRow?.stripeCustomerId)}
-        proDailyLimit={getDailyLimit("pro")}
+
+      <TopupConversion conversion={conversion} email={user.email} />
+
+      <CreditsActions
+        wallet={
+          wallet
+            ? {
+                paidMicros: wallet.paidMicros,
+                promoMicros: wallet.promoMicros,
+                promoExpiresAt: wallet.promoExpiresAt?.toISOString() ?? null,
+                promoExpired: wallet.promoExpired,
+                totalMicros: wallet.totalMicros,
+                funded,
+                autoRecharge: wallet.autoRecharge,
+              }
+            : null
+        }
+        level={nudge.level}
+        legacySubscription={nudge.legacySubscription}
+        legacyPastDue={nudge.level === "past_due"}
+        hasStripeCustomer={Boolean(me?.stripeCustomerId)}
+        presetsEur={[...PRICING.topupPresetsEur]}
+        minTopupEur={PRICING.minTopupEur}
+        maxTopupEur={PRICING.maxTopupEur}
+        autoRechargeLimits={{ ...AUTO_RECHARGE_LIMITS }}
+        serverNow={new Date().toISOString()}
       />
+
+      <LedgerTable
+        entries={
+          ledger?.entries.map((e) => ({
+            id: e.id,
+            kind: e.kind,
+            bucket: e.bucket,
+            deltaMicros: e.deltaMicros,
+            balanceAfterMicros: e.balanceAfterMicros,
+            units: e.units,
+            note: e.note,
+            createdAt: e.createdAt.toISOString(),
+          })) ?? null
+        }
+        nextCursor={ledger?.nextCursor ?? null}
+        paged={Boolean(cursor)}
+      />
+
+      <PriceTable table={publicPriceTable()} buys={whatTenEuroBuys()} />
     </div>
   );
 }

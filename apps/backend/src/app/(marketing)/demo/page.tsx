@@ -12,7 +12,7 @@ const PATH = DEMO_PATHS.en;
 
 const TITLE = "Guided setup: we set up your MCP servers";
 const DESCRIPTION =
-  "For teams that want their MCP stack set up for them: a TwinMCP server, a pack of MCPs, API keys and the connection in your AI client. Pro plan plus a one-time setup fee quoted after the call.";
+  "For teams that want their MCP stack set up for them: a TwinMCP server, a pack of MCPs, API keys and the connection in your AI client. Pay-as-you-go credit for usage, plus a one-time setup fee quoted after the call.";
 
 export const metadata: Metadata = {
   title: TITLE,

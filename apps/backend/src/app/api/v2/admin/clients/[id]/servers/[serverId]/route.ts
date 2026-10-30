@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { servers } from "@/db/schema";
-import { badRequest, notFound, serverError } from "@/lib/errors";
+import { badRequest, creditRequired, notFound, serverError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin/prospects-lib";
 import {
   RuntimeGoneError,
@@ -11,6 +11,8 @@ import {
   destroyServerRuntime,
   pauseServerRuntime,
   resumeServer,
+  assertComputeAllowed,
+  isInsufficientCreditError,
 } from "@/lib/provisioning";
 import { isPausedRuntime, lifecycleActions } from "@/lib/server-lifecycle";
 import { enqueue } from "@/lib/queue/qstash";
@@ -99,6 +101,8 @@ export async function PATCH(
           mode = "reprovision";
         }
       }
+      // A fresh runtime is compute billed to the client's wallet.
+      if (mode !== "resume") await assertComputeAllowed(clientId);
       // Conditional claims: a double click enqueues one provision job only.
       if (
         mode !== "resume" &&
@@ -124,6 +128,11 @@ export async function PATCH(
 
     return badRequest("Action inconnue (attendu: stop | start).");
   } catch (err) {
+    if (isInsufficientCreditError(err)) {
+      return creditRequired(
+        "Le crédit TwinMCP de ce client est épuisé : créditez son portefeuille avant de démarrer un serveur."
+      );
+    }
     console.error("[admin server lifecycle]", err);
     return serverError();
   }

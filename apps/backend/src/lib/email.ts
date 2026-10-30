@@ -1,12 +1,11 @@
 import { Resend } from "resend";
 import type { Plan } from "@/db/schema/core";
 import { PLAN_CAPABILITIES, PLAN_LABELS } from "@/lib/plan-features";
-import { trialCta } from "@/lib/billing/upgrade-state";
-import { PLANS, formatPrice } from "@/components/pricing/pricing-data";
 import { cardEmail, esc, link, p, row, table } from "./email-layout";
 import type { Locale } from "@/lib/i18n/locales";
 import { EDITEUR } from "@/lib/legal/entity";
 import { IDE_LABELS, MATRIX_CLIENTS } from "@/lib/mcp/client-config";
+import { minTopupLabel } from "@/lib/wallet/pricing";
 import {
   type DemoRequest,
   demoClientLabel,
@@ -32,7 +31,6 @@ const FROM = process.env.EMAIL_FROM ?? "TwinMCP <noreply@twinmcp.fr>";
 const SALES_TO = process.env.SALES_EMAIL ?? process.env.EMAIL_FROM ?? "hello@twinmcp.fr";
 
 const DASHBOARD = "https://twinmcp.fr/dashboard";
-const PLANS_URL = "https://twinmcp.fr/plans";
 const BILLING = "https://twinmcp.fr/dashboard/billing";
 const SETTINGS = "https://twinmcp.fr/dashboard/settings";
 const ONBOARDING = "https://twinmcp.fr/onboarding";
@@ -43,14 +41,15 @@ const ONBOARDING = "https://twinmcp.fr/onboarding";
  */
 const PREFERENCES_NOTE = `You receive this because you have a TwinMCP account. Manage email preferences: ${link(`${SETTINGS}#email-notifications`, SETTINGS)}`;
 
-// ---- Plan facts (never hand-typed: plan-features, rate-limit, pricing-data) ---
+/**
+ * Closing line of the money-critical wallet emails (zero balance, failed
+ * auto-recharge, runtime deletion, subscription conversion, top-up receipt):
+ * they are always sent, whatever the email preferences say.
+ */
+const ACCOUNT_NOTE =
+  "You receive this email because it concerns the credit balance of your TwinMCP account.";
 
 const PRO = PLAN_CAPABILITIES.pro;
-const PRO_TIER = PLANS.find((t) => t.id === "pro");
-/** "€14.99 a month, or €135 a year" — from the pricing table (mirrors Stripe). */
-const PRO_PRICE_LINE = PRO_TIER
-  ? `${formatPrice(PRO_TIER, "monthly")} a month, or €${Math.round(PRO_TIER.annualMonthlyUsd * 12)} a year`
-  : "the price shown on the billing page";
 
 function fmtInt(n: number): string {
   return n.toLocaleString("en-US");
@@ -73,21 +72,11 @@ function fmtDayTime(d: Date): string {
   return `${fmtDay(d)} at ${hh}:${mm} UTC`;
 }
 
-/**
- * The honest trial sentence. Only when the account is eligible (trialDays > 0):
- * the free month applies to a FIRST subscription only, card required, nothing
- * charged during the trial, cancel anytime.
- */
-function trialLine(trialDays: number): string {
-  if (trialDays <= 0) return "";
-  return p(
-    `<strong>Your first month of Pro is free</strong> &middot; card required &middot; nothing charged for ${trialDays} days &middot; cancel anytime`
-  );
-}
-
-/** What Pro adds, in one sentence, from PLAN_CAPABILITIES only. */
-function proSummary(proDailyLimit: number): string {
-  return `Pro runs up to ${PRO.servers} servers on small, medium or large boxes, with ${fmtInt(proDailyLimit)} tool calls a day, ${PRO.apiKeys} API keys, audit logs kept ${PRO.auditRetentionDays} days, usage export and publishing of your own MCPs.`;
+/** Throws on a Resend error so callers (notify, the nudge job) can retry. */
+async function send(to: string, subject: string, html: string): Promise<void> {
+  const result = await getResend().emails.send({ from: FROM, to, subject, html });
+  // The Resend SDK reports failures in the result instead of throwing.
+  if (result.error) throw new Error(`Resend: ${result.error.message}`);
 }
 
 // ---- Transactional ---------------------------------------------------------
@@ -189,7 +178,7 @@ function activationSteps(): string {
   return table([
     row(
       "1 · Server",
-      `Create a server: the box your MCPs run on. Free includes ${free.servers} small server.`
+      `Create a server: the box your MCPs run on. Free credit runs ${free.servers} small server.`
     ),
     row(
       "2 · MCP",
@@ -250,9 +239,12 @@ export async function sendActivationEmail(to: string): Promise<void> {
 }
 
 /**
- * Sent by the Stripe webhook on checkout.session.completed. `trialing` means
- * the first subscription started with the free month: the first invoice only
- * follows the trial, on `periodEnd`.
+ * Sent by the Stripe webhook on checkout.session.completed of a legacy Pro
+ * subscription checkout. `trialing` means the subscription started with the
+ * free month: the first invoice only follows the trial, on `periodEnd`.
+ *
+ * @deprecated Subscriptions are no longer sold (prepaid credit since
+ * 2026-10-29). Kept while the webhook still handles legacy sessions.
  */
 export async function sendUpgradeConfirmationEmail(
   to: string,
@@ -263,8 +255,8 @@ export async function sendUpgradeConfirmationEmail(
   const trialBody = opts.trialing
     ? p(
         opts.periodEnd
-          ? `Your free month runs until <strong>${fmtDay(opts.periodEnd)}</strong>. Nothing is charged before then: the first invoice follows the trial, on that date, at ${PRO_PRICE_LINE}. Cancel from ${link(BILLING, "Billing")} before it ends and you pay nothing.`
-          : `Your free month has started. Nothing is charged during the trial: the first invoice follows it, at ${PRO_PRICE_LINE}. Cancel from ${link(BILLING, "Billing")} before it ends and you pay nothing.`
+          ? `Your free month runs until <strong>${fmtDay(opts.periodEnd)}</strong>. Nothing is charged before then. Cancel from ${link(BILLING, "Billing")} before it ends and you pay nothing.`
+          : `Your free month has started. Nothing is charged during the trial. Cancel from ${link(BILLING, "Billing")} before it ends and you pay nothing.`
       )
     : "";
   return getResend().emails.send({
@@ -276,170 +268,251 @@ export async function sendUpgradeConfirmationEmail(
       title: `You're now on ${label}`,
       body:
         p(
-          `Your new limits are active immediately. Visit your ${link(DASHBOARD, "dashboard")} to see your updated quota.`
+          `Your new limits are active immediately. Visit your ${link(DASHBOARD, "dashboard")} to see them.`
         ) + trialBody,
       cta: { label: "Open the dashboard", href: DASHBOARD },
     }),
   });
 }
 
-export async function sendPlanDowngradeEmail(to: string, reason: string) {
-  const lapsed = reason === "canceled" ? "was canceled" : `lapsed (${esc(reason)})`;
-  return getResend().emails.send({
-    from: FROM,
+// ---- Wallet (lib/wallet/notify.ts decides when and dedupes) -----------------
+// Amounts arrive already formatted (lib/billing/upgrade-state.ts formatCredit)
+// so every surface shows the same figures. Each sender throws on a Resend
+// error: notify releases its dedupe stamp and the next trigger retries.
+
+export interface SignupCreditEmail {
+  /** "€10.00". */
+  amount: string;
+  expiresAt: Date | null;
+  /** What the credit pays for, each line assuming it all goes to that one item. */
+  examples: string[];
+  /** "€0.10" per 1,000 tool calls. */
+  per1000Calls: string;
+  /** "€10.00", the smallest top-up. */
+  minTopup: string;
+}
+
+/** The free sign-up credit landed: what it buys, then the four setup steps. */
+export async function sendSignupCreditEmail(to: string, opts: SignupCreditEmail): Promise<void> {
+  const until = opts.expiresAt ? `, valid until <strong>${fmtDay(opts.expiresAt)}</strong>` : "";
+  const examples = opts.examples.length
+    ? table(opts.examples.map((e, i) => row(i === 0 ? "It buys" : "or", esc(e))))
+    : "";
+  await send(
     to,
-    subject: "TwinMCP: Your plan was downgraded to Free",
-    html: cardEmail({
-      eyebrow: "Billing",
-      title: "Your plan is now Free",
+    `${opts.amount} of free TwinMCP credit is on your account`,
+    cardEmail({
+      eyebrow: "Credit",
+      title: `${opts.amount} of free credit is on your account`,
       body:
         p(
-          `Your subscription ${lapsed}, so your account is back on the Free plan. Servers beyond the Free limit (1 small server) have been <strong>stopped</strong> — they are not deleted.`
+          `Your account has ${esc(opts.amount)} of free credit${until}. No card needed. It pays for what you use: tool calls that reach your MCPs (${esc(opts.per1000Calls)} per 1,000) and the active CPU time of your server.`
+        ) +
+        examples +
+        p(
+          `Free credit runs ${PLAN_CAPABILITIES.free.servers} small server; MCPs that run arbitrary code (shell, code execution, headless browser) need a first top-up, from ${esc(opts.minTopup)}. There is no subscription.`
+        ) +
+        p("Four steps take you to your assistant&rsquo;s first tool call:") +
+        activationSteps(),
+      cta: { label: "Start the setup", href: ONBOARDING },
+      footerNote: PREFERENCES_NOTE,
+    })
+  );
+}
+
+/** The balance dropped below the low-balance line. A nudge (respects preferences). */
+export async function sendLowBalanceEmail(
+  to: string,
+  opts: { balance: string; autoRecharge: boolean }
+): Promise<void> {
+  await send(
+    to,
+    `Your TwinMCP credit is running low: ${opts.balance} left`,
+    cardEmail({
+      eyebrow: "Credit",
+      title: "Your credit is running low",
+      body:
+        p(
+          `Your TwinMCP balance is <strong>${esc(opts.balance)}</strong>. When it reaches zero, tool calls from your assistant are refused until you add credit.`
         ) +
         p(
-          `${link(PLANS_URL, "Re-subscribe")} to restore them, or manage them in your ${link(DASHBOARD, "dashboard")}.`
+          opts.autoRecharge
+            ? "Auto-recharge is on: your saved card is charged when the balance drops below your threshold, within your monthly cap."
+            : `Top up from ${link(BILLING, "Billing")}, or turn on auto-recharge there so your balance refills on its own, with a monthly cap you choose.`
         ),
-      cta: { label: "Re-subscribe", href: PLANS_URL },
-    }),
-  });
+      cta: { label: "Add credit", href: BILLING },
+      footerNote: PREFERENCES_NOTE,
+    })
+  );
 }
 
-// ---- Upgrade nudges (lib/billing/upgrade-state.ts decides when) ------------
-// Each one respects users.metadata.emailNudges (callers check it) and ends
-// with the preferences line. Throws when RESEND_API_KEY is missing, like every
-// sender here — callers wrap with .catch().
-
-/**
- * The standing offer to a Free account. `trialDays` is 0 when the account has
- * already used its first subscription (no free-month promise then).
- */
-export async function sendProOfferEmail(
+/** The balance hit zero. Money-critical: always sent. */
+export async function sendZeroBalanceEmail(
   to: string,
-  opts: { trialDays: number; proDailyLimit: number }
+  opts: { funded: boolean; deleteAfterDays?: number | null; promoExpired?: boolean }
 ): Promise<void> {
-  const eligible = opts.trialDays > 0;
-  const title = eligible
-    ? "Your first month of TwinMCP Pro is free"
-    : "More room to build with Pro";
-  await getResend().emails.send({
-    from: FROM,
+  const deletion =
+    !opts.funded && opts.deleteAfterDays
+      ? p(
+          `Without credit, the runtime of your server is deleted after ${opts.deleteAfterDays} days. Its configuration (installed MCPs and their settings) is kept, so you can start again at any time.`
+        )
+      : "";
+  await send(
     to,
-    subject: title,
-    html: cardEmail({
-      eyebrow: "Pro",
-      title,
+    opts.promoExpired ? "Your free TwinMCP credit has expired" : "Your TwinMCP credit is used up",
+    cardEmail({
+      eyebrow: "Credit",
+      title: opts.promoExpired
+        ? "Your free credit has expired"
+        : opts.funded
+          ? "Your credit is used up"
+          : "Your free credit is used up",
       body:
         p(
-          `Free gives you ${PLAN_CAPABILITIES.free.servers} small server and ${PLAN_CAPABILITIES.free.apiKeys} API keys, enough to try TwinMCP. ${proSummary(opts.proDailyLimit)}`
+          `${opts.promoExpired ? "Your free credit reached its expiry date, so your" : "Your"} TwinMCP balance is now zero. Tool calls from your assistant are refused and your servers are paused until you add credit. Your servers, their MCPs and settings are kept.`
         ) +
-        p(`Pro is ${PRO_PRICE_LINE}.`) +
-        trialLine(opts.trialDays),
-      cta: { label: trialCta(eligible).label, href: BILLING },
-      footerNote: PREFERENCES_NOTE,
-    }),
-  });
+        deletion +
+        p(
+          `Top-ups start at ${minTopupLabel()} and take effect as soon as the payment goes through.`
+        ),
+      cta: { label: "Top up", href: BILLING },
+      footerNote: esc(ACCOUNT_NOTE),
+    })
+  );
 }
 
-/**
- * Sent once a day (lib/billing/quota-nudge.ts dedups) when a Free account's
- * tool calls start being rejected at the daily quota.
- */
-export async function sendQuotaLimitEmail(
+/** The free sign-up credit expires soon (7 days, then 2 days before). A nudge. */
+export async function sendPromoExpiringEmail(
   to: string,
-  opts: {
-    used: number;
-    limit: number;
-    resetsAt: Date;
-    trialDays: number;
-    proDailyLimit: number;
-  }
-): Promise<void> {
-  const eligible = opts.trialDays > 0;
-  await getResend().emails.send({
-    from: FROM,
-    to,
-    subject: `Daily limit reached: ${fmtInt(opts.used)} of ${fmtInt(opts.limit)} tool calls`,
-    html: cardEmail({
-      eyebrow: "Usage",
-      title: "You hit today's tool-call limit",
-      body:
-        p(
-          `Your IDE made ${fmtInt(opts.used)} tool calls today, the maximum on the Free plan (${fmtInt(opts.limit)} a day). Tool calls are rejected until the quota resets on ${fmtDayTime(opts.resetsAt)}.`
-        ) +
-        p(
-          `Pro raises the limit to <strong>${fmtInt(opts.proDailyLimit)} tool calls a day</strong>, with up to ${PRO.servers} servers on small, medium or large boxes. It is ${PRO_PRICE_LINE}.`
-        ) +
-        trialLine(opts.trialDays),
-      cta: { label: trialCta(eligible).label, href: BILLING },
-      footerNote: PREFERENCES_NOTE,
-    }),
-  });
-}
-
-/**
- * Stripe's customer.subscription.trial_will_end (3 days before the first
- * invoice). States the date, the price and how to stop — nothing else.
- */
-export async function sendTrialEndingEmail(
-  to: string,
-  opts: { endsAt: Date; daysLeft: number }
+  opts: { remaining: string; expiresAt: Date; daysLeft: number; funded: boolean }
 ): Promise<void> {
   const when =
     opts.daysLeft <= 0 ? "today" : `in ${opts.daysLeft} day${opts.daysLeft === 1 ? "" : "s"}`;
-  const title = `Your free month of Pro ends ${when}`;
-  await getResend().emails.send({
-    from: FROM,
+  await send(
     to,
-    subject: title,
-    html: cardEmail({
-      eyebrow: "Billing",
-      title,
+    `Your free TwinMCP credit expires ${when}`,
+    cardEmail({
+      eyebrow: "Credit",
+      title: `Your free credit expires ${when}`,
       body:
         p(
-          `On <strong>${fmtDay(opts.endsAt)}</strong> your free month ends and your Pro subscription continues at the price you chose (${PRO_PRICE_LINE}). That is the first time your card is charged.`
+          `You have <strong>${esc(opts.remaining)}</strong> of free credit left. It expires on ${fmtDayTime(opts.expiresAt)}; whatever is unused then is removed from your balance.`
         ) +
         p(
-          `Nothing to do to keep Pro. If you would rather stop, cancel from ${link(BILLING, "Billing")} before that date and you pay nothing: your account returns to Free, and servers beyond the Free limit are stopped, not deleted.`
+          opts.funded
+            ? "The credit you bought is not affected."
+            : `To keep your server running after that date, add credit from ${link(BILLING, "Billing")} (from ${minTopupLabel()}). A first top-up also unlocks up to ${PRO.servers} servers on every box size.`
         ),
-      cta: { label: "Review my subscription", href: BILLING },
+      cta: { label: opts.funded ? "See my credit" : "Add credit", href: BILLING },
       footerNote: PREFERENCES_NOTE,
-    }),
-  });
+    })
+  );
+}
+
+/** An automatic top-up was declined. Money-critical: always sent. */
+export async function sendAutoRechargeFailedEmail(
+  to: string,
+  opts: { amount: string | null; reason?: string | null }
+): Promise<void> {
+  const what = opts.amount ? `add ${esc(opts.amount)} to` : "top up";
+  const why = opts.reason ? ` The payment provider said: &ldquo;${esc(opts.reason)}&rdquo;.` : "";
+  await send(
+    to,
+    "TwinMCP auto-recharge could not charge your card",
+    cardEmail({
+      eyebrow: "Credit",
+      title: "Auto-recharge could not charge your card",
+      body:
+        p(
+          `We tried to ${what} your TwinMCP balance with your saved card, and the payment failed.${why}`
+        ) +
+        p(
+          `Top up once from ${link(BILLING, "Billing")} with a working card (tick &ldquo;save this card&rdquo; to use it for auto-recharge). When the balance reaches zero, tool calls are refused until credit is added.`
+        ),
+      cta: { label: "Top up", href: BILLING },
+      footerNote: esc(ACCOUNT_NOTE),
+    })
+  );
 }
 
 /**
- * Stripe's checkout.session.expired, when the abandoned Pro checkout has a
- * recovery link (after_expiration.recovery). One short reminder: what was
- * left, the link, until when it works. The free-month sentence only appears
- * when the recovered session still carries the trial (first subscription,
- * no pre-applied promo) — the webhook decides and passes trialDays.
+ * An account without paid credit is at zero: its server runtimes are deleted
+ * on `deleteAt`. Sent on day 0, 7 and 13 of that period. Money-critical.
  */
-export async function sendCheckoutRecoveryEmail(
+export async function sendRuntimeDeletionWarningEmail(
   to: string,
-  opts: { url: string; expiresAt: Date | null; proDailyLimit: number; trialDays?: number }
+  opts: { stage: number; deleteAt: Date; serverCount: number }
 ): Promise<void> {
-  const until = opts.expiresAt ? ` It works until ${fmtDayTime(opts.expiresAt)}.` : "";
-  const trialDays = opts.trialDays ?? 0;
-  await getResend().emails.send({
-    from: FROM,
+  const servers =
+    opts.serverCount === 1 ? "your server" : `your ${fmtInt(opts.serverCount)} servers`;
+  const title =
+    opts.stage >= 13
+      ? "Your server runtime is deleted tomorrow"
+      : `Your server runtime will be deleted on ${fmtDay(opts.deleteAt)}`;
+  await send(
     to,
-    subject: "Your TwinMCP Pro checkout is still open",
-    html: cardEmail({
-      eyebrow: "Billing",
-      title: "You left your Pro checkout before the end",
+    title,
+    cardEmail({
+      eyebrow: "Credit",
+      title,
       body:
         p(
-          `You started subscribing to TwinMCP Pro and the checkout page timed out before it was finished. Nothing was charged. The button below reopens the same checkout, with the cadence you picked.${until}`
+          `Your TwinMCP balance is at zero, so ${servers} cannot run. On <strong>${fmtDayTime(opts.deleteAt)}</strong> the runtime of ${servers} is deleted to free the machine.`
         ) +
-        p(`Pro is ${PRO_PRICE_LINE}. ${proSummary(opts.proDailyLimit)}`) +
-        trialLine(trialDays) +
         p(
-          `Not the right time? Ignore this email: your account stays on Free, with nothing to cancel.`
+          "The configuration is kept: installed MCPs and their settings stay on your account, and the runtime is rebuilt when you start the server again."
+        ) +
+        p(`Add credit before that date (from ${minTopupLabel()}) and nothing is deleted.`),
+      cta: { label: "Add credit", href: BILLING },
+      footerNote: esc(ACCOUNT_NOTE),
+    })
+  );
+}
+
+/** A legacy subscription was converted into credit by the owner-run script. Money-critical. */
+export async function sendSubscriptionConvertedEmail(
+  to: string,
+  opts: { credited: string; plan: string; balance: string }
+): Promise<void> {
+  await send(
+    to,
+    "Your TwinMCP subscription is now credit",
+    cardEmail({
+      eyebrow: "Billing",
+      title: "Your subscription is now credit",
+      body:
+        p(
+          `TwinMCP no longer sells subscriptions: you pay for what you use, from a prepaid balance. Your ${esc(opts.plan)} subscription has been cancelled, and the unused part of the period you had paid, <strong>${esc(opts.credited)}</strong>, has been added to your balance.`
+        ) +
+        table([row("Credited", esc(opts.credited)), row("Balance", esc(opts.balance))]) +
+        p(
+          `There is nothing to do: you will not be charged for the subscription again, and your servers keep running while you have credit. To never run out, turn on auto-recharge in ${link(BILLING, "Billing")}.`
         ),
-      cta: { label: "Resume my checkout", href: opts.url },
-      footerNote: PREFERENCES_NOTE,
-    }),
-  });
+      cta: { label: "See my credit", href: BILLING },
+      footerNote: esc(ACCOUNT_NOTE),
+    })
+  );
+}
+
+/** A paid top-up was credited. Transactional: always sent. */
+export async function sendTopupSucceededEmail(
+  to: string,
+  opts: { amount: string; balance: string }
+): Promise<void> {
+  await send(
+    to,
+    `${opts.amount} added to your TwinMCP credit`,
+    cardEmail({
+      eyebrow: "Credit",
+      title: `${opts.amount} added to your credit`,
+      body:
+        p(`Your top-up went through. Thank you.`) +
+        table([row("Added", esc(opts.amount)), row("Balance", esc(opts.balance))]) +
+        p(`Your balance and its history are on ${link(BILLING, "Billing")}.`),
+      cta: { label: "See my credit", href: BILLING },
+      footerNote: esc(ACCOUNT_NOTE),
+    })
+  );
 }
 
 /**

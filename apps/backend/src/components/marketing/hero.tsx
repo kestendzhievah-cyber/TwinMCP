@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/lib/i18n/locales";
 import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 import { HeroMockup } from "./hero-mockup";
 
 // The offer, in both languages. The hero and the closing block read the same
@@ -11,40 +12,44 @@ import { HeroMockup } from "./hero-mockup";
 // headline leads with the real edge: ANY MCP server — catalogue, stdio, or the
 // user's own npm/PyPI package — runs in its own sandbox behind one Streamable
 // HTTP URL that every client can reach. Every fact here is one the product
-// backs (flat price: the daily cap refuses calls, it never bills them).
+// backs (prepaid wallet, prices from lib/wallet/pricing.ts: at zero, calls
+// stop; nothing is billed beyond the balance).
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
+
 const COPY = {
   en: {
     eyebrow: "Managed MCP hosting",
     titleLead: "Any MCP server, hosted.",
     titleTail: "Reachable from every AI client.",
-    lead: "Stdio servers included: pick from a catalogue of 70+ or, on Pro, bring your own npm or PyPI package. Each runs in an isolated sandbox behind one URL. Configure once, switch IDEs without reinstalling. Flat price, no usage meters.",
-    primary: "Start free",
+    lead: "Stdio servers included: pick from a catalogue of 70+ or, once your account is funded, bring your own npm or PyPI package. Each runs in an isolated sandbox behind one URL. Configure once, switch IDEs without reinstalling. Pay only for what you use, from a prepaid balance that stops at zero.",
+    primary: `Start with ${EN.signupCredit} free`,
     secondary: "Guided setup",
-    reassurance: "No credit card · 1 free server · Ready in about 2 minutes",
+    reassurance: `${EN.signupCredit} of free credit · No card · Ready in about 2 minutes`,
     finalEyebrow: "Start now",
     finalTitle: "Your first hosted MCP server, live in about 2 minutes",
-    finalBody: `The Free plan is free forever: 1 server, up to ${FREE_MCP_LIMIT} MCPs plus TwinMCP Docs, no credit card.`,
-    finalSecondary: "Compare plans",
+    finalBody: `Every new account gets ${EN.signupCredit} of free credit, valid ${EN.signupDays} days, no card: ${EN.creditServers} server with up to ${FREE_MCP_LIMIT} MCPs plus TwinMCP Docs.`,
+    finalSecondary: "See pricing",
     finalReassurance:
-      "Pro: first month free on a first subscription · cancel before it ends and pay nothing · cancel anytime",
-    signUp: "/sign-up?plan=free",
+      "No subscription · pay only for what you use · stops at zero, no surprise bills",
+    signUp: "/sign-up",
     guidedSetup: "/demo",
   },
   fr: {
     eyebrow: "Hébergement MCP clé en main",
     titleLead: "N’importe quel serveur MCP, hébergé.",
     titleTail: "Accessible depuis tous vos clients IA.",
-    lead: "Serveurs stdio compris : choisissez dans un catalogue de plus de 70 MCP ou, avec Pro, apportez votre propre paquet npm ou PyPI. Chacun tourne dans un sandbox isolé, derrière une seule URL. Configurez une fois, changez d’IDE sans rien réinstaller. Prix fixe, sans facturation à l’usage.",
-    primary: "Démarrer gratuitement",
+    lead: "Serveurs stdio compris : choisissez dans un catalogue de plus de 70 MCP ou, une fois votre compte alimenté, apportez votre propre paquet npm ou PyPI. Chacun tourne dans un sandbox isolé, derrière une seule URL. Configurez une fois, changez d’IDE sans rien réinstaller. Vous ne payez que ce que vous utilisez, depuis un solde prépayé qui s’arrête à zéro.",
+    primary: `Démarrer avec ${FR.signupCredit} offerts`,
     secondary: "Installation accompagnée",
-    reassurance: "Sans carte bancaire · 1 serveur offert · Prêt en 2 minutes environ",
+    reassurance: `${FR.signupCredit} de crédit offert · Sans carte · Prêt en 2 minutes environ`,
     finalEyebrow: "Lancez-vous",
     finalTitle: "Votre premier serveur MCP hébergé, en ligne en 2 minutes environ",
-    finalBody: `L’offre Free est gratuite pour toujours : 1 serveur, jusqu’à ${FREE_MCP_LIMIT} MCP plus TwinMCP Docs, sans carte bancaire.`,
-    finalSecondary: "Comparer les offres",
+    finalBody: `Chaque nouveau compte reçoit ${FR.signupCredit} de crédit offert, valable ${FR.signupDays} jours, sans carte : ${FR.creditServers} serveur avec jusqu’à ${FREE_MCP_LIMIT} MCP plus TwinMCP Docs.`,
+    finalSecondary: "Voir les tarifs",
     finalReassurance:
-      "Pro : premier mois offert sur un premier abonnement · résiliez avant la fin, vous ne payez rien · résiliable à tout moment",
-    signUp: "/fr/inscription?plan=free",
+      "Sans abonnement · vous payez ce que vous utilisez · arrêt à zéro, aucune facture surprise",
+    signUp: "/fr/inscription",
     guidedSetup: "/fr/demo",
   },
 } as const;

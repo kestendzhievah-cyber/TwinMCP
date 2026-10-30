@@ -10,7 +10,7 @@ import {
   isBoxSizeAllowed,
   minPlanForBoxSize,
   PlanRestrictionError,
-  PLAN_LABELS,
+  requiredTierMessage,
 } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { clearAuthCache } from "@/lib/auth";
@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         throw new PlanRestrictionError(
           "box-size",
           required,
-          `The ${parsed.data.boxSize} box size requires the ${PLAN_LABELS[required]} plan.`
+          requiredTierMessage(required, `The ${parsed.data.boxSize} box size`)
         );
       }
     }

@@ -39,9 +39,17 @@ export interface TryRequestBody {
  * - error       a JSON-RPC error, an upstream failure, a refused request
  * - waking      the box is waking / the MCP is installing; retry shortly (503)
  * - denied      the tool policy of this installation blocks the tool (403)
- * - rate_limited the daily quota is used up (429)
+ * - rate_limited too many tool calls this minute (429)
+ * - no_credit   the TwinMCP credit is used up (402, JSON-RPC -32008)
  */
-export type TryStatus = "ok" | "tool_error" | "error" | "waking" | "denied" | "rate_limited";
+export type TryStatus =
+  | "ok"
+  | "tool_error"
+  | "error"
+  | "waking"
+  | "denied"
+  | "rate_limited"
+  | "no_credit";
 
 export interface JsonRpcError {
   code: number;

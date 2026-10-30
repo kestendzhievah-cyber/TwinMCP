@@ -4,16 +4,20 @@ import { apiKeys, mcpServers, servers, usageMetrics, userServers, users } from "
 import { and, asc, desc, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { SERVER_QUOTAS } from "@/lib/quota";
-import { PLAN_CAPABILITIES, PLAN_LABELS } from "@/lib/plan-features";
-import { computeUpgradeNudge, trialCta, WARN_PCT } from "@/lib/billing/upgrade-state";
-import { loadUpgradeSignals } from "@/lib/billing/upgrade-signals";
-import { formatDate } from "@/lib/format";
+import { PLAN_CAPABILITIES } from "@/lib/plan-features";
+import {
+  computeWalletNudge,
+  expiryCountdown,
+  formatCredit,
+  LOW_BALANCE_MICROS,
+} from "@/lib/billing/upgrade-state";
+import { loadWalletSignals } from "@/lib/billing/upgrade-signals";
+import { sumLedgerSince } from "@/lib/wallet/ledger";
 import { countsTowardKeyLimit, isKeyUsable } from "@/lib/auth/key-scope";
 import { cn } from "@/lib/utils";
 import { ApiKeysPanel } from "./api-keys-panel";
-import { UpgradeInline, UpgradeLink } from "@/components/billing/upgrade-inline";
+import { TopUpInline, TopUpLink } from "@/components/billing/top-up-inline";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ActivationChecklist,
@@ -79,11 +83,13 @@ export default async function DashboardPage() {
   if (!user) return null;
 
   const db = getDb();
-  // The upgrade signals (today's tool calls per UTC day, live servers, the
-  // subscription mirror) are the same the layout loads — React cache makes it
-  // one set of queries per request. Only the keys are specific to this page.
-  const [signals, keyRows, activationRaw] = await Promise.all([
-    loadUpgradeSignals(user.id),
+  // The wallet signals (balance, free credit, live servers, a legacy
+  // subscription) are the same the layout loads — React cache makes it one
+  // set of queries per request. The keys and the week's spend are specific
+  // to this page; the spend is best effort (null hides the figure).
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+  const [signals, keyRows, activationRaw, spent7d] = await Promise.all([
+    loadWalletSignals(user.id),
     db
       .select({
         id: apiKeys.id,
@@ -97,6 +103,12 @@ export default async function DashboardPage() {
       .where(and(eq(apiKeys.userId, user.id), isNull(apiKeys.revokedAt)))
       .orderBy(desc(apiKeys.createdAt)),
     loadActivation(user.id),
+    sumLedgerSince(user.id, ["usage_tool_call", "usage_compute"], weekAgo)
+      .then((sum) => -sum)
+      .catch((err: unknown) => {
+        console.warn("[dashboard] weekly spend unavailable:", err);
+        return null;
+      }),
   ]);
   // Revoked keys are filtered in SQL; a key past its expiry (the old half of a
   // rotation) no longer works, so it is not listed either. The plan slots, the
@@ -110,21 +122,22 @@ export default async function DashboardPage() {
   ).length;
   const activation = activationRaw ? { ...activationRaw, hasKey: keyCount > 0 } : null;
 
-  const { plan, proDailyLimit, serverCount } = signals;
-  const limit = signals.dailyLimit;
-  const used = signals.usedToday;
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-
+  const { plan, serverCount, funded } = signals;
   const serverLimit = SERVER_QUOTAS[plan];
   const serverLimitLabel = serverLimit === Number.POSITIVE_INFINITY ? "∞" : serverLimit.toString();
 
   // The same decision as the layout strip (lib/billing/upgrade-state.ts), so
-  // the plan card, the quota card and the servers card speak with one voice.
-  const nudge = computeUpgradeNudge({ ...signals, keyCount });
-  const isFree = plan === "free";
-  const cta = trialCta(nudge.trialEligible);
-  const quotaLevel = !isFree ? null : pct >= 100 ? "limit" : pct >= WARN_PCT ? "warning" : null;
-  const atServerLimit = isFree && serverCount >= serverLimit;
+  // the credit card and the servers card speak with one voice.
+  const nudge = computeWalletNudge({ ...signals, keyCount });
+  const total = nudge.totalMicros;
+  const atServerLimit = !funded && serverCount >= serverLimit;
+  const balanceLevel = !signals.walletAvailable
+    ? null
+    : total <= 0
+      ? "limit"
+      : total < LOW_BALANCE_MICROS
+        ? "warning"
+        : null;
 
   return (
     <div className="space-y-8">
@@ -140,71 +153,64 @@ export default async function DashboardPage() {
       {/* Until the first tool call: the five steps to get there (renders nothing once done). */}
       {activation && <ActivationChecklist state={activation} />}
 
-      {/* Stat cards (DESIGN.md §5): small-caps caption, lining figure over its limit. */}
+      {/* Stat cards (DESIGN.md §5): small-caps caption, lining figure, italic footnote. */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardDescription className="smallcaps tracking-sc text-xs not-italic">
-              Current plan
+              Credit
             </CardDescription>
-            <CardTitle className="flex flex-wrap items-center gap-3 text-3xl">
-              {PLAN_LABELS[plan]}
-              {!isFree &&
-                (nudge.trialEndsAt ? (
-                  <Badge variant="info" className="lining">
-                    Trial · ends {formatDate(nudge.trialEndsAt)}
-                  </Badge>
-                ) : (
-                  <Badge variant="success">Active</Badge>
-                ))}
+            <CardTitle
+              className={cn(
+                "lining text-3xl",
+                balanceLevel === "limit" && "text-destructive",
+                balanceLevel === "warning" && "text-warning"
+              )}
+            >
+              {signals.walletAvailable ? formatCredit(total, { precise: false }) : "—"}
             </CardTitle>
           </CardHeader>
-          {isFree && (
-            <CardContent>
-              <UpgradeLink
+          <CardContent className="space-y-2">
+            {nudge.promoExpiresAt && (
+              <p className="lining text-xs italic text-muted-foreground">
+                {formatCredit(signals.promoMicros, { precise: false })} of free credit, expires{" "}
+                {expiryCountdown(nudge.promoExpiresAt, signals.now)}
+              </p>
+            )}
+            {balanceLevel ? (
+              <TopUpInline
                 source="overview"
-                level={nudge.level}
-                reason={nudge.reason}
-                label={nudge.cta.label}
-                className="text-sm"
+                level={balanceLevel}
+                reason={balanceLevel === "limit" ? "zero_balance" : "low_balance"}
+                description={balanceLevel === "limit" ? "Tool calls are refused." : "Running low."}
+                className="lining text-xs"
               />
-            </CardContent>
-          )}
+            ) : (
+              signals.walletAvailable && (
+                <TopUpLink
+                  source="overview"
+                  level={nudge.level}
+                  reason={nudge.reason}
+                  label={funded ? "Add credit" : "Add credit to unlock everything"}
+                  className="text-sm"
+                />
+              )
+            )}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader>
             <CardDescription className="smallcaps tracking-sc text-xs not-italic">
-              Tool calls today
+              Spent · last 7 days
             </CardDescription>
             <CardTitle className="lining text-3xl">
-              {used.toLocaleString()}{" "}
-              <span className="text-sm font-normal text-muted-foreground">
-                / {limit.toLocaleString()}
-              </span>
+              {spent7d === null ? "—" : formatCredit(spent7d, { precise: false })}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {/* The quota bar: a hairline of ink on stock; ochre near the limit, oxblood at it. */}
-            <div className="h-1.5 w-full overflow-hidden bg-secondary">
-              <div
-                className={cn(
-                  "h-full transition-all",
-                  pct >= 100 ? "bg-destructive" : pct >= WARN_PCT ? "bg-warning" : "bg-foreground"
-                )}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <p className="text-xs italic text-muted-foreground">Resets at midnight UTC</p>
-            {quotaLevel && (
-              <UpgradeInline
-                source="overview"
-                level={quotaLevel}
-                reason={quotaLevel === "limit" ? "quota_limit" : "quota_warning"}
-                label={cta.label}
-                description={`Pro: ${proDailyLimit.toLocaleString("en-US")} a day`}
-                className="lining text-xs"
-              />
-            )}
+          <CardContent>
+            <p className="text-xs italic text-muted-foreground">
+              Tool calls and server CPU time. Details on the Usage page.
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -216,17 +222,17 @@ export default async function DashboardPage() {
               {serverCount}{" "}
               <span className="text-sm font-normal text-muted-foreground">
                 / {serverLimitLabel}
-                {atServerLimit && ` · Pro: ${PLAN_CAPABILITIES.pro.servers}`}
+                {atServerLimit && ` · with paid credit: ${PLAN_CAPABILITIES.pro.servers}`}
               </span>
             </CardTitle>
           </CardHeader>
           {atServerLimit && (
             <CardContent>
-              <UpgradeLink
+              <TopUpLink
                 source="overview"
                 level="offer"
                 reason="servers_limit"
-                label={cta.label}
+                label="Add credit"
                 className="text-sm"
               />
             </CardContent>
@@ -236,7 +242,6 @@ export default async function DashboardPage() {
 
       <ApiKeysPanel
         plan={plan}
-        trialEligible={nudge.trialEligible}
         keys={keys.map((k) => ({
           ...k,
           lastUsedAt: k.lastUsedAt?.toISOString() ?? null,

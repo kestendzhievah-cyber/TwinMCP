@@ -10,30 +10,37 @@ import {
   cadenceFromPriceId,
   cadenceFromInterval,
   invoiceSubscriptionId,
-  invoicePriceId,
-  isTrialConversion,
   cancellationScheduled,
   cancellationReason,
-  TRIAL_DAYS,
   type Cadence,
 } from "@/lib/stripe";
-import {
-  sendUpgradeConfirmationEmail,
-  sendPlanDowngradeEmail,
-  sendTrialEndingEmail,
-  sendCheckoutRecoveryEmail,
-} from "@/lib/email";
-import { reconcileServersForPlan } from "@/lib/billing/reconcile";
-import { emailNudgesEnabled, isDeliverableEmail } from "@/lib/billing/quota-nudge";
-import { parseNudgeDate } from "@/lib/billing/nudge-state";
-import { attributionMetadata } from "@/lib/billing/checkout";
-import { getDailyLimit } from "@/lib/rate-limit";
+import { sendUpgradeConfirmationEmail } from "@/lib/email";
+import { attributionMetadata } from "@/lib/billing/checkout-helpers";
 import { audit } from "@/lib/audit";
 import { trackServer } from "@/lib/analytics/server";
+import {
+  applyCardSetupSession,
+  applyChargeRefund,
+  applyDisputeClosed,
+  applyDisputeCreated,
+  applyTopupSession,
+  stripeId,
+  walletPaymentIntentKind,
+  walletSessionAction,
+} from "@/lib/wallet/topup";
+import { failAutoRecharge, settleAutoRecharge } from "@/lib/wallet/auto-recharge";
 import type { Plan } from "@/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Billing model (since 2026-10-29): a prepaid wallet. Money comes in through
+// one-off top-ups (Checkout, mode payment) and optional off-session
+// auto-recharges; both are credited here, idempotently, keyed on Stripe ids.
+// Subscriptions are no longer sold. The subscription handlers below stay only
+// so existing subscribers keep a correct status mirror until the owner runs
+// scripts/migrate-pro-to-wallet.ts, and they NEVER move a plan down: the
+// wallet balance is the limit now, not the plan.
 
 function periodEnd(sub: Stripe.Subscription): Date | null {
   // Stripe 2026-03 dahlia moved current_period_end from the Subscription
@@ -54,108 +61,22 @@ async function findUserIdByCustomer(customerId: string): Promise<string | undefi
     .where(eq(users.stripeCustomerId, customerId))
     .limit(1);
   if (row) return row.id;
-  const customer = (await getStripe().customers.retrieve(customerId)) as Stripe.Customer;
+  const customer = await getStripe().customers.retrieve(customerId);
+  if (customer.deleted) return undefined;
   return customer.metadata?.userId;
 }
 
-/** Best-effort downgrade notification to the user's real email. */
-async function notifyDowngrade(userId: string, reason: string): Promise<void> {
-  try {
-    const [u] = await getDb()
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    if (u?.email && !u.email.endsWith("@placeholder.twinmcp.fr")) {
-      await sendPlanDowngradeEmail(u.email, reason);
-    }
-  } catch (err) {
-    console.error("[stripe webhook] downgrade notify failed:", err);
-  }
-}
-
-const DAY_MS = 86_400_000;
-
 /**
- * Best-effort "your free month ends in N days" email. Stripe fires
- * customer.subscription.trial_will_end 3 days before the first invoice.
- * Honours users.metadata.emailNudges; never throws (an email outage must not
- * release the idempotency claim and make Stripe retry the whole event).
+ * Atomic jsonb merge of top-level keys into users.metadata, in one UPDATE, so
+ * a concurrent writer (nudge job, preferences, onboarding) is never clobbered.
  */
-async function notifyTrialEnding(userId: string, sub: Stripe.Subscription): Promise<void> {
-  try {
-    const endsAt =
-      typeof sub.trial_end === "number" ? new Date(sub.trial_end * 1000) : periodEnd(sub);
-    if (!endsAt) return;
-    // Stripe still fires trial_will_end for a trial the user already cancelled
-    // from the portal (cancel at period end): nothing continues and nothing is
-    // charged, so the "your subscription continues" email would be false.
-    if (sub.cancel_at_period_end || sub.status !== "trialing") return;
-
-    const [u] = await getDb()
-      .select({ email: users.email, metadata: users.metadata })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    if (!u || !isDeliverableEmail(u.email) || !emailNudgesEnabled(u.metadata)) return;
-
-    const daysLeft = Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / DAY_MS));
-    await sendTrialEndingEmail(u.email, { endsAt, daysLeft });
-    trackServer({
-      event: "upgrade_email_sent",
-      distinctId: userId,
-      properties: { kind: "trial_ending", reason: "trial_ending", daysLeft },
-    });
-  } catch (err) {
-    console.warn("[stripe webhook] trial-ending email skipped:", err);
-    Sentry.captureException(err, { tags: { area: "upgrade-nudge", stage: "trial-email" } });
-  }
-}
-
-// ---- users.metadata.billing ------------------------------------------------
-// Lifecycle stamps the webhook keeps on the account (no migration: jsonb).
-//   trialStartedAt      checkout.session.completed with a trialing subscription
-//   trialConvertedAt    first paid invoice after that trial (counted once)
-//   checkoutRecoveryAt  last abandoned-checkout reminder (cooldown)
-
-interface BillingMeta {
-  trialStartedAt?: string | null;
-  trialConvertedAt?: string | null;
-  checkoutRecoveryAt?: string | null;
-}
-
-function billingMeta(metadata: unknown): BillingMeta {
-  const b =
-    metadata && typeof metadata === "object"
-      ? (metadata as Record<string, unknown>).billing
-      : undefined;
-  return b && typeof b === "object" && !Array.isArray(b) ? (b as BillingMeta) : {};
-}
-
-/**
- * Atomic jsonb merge, in one UPDATE, so a concurrent writer (nudge job,
- * preferences, onboarding) is never clobbered by a read-modify-write:
- *   metadata = metadata || top || {"billing": metadata.billing || billing}
- */
-function metadataMergeSql(top: Record<string, unknown> | null, billing: BillingMeta | null) {
-  let expr = sql`COALESCE(${users.metadata}, '{}'::jsonb)`;
-  if (top) expr = sql`${expr} || ${JSON.stringify(top)}::jsonb`;
-  if (billing) {
-    expr = sql`${expr} || jsonb_build_object('billing', (CASE WHEN jsonb_typeof(${users.metadata}->'billing') = 'object' THEN ${users.metadata}->'billing' ELSE '{}'::jsonb END) || ${JSON.stringify(billing)}::jsonb)`;
-  }
-  return expr;
-}
-
-async function stampBilling(userId: string, billing: BillingMeta): Promise<void> {
-  await getDb()
-    .update(users)
-    .set({ metadata: metadataMergeSql(null, billing) })
-    .where(eq(users.id, userId));
+function metadataMergeSql(top: Record<string, unknown>) {
+  return sql`COALESCE(${users.metadata}, '{}'::jsonb) || ${JSON.stringify(top)}::jsonb`;
 }
 
 /**
  * First-touch attribution as analytics properties: the shared keys only
- * (lib/billing/checkout.ts), and the raw Google click id replaced by a
+ * (lib/billing/checkout-helpers.ts), and the raw Google click id replaced by a
  * presence flag — PostHog needs to know an ad brought the user, not the id.
  */
 function attributionProps(source: unknown): Record<string, string | boolean> {
@@ -166,12 +87,6 @@ function attributionProps(source: unknown): Record<string, string | boolean> {
   return { ...rest, ...(gclid ? { gclid_present: true } : {}) };
 }
 
-function storedAttribution(metadata: unknown): unknown {
-  return metadata && typeof metadata === "object"
-    ? (metadata as Record<string, unknown>).attribution
-    : undefined;
-}
-
 function isCadence(value: unknown): value is Cadence {
   return value === "monthly" || value === "yearly";
 }
@@ -180,76 +95,6 @@ function isCadence(value: unknown): value is Cadence {
 function subscriptionCadence(sub: Stripe.Subscription): Cadence | null {
   const price = sub.items.data[0]?.price;
   return cadenceFromPriceId(price?.id) ?? cadenceFromInterval(price?.recurring?.interval);
-}
-
-const RECOVERY_COOLDOWN_DAYS = 7;
-const SUBSCRIBED = ["active", "trialing", "past_due"];
-
-/**
- * Abandoned Pro checkout → one reminder carrying Stripe's recovery link.
- * Returns whether an email went out. Never throws (an email outage must not
- * make Stripe retry the event). Skipped when: no recovery link, the account
- * is already subscribed (it may have finished in another tab), the user opted
- * out of lifecycle emails (users.metadata.emailNudges === false), no
- * deliverable address, or a reminder went out in the last RECOVERY_COOLDOWN_DAYS.
- */
-async function notifyCheckoutRecovery(
-  userId: string,
-  session: Stripe.Checkout.Session
-): Promise<boolean> {
-  try {
-    const recovery = session.after_expiration?.recovery;
-    const url = recovery?.url;
-    if (!url) return false;
-
-    const [u] = await getDb()
-      .select({
-        email: users.email,
-        plan: users.plan,
-        subscriptionStatus: users.subscriptionStatus,
-        stripeCustomerId: users.stripeCustomerId,
-        metadata: users.metadata,
-      })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    if (!u) return false;
-    if (u.plan !== "free" || SUBSCRIBED.includes(u.subscriptionStatus ?? "")) return false;
-    if (!emailNudgesEnabled(u.metadata)) return false;
-
-    const now = new Date();
-    const last = parseNudgeDate(billingMeta(u.metadata).checkoutRecoveryAt);
-    if (last && now.getTime() - last.getTime() < RECOVERY_COOLDOWN_DAYS * DAY_MS) return false;
-
-    const candidates = [u.email, session.customer_details?.email, session.customer_email];
-    const to = candidates.find((e): e is string => isDeliverableEmail(e));
-    if (!to) return false;
-
-    // The recovered session copies the original one, trial included: it had
-    // the free month iff this was a first subscription without a promo.
-    const trialDays =
-      TRIAL_DAYS > 0 && !u.stripeCustomerId && !session.metadata?.promotionCodeId ? TRIAL_DAYS : 0;
-    const expiresAt =
-      typeof recovery?.expires_at === "number" ? new Date(recovery.expires_at * 1000) : null;
-
-    await sendCheckoutRecoveryEmail(to, {
-      url,
-      expiresAt,
-      trialDays,
-      proDailyLimit: getDailyLimit("pro"),
-    });
-    await stampBilling(userId, { checkoutRecoveryAt: now.toISOString() });
-    trackServer({
-      event: "upgrade_email_sent",
-      distinctId: userId,
-      properties: { kind: "checkout_recovery", reason: "checkout_expired" },
-    });
-    return true;
-  } catch (err) {
-    console.warn("[stripe webhook] checkout recovery email skipped:", err);
-    Sentry.captureException(err, { tags: { area: "upgrade-nudge", stage: "checkout-recovery" } });
-    return false;
-  }
 }
 
 /**
@@ -266,9 +111,10 @@ async function shouldProcess(eventId: string, type: string): Promise<boolean> {
       .returning({ eventId: processedStripeEvents.eventId });
     return inserted.length > 0;
   } catch (err) {
-    // Fail open: if the idempotency table breaks, we'd rather double-bill
-    // an audit log than refuse to handle the event. Surface it so the team
-    // learns the guard is degraded rather than discovering it via double-sends.
+    // Fail open: every money write below is ALSO idempotent on its own ledger
+    // key (topup:<session>, autorecharge:<pi>, clawback:…), so processing a
+    // duplicate cannot double-credit. Surface it so the team learns the guard
+    // is degraded.
     console.error("[stripe webhook] idempotency check failed:", err);
     Sentry.captureException(err, { tags: { area: "billing", stage: "idempotency" } });
     return true;
@@ -308,11 +154,9 @@ export async function POST(req: NextRequest) {
   try {
     await handleStripeEvent(event);
   } catch (err) {
-    // A handler threw AFTER shouldProcess() claimed the event. If we returned
-    // 500 without releasing the claim, Stripe's retry would be deduped into a
-    // no-op and the plan/status change would be lost for good. Release the
-    // claim (handlers only set/upsert, so re-running is idempotent) and 500 so
-    // Stripe retries and re-applies the side effects.
+    // A handler threw AFTER shouldProcess() claimed the event. Release the
+    // claim (every handler is idempotent: ledger keys, set/upsert mirrors) and
+    // 500 so Stripe retries and re-applies the side effects.
     console.error("[stripe webhook] handler failed:", err);
     Sentry.captureException(err, {
       tags: { area: "billing", stage: "handler", eventType: event.type },
@@ -326,155 +170,108 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ received: true });
 }
 
+/** The user a charge / dispute belongs to, via its customer. */
+async function userForCustomer(
+  customer: string | Stripe.Customer | Stripe.DeletedCustomer | null
+): Promise<string | undefined> {
+  const id = stripeId(customer);
+  return id ? findUserIdByCustomer(id) : undefined;
+}
+
 async function handleStripeEvent(event: Stripe.Event): Promise<void> {
-  const db = getDb();
-
   switch (event.type) {
-    case "checkout.session.completed": {
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded": {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId;
-      const plan = session.metadata?.plan as Plan | undefined;
-      const customerId =
-        typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
-      const subscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : (session.subscription?.id ?? null);
-
-      const creatorSlug = session.metadata?.creatorSlug ?? null;
-      const promotionCodeId = session.metadata?.promotionCodeId ?? null;
-
-      if (userId && plan) {
-        const [previous] = await db
-          .select({ plan: users.plan, email: users.email, metadata: users.metadata })
-          .from(users)
-          .where(eq(users.id, userId))
-          .limit(1);
-
-        // Promo attribution is merged into the metadata blob in SQL (see
-        // metadataMergeSql) so comp flags, nudge state, attribution and any
-        // other field written concurrently are never clobbered.
-        const promoPatch =
-          creatorSlug || promotionCodeId
-            ? {
-                signupPromo: {
-                  creatorSlug,
-                  promotionCodeId,
-                  redeemedAt: new Date().toISOString(),
-                  stripeSessionId: session.id,
-                },
-              }
-            : null;
-
-        // Period + status aren't on the checkout session — pull them from the
-        // subscription so the billing UI is correct immediately after purchase.
-        // Read the real status too (a trial is `trialing`, not `active`).
-        let currentPeriodEnd: Date | null = null;
-        let cancelAtPeriodEnd = false;
-        let subStatus = "active";
-        const metaCadence = session.metadata?.cadence;
-        let cadence: Cadence | null = isCadence(metaCadence) ? metaCadence : null;
-        let subKnown = false;
-        if (subscriptionId) {
-          try {
-            const sub = await getStripe().subscriptions.retrieve(subscriptionId);
-            currentPeriodEnd = periodEnd(sub);
-            cancelAtPeriodEnd = sub.cancel_at_period_end;
-            subStatus = sub.status;
-            cadence = subscriptionCadence(sub) ?? cadence;
-            subKnown = true;
-          } catch (err) {
-            console.error("[stripe webhook] retrieve subscription failed:", err);
-          }
-        }
-        const trialing = subStatus === "trialing";
-        // A subscription without a trial clears an older, never-converted
-        // trial stamp, so its renewals are not mistaken for a conversion. Only
-        // written when the real status was read (not the "active" fallback).
-        const billingPatch: BillingMeta | null = subKnown
-          ? { trialStartedAt: trialing ? new Date().toISOString() : null }
-          : null;
-
-        await db
-          .update(users)
-          .set({
-            plan,
-            stripeCustomerId: customerId,
-            stripeSubscriptionId: subscriptionId,
-            subscriptionStatus: subStatus,
-            currentPeriodEnd,
-            cancelAtPeriodEnd,
-            ...(promoPatch || billingPatch
-              ? { metadata: metadataMergeSql(promoPatch, billingPatch) }
-              : {}),
-          })
-          .where(eq(users.id, userId));
-
-        audit({
-          userId,
-          action: "plan.upgrade",
-          targetType: "subscription",
-          targetId: subscriptionId,
-          metadata: {
-            from: previous?.plan ?? null,
-            to: plan,
-            stripeEvent: event.id,
-            ...(creatorSlug ? { creatorSlug } : {}),
-            ...(promotionCodeId ? { promotionCodeId } : {}),
-          },
-        });
-
-        // The funnel's "paid" step — without this, visitor→paid conversion is
-        // not measurable (client events stop at checkout_started).
-        trackServer({
-          event: "plan_upgraded",
-          distinctId: userId,
-          properties: { plan, previousPlan: previous?.plan ?? null, status: subStatus },
-        });
-
-        // Trial → paid is measured in two steps: trial_started here, and
-        // trial_converted on the first paid invoice (invoice.paid below).
-        // Attribution from the session metadata (lib/billing/checkout.ts),
-        // else the copy stored on the account at sign-up.
-        if (trialing) {
-          trackServer({
-            event: "trial_started",
-            distinctId: userId,
-            properties: {
-              plan,
-              cadence,
-              from: session.metadata?.from ?? null,
-              ...attributionProps(storedAttribution(previous?.metadata)),
-              ...attributionProps(session.metadata),
-            },
-          });
-        }
-
-        if (creatorSlug) {
-          trackServer({
-            event: "promo_redeemed",
-            distinctId: userId,
-            properties: { creatorSlug, promotionCodeId, plan },
-          });
-        }
-
-        if (previous?.email) {
-          sendUpgradeConfirmationEmail(previous.email, plan, {
-            trialing,
-            periodEnd: currentPeriodEnd,
-          }).catch(() => {});
-        }
-
-        if (customerId) {
-          await getStripe().customers.update(customerId, { metadata: { userId } });
-        }
+      const action = walletSessionAction(session);
+      if (action === "credit") await applyTopupSession(session, event.id);
+      else if (action === "save_card" && event.type === "checkout.session.completed") {
+        await applyCardSetupSession(session, event.id);
+      } else if (action === "legacy" && event.type === "checkout.session.completed") {
+        await handleLegacySubscriptionCheckout(session, event.id);
       }
+      // await_payment: the async_payment_succeeded event credits it later.
       break;
     }
 
+    case "checkout.session.async_payment_failed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.userId;
+      if (session.metadata?.kind !== "wallet_topup" || !userId) break;
+      audit({
+        userId,
+        action: "payment.failed",
+        targetType: "none",
+        targetId: session.id,
+        metadata: { reason: "topup_async_payment_failed", stripeEvent: event.id },
+      });
+      break;
+    }
+
+    case "checkout.session.expired": {
+      // Abandoned top-up: measured only. (The subscription recovery email is
+      // retired with the subscriptions.)
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.kind !== "wallet_topup") break;
+      trackServer({
+        event: "checkout_expired",
+        distinctId: session.metadata?.userId ?? "server",
+        properties: {
+          kind: "wallet_topup",
+          amountEur: session.metadata?.amountEur ?? null,
+          ...attributionProps(session.metadata),
+        },
+      });
+      break;
+    }
+
+    case "payment_intent.succeeded": {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      // Checkout top-ups are credited from their session events; only the
+      // off-session auto-recharge is settled here (idempotent on the PI id).
+      if (walletPaymentIntentKind(pi) === "auto_recharge") await settleAutoRecharge(pi);
+      break;
+    }
+
+    case "payment_intent.payment_failed": {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      if (walletPaymentIntentKind(pi) !== "auto_recharge") break;
+      const userId = pi.metadata?.userId;
+      if (!userId) break;
+      await failAutoRecharge(
+        userId,
+        pi.last_payment_error?.decline_code ?? pi.last_payment_error?.code ?? "payment_failed",
+        pi.id
+      );
+      break;
+    }
+
+    case "charge.refunded": {
+      const charge = event.data.object as Stripe.Charge;
+      const userId = await userForCustomer(charge.customer);
+      if (userId) await applyChargeRefund(userId, charge, event.id);
+      break;
+    }
+
+    case "charge.dispute.created": {
+      const dispute = event.data.object as Stripe.Dispute;
+      const userId = await userIdForDispute(dispute);
+      if (userId) await applyDisputeCreated(userId, dispute, event.id);
+      break;
+    }
+
+    case "charge.dispute.closed": {
+      const dispute = event.data.object as Stripe.Dispute;
+      const userId = await userIdForDispute(dispute);
+      if (userId) await applyDisputeClosed(userId, dispute, event.id);
+      break;
+    }
+
+    // ---- Legacy subscriptions (until scripts/migrate-pro-to-wallet.ts runs) ----
+
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
-      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.toString();
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
       const userId = await findUserIdByCustomer(customerId);
       if (!userId) break;
 
@@ -484,40 +281,18 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
         cancelAtPeriodEnd: sub.cancel_at_period_end,
         stripeSubscriptionId: sub.id,
       };
-
+      // Restore the paid plan on a live PAYING subscription; a dead one
+      // (unpaid, canceled) only updates the status mirror — billing never
+      // downgrades. A trial never restores: it has not paid, and plan='pro'
+      // unlocks 50 servers and every box size on free credit.
       const action = planActionForSubscription({
         status: sub.status,
         metadataPlan: sub.metadata?.plan,
         priceId: sub.items.data[0]?.price?.id,
       });
+      if (action.kind === "restore" && sub.status !== "trialing") update.plan = action.plan;
+      await getDb().update(users).set(update).where(eq(users.id, userId));
 
-      if (action.kind === "downgrade") {
-        // Dunning exhausted (or canceled mid-cycle) — drop to free and stop
-        // over-quota runtimes. `past_due` is intentionally NOT downgraded (it
-        // maps to `restore`) because Stripe is still retrying the card.
-        update.plan = "free";
-        await db.update(users).set(update).where(eq(users.id, userId));
-        const { stopped } = await reconcileServersForPlan(userId, "free");
-        audit({
-          userId,
-          action: "plan.downgrade",
-          targetType: "subscription",
-          targetId: sub.id,
-          metadata: { reason: sub.status, stripeEvent: event.id, serversStopped: stopped.length },
-        });
-        notifyDowngrade(userId, sub.status).catch(() => {});
-      } else {
-        // Restore the paid plan the subscription is for (active/trialing, or a
-        // recovered past_due) so a customer whose payment retried successfully
-        // isn't left paying while pinned to free.
-        if (action.kind === "restore") update.plan = action.plan;
-        await db.update(users).set(update).where(eq(users.id, userId));
-      }
-
-      // A cancellation scheduled from the Customer Portal (the subscription
-      // keeps running until the period end, then customer.subscription.deleted
-      // follows). Measured here so churn shows up when it is decided, not a
-      // month later; `stage` tells the two subscription_canceled events apart.
       if (cancellationScheduled(event.data.previous_attributes, sub)) {
         const reason = cancellationReason(sub.cancellation_details, "cancel_at_period_end");
         audit({
@@ -539,7 +314,6 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
             reason,
             stage: "scheduled",
             status: sub.status,
-            trialing: sub.status === "trialing",
             cadence: subscriptionCadence(sub),
           },
         });
@@ -547,207 +321,58 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       break;
     }
 
-    case "customer.subscription.trial_will_end": {
-      // 3 days before the free month ends and the first invoice is issued.
-      // Pure notification: the plan/status mirror is untouched here (the
-      // subscription.updated that follows the first invoice handles it).
-      const sub = event.data.object as Stripe.Subscription;
-      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.toString();
-      const userId = await findUserIdByCustomer(customerId);
-      if (!userId) break;
-      await notifyTrialEnding(userId, sub);
-      break;
-    }
-
     case "customer.subscription.deleted": {
+      // The subscription ended (or was converted to wallet credit by the
+      // owner's script). Mirror the status only: the plan is never downgraded
+      // and no "you were downgraded" email goes out any more.
       const sub = event.data.object as Stripe.Subscription;
-      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.toString();
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
       const userId = await findUserIdByCustomer(customerId);
       if (!userId) break;
 
-      await db
+      await getDb()
         .update(users)
         .set({
-          plan: "free",
           subscriptionStatus: "canceled",
           cancelAtPeriodEnd: false,
           stripeSubscriptionId: null,
         })
         .where(eq(users.id, userId));
 
-      const { stopped } = await reconcileServersForPlan(userId, "free");
-
+      const reason = cancellationReason(sub.cancellation_details, "subscription_deleted");
       audit({
         userId,
         action: "plan.cancel",
         targetType: "subscription",
         targetId: sub.id,
-        metadata: {
-          reason: "subscription_deleted",
-          stripeEvent: event.id,
-          serversStopped: stopped.length,
-        },
+        metadata: { reason, stripeEvent: event.id, planKept: true },
       });
-      notifyDowngrade(userId, "canceled").catch(() => {});
       trackServer({
         event: "subscription_canceled",
         distinctId: userId,
         properties: {
-          reason: cancellationReason(sub.cancellation_details, "subscription_deleted"),
+          reason,
           stage: "ended",
-          // Ended before (or at) the end of its free month = the trial never converted.
-          endedInTrial:
-            typeof sub.trial_end === "number" &&
-            typeof sub.ended_at === "number" &&
-            sub.ended_at <= sub.trial_end,
+          converted: sub.metadata?.walletConversion === "true",
           cadence: subscriptionCadence(sub),
         },
       });
       break;
     }
 
-    case "invoice.paid": {
-      // The money event. Only the first paid invoice after a free month is
-      // acted on here (trial → paid conversion); renewals and €0 invoices are
-      // ignored. Plan/status mirroring stays with customer.subscription.updated.
-      const invoice = event.data.object as Stripe.Invoice;
-      if (!(invoice.amount_paid > 0)) break;
-      const customerId =
-        typeof invoice.customer === "string"
-          ? invoice.customer
-          : (invoice.customer?.toString() ?? null);
-      if (!customerId) break;
-      const userId = await findUserIdByCustomer(customerId);
-      if (!userId) break;
-
-      const [u] = await db
-        .select({ subscriptionStatus: users.subscriptionStatus, metadata: users.metadata })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-      if (!u) break;
-      const billing = billingMeta(u.metadata);
-      const subscriptionId = invoiceSubscriptionId(invoice);
-
-      // Trials that started before trialStartedAt was recorded: the renewal
-      // invoice right at the end of the subscription's trial is the conversion.
-      let trialStarted = !!billing.trialStartedAt;
-      let subCadence: Cadence | null = null;
-      if (
-        !trialStarted &&
-        !billing.trialConvertedAt &&
-        u.subscriptionStatus !== "trialing" &&
-        invoice.billing_reason === "subscription_cycle" &&
-        subscriptionId
-      ) {
-        try {
-          const sub = await getStripe().subscriptions.retrieve(subscriptionId);
-          subCadence = subscriptionCadence(sub);
-          trialStarted =
-            typeof sub.trial_end === "number" &&
-            Math.abs(invoice.created - sub.trial_end) <= 2 * 86_400;
-        } catch (err) {
-          console.warn("[stripe webhook] retrieve subscription for invoice failed:", err);
-        }
-      }
-
-      if (
-        !isTrialConversion({
-          amountPaid: invoice.amount_paid,
-          billingReason: invoice.billing_reason,
-          storedStatus: u.subscriptionStatus,
-          trialStarted,
-          alreadyConverted: !!billing.trialConvertedAt,
-        })
-      ) {
-        break;
-      }
-
-      // Stamp first: a retried event (or invoice.paid racing a duplicate
-      // delivery) then sees alreadyConverted and counts nothing twice.
-      await stampBilling(userId, { trialConvertedAt: new Date().toISOString() });
-
-      const cadence = cadenceFromPriceId(invoicePriceId(invoice)) ?? subCadence;
-      const amount = invoice.amount_paid / 100;
-      const currency = invoice.currency;
-      audit({
-        userId,
-        action: "trial.converted",
-        targetType: "subscription",
-        targetId: subscriptionId,
-        metadata: {
-          cadence,
-          amountPaid: invoice.amount_paid,
-          currency,
-          invoiceId: invoice.id ?? null,
-          billingReason: invoice.billing_reason,
-          stripeEvent: event.id,
-        },
-      });
-      trackServer({
-        event: "trial_converted",
-        distinctId: userId,
-        properties: {
-          cadence,
-          amount,
-          currency,
-          // PostHog revenue convention, so the paid step can be summed.
-          $revenue: amount,
-          ...attributionProps(storedAttribution(u.metadata)),
-        },
-      });
-      break;
-    }
-
-    case "checkout.session.expired": {
-      // Checkout sessions expire 24 h after creation. Ours are created with
-      // after_expiration.recovery (lib/billing/checkout.ts), so an abandoned
-      // Pro checkout comes with a link that reopens it: one reminder email.
-      const session = event.data.object as Stripe.Checkout.Session;
-      if (session.mode !== "subscription") break;
-      const userId = session.metadata?.userId ?? null;
-      const emailed = userId ? await notifyCheckoutRecovery(userId, session) : false;
-      trackServer({
-        event: "checkout_expired",
-        distinctId: userId ?? "server",
-        properties: {
-          from: session.metadata?.from ?? null,
-          cadence: session.metadata?.cadence ?? null,
-          recoverable: !!session.after_expiration?.recovery?.url,
-          recoveryEmailSent: emailed,
-          ...attributionProps(session.metadata),
-        },
-      });
-      break;
-    }
-
     case "invoice.payment_failed": {
+      // Legacy subscription renewal failed: audit only (Stripe keeps retrying,
+      // and the plan is never downgraded by billing any more).
       const invoice = event.data.object as Stripe.Invoice;
-      const customerId =
-        typeof invoice.customer === "string"
-          ? invoice.customer
-          : (invoice.customer?.toString() ?? null);
+      const customerId = stripeId(invoice.customer);
       if (!customerId) break;
       const userId = await findUserIdByCustomer(customerId);
       if (!userId) break;
-
-      // Don't downgrade yet — Stripe will keep retrying and emit
-      // subscription.updated with past_due/unpaid status when it gives
-      // up. Just record the failed attempt so we can surface a banner.
-      //
-      // In Stripe API 2026-03 dahlia, invoice.subscription was removed in
-      // favour of invoice.parent.subscription_details.subscription. We
-      // best-effort extract the subscription id for the audit row and
-      // accept null if the shape changes again.
-      const subscriptionId = invoiceSubscriptionId(invoice);
-
-      // Not a downgrade — dunning is still in progress. Logged as its own action
-      // so the audit trail isn't misread as a plan change.
       audit({
         userId,
         action: "payment.failed",
         targetType: "subscription",
-        targetId: subscriptionId,
+        targetId: invoiceSubscriptionId(invoice),
         metadata: {
           reason: "invoice_payment_failed",
           amountDue: invoice.amount_due,
@@ -757,5 +382,120 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       });
       break;
     }
+  }
+}
+
+async function userIdForDispute(dispute: Stripe.Dispute): Promise<string | undefined> {
+  // The dispute object carries the charge (and its payment intent) but not
+  // the customer: read the charge to find it.
+  const chargeId = stripeId(dispute.charge);
+  if (!chargeId) return undefined;
+  const charge =
+    typeof dispute.charge === "object" && dispute.charge
+      ? dispute.charge
+      : await getStripe().charges.retrieve(chargeId);
+  return userForCustomer(charge.customer);
+}
+
+/**
+ * A subscription checkout that completes after the switch to the wallet (a
+ * session opened before the deploy). Mirrors it like before so the customer
+ * gets what they paid for; the owner's conversion script then turns it into
+ * credit. No trial bookkeeping (trials are retired).
+ */
+async function handleLegacySubscriptionCheckout(
+  session: Stripe.Checkout.Session,
+  eventId: string
+): Promise<void> {
+  const db = getDb();
+  const userId = session.metadata?.userId;
+  const plan = session.metadata?.plan as Plan | undefined;
+  if (!userId || (plan !== "pro" && plan !== "team")) return;
+  const customerId = stripeId(session.customer);
+  const subscriptionId = stripeId(session.subscription);
+  const creatorSlug = session.metadata?.creatorSlug ?? null;
+  const promotionCodeId = session.metadata?.promotionCodeId ?? null;
+
+  const [previous] = await db
+    .select({ plan: users.plan, email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  let currentPeriodEnd: Date | null = null;
+  let cancelAtPeriodEnd = false;
+  let subStatus = "active";
+  const metaCadence = session.metadata?.cadence;
+  let cadence: Cadence | null = isCadence(metaCadence) ? metaCadence : null;
+  if (subscriptionId) {
+    try {
+      const sub = await getStripe().subscriptions.retrieve(subscriptionId);
+      currentPeriodEnd = periodEnd(sub);
+      cancelAtPeriodEnd = sub.cancel_at_period_end;
+      subStatus = sub.status;
+      cadence = subscriptionCadence(sub) ?? cadence;
+    } catch (err) {
+      console.error("[stripe webhook] retrieve subscription failed:", err);
+    }
+  }
+
+  const promoPatch =
+    creatorSlug || promotionCodeId
+      ? {
+          signupPromo: {
+            creatorSlug,
+            promotionCodeId,
+            redeemedAt: new Date().toISOString(),
+            stripeSessionId: session.id,
+          },
+        }
+      : null;
+
+  await db
+    .update(users)
+    .set({
+      // Never a downgrade: a grandfathered Team account buying Pro stays Team.
+      // A subscription that lands as `trialing` has paid nothing: it keeps
+      // its plan (the wallet, not the plan, is what it runs on).
+      ...(previous?.plan === "team" || subStatus === "trialing" ? {} : { plan }),
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
+      subscriptionStatus: subStatus,
+      currentPeriodEnd,
+      cancelAtPeriodEnd,
+      ...(promoPatch ? { metadata: metadataMergeSql(promoPatch) } : {}),
+    })
+    .where(eq(users.id, userId));
+
+  audit({
+    userId,
+    action: "plan.upgrade",
+    targetType: "subscription",
+    targetId: subscriptionId,
+    metadata: {
+      from: previous?.plan ?? null,
+      to: plan,
+      cadence,
+      legacy: true,
+      stripeEvent: eventId,
+      ...(creatorSlug ? { creatorSlug } : {}),
+      ...(promotionCodeId ? { promotionCodeId } : {}),
+    },
+  });
+  trackServer({
+    event: "plan_upgraded",
+    distinctId: userId,
+    properties: { plan, previousPlan: previous?.plan ?? null, status: subStatus, legacy: true },
+  });
+  if (previous?.email) {
+    sendUpgradeConfirmationEmail(previous.email, plan, {
+      trialing: subStatus === "trialing",
+      periodEnd: currentPeriodEnd,
+    }).catch(() => {});
+  }
+  if (customerId) {
+    await getStripe()
+      .customers.update(customerId, { metadata: { userId } })
+      .catch((err) => console.warn("[stripe webhook] customer metadata not set:", err));
   }
 }

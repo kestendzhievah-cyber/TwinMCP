@@ -5,7 +5,7 @@ import { getDb } from "@/db";
 import { teamspaces, teamspaceMembers, users } from "@/db/schema";
 import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
-import { limitFor, minPlanForLimit, PLAN_LABELS } from "@/lib/plan-features";
+import { limitFor, minPlanForLimit } from "@/lib/plan-features";
 import { logAudit, clientIp } from "@/lib/audit/log";
 
 export const runtime = "nodejs";
@@ -59,8 +59,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if ((tally?.n ?? 0) >= limit) {
       const up = minPlanForLimit("members", (tally?.n ?? 0) + 1);
       return forbidden(
-        `Your plan allows ${limit} member${limit > 1 ? "s" : ""}.` +
-          (up ? ` Upgrade to ${PLAN_LABELS[up]} for more.` : "")
+        `Your account allows ${limit} member${limit > 1 ? "s" : ""}.` +
+          (up ? " Top up your TwinMCP credit to raise it." : "")
       );
     }
 

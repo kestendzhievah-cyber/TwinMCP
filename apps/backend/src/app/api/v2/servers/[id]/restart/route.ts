@@ -1,8 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { badRequest, forbidden, notFound, serverError } from "@/lib/errors";
+import { badRequest, creditRequired, forbidden, notFound, serverError } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { assertServerOwnership, ForbiddenError, NotFoundError } from "@/lib/auth/rbac";
-import { destroyServerRuntime } from "@/lib/provisioning";
+import {
+  assertComputeAllowed,
+  destroyServerRuntime,
+  isInsufficientCreditError,
+} from "@/lib/provisioning";
 import { deleteRuntimeConfirmed, lifecycleActions } from "@/lib/server-lifecycle";
 import { logAudit, clientIp } from "@/lib/audit/log";
 import { enqueue } from "@/lib/queue/qstash";
@@ -49,6 +53,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return badRequest("Type the server name exactly to confirm recreating its runtime");
     }
 
+    // Check credit BEFORE deleting the box: a refused re-provision would leave
+    // the user with no runtime at all.
+    await assertComputeAllowed(session.userId);
+
     const boxId = srv.boxId;
     await destroyServerRuntime(id);
     await enqueue({ type: "provision-server", serverId: id }).catch((err) =>
@@ -68,6 +76,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (err) {
     if (err instanceof NotFoundError) return notFound(err.message);
     if (err instanceof ForbiddenError) return forbidden(err.message);
+    if (isInsufficientCreditError(err)) return creditRequired(err.message);
     console.error("[server restart]", err);
     return serverError();
   }

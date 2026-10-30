@@ -1,11 +1,16 @@
 // The public changelog (/changelog, /fr/changelog). Every entry is a feature
 // or fix that shipped, derived from `git log` since 2026-08-01 and from the
 // current tree, worded for users: no internal jargon, no admin-only tooling,
-// no promises. Entries dated 2026-10-27 are the week's release.
+// no promises. Entries dated 2026-10-27 are the week's release; 2026-10-29 is
+// the switch to the prepaid wallet (prices from lib/wallet/pricing.ts).
 //
 // Pure and client-safe. Unit-tested in src/__tests__/changelog.test.ts.
 
 import type { Locale } from "@/lib/i18n/locales";
+import { walletFacts } from "@/components/pricing/wallet-copy";
+
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
 
 export type ChangeKind = "new" | "improved" | "fixed";
 
@@ -18,7 +23,20 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
-  // ── This week ────────────────────────────────────────────────────────────
+  // ── Pricing switch ───────────────────────────────────────────────────────
+  {
+    date: "2026-10-29",
+    kind: "new",
+    en: {
+      title: `Pay as you go, with ${EN.signupCredit} of free credit`,
+      body: `Subscriptions are gone. You top up a prepaid balance from ${EN.minTopup} and pay only for what your servers use: tool calls (${EN.per1000Calls} per 1,000) and active CPU time (from ${EN.cpuHour.small} per hour). New accounts get ${EN.signupCredit} of free credit, valid ${EN.signupDays} days, no card. At zero, calls stop: no surprise bills. Daily tool-call caps are removed, and Pro subscriptions are converted to credit for the unused part of their period.`,
+    },
+    fr: {
+      title: `Paiement à l’usage, avec ${FR.signupCredit} de crédit offert`,
+      body: `Fini les abonnements. Vous rechargez un solde prépayé à partir de ${FR.minTopup} et ne payez que ce que vos serveurs utilisent : les appels d’outils (${FR.per1000Calls} les 1 000) et le temps CPU actif (dès ${FR.cpuHour.small} l’heure). Les nouveaux comptes reçoivent ${FR.signupCredit} de crédit offert, valable ${FR.signupDays} jours, sans carte. À zéro, les appels s’arrêtent : aucune facture surprise. Les plafonds journaliers d’appels disparaissent, et les abonnements Pro sont convertis en crédit pour la part non utilisée de leur période.`,
+    },
+  },
+  // ── Week of 27 October ───────────────────────────────────────────────────
   {
     date: "2026-10-27",
     kind: "new",
@@ -96,11 +114,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     kind: "improved",
     en: {
       title: "Simpler pricing, now in French too",
-      body: "Two plans: Free, and Pro at €14.99 a month or €135 a year, with the first month free on a first subscription. The pricing page is available in French.",
+      body: "Two plans: Free, and Pro at €14.99 a month or €135 a year, with the first month free on a first subscription. The pricing page is available in French. Replaced on 29 October 2026 by pay-as-you-go credit.",
     },
     fr: {
       title: "Des tarifs plus simples, aussi en français",
-      body: "Deux offres : Free, et Pro à 14,99 € par mois ou 135 € par an, avec le premier mois offert sur un premier abonnement. La page tarifs existe désormais en français.",
+      body: "Deux offres : Free, et Pro à 14,99 € par mois ou 135 € par an, avec le premier mois offert sur un premier abonnement. La page tarifs existe désormais en français. Remplacé le 29 octobre 2026 par le crédit à l’usage.",
     },
   },
   {

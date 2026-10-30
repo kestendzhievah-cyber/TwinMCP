@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     // No customer yet — user has never checked out. Steer them to /plans
     // with a clear hint instead of opening an empty portal.
     if (!row?.stripeCustomerId) {
-      return badRequest("No subscription yet — pick a plan first.");
+      return badRequest("Available after your first top-up.");
     }
 
     const portal = await getStripe().billingPortal.sessions.create({

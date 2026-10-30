@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Section } from "@/components/marketing/section";
 import { Faq } from "@/components/marketing/faq";
 import { JsonLd } from "@/components/seo/json-ld";
-import { FREE_MCP_LIMIT, PLANS } from "@/components/pricing/pricing-data";
-import { PLAN_CAPABILITIES, PRO_TRIAL_DAYS } from "@/lib/plan-features";
-import { getDailyLimit } from "@/lib/rate-limit";
+import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
+import { FUNDED_UNLOCKS, SIGNUP_OFFER, WALLET_SUMMARY } from "@/components/pricing/wallet-copy";
 import { getServerBySlug } from "@/lib/servers/catalog";
 import { breadcrumbListSchema, faqPageSchema, itemListSchema } from "@/lib/seo/schema";
 import type { Locale } from "@/lib/i18n/locales";
@@ -24,27 +23,11 @@ import {
 
 // Segment pages (EN /solutions, FR /fr/solutions). The page files only add
 // metadata; all copy lives in lib/solutions/data.ts (facts policy there) and
-// the plan facts below come from plan-features.ts / rate-limit.ts /
-// pricing-data.ts, never typed by hand. No SLA, region or certification claim.
+// the price facts below come from the wallet price list (lib/wallet/pricing.ts
+// through components/pricing/wallet-copy.ts), never typed by hand. No SLA,
+// region or certification claim.
 
-const free = PLAN_CAPABILITIES.free;
-const pro = PLAN_CAPABILITIES.pro;
-const proPlan = PLANS.find((p) => p.id === "pro")!;
-const FREE_DAILY = getDailyLimit("free");
-const PRO_DAILY = getDailyLimit("pro");
-
-function fmt(n: number, locale: Locale): string {
-  return n.toLocaleString(locale === "fr" ? "fr-FR" : "en-US").replace(/ /g, " ");
-}
-
-function proPrice(locale: Locale): { monthly: string; yearly: string } {
-  return locale === "fr"
-    ? {
-        monthly: `${proPlan.monthlyUsd.toFixed(2).replace(".", ",")} €`,
-        yearly: `${proPlan.annualTotalEur} €`,
-      }
-    : { monthly: `€${proPlan.monthlyUsd.toFixed(2)}`, yearly: `€${proPlan.annualTotalEur}` };
-}
+const PRICING_HREF: Record<Locale, string> = { en: "/plans", fr: "/fr/tarifs" };
 
 const EYEBROW_RULES =
   "eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']";
@@ -58,12 +41,12 @@ const UI = {
     indexEyebrow: "Solutions",
     indexTitle: "An MCP stack for each team",
     indexLead:
-      "Starting packs of hosted MCP servers, each aimed at one kind of team. Install a pack yourself on Free or Pro, or have us set it up for you on your own account.",
+      "Starting packs of hosted MCP servers, each aimed at one kind of team. Install a pack yourself on your free credit, or have us set it up for you on your own account.",
     indexCta: "See the pack",
     mcpCount: (n: number) => `${n} MCP${n > 1 ? "s" : ""}`,
     noKey: "No API key to bring",
     toBring: (n: number) => `${n} setting${n > 1 ? "s" : ""} to provide`,
-    fitsFree: "Fits on the Free server",
+    fitsFree: "Fits on the free-credit server",
     requestSetup: "Request a guided setup",
     startFree: "Start free",
     problemEyebrow: "The problem",
@@ -92,20 +75,19 @@ const UI = {
     diy: {
       name: "Do it yourself",
       steps: [
-        "Create your TwinMCP account on Free or Pro.",
+        `Create your TwinMCP account: ${SIGNUP_OFFER.en}.`,
         "Create a server, then install each MCP of the pack from the catalogue in your dashboard.",
         "Copy the configuration from the server's Connect panel into your AI client, with your API key.",
       ],
-      pro: "Start the Pro trial",
+      pro: "See prices",
     },
     guided: {
       name: "Guided setup",
       body: "We create the server and install this pack on your account, configure the MCPs that need settings, and connect your AI client with you. Every action we take is written to your audit log.",
       cta: "Request a guided setup",
     },
-    priceLine: "Pro plan; guided setup quoted after a short call.",
-    planFacts: () =>
-      `Free: ${free.servers} small server, ${fmt(FREE_DAILY, "en")} tool calls a day. Pro: ${proPrice("en").monthly} a month or ${proPrice("en").yearly} a year, ${pro.servers} servers, ${fmt(PRO_DAILY, "en")} tool calls a day; a first Pro subscription starts with ${PRO_TRIAL_DAYS} days free.`,
+    priceLine: "Pay as you go; guided setup quoted after a short call.",
+    planFacts: () => `${WALLET_SUMMARY.en} ${FUNDED_UNLOCKS.en}`,
     faqEyebrow: "FAQ",
     faqTitle: "Questions about this pack",
     otherEyebrow: "Other packs",
@@ -117,12 +99,12 @@ const UI = {
     indexEyebrow: "Solutions",
     indexTitle: "Une stack MCP pour chaque équipe",
     indexLead:
-      "Des packs de départ de serveurs MCP hébergés, chacun pensé pour un type d’équipe. Installez un pack vous-même sur Free ou Pro, ou laissez-nous l’installer pour vous, sur votre propre compte.",
+      "Des packs de départ de serveurs MCP hébergés, chacun pensé pour un type d’équipe. Installez un pack vous-même avec votre crédit offert, ou laissez-nous l’installer pour vous, sur votre propre compte.",
     indexCta: "Voir le pack",
     mcpCount: (n: number) => `${n} MCP`,
     noKey: "Aucune clé API à fournir",
     toBring: (n: number) => `${n} paramètre${n > 1 ? "s" : ""} à fournir`,
-    fitsFree: "Tient sur le serveur Free",
+    fitsFree: "Tient sur le serveur du crédit offert",
     requestSetup: "Demander une installation",
     startFree: "Démarrer gratuitement",
     problemEyebrow: "Le problème",
@@ -151,20 +133,19 @@ const UI = {
     diy: {
       name: "Vous-même",
       steps: [
-        "Créez votre compte TwinMCP, sur Free ou sur Pro.",
+        `Créez votre compte TwinMCP : ${SIGNUP_OFFER.fr}.`,
         "Créez un serveur, puis installez chaque MCP du pack depuis le catalogue de votre tableau de bord.",
         "Copiez la configuration du panneau Connect du serveur dans votre client IA, avec votre clé API.",
       ],
-      pro: "Essayer Pro",
+      pro: "Voir les tarifs",
     },
     guided: {
       name: "Installation accompagnée",
       body: "Nous créons le serveur et installons ce pack sur votre compte, configurons les MCP qui demandent des paramètres et connectons votre client IA avec vous. Chacune de nos actions est inscrite dans votre journal d’audit.",
       cta: "Demander une installation",
     },
-    priceLine: "Offre Pro ; installation accompagnée chiffrée après un court appel.",
-    planFacts: () =>
-      `Free : ${free.servers} petit serveur, ${fmt(FREE_DAILY, "fr")} appels d’outils par jour. Pro : ${proPrice("fr").monthly} par mois ou ${proPrice("fr").yearly} par an, ${pro.servers} serveurs, ${fmt(PRO_DAILY, "fr")} appels d’outils par jour ; un premier abonnement Pro commence par ${PRO_TRIAL_DAYS} jours offerts.`,
+    priceLine: "Paiement à l’usage ; installation accompagnée chiffrée après un court appel.",
+    planFacts: () => `${WALLET_SUMMARY.fr} ${FUNDED_UNLOCKS.fr}`,
     faqEyebrow: "FAQ",
     faqTitle: "Questions sur ce pack",
     otherEyebrow: "Autres packs",
@@ -469,8 +450,8 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
               </Button>
               <Button asChild variant="outline">
                 <Link
-                  href={signUpHref(locale, "pro") as Route}
-                  data-cta-location={`solution_diy_pro_${solution.bundleId}`}
+                  href={PRICING_HREF[locale] as Route}
+                  data-cta-location={`solution_diy_pricing_${solution.bundleId}`}
                 >
                   {t.diy.pro}
                 </Link>

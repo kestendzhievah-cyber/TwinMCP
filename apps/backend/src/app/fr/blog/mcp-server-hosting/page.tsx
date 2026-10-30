@@ -2,6 +2,10 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { FrPostLayout } from "@/components/blog/fr-post-layout";
 import { faqPageSchema } from "@/lib/seo/schema";
+import { walletFacts } from "@/components/pricing/wallet-copy";
+
+// Les prix TwinMCP cités viennent de la grille du portefeuille (lib/wallet/pricing.ts).
+const W = walletFacts("fr");
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
@@ -207,12 +211,12 @@ export default function Post() {
         Windsurf et Cline.
       </p>
       <p>
-        Le coût chez TwinMCP démarre à 0 € pour un serveur sur l&apos;offre gratuite et scale
-        jusqu&apos;à 14,99 € par mois fixe pour Pro (50 serveurs). Setup deux minutes &mdash;
-        choisissez un runtime, collez une commande d&apos;install, c&apos;est parti. Le compromis
-        est le verrouillage plateforme : la configuration de déploiement est spécifique à la
-        plateforme, et migrer demande de reconstruire le conteneur vous-même. (Le code du serveur
-        MCP lui-même est portable ; seule la glue de provisioning ne l&apos;est pas.)
+        {`Chez TwinMCP, on paie à l’usage, sans abonnement : chaque nouveau compte reçoit ${W.signupCredit} de crédit offert, puis les appels d’outils coûtent ${W.per1000Calls} les 1 000 et le calcul ${W.cpuHour.small} par heure de CPU actif sur un petit serveur, prélevés sur un solde prépayé (jusqu’à ${W.fundedServers} serveurs une fois le compte rechargé).`}{" "}
+        Setup deux minutes &mdash; choisissez un runtime, collez une commande d&apos;install,
+        c&apos;est parti. Le compromis est le verrouillage plateforme : la configuration de
+        déploiement est spécifique à la plateforme, et migrer demande de reconstruire le conteneur
+        vous-même. (Le code du serveur MCP lui-même est portable ; seule la glue de provisioning ne
+        l&apos;est pas.)
       </p>
       <p>
         Utilisez un runtime géré quand le serveur tient des secrets, quand il doit être accessible

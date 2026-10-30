@@ -25,8 +25,8 @@ export default async function SettingsPage() {
     <SettingsPanel
       email={row?.email ?? user.email ?? ""}
       idePreference={meta.ide_preference ?? ""}
-      // Pro-offer, plan-limit and trial-ending emails are on unless explicitly
-      // turned off (users.metadata.emailNudges === false — absent means on).
+      // Wallet nudges (sign-up credit, low balance, promo expiring, activation
+      // tips) are on unless explicitly turned off (users.metadata.emailNudges === false — absent means on).
       emailNudges={meta.emailNudges !== false}
     />
   );

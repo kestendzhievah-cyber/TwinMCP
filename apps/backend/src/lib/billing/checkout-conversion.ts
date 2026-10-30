@@ -1,10 +1,12 @@
 // Turns a completed Stripe Checkout session into the payload of the Google Ads
-// "Abonnement" conversion fired on /dashboard/billing?status=success.
+// purchase conversion fired on /dashboard/billing?topup=success (a wallet
+// top-up; legacy subscription sessions too).
 //
 // The session id comes from the URL, so it is verified against Stripe: it must
 // be complete and belong to the signed-in user. The value is what the customer
-// actually paid; for a free trial (nothing charged yet) it is the plan's first
-// period price, the value the conversion is expected to bring.
+// paid EXCLUDING VAT (amount_total minus total_details.amount_tax): VAT
+// is not revenue. For a legacy free trial (nothing charged) it is the plan's
+// first period price.
 
 import { getStripe } from "@/lib/stripe";
 
@@ -21,6 +23,7 @@ export interface CheckoutSessionLike {
   status: string | null;
   payment_status: string;
   amount_total: number | null;
+  total_details?: { amount_tax?: number | null } | null;
   currency: string | null;
   metadata: Record<string, string> | null;
   line_items?: { data: Array<{ price: { unit_amount: number | null } | null }> } | null;
@@ -42,7 +45,9 @@ export function conversionFromCheckoutSession(
   if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
     return null;
   }
-  const charged = session.amount_total ?? 0;
+  const tax = Math.max(0, session.total_details?.amount_tax ?? 0);
+  // Inclusive or exclusive tax alike, the total minus its tax is the net paid.
+  const charged = Math.max(0, (session.amount_total ?? 0) - tax);
   const firstPeriod = session.line_items?.data[0]?.price?.unit_amount ?? 0;
   const cents = charged > 0 ? charged : firstPeriod;
   return {

@@ -3,7 +3,6 @@ import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { usageEvents, users, usageMetrics, userServers, mcpServers } from "@/db/schema";
 import { serverError } from "@/lib/errors";
-import { getDailyLimit } from "@/lib/rate-limit";
 import { can } from "@/lib/plan-features";
 import { requireManagementUser } from "@/lib/session";
 
@@ -101,7 +100,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       plan,
       days,
-      dailyLimit: getDailyLimit(plan),
       usageExport: can(plan, "usageExport"),
       last24h: dayCount?.n ?? 0,
       perEndpoint,

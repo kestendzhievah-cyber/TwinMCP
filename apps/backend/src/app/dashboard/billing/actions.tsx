@@ -1,231 +1,141 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Check, CheckCircle2, Info, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle2, Info, XCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
-import { PLAN_CAPABILITIES, PRO_TRIAL_DAYS } from "@/lib/plan-features";
 import { track } from "@/lib/analytics/funnel";
-import { normalizePromo } from "@/lib/auth/return-to";
+import { formatEurAmount } from "@/lib/wallet/pricing";
 import {
-  isCheckoutErrorReason,
-  isCheckoutFrom,
-  type CheckoutErrorReason,
-  type CheckoutFrom,
-} from "@/lib/billing/checkout-helpers";
+  checkTopupAmount,
+  expiryCountdown,
+  formatCredit,
+  type NudgeLevel,
+} from "@/lib/billing/upgrade-state";
+
+export interface CreditsWallet {
+  paidMicros: number;
+  promoMicros: number;
+  promoExpiresAt: string | null;
+  promoExpired: boolean;
+  totalMicros: number;
+  funded: boolean;
+  autoRecharge: {
+    enabled: boolean;
+    thresholdMicros: number;
+    amountMicros: number;
+    monthlyCapMicros: number;
+    hasPaymentMethod: boolean;
+  };
+}
+
+export interface AutoRechargeLimits {
+  minThresholdEur: number;
+  maxThresholdEur: number;
+  minAmountEur: number;
+  maxAmountEur: number;
+  maxMonthlyCapEur: number;
+}
 
 interface Props {
-  plan: string;
-  currentPeriodEnd: string | null;
-  cancelAtPeriodEnd: boolean;
-  subscriptionStatus: string | null;
+  /** null: the balance could not be read (never shown as €0). */
+  wallet: CreditsWallet | null;
+  level: NudgeLevel;
+  legacySubscription: boolean;
+  legacyPastDue: boolean;
   hasStripeCustomer: boolean;
-  /** The Pro daily tool-call quota actually enforced (lib/rate-limit.ts, env-overridable). */
-  proDailyLimit: number;
+  presetsEur: number[];
+  minTopupEur: number;
+  maxTopupEur: number;
+  autoRechargeLimits: AutoRechargeLimits;
+  /** Server clock (ISO), so the expiry countdown matches between server and client. */
+  serverNow: string;
 }
 
-type Cadence = "monthly" | "yearly";
+type Banner = { type: "success" | "info" | "error"; message: string };
 
-// Fixed copy per checkout/start failure code (never server text from the URL).
-const CHECKOUT_ERROR_COPY: Record<CheckoutErrorReason, string> = {
-  price: "Pro checkout is not available right now. Please contact support.",
-  stripe: "Could not reach our payment provider. Please try again in a moment.",
-  unknown: "Could not start checkout. Please try again.",
-};
+const eur = (micros: number) => formatCredit(micros, { precise: false });
+const toEur = (micros: number) => Math.round(micros / 10_000) / 100;
 
-// What Pro includes — the one paid plan. Every line is enforced by the code
-// (lib/plan-features.ts PLAN_CAPABILITIES.pro, lib/rate-limit.ts daily quota —
-// passed in from the server so this card always shows the enforced figure);
-// keep it in sync with the marketing bullets in components/pricing/pricing-data.ts.
-const PRO = PLAN_CAPABILITIES.pro;
-function proBullets(dailyLimit: number): string[] {
-  return [
-    `${PRO.servers} servers`,
-    `All box sizes (${PRO.boxSizes.join(", ")})`,
-    `${dailyLimit.toLocaleString("en-US")} tool calls / day`,
-    "Publish your own MCPs",
-    `${PRO.apiKeys} API keys`,
-    `Audit logs · ${PRO.auditRetentionDays} days`,
-    "Usage export",
-    "Priority email support",
-  ];
-}
-
-function formatPeriodEnd(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  // Deterministic (server === client) to avoid a hydration mismatch.
-  return formatDate(d);
-}
-
-export function BillingActions({
-  plan,
-  currentPeriodEnd,
-  cancelAtPeriodEnd,
-  subscriptionStatus,
+export function CreditsActions({
+  wallet,
+  level,
+  legacySubscription,
+  legacyPastDue,
   hasStripeCustomer,
-  proDailyLimit,
+  presetsEur,
+  minTopupEur,
+  maxTopupEur,
+  autoRechargeLimits,
+  serverNow,
 }: Props) {
-  const proFeatures = proBullets(proDailyLimit);
   const router = useRouter();
   const params = useSearchParams();
+  const [banner, setBanner] = useState<Banner | null>(null);
   const [loading, setLoading] = useState("");
-  // A Pro intent on the URL (sign-up / sign-in with plan=pro) picks the cadence
-  // the visitor chose; otherwise default to yearly, the best-value view.
-  const [cadence, setCadence] = useState<Cadence>(() => {
-    const c = params.get("cadence");
-    if (c === "monthly") return "monthly";
-    return "yearly";
-  });
-  const [banner, setBanner] = useState<{
-    type: "success" | "info" | "error";
-    message: string;
-  } | null>(null);
-  // The free month is for a first subscription only (lib/billing/checkout.ts).
-  const trialEligible = !hasStripeCustomer;
 
-  // Surface the checkout outcome from the Stripe redirect, then strip the query
-  // so a refresh doesn't re-trigger it. Runs once on mount: reading `status` here
-  // and depending on `params` would tear the poll down the instant router.replace
-  // strips the query (params changes → effect cleanup fires before the first
-  // tick), which is exactly the bug that left the plan not auto-updating.
+  // Surface the Stripe round trip, then strip the query so a refresh doesn't
+  // re-trigger it. Mount-only on purpose: router.replace changes `params`, and
+  // re-running would tear down the poll below before its first tick.
   useEffect(() => {
-    const status = params.get("status");
-    if (status === "success") {
+    const topup = params.get("topup");
+    const card = params.get("card");
+    let poll: ReturnType<typeof setInterval> | null = null;
+    if (topup === "success") {
       setBanner({
         type: "success",
-        message: "Checkout complete. Your Pro plan is activating; this page updates automatically.",
+        message:
+          "Payment received. Your credit is added as soon as Stripe confirms it; this page updates automatically.",
       });
       router.replace("/dashboard/billing");
-      // The plan flips when Stripe's webhook lands (usually a few seconds). Poll
-      // so the page self-updates instead of asking the user to refresh manually.
+      // The credit lands with Stripe's webhook (usually seconds): poll a few
+      // times so the balance self-updates.
       let n = 0;
-      const poll = setInterval(() => {
+      poll = setInterval(() => {
         router.refresh();
-        if (++n >= 6) clearInterval(poll);
+        if (++n >= 6 && poll) clearInterval(poll);
       }, 2500);
-      return () => clearInterval(poll);
-    } else if (status === "canceled") {
+    } else if (topup === "canceled") {
       track({ name: "checkout_canceled", properties: { from: "billing" } });
+      setBanner({ type: "info", message: "Top-up canceled. You were not charged." });
+      router.replace("/dashboard/billing");
+    } else if (card === "saved") {
+      setBanner({
+        type: "success",
+        message: "Card saved. Auto-recharge uses it from now on; this page updates automatically.",
+      });
+      router.replace("/dashboard/billing");
+      let n = 0;
+      poll = setInterval(() => {
+        router.refresh();
+        if (++n >= 4 && poll) clearInterval(poll);
+      }, 2500);
+    } else if (card === "canceled") {
+      setBanner({ type: "info", message: "No card was saved. Auto-recharge stays off." });
+      router.replace("/dashboard/billing");
+    } else if (params.get("plan") || params.get("status")) {
+      // Old links (pricing page, sign-up) asked for the Pro plan: there is no
+      // plan to buy any more, only credit.
       setBanner({
         type: "info",
-        message:
-          plan === "free" && trialEligible
-            ? "Checkout canceled. You were not charged. Your free month is still available."
-            : "Checkout canceled. You were not charged.",
-      });
-      router.replace("/dashboard/billing");
-    } else if (params.get("checkout") === "error") {
-      // GET /api/v2/billing/checkout/start could not open Stripe. Only a fixed
-      // reason code is read: any free-text `message` param is ignored, so a
-      // crafted link cannot put its own words inside this trusted banner.
-      const reason = params.get("reason");
-      setBanner({
-        type: "error",
-        message: isCheckoutErrorReason(reason)
-          ? CHECKOUT_ERROR_COPY[reason]
-          : CHECKOUT_ERROR_COPY.unknown,
+        message: "TwinMCP is now pay as you go: choose an amount below to add credit.",
       });
       router.replace("/dashboard/billing");
     }
-    // Mount-only on purpose: reading `params`/`router` here must NOT re-run this
-    // effect, or router.replace (which changes params) would tear down the poll.
+    return () => {
+      if (poll) clearInterval(poll);
+    };
   }, []);
-
-  // plan=pro on the URL: the visitor asked for Pro before signing in (pricing
-  // page, sign-up, sign-in). A Free account goes straight to the checkout, once;
-  // the ref survives React's dev double-invoke and a re-render.
-  const autoCheckoutStarted = useRef(false);
-  useEffect(() => {
-    if (autoCheckoutStarted.current) return;
-    const intent = params.get("plan");
-    if (intent !== "pro" && intent !== "team") return;
-    autoCheckoutStarted.current = true;
-    if (plan !== "free") {
-      // Already on a paid plan: nothing to buy, just drop the intent.
-      router.replace("/dashboard/billing");
-      return;
-    }
-    const c: Cadence =
-      params.get("cadence") === "yearly" || params.get("cadence") === "annual"
-        ? "yearly"
-        : "monthly";
-    const promo = normalizePromo(params.get("promo"));
-    // The surface that asked for Pro (sign-up confirmation bounced here by
-    // checkout/start): keeps Stripe's return URLs pointing at onboarding.
-    const fromParam = params.get("from");
-    const from: CheckoutFrom = isCheckoutFrom(fromParam) ? fromParam : "billing";
-    // Drop the intent from the history entry first, so the browser's Back
-    // button from Stripe lands on a plain Billing page instead of reopening
-    // the checkout.
-    window.history.replaceState(null, "", "/dashboard/billing");
-    setCadence(c);
-    setBanner({ type: "info", message: "Opening secure checkout…" });
-    void checkout({
-      cadence: c,
-      from,
-      ...(promo?.startsWith("promo_")
-        ? { promotionCodeId: promo }
-        : promo
-          ? { creatorSlug: promo }
-          : {}),
-    });
-    // Mount-only, like the status effect above.
-  }, []);
-
-  // Pro is the only plan sold; Team subscribers are grandfathered and manage
-  // their subscription from the billing portal below.
-  async function checkout(
-    opts: {
-      cadence?: Cadence;
-      promotionCodeId?: string;
-      creatorSlug?: string;
-      from?: CheckoutFrom;
-    } = {}
-  ) {
-    const chosen = opts.cadence ?? cadence;
-    setLoading("pro");
-    // Same funnel step the marketing pricing page fires (lib/analytics/funnel.ts).
-    track({
-      name: "checkout_started",
-      properties: {
-        plan: "pro",
-        cadence: chosen === "yearly" ? "annual" : "monthly",
-        ...(opts.creatorSlug ? { creatorSlug: opts.creatorSlug } : {}),
-      },
-    });
-    try {
-      const res = await fetch("/api/v2/billing/checkout", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          plan: "pro",
-          cadence: chosen,
-          from: opts.from ?? "billing",
-          ...(opts.promotionCodeId ? { promotionCodeId: opts.promotionCodeId } : {}),
-          ...(opts.creatorSlug ? { creatorSlug: opts.creatorSlug } : {}),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      setBanner({ type: "error", message: data.message ?? "Could not start checkout. Try again." });
-    } catch {
-      setBanner({ type: "error", message: "Network error — try again." });
-    }
-    setLoading("");
-  }
 
   async function openPortal() {
     setLoading("portal");
-    track({ name: "portal_opened" });
+    track({ name: "portal_opened", properties: { surface: "credits" } });
     try {
       const res = await fetch("/api/v2/billing/portal", { method: "POST" });
       const data = await res.json().catch(() => ({}));
@@ -235,315 +145,533 @@ export function BillingActions({
       }
       setBanner({ type: "error", message: data.message ?? "Could not open the billing portal." });
     } catch {
-      setBanner({ type: "error", message: "Network error — try again." });
+      setBanner({ type: "error", message: "Network error. Try again." });
     }
     setLoading("");
   }
 
-  const periodLabel = formatPeriodEnd(currentPeriodEnd);
+  const now = new Date(serverNow);
+  const expiresAt = wallet?.promoExpiresAt ? new Date(wallet.promoExpiresAt) : null;
 
   return (
     <div className="space-y-8">
-      {/* Checkout outcome: a tinted memo line (DESIGN.md §5 callouts). */}
-      {banner && (
+      {/* The Stripe round trip: a tinted memo line (DESIGN.md §5 callouts). */}
+      {banner && <BannerLine banner={banner} />}
+
+      {legacySubscription && (
         <div
-          role="status"
           className={cn(
-            "flex items-start gap-3 border border-l-2 px-4 py-3 text-sm",
-            banner.type === "success"
-              ? "border-success/40 border-l-success bg-success/10 text-success"
-              : banner.type === "error"
-                ? "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive"
-                : "border-info/40 border-l-info bg-info/10 text-info"
+            "border border-l-2 px-4 py-3 text-sm",
+            legacyPastDue
+              ? "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive"
+              : "border-info/40 border-l-info bg-info/10 text-info"
           )}
         >
-          {banner.type === "success" ? (
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          ) : banner.type === "error" ? (
-            <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          ) : (
-            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          )}
-          <span>{banner.message}</span>
+          <p className="font-medium">Your subscription will be converted to credit</p>
+          <p className="mt-1 italic text-muted-foreground">
+            TwinMCP now bills pay as you go from a prepaid balance. The unused part of your current
+            period will be added to your balance and the subscription cancelled; you will get an
+            email. There is nothing to do.
+            {legacyPastDue &&
+              " Your last renewal could not be charged: add credit below to keep your tool calls running."}
+          </p>
         </div>
       )}
 
-      {/* Subscription memo: one ruled line about the next date, tinted when it needs attention. */}
-      {plan !== "free" &&
-        periodLabel &&
-        (cancelAtPeriodEnd ? (
-          <div className="border border-border border-l-2 border-l-warning bg-card px-4 py-3 text-sm">
-            Your subscription{" "}
-            <Badge variant="warning" className="align-middle">
-              cancels
-            </Badge>{" "}
-            on <span className="lining font-medium">{periodLabel}</span>. You keep access until
-            then.
-          </div>
-        ) : subscriptionStatus === "past_due" || subscriptionStatus === "unpaid" ? (
-          <div className="border border-border border-l-2 border-l-destructive bg-card px-4 py-3 text-sm">
-            <Badge variant="destructive" className="mr-1 align-middle">
-              Payment due
-            </Badge>{" "}
-            The last renewal could not be charged. Update your payment method from the billing
-            portal.
-          </div>
-        ) : subscriptionStatus === "trialing" ? (
-          // The free month: Stripe's current_period_end is the trial end, so
-          // the first charge lands on that date. The cadence chosen at checkout
-          // is not mirrored on the user row, hence no amount here.
-          <div className="border border-border border-l-2 border-l-info bg-card px-4 py-3 text-sm">
-            <Badge variant="info" className="mr-1 align-middle">
-              Free month
-            </Badge>{" "}
-            in progress — your first charge is on{" "}
-            <span className="lining font-medium">{periodLabel}</span>. Cancel anytime before then
-            from the billing portal.
-          </div>
-        ) : (
-          <div className="border border-border bg-card px-4 py-3 text-sm">
-            Next charge on <span className="lining font-medium">{periodLabel}</span>.
-          </div>
-        ))}
-
-      {plan === "free" && (
-        <div className="space-y-8">
-          <div className="space-y-5">
-            {/* Eyebrow with rules (DESIGN.md §4.7) over the cadence stamps. */}
-            <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-              Upgrade to Pro
-            </p>
-            <CadenceToggle
-              cadence={cadence}
-              onChange={(c) => {
-                if (c !== cadence) {
-                  track({
-                    name: "cadence_toggled",
-                    properties: { cadence: c, surface: "billing" },
-                  });
-                }
-                setCadence(c);
-              }}
-            />
-          </div>
-          <div className="mx-auto max-w-md">
-            <PlanUpgradeCard
-              name="Pro"
-              description="Everything we offer, for developers shipping with AI every day."
-              bullets={proFeatures}
-              monthly={14.99}
-              yearly={135}
-              trialDays={trialEligible ? PRO_TRIAL_DAYS : 0}
-              highlighted
-              cadence={cadence}
-              onCheckout={() => void checkout()}
-              loading={loading === "pro"}
-              disabled={!!loading}
-            />
-          </div>
-        </div>
-      )}
-
-      {plan !== "free" && (
-        <div className={cn("grid gap-6", plan === "pro" && "md:grid-cols-2")}>
-          <Card className={cn(plan !== "pro" && "max-w-xl")}>
-            <CardHeader>
-              <CardTitle>Manage subscription</CardTitle>
-              <CardDescription>
-                Update your payment method, view invoices, or cancel — all from the billing portal.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="secondary"
-                onClick={openPortal}
-                disabled={!!loading || !hasStripeCustomer}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Balance card: the total in large lining figures, then the two buckets. */}
+        <Card>
+          <CardHeader>
+            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
+              Balance
+            </CardDescription>
+            {wallet ? (
+              <CardTitle
+                className={cn(
+                  "lining text-4xl",
+                  level === "limit" && "text-destructive",
+                  level === "warning" && "text-warning"
+                )}
               >
-                {loading === "portal" ? "Redirecting…" : "Billing portal"}
-              </Button>
-              {!hasStripeCustomer && (
-                <p className="text-xs italic text-muted-foreground">
-                  Available once you have a subscription. If your plan was set up manually, contact
-                  support to manage it.
+                {eur(wallet.totalMicros)}
+              </CardTitle>
+            ) : (
+              <CardTitle className="text-base font-normal italic text-muted-foreground">
+                Your balance could not be loaded. Refresh the page in a moment.
+              </CardTitle>
+            )}
+          </CardHeader>
+          {wallet && (
+            <CardContent className="space-y-3">
+              <dl className="lining divide-y divide-border border-y border-border text-sm">
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="smallcaps tracking-sc text-xs text-muted-foreground">
+                    Free credit
+                  </dt>
+                  <dd className="text-right">
+                    <span className="font-medium">{eur(wallet.promoMicros)}</span>
+                    {expiresAt && wallet.promoMicros > 0 && (
+                      <span className="block text-xs italic text-muted-foreground">
+                        Expires {expiryCountdown(expiresAt, now)} · {formatDate(expiresAt)}
+                      </span>
+                    )}
+                    {wallet.promoExpired && (
+                      <span className="block text-xs italic text-muted-foreground">Expired</span>
+                    )}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="smallcaps tracking-sc text-xs text-muted-foreground">
+                    Paid credit
+                  </dt>
+                  <dd className="font-medium">{eur(wallet.paidMicros)}</dd>
+                </div>
+              </dl>
+              <p className="text-xs italic text-muted-foreground">
+                Free credit is spent first. Tool calls are refused when the balance reaches zero.
+              </p>
+              {level === "limit" && (
+                <p className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  Your credit is used up: top up to continue.
                 </p>
               )}
             </CardContent>
-          </Card>
-          {plan === "pro" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Included in Pro</CardTitle>
-                <CardDescription>What your plan unlocks on your account.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PlanBullets bullets={proFeatures} />
-              </CardContent>
-            </Card>
           )}
-        </div>
-      )}
+        </Card>
+
+        <TopUpCard
+          presetsEur={presetsEur}
+          minTopupEur={minTopupEur}
+          maxTopupEur={maxTopupEur}
+          funded={Boolean(wallet?.funded)}
+          onError={(message) => setBanner({ type: "error", message })}
+        />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {wallet && (
+          <AutoRechargeCard
+            initial={wallet.autoRecharge}
+            limits={autoRechargeLimits}
+            onBanner={setBanner}
+          />
+        )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Receipts and payment methods</CardTitle>
+            <CardDescription>
+              Card top-ups come with an invoice; automatic recharges come with a Stripe receipt by
+              email. Download invoices and manage your saved cards from the Stripe billing portal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="secondary"
+              onClick={openPortal}
+              disabled={!!loading || !hasStripeCustomer}
+            >
+              {loading === "portal" ? "Redirecting…" : "Billing portal"}
+            </Button>
+            {!hasStripeCustomer && (
+              <p className="text-xs italic text-muted-foreground">
+                Available after your first top-up.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
 
-// The pricing-tier check list (DESIGN.md §5): success check marks, lining figures.
-function PlanBullets({ bullets }: { bullets: readonly string[] }) {
+function BannerLine({ banner }: { banner: Banner }) {
   return (
-    <ul className="lining space-y-2 text-sm">
-      {bullets.map((b) => (
-        <li key={b} className="flex items-start gap-2">
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-          <span>{b}</span>
-        </li>
-      ))}
-    </ul>
+    <div
+      role="status"
+      className={cn(
+        "flex items-start gap-3 border border-l-2 px-4 py-3 text-sm",
+        banner.type === "success"
+          ? "border-success/40 border-l-success bg-success/10 text-success"
+          : banner.type === "error"
+            ? "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive"
+            : "border-info/40 border-l-info bg-info/10 text-info"
+      )}
+    >
+      {banner.type === "success" ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+      ) : banner.type === "error" ? (
+        <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      ) : (
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+      )}
+      <span>{banner.message}</span>
+    </div>
   );
 }
 
-// Self-serve plan card (Pro — the only plan sold). The annual view is deliberately
-// loud on the `highlighted` plan (the stacked-card lift, the gilt seal, savings
-// called out) to steer toward the yearly commitment. Prices are display strings —
-// the actual charge is the Stripe price STRIPE_<PLAN>_*_PRICE_ID points to. Keep in sync.
-function PlanUpgradeCard({
-  name,
-  description,
-  bullets,
-  monthly,
-  yearly,
-  trialDays = 0,
-  highlighted = false,
-  cadence,
-  onCheckout,
-  loading,
-  disabled,
+function TopUpCard({
+  presetsEur,
+  minTopupEur,
+  maxTopupEur,
+  funded,
+  onError,
 }: {
-  name: string;
-  description: string;
-  bullets: readonly string[];
-  monthly: number;
-  yearly: number;
-  /** Free days on a first subscription (0 = not eligible). */
-  trialDays?: number;
-  highlighted?: boolean;
-  cadence: Cadence;
-  onCheckout: () => void;
-  loading: boolean;
-  disabled: boolean;
+  presetsEur: number[];
+  minTopupEur: number;
+  maxTopupEur: number;
+  funded: boolean;
+  onError: (message: string) => void;
 }) {
-  const isYearly = cadence === "yearly";
-  const fullYear = monthly * 12;
-  const savings = Math.round(fullYear - yearly);
-  const effMonthly = yearly / 12;
-  const savingsPct = Math.round((1 - yearly / fullYear) * 100);
-  const loud = highlighted && isYearly;
-  const eur = (n: number) => `€${Number.isInteger(n) ? n : n.toFixed(2)}`;
+  const [preset, setPreset] = useState<number | null>(presetsEur[1] ?? presetsEur[0] ?? null);
+  const [custom, setCustom] = useState("");
+  const [saveCard, setSaveCard] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const chosen =
+    preset !== null
+      ? ({ ok: true, amountEur: preset } as const)
+      : checkTopupAmount(custom, minTopupEur, maxTopupEur);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!chosen.ok) {
+      setError(chosen.message);
+      return;
+    }
+    setError("");
+    setLoading(true);
+    track({
+      name: "upgrade_cta_clicked",
+      properties: { source: "billing", level: "offer", reason: `topup_${chosen.amountEur}` },
+    });
+    try {
+      const res = await fetch("/api/v2/wallet/topup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ amountEur: chosen.amountEur, saveCard }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      onError(data.message ?? "Could not start the payment. Try again.");
+    } catch {
+      onError("Network error. Try again.");
+    }
+    setLoading(false);
+  }
+
   return (
-    // The highlighted tier is the pricing recipe (DESIGN.md §5): ink hairline,
-    // stacked-card shadow, one gilt seal in the top-left corner.
-    <Card className={cn("relative", loud && "border-foreground/70 shadow-stack")}>
-      {loud && (
-        <Badge variant="gilt" className="absolute -top-3 left-6">
-          Best value
-        </Badge>
-      )}
+    <Card>
       <CardHeader>
-        <CardTitle>{name}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle>Add credit</CardTitle>
+        <CardDescription>
+          {funded
+            ? "Top up any time. The amount is added to your balance as soon as the payment goes through."
+            : "Your first top-up unlocks every box size, more servers and publishing your own MCPs."}
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
-        {isYearly ? (
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="lining text-4xl font-medium">{eur(yearly)}</span>
-              <span className="text-sm italic text-muted-foreground">/ year</span>
-            </div>
-            <p className="lining mt-1.5 text-sm text-muted-foreground">
-              <span className="line-through">{eur(fullYear)}</span> · {eur(effMonthly)}/mo billed
-              annually · <span className="font-medium text-success">save €{savings}/yr</span>
+      <CardContent>
+        <form onSubmit={submit} className="space-y-4" noValidate>
+          {/* Hairline stamps side by side; the chosen amount is pressed in ink. */}
+          <div
+            role="group"
+            aria-label="Amount"
+            className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4"
+          >
+            {presetsEur.map((amount) => (
+              <button
+                key={amount}
+                type="button"
+                onClick={() => {
+                  setPreset(amount);
+                  setCustom("");
+                  setError("");
+                }}
+                aria-pressed={preset === amount}
+                className={cn(
+                  "lining h-10 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:translate-y-px",
+                  preset === amount
+                    ? "bg-foreground text-background"
+                    : "bg-card text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {formatEurAmount(amount)}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="topup-custom">Other amount (€)</Label>
+            <Input
+              id="topup-custom"
+              inputMode="numeric"
+              placeholder={`${minTopupEur} to ${maxTopupEur}`}
+              value={custom}
+              onFocus={() => setPreset(null)}
+              onChange={(e) => {
+                setPreset(null);
+                setCustom(e.target.value);
+                setError("");
+              }}
+              aria-invalid={!!error}
+              aria-describedby={error ? "topup-custom-hint topup-error" : "topup-custom-hint"}
+              className="lining"
+            />
+            <p id="topup-custom-hint" className="text-xs italic text-muted-foreground">
+              Whole euros, from {formatEurAmount(minTopupEur)} to {formatEurAmount(maxTopupEur)}.
             </p>
           </div>
-        ) : (
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="lining text-4xl font-medium">{eur(monthly)}</span>
-              <span className="text-sm italic text-muted-foreground">/ month</span>
-            </div>
-            <p className="lining mt-1.5 text-sm font-medium text-success">
-              Switch to yearly and save {savingsPct}% (€{savings}/yr)
+          <label className="flex min-h-10 cursor-pointer items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={saveCard}
+              onChange={(e) => setSaveCard(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-foreground"
+            />
+            <span>
+              Save this card for auto-recharge
+              <span className="block text-xs italic text-muted-foreground">
+                Nothing is charged automatically until you turn auto-recharge on.
+              </span>
+            </span>
+          </label>
+          {error && (
+            <p
+              id="topup-error"
+              role="alert"
+              className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {error}
             </p>
-          </div>
-        )}
-        {trialDays > 0 && (
-          <p className="lining text-sm font-medium text-success">
-            Your first month is free · card required · cancel anytime during the trial
+          )}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading
+              ? "Redirecting…"
+              : chosen.ok
+                ? `Top up ${formatEurAmount(chosen.amountEur)}`
+                : "Top up"}
+          </Button>
+          <p className="text-xs italic text-muted-foreground">
+            Secure payment by Stripe. No subscription, nothing charged again unless you top up or
+            turn on auto-recharge.
           </p>
-        )}
-        <PlanBullets bullets={bullets} />
-        <Button onClick={onCheckout} disabled={disabled} className="w-full">
-          {loading
-            ? "Redirecting…"
-            : trialDays > 0
-              ? `Start my free month of ${name}`
-              : isYearly
-                ? `Get ${name} — yearly`
-                : `Upgrade to ${name}`}
-        </Button>
+        </form>
       </CardContent>
     </Card>
   );
 }
 
-function CadenceToggle({
-  cadence,
-  onChange,
+interface CardInfo {
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+function AutoRechargeCard({
+  initial,
+  limits,
+  onBanner,
 }: {
-  cadence: Cadence;
-  onChange: (c: Cadence) => void;
+  initial: CreditsWallet["autoRecharge"];
+  limits: AutoRechargeLimits;
+  onBanner: (b: Banner) => void;
 }) {
+  const router = useRouter();
+  const [enabled, setEnabled] = useState(initial.enabled);
+  const [threshold, setThreshold] = useState(String(toEur(initial.thresholdMicros)));
+  const [amount, setAmount] = useState(String(toEur(initial.amountMicros)));
+  const [cap, setCap] = useState(String(toEur(initial.monthlyCapMicros)));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [card, setCard] = useState<CardInfo | null>(null);
+  const [monthEur, setMonthEur] = useState<number | null>(null);
+
+  // The saved card and this month's total come from the auto-recharge API
+  // (Stripe lookup), best effort: the form works without them.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/v2/wallet/auto-recharge", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { card?: CardInfo | null; rechargedThisMonthEur?: number } | null) => {
+        if (!alive || !d) return;
+        setCard(d.card ?? null);
+        if (typeof d.rechargedThisMonthEur === "number") setMonthEur(d.rechargedThisMonthEur);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function patch(body: Record<string, unknown>) {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/v2/wallet/auto-recharge", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.needsCard && data.url) {
+        // No saved card yet: the settings are kept (still off) and Stripe
+        // collects the card; the webhook turns auto-recharge on afterwards.
+        onBanner({ type: "info", message: "Opening a secure page to save your card…" });
+        window.location.href = data.url;
+        return;
+      }
+      if (!res.ok) {
+        setError(data.message ?? "Could not save auto-recharge settings.");
+      } else {
+        onBanner({
+          type: "success",
+          message: data.enabled ? "Auto-recharge is on." : "Auto-recharge settings saved.",
+        });
+        router.refresh();
+      }
+    } catch {
+      setError("Network error. Try again.");
+    }
+    setSaving(false);
+  }
+
+  function save(e: React.FormEvent) {
+    e.preventDefault();
+    const nums = [threshold, amount, cap].map((v) => Number(v.trim().replace(",", ".")));
+    if (nums.some((n) => !Number.isFinite(n))) {
+      setError("Enter amounts in euros.");
+      return;
+    }
+    const [thresholdEur, amountEur, monthlyCapEur] = nums;
+    void patch({ enabled, thresholdEur, amountEur, monthlyCapEur });
+  }
+
   return (
-    <div className="flex flex-col items-center gap-3">
-      {/* Two hairline stamps side by side; the chosen cadence is pressed in ink. No pill (DESIGN.md §3). */}
-      <div
-        role="group"
-        aria-label="Billing cadence"
-        className="inline-flex divide-x divide-border border border-border bg-card"
-      >
-        <button
-          type="button"
-          onClick={() => onChange("monthly")}
-          aria-pressed={cadence === "monthly"}
-          className={cn(
-            "smallcaps tracking-sc h-10 px-6 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:translate-y-px",
-            cadence === "monthly"
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground"
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex flex-wrap items-center gap-3">
+          Auto-recharge
+          <Badge variant={initial.enabled ? "success" : "secondary"}>
+            {initial.enabled ? "On" : "Off"}
+          </Badge>
+        </CardTitle>
+        <CardDescription>
+          Refill your balance with your saved card when it drops below a threshold, never more than
+          your monthly cap. Off by default.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={save} className="space-y-4" noValidate>
+          <label className="flex min-h-10 cursor-pointer items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+              className="h-4 w-4 accent-foreground"
+            />
+            Turn on auto-recharge
+          </label>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <AmountField
+              id="ar-threshold"
+              errorId={error ? "ar-error" : undefined}
+              label="When below (€)"
+              value={threshold}
+              onChange={setThreshold}
+              hint={`From ${formatEurAmount(limits.minThresholdEur)}`}
+            />
+            <AmountField
+              id="ar-amount"
+              errorId={error ? "ar-error" : undefined}
+              label="Add (€)"
+              value={amount}
+              onChange={setAmount}
+              hint={`${formatEurAmount(limits.minAmountEur)} to ${formatEurAmount(limits.maxAmountEur)}`}
+            />
+            <AmountField
+              id="ar-cap"
+              errorId={error ? "ar-error" : undefined}
+              label="Monthly cap (€)"
+              value={cap}
+              onChange={setCap}
+              hint={`Up to ${formatEurAmount(limits.maxMonthlyCapEur)}`}
+            />
+          </div>
+          <p className="lining text-xs italic text-muted-foreground">
+            {card
+              ? `Card: ${card.brand} ending ${card.last4}, expires ${String(card.expMonth).padStart(2, "0")}/${card.expYear}.`
+              : initial.hasPaymentMethod
+                ? "A card is saved."
+                : "No card saved yet: turning auto-recharge on opens a secure Stripe page to save one."}
+            {monthEur !== null &&
+              monthEur > 0 &&
+              ` Recharged this month: ${formatEurAmount(monthEur)}.`}
+          </p>
+          {error && (
+            <p
+              id="ar-error"
+              role="alert"
+              className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {error}
+            </p>
           )}
-        >
-          Monthly
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange("yearly")}
-          aria-pressed={cadence === "yearly"}
-          className={cn(
-            "smallcaps tracking-sc h-10 px-6 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:translate-y-px",
-            cadence === "yearly"
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Yearly
-        </button>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-2 text-xs italic text-muted-foreground">
-        <Badge variant="success" className="lining not-italic">
-          Save up to 25%
-        </Badge>
-        <span>
-          Pay yearly — like getting{" "}
-          <span className="font-medium not-italic text-success">up to 3 months free</span>
-        </span>
-      </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+            {initial.hasPaymentMethod && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={saving}
+                onClick={() => void patch({ updateCard: true })}
+              >
+                Replace card
+              </Button>
+            )}
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AmountField({
+  id,
+  label,
+  value,
+  onChange,
+  hint,
+  errorId,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  hint: string;
+  /** Set while the form shows an error: linked and flagged for assistive tech. */
+  errorId?: string;
+}) {
+  const hintId = `${id}-hint`;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={!!errorId}
+        aria-describedby={errorId ? `${hintId} ${errorId}` : hintId}
+        className="lining"
+      />
+      <p id={hintId} className="lining text-xs italic text-muted-foreground">
+        {hint}
+      </p>
     </div>
   );
 }

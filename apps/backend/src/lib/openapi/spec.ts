@@ -25,15 +25,16 @@ const ErrorResponse = z
   .openapi("ErrorResponse", { description: "Standard error envelope" });
 
 // 429s from the API-key routes (MCP proxy, context, libs/search) carry the
-// window details from lib/errors.ts rateLimited() next to the message.
+// window details from lib/errors.ts rateLimited() next to the message. Since
+// the prepaid wallet (2026-10-29) the window is a per-minute abuse limit; an
+// empty wallet answers 402 (JSON-RPC -32008 on the MCP proxy), not 429.
 const RateLimitError = z
   .object({
     message: z.string(),
-    limit: z.number().int().describe("Requests allowed per window (the plan's daily quota)"),
+    limit: z.number().int().describe("Requests allowed per window (per-minute abuse limit)"),
     remaining: z.number().int().describe("Requests left in the window (0 once rejected)"),
-    resetsAt: z.string().datetime().describe("When the window resets (next UTC midnight)"),
+    resetsAt: z.string().datetime().describe("When the window resets"),
     plan: z.enum(["free", "pro", "team"]).optional(),
-    upgradeUrl: z.string().url().optional().describe("Where to raise the limit (Free accounts)"),
   })
   .openapi("RateLimitError", {
     description: "Rate-limit error envelope: the message plus the window details when known",
@@ -189,12 +190,17 @@ const errorResponses = {
   401: { description: "Unauthorized", content: { "application/json": { schema: ErrorResponse } } },
   403: {
     description:
-      "Forbidden: quota exceeded, plan limit, or an `mcp_proxy` API key on a management route",
+      "Forbidden: server quota exceeded, a feature that needs a funded wallet, or an `mcp_proxy` API key on a management route",
+    content: { "application/json": { schema: ErrorResponse } },
+  },
+  402: {
+    description:
+      "Payment required: the TwinMCP credit is used up (top up at /dashboard/billing). The body carries `code` and `topupUrl`.",
     content: { "application/json": { schema: ErrorResponse } },
   },
   404: { description: "Not found", content: { "application/json": { schema: ErrorResponse } } },
   429: {
-    description: "Rate limited (daily quota exhausted)",
+    description: "Rate limited (per-minute abuse limit)",
     headers: RATE_LIMIT_HEADERS,
     content: { "application/json": { schema: RateLimitError } },
   },
@@ -355,7 +361,9 @@ const EmailPreferences = z
   .object({
     emailNudges: z
       .boolean()
-      .describe("Receive upgrade offers, daily-quota and trial-ending emails (default true)"),
+      .describe(
+        "Receive sign-up credit, low-balance, promo-expiring and activation emails (default true). Out-of-credit warnings and receipts are always sent."
+      ),
   })
   .openapi("EmailPreferences");
 
@@ -415,7 +423,8 @@ registry.registerPath({
   path: "/api/v2/servers",
   tags: ["Servers"],
   summary: "Create a new server (provisions an Upstash Box async)",
-  description: "Auto-installs the official `twinmcp-docs` MCP. Quota: free=1, pro=50.",
+  description:
+    "Auto-installs the official `twinmcp-docs` MCP. Quota: 1 server before the first top-up, 50 after.",
   security: sessionAuth,
   request: { body: jsonBody(createServerSchema) },
   responses: {
@@ -747,7 +756,7 @@ registry.registerPath({
   method: "post",
   path: "/api/v2/mcp-servers",
   tags: ["Catalog"],
-  summary: "Publish an MCP to the catalog (Pro only)",
+  summary: "Publish an MCP to the catalog (needs a funded wallet: a first top-up)",
   security: sessionAuth,
   request: { body: jsonBody(createMcpServerSchema) },
   responses: {
@@ -853,37 +862,23 @@ registry.registerPath({
   method: "post",
   path: "/api/v2/billing/checkout",
   tags: ["Billing"],
-  summary: "Create a Stripe checkout session",
+  summary: "Retired: subscriptions are no longer sold",
   description:
-    'Pro is the only plan sold. plan "team" is no longer available and returns 400. An account with an active, trialing or past-due subscription gets a Customer Portal URL instead of a new checkout.',
+    'TwinMCP is a prepaid wallet since 2026-10-29. This endpoint answers 410 with `code: "subscriptions_retired"` and a `topupUrl`; use POST /api/v2/wallet/topup instead.',
   security: sessionAuth,
-  request: {
-    body: jsonBody(
-      z.object({
-        plan: z.enum(["pro"]),
-        cadence: z.enum(["monthly", "yearly"]).default("monthly"),
-        promotionCodeId: z.string().optional().describe("Stripe promotion code id (promo_…)"),
-        creatorSlug: z.string().optional().describe("Creator landing slug, for attribution"),
-        from: z
-          .enum(["billing", "onboarding", "pricing", "signup"])
-          .optional()
-          .describe("Surface that opened the checkout; decides the success / cancel URLs"),
-      })
-    ),
-  },
   responses: {
-    200: {
-      description: "OK",
+    410: {
+      description: "Gone",
       content: {
         "application/json": {
           schema: z.object({
-            url: z.string().url(),
-            kind: z.enum(["checkout", "portal"]),
+            message: z.string(),
+            code: z.literal("subscriptions_retired"),
+            topupUrl: z.string().url(),
           }),
         },
       },
     },
-    ...errorResponses,
   },
 });
 
@@ -891,20 +886,62 @@ registry.registerPath({
   method: "get",
   path: "/api/v2/billing/checkout/start",
   tags: ["Billing"],
-  summary: "Open a Pro checkout by navigation (303 to Stripe)",
+  summary: "Retired: redirects to the Credits page",
   description:
-    "Browser navigation twin of POST /api/v2/billing/checkout, used after an email confirmation that carries a Pro intent. Redirects (303) to Stripe Checkout, or to the Customer Portal for a subscribed account; without a session, to sign-in; on failure, to /dashboard/billing?checkout=error&reason=price|stripe|unknown. Only plan=pro (or the legacy team alias) is accepted; a cross-site navigation is bounced to /dashboard/billing, which reopens the checkout itself.",
+    "Former navigation twin of the Pro checkout. Always redirects (303) to /dashboard/billing, where credit is topped up.",
+  security: sessionAuth,
+  responses: {
+    303: { description: "Redirect to /dashboard/billing" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/v2/wallet/topup",
+  tags: ["Billing"],
+  summary: "Open a Stripe Checkout to top up the prepaid wallet",
+  description:
+    "Whole euros between the minimum and maximum top-up (lib/wallet/pricing.ts). `saveCard` stores the card for auto-recharge. The paid amount (excluding VAT) is credited by the Stripe webhook.",
   security: sessionAuth,
   request: {
-    query: z.object({
-      plan: z.enum(["pro"]).optional(),
-      cadence: z.enum(["monthly", "yearly"]).optional(),
-      promo: z.string().optional().describe("Creator slug or Stripe promotion code id"),
-      from: z.enum(["billing", "onboarding", "pricing", "signup"]).optional(),
-    }),
+    body: jsonBody(
+      z.object({
+        amountEur: z.number().int().describe("Whole euros"),
+        saveCard: z.boolean().optional(),
+      })
+    ),
   },
   responses: {
-    303: { description: "Redirect to Stripe Checkout, the portal, sign-in or Billing" },
+    200: {
+      description: "OK",
+      content: { "application/json": { schema: z.object({ url: z.string().url() }) } },
+    },
+    ...errorResponses,
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/v2/wallet",
+  tags: ["Billing"],
+  summary: "The caller's wallet balance (integer micro-euros)",
+  security: sessionAuth,
+  responses: {
+    200: {
+      description: "OK",
+      content: {
+        "application/json": {
+          schema: z.object({
+            paidMicros: z.number().int(),
+            promoMicros: z.number().int(),
+            promoExpiresAt: z.string().datetime().nullable(),
+            totalMicros: z.number().int(),
+            funded: z.boolean(),
+          }),
+        },
+      },
+    },
+    ...errorResponses,
   },
 });
 

@@ -3,17 +3,21 @@ import type { getDb } from "@/db";
 import { users } from "@/db/schema";
 
 /**
- * users.metadata.nudges — the shared memory of every nudge email sender: the
- * proxy's quota-limit email (lib/billing/quota-nudge.ts) and the daily job
- * (lib/billing/nudge-job.ts). No table, no migration: a top-level jsonb merge
- * leaves emailNudges and the other metadata keys untouched.
+ * users.metadata.nudges — the shared memory of the account-level nudge emails:
+ * the activation reminder (lib/billing/nudge-job.ts) and, until the proxy
+ * stops sending it, the legacy quota-limit email (lib/billing/quota-nudge.ts).
+ * No table, no migration: a top-level jsonb merge leaves emailNudges and the
+ * other metadata keys untouched.
  *
  *   { lastEmailAt, offerAt, quotaLimitAt, activationAt }   ISO timestamps
  *
- * Whichever sender fires, an account gets at most ONE nudge email per
- * NUDGE_COOLDOWN_DAYS.
+ * Whichever sender fires, an account gets at most ONE such email per
+ * NUDGE_COOLDOWN_DAYS. Wallet notices (low balance, promo expiring, ...) are
+ * deduped separately, in wallet_accounts.notified (lib/wallet/notify.ts), and
+ * only share emailNudgesEnabled() with these.
  */
 
+/** "offer" and "quota_limit" are legacy (Free → Pro); only "activation" is still sent by the job. */
 export type NudgeKind = "offer" | "quota_limit" | "activation";
 
 /** The users.metadata.nudges key that records when each kind was last sent. */

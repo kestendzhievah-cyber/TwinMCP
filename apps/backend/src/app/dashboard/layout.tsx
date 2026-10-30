@@ -5,9 +5,13 @@ import { getDb } from "@/db";
 import { prospects, servers, teamspaceMembers, users } from "@/db/schema";
 import { isAdminEmail } from "@/lib/admin";
 import { attentionCount } from "@/lib/admin/attention";
-import { computeUpgradeNudge } from "@/lib/billing/upgrade-state";
-import { loadUpgradeSignals } from "@/lib/billing/upgrade-signals";
-import { UpgradeBanner, type SerializedNudge } from "@/components/billing/upgrade-banner";
+import { computeWalletNudge } from "@/lib/billing/upgrade-state";
+import { loadWalletSignals } from "@/lib/billing/upgrade-signals";
+import {
+  BalanceBanner,
+  BANNER_LEVELS,
+  type SerializedWalletNudge,
+} from "@/components/billing/balance-banner";
 import { needsOnboarding } from "@/lib/auth/return-to";
 import { DashboardNav } from "./nav";
 import { OnboardingGate } from "./onboarding-gate";
@@ -25,12 +29,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const db = getDb();
   const isAdmin = isAdminEmail(user.email);
 
-  // The upgrade signals (lib/billing/upgrade-signals.ts) are loaded once per
+  // The wallet signals (lib/billing/upgrade-signals.ts) are loaded once per
   // request and shared with the overview page through React cache. The Team
   // link follows app/dashboard/team/page.tsx: grandfathered Team subscribers
   // plus anyone already in a teamspace (guarded — a nav link must never 500).
   const [signals, [teamRow], gate] = await Promise.all([
-    loadUpgradeSignals(user.id),
+    loadWalletSignals(user.id),
     db
       .select({ n: count() })
       .from(teamspaceMembers)
@@ -75,14 +79,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
     teamMember: (teamRow?.n ?? 0) > 0,
   });
 
-  // The one upgrade decision (lib/billing/upgrade-state.ts): the strip under
-  // the header and the nav link both read from it.
-  const nudge = computeUpgradeNudge(signals);
-  const bannerNudge: SerializedNudge = {
+  // The one wallet decision (lib/billing/upgrade-state.ts): the strip under
+  // the header and the balance pill in the nav both read from it.
+  const nudge = computeWalletNudge(signals);
+  const bannerNudge: SerializedWalletNudge = {
     ...nudge,
-    resetsAt: nudge.resetsAt.toISOString(),
-    trialEndsAt: nudge.trialEndsAt?.toISOString() ?? null,
+    promoExpiresAt: nudge.promoExpiresAt?.toISOString() ?? null,
   };
+  const balance = signals.walletAvailable
+    ? { totalMicros: nudge.totalMicros, funded: signals.funded, level: nudge.level }
+    : null;
 
   // Admin-only "à relancer" nav badge: prospects with a past-due follow-up still
   // in play. Guarded — the prospects table may not exist yet (migration 0011
@@ -116,7 +122,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         prospectsDue={prospectsDue}
         attentionCount={attention}
         showTeam={showTeam}
-        trialEligible={nudge.trialEligible}
+        balance={balance}
       />
       {/* Bone stock beside the sidebar: 16 px gutters on mobile; min-w-0 so a wide
           ledger table scrolls inside its card instead of widening the column. */}
@@ -124,7 +130,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         id="main-content"
         className="w-full min-w-0 max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-10"
       >
-        {nudge.level !== "none" && <UpgradeBanner nudge={bannerNudge} />}
+        {BANNER_LEVELS.has(nudge.level) && <BalanceBanner nudge={bannerNudge} />}
         <OnboardingGate active={gateActive}>{children}</OnboardingGate>
       </main>
     </div>

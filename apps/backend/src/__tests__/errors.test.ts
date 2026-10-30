@@ -1,6 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { jsonError, unauthorized, rateLimited, badRequest, notFound } from "@/lib/errors";
-import { getDailyLimit } from "@/lib/rate-limit";
+import {
+  CREDIT_DOCS_URL,
+  CREDIT_EXHAUSTED_MESSAGE,
+  CREDIT_TOPUP_URL,
+  jsonError,
+  unauthorized,
+  rateLimited,
+  rateLimitMessage,
+  badRequest,
+  notFound,
+} from "@/lib/errors";
 
 const HOUR_MS = 3_600_000;
 
@@ -27,11 +36,12 @@ describe("Error responses", () => {
 });
 
 describe("rateLimited — generic (no window details)", () => {
-  it("returns 429 with the upgrade link for keyed users and no rate-limit headers", async () => {
+  it("returns 429 without any plan upsell and no rate-limit headers", async () => {
     const res = rateLimited(true);
     expect(res.status).toBe(429);
     const body = (await res.json()) as { message: string };
-    expect(body.message).toContain("https://twinmcp.fr/dashboard/billing");
+    expect(body.message).toMatch(/^Rate limited\./);
+    expect(body.message).not.toMatch(/upgrade|Pro|first month/i);
     expect(res.headers.get("Retry-After")).toBeNull();
     expect(res.headers.get("X-RateLimit-Limit")).toBeNull();
   });
@@ -45,110 +55,72 @@ describe("rateLimited — generic (no window details)", () => {
   });
 });
 
-describe("rateLimited — upgrade-aware (with window details)", () => {
-  const freeLimit = getDailyLimit("free");
-  const proLimit = getDailyLimit("pro");
-  const proLimitText = proLimit.toLocaleString("en-US");
-
-  it("Free plan: names the quota, the reset, the Pro limit and the free month", async () => {
-    const reset = Date.now() + 2 * HOUR_MS;
-    const res = rateLimited(true, {
-      plan: "free",
-      limit: freeLimit,
-      remaining: 0,
-      reset,
-      trialEligible: true,
-    });
+describe("rateLimited — with window details (no daily-quota upsell any more)", () => {
+  it("per-minute tool-call limiter: names the limit, the window and the reset", async () => {
+    const reset = Date.now() + 30_000;
+    const res = rateLimited(true, { limit: 600, remaining: 0, reset, window: "minute" });
     expect(res.status).toBe(429);
-
     const body = (await res.json()) as {
       message: string;
       limit: number;
       remaining: number;
       resetsAt: string;
-      plan: string;
+      window: string;
       upgradeUrl?: string;
     };
-    expect(body.message).toContain(`Daily limit reached: ${freeLimit} tool calls per day`);
-    expect(body.message).toContain("on the Free plan");
-    expect(body.message).toMatch(/Resets at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\./);
-    expect(body.message).toContain(`Pro raises it to ${proLimitText} per day`);
-    expect(body.message).toContain("your first month is free");
-    expect(body.message).toContain("https://twinmcp.fr/dashboard/billing");
-    expect(body.message).not.toContain("hello@twinmcp.fr");
-
-    expect(body.limit).toBe(freeLimit);
+    expect(body.message).toContain("Rate limit reached: 600 tool calls per minute.");
+    expect(body.message).toMatch(/Resets at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\./);
+    expect(body.message).toContain("Slow down and retry.");
+    expect(body.limit).toBe(600);
     expect(body.remaining).toBe(0);
-    expect(body.plan).toBe("free");
-    expect(body.upgradeUrl).toBe("https://twinmcp.fr/dashboard/billing");
+    expect(body.window).toBe("minute");
     expect(new Date(body.resetsAt).getTime()).toBe(reset);
-  });
-
-  it("Free plan with trial eligibility unknown: no free-month promise", async () => {
-    const res = rateLimited(true, {
-      plan: "free",
-      limit: freeLimit,
-      remaining: 0,
-      reset: Date.now() + HOUR_MS,
-    });
-    const body = (await res.json()) as { message: string };
-    expect(body.message).toContain(`Pro raises it to ${proLimitText} per day`);
-    expect(body.message).not.toContain("first month");
-    expect(body.message).toContain("https://twinmcp.fr/dashboard/billing");
-  });
-
-  it("Free plan without the trial: no free-month promise", async () => {
-    const res = rateLimited(true, {
-      plan: "free",
-      limit: freeLimit,
-      remaining: 0,
-      reset: Date.now() + HOUR_MS,
-      trialEligible: false,
-    });
-    const body = (await res.json()) as { message: string };
-    expect(body.message).toContain(`Pro raises it to ${proLimitText} per day`);
-    expect(body.message).not.toContain("first month is free");
-    expect(body.message).toContain("https://twinmcp.fr/dashboard/billing");
-  });
-
-  it("Pro plan: no upsell, points at support instead", async () => {
-    const res = rateLimited(true, {
-      plan: "pro",
-      limit: proLimit,
-      remaining: 0,
-      reset: Date.now() + HOUR_MS,
-    });
-    expect(res.status).toBe(429);
-    const body = (await res.json()) as { message: string; upgradeUrl?: string };
-    expect(body.message).toContain(`Daily limit reached: ${proLimitText} tool calls per day`);
-    expect(body.message).toContain("on the Pro plan");
-    expect(body.message).toContain("Contact hello@twinmcp.fr if you need more");
-    expect(body.message).not.toContain("first month");
-    expect(body.message).not.toContain("Pro raises");
     expect(body.upgradeUrl).toBeUndefined();
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThanOrEqual(29);
+    expect(retryAfter).toBeLessThanOrEqual(31);
   });
 
-  it("Team plan (grandfathered) behaves like Pro", async () => {
+  it.each(["free", "pro", "team"] as const)(
+    "%s plan, daily window: no upgrade wording, no trial, no billing link",
+    async (plan) => {
+      const res = rateLimited(true, {
+        plan,
+        limit: 50,
+        remaining: 0,
+        reset: Date.now() + HOUR_MS,
+      });
+      const body = (await res.json()) as { message: string; plan: string; upgradeUrl?: string };
+      expect(body.message).toContain("Rate limit reached: 50 requests per day.");
+      expect(body.message).toMatch(/Resets at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\./);
+      expect(body.message).toContain("Contact hello@twinmcp.fr if you need more.");
+      expect(body.message).not.toMatch(/Pro raises|first month|Upgrade|dashboard\/billing/);
+      expect(body.plan).toBe(plan);
+      expect(body.upgradeUrl).toBeUndefined();
+    }
+  );
+
+  it("REST per-minute window counts requests, not tool calls", async () => {
     const res = rateLimited(true, {
-      plan: "team",
-      limit: getDailyLimit("team"),
+      limit: 600,
       remaining: 0,
-      reset: Date.now() + HOUR_MS,
+      reset: Date.now() + 30_000,
+      window: "minute",
+      unit: "requests",
     });
     const body = (await res.json()) as { message: string };
-    expect(body.message).toContain("on the Team plan");
-    expect(body.message).toContain("Contact hello@twinmcp.fr");
+    expect(body.message).toContain("Rate limit reached: 600 requests per minute.");
   });
 
   it("sets Retry-After and X-RateLimit-* headers from the window", () => {
     const now = Date.now();
     const reset = now + 90 * 60 * 1000; // 90 minutes
-    const res = rateLimited(true, { plan: "free", limit: freeLimit, remaining: 0, reset });
+    const res = rateLimited(true, { plan: "free", limit: 50, remaining: 0, reset });
 
     const retryAfter = Number(res.headers.get("Retry-After"));
     expect(retryAfter).toBeGreaterThanOrEqual(89 * 60);
     expect(retryAfter).toBeLessThanOrEqual(90 * 60 + 1);
-    expect(res.headers.get("X-RateLimit-Limit")).toBe(String(freeLimit));
+    expect(res.headers.get("X-RateLimit-Limit")).toBe("50");
     expect(res.headers.get("X-RateLimit-Remaining")).toBe("0");
     expect(Number(res.headers.get("X-RateLimit-Reset"))).toBe(Math.ceil(reset / 1000));
   });
@@ -156,7 +128,7 @@ describe("rateLimited — upgrade-aware (with window details)", () => {
   it("clamps Retry-After to at least 1 second and never reports negative remaining", () => {
     const res = rateLimited(true, {
       plan: "free",
-      limit: freeLimit,
+      limit: 50,
       remaining: -3,
       reset: Date.now() - 5000, // already past: falls back to the next UTC midnight
     });
@@ -166,12 +138,36 @@ describe("rateLimited — upgrade-aware (with window details)", () => {
     expect(resetSec * 1000).toBeGreaterThan(Date.now());
   });
 
+  it("a past reset on the minute window falls back to about a minute, not midnight", () => {
+    const res = rateLimited(true, { limit: 600, remaining: 0, reset: 0, window: "minute" });
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThanOrEqual(59);
+    expect(retryAfter).toBeLessThanOrEqual(60);
+  });
+
   it("anonymous callers with details get headers and the create-key hint", async () => {
     const res = rateLimited(false, { limit: 10, remaining: 0, reset: Date.now() + HOUR_MS });
     expect(res.status).toBe(429);
     expect(res.headers.get("X-RateLimit-Limit")).toBe("10");
     const body = (await res.json()) as { message: string };
-    expect(body.message).toContain("Daily limit reached: 10 requests per day");
+    expect(body.message).toContain("Rate limit reached: 10 requests per day");
     expect(body.message).toContain("Create a free API key");
+  });
+
+  it("rateLimitMessage is the exact 429 body text", async () => {
+    const resetAt = new Date("2026-10-29T10:31:07.000Z");
+    expect(rateLimitMessage(true, { limit: 600, window: "minute" }, resetAt)).toBe(
+      "Rate limit reached: 600 tool calls per minute. Resets at 2026-10-29T10:31:07Z. Slow down and retry."
+    );
+  });
+});
+
+describe("credit error constants (contract W2)", () => {
+  it("are the contract's text and links", () => {
+    expect(CREDIT_EXHAUSTED_MESSAGE).toBe(
+      "Your TwinMCP credit is used up. Top up at https://twinmcp.fr/dashboard/billing"
+    );
+    expect(CREDIT_TOPUP_URL).toBe("https://twinmcp.fr/dashboard/billing");
+    expect(CREDIT_DOCS_URL).toBe("https://twinmcp.fr/docs#credit");
   });
 });

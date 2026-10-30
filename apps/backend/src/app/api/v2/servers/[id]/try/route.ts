@@ -6,15 +6,17 @@
 // caller. The request then goes through the same gates as the public MCP
 // proxy (/api/mcp/[serverSlug]/[mcpSlug]):
 //
-//   - only `tools/call` is billable (lib/mcp/billable.ts): it is checked
-//     against the daily quota (checkRateLimit), metered in usage_metrics
-//     (recordMcpUsage) and logged in the activity log (recordToolCall), exactly
-//     like a call from an IDE. tools/list is free.
+//   - only `tools/call` is billable (lib/mcp/billable.ts): before anything is
+//     woken it goes through the billing gate (per-minute abuse limiter → 429,
+//     then the prepaid wallet → 402 when empty, failing closed), it is charged
+//     to the wallet once the MCP answered it (lib/wallet/call-meter.ts),
+//     metered in usage_metrics and logged in the activity log
+//     (recordToolCall), exactly like a call from an IDE. tools/list is free.
 //   - a tools/call is sent once and never replayed (lib/mcp/retry.ts): a 502 /
 //     503 / refused connection means it never ran (503 "waking", the UI
 //     retries); a timeout or a 504 means its fate is unknown (504, no retry).
 //   - the installation's tool policy (lib/mcp/tool-policy.ts) filters
-//     tools/list and refuses a blocked tools/call before the quota.
+//     tools/list and refuses a blocked tools/call before it is sent.
 //   - a paused box is woken; a box that no longer exists is reprovisioned.
 //
 // Unlike an IDE, the relay opens its own MCP session (initialize →
@@ -22,8 +24,9 @@
 // playground request is self-contained.
 //
 // Answer: TryResponse (app/dashboard/servers/[id]/try/protocol.ts), with the
-// HTTP status telling the UI what to do: 503 = retry shortly (waking), 429 =
-// quota, 403 = policy, 504 = outcome unknown.
+// HTTP status telling the UI what to do: 503 = retry shortly (waking), 402 =
+// credit used up (top up), 429 = too many calls this minute, 403 = policy,
+// 504 = outcome unknown.
 
 import { type NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
@@ -34,25 +37,29 @@ import { servers, userServers, mcpServers } from "@/db/schema/platform";
 import { requireManagementUser, type SessionUser } from "@/lib/session";
 import { SERVER_SCOPE_MESSAGE, keyAllowsServer } from "@/lib/auth/key-scope";
 import {
+  CREDIT_ERROR_DATA,
+  CREDIT_EXHAUSTED_MESSAGE,
   PROXY_ERROR,
   PROXY_REQUEST_ID_HEADER,
   jsonRpcErrorBody,
   newProxyRequestId,
   rateLimitMessage,
+  type ProxyErrorData,
 } from "@/lib/errors";
 import {
   TWINMCP_DOCS_SLUG,
   RuntimeGoneError,
   claimReprovision,
+  isInsufficientCreditError,
   resumeServer,
+  type InsufficientCreditError,
 } from "@/lib/provisioning";
 import { isPausedRuntime } from "@/lib/server-lifecycle";
 import { enqueue } from "@/lib/queue/qstash";
 import { decryptConfig } from "@/lib/crypto/config-encryption";
 import { MCP_STREAM_PATH } from "@/lib/upstash/mcp-bridge";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { notifyQuotaLimit } from "@/lib/billing/quota-nudge";
-import { recordMcpUsage } from "@/lib/usage-metrics";
+import { notifyCreditExhausted } from "@/lib/billing/quota-nudge";
+import { checkCallBurst, walletAllowsCall } from "@/lib/wallet/call-meter";
 import { classifyFetchError, looksAsleep, shouldRetry, type ForwardOutcome } from "@/lib/mcp/retry";
 import {
   filterToolsList,
@@ -72,7 +79,12 @@ import {
   toolCallStatusFor,
   type McpTool,
 } from "@/lib/mcp/aggregate";
-import { POLICY_TOOLS_MAX_AGE_MS, noteFirstToolCall, toolCache } from "@/lib/mcp/relay";
+import {
+  POLICY_TOOLS_MAX_AGE_MS,
+  noteFirstToolCall,
+  toolCache,
+  toolCallMeter,
+} from "@/lib/mcp/relay";
 import { recordToolCall } from "@/lib/activity/record";
 import { connKey, isAgentOnline, relayToAgent } from "@/lib/agent/registry";
 import {
@@ -100,7 +112,7 @@ const WARMUP_DELAY_MS = 3000;
 /**
  * A tools/call the bridge provably never received (connection refused, 502,
  * 503) is resent in place a few times, as the proxy does, so a bridge that is
- * still warming does not cost a second quota unit through the UI's retry.
+ * still warming does not send the user through the UI's retry.
  */
 const CALL_RETRY_ATTEMPTS = 3;
 /** The tools/call verdict, for lib/mcp/retry.ts shouldRetry. */
@@ -118,7 +130,6 @@ interface TryCtx {
   userId: string;
   apiKeyId: string | null;
   plan: "free" | "pro" | "team";
-  hasStripeCustomer: boolean;
   serverId: string;
   serverSlug: string;
   userServerId: string;
@@ -129,6 +140,8 @@ interface TryCtx {
   rpcId: string;
   /** Set when the tool policy refused the call (activity status "denied"). */
   deniedCode?: number;
+  /** usage_metrics + the wallet charge of a tools/call (relay.ts toolCallMeter). */
+  charge: (ok: boolean) => void;
 }
 
 export async function POST(req: NextRequest, { params }: RouteCtx) {
@@ -192,7 +205,6 @@ async function handle(
         tokenTag: userServers.endpointTokenTag,
         toolPolicy: userServers.toolPolicy,
         plan: users.plan,
-        stripeCustomerId: users.stripeCustomerId,
       })
       .from(servers)
       .innerJoin(users, eq(users.id, servers.userId))
@@ -241,20 +253,24 @@ async function handle(
       userId: session.userId,
       apiKeyId: session.apiKey?.id ?? null,
       plan: row.plan,
-      hasStripeCustomer: !!row.stripeCustomerId,
       serverId: row.serverId,
       serverSlug: row.serverSlug,
       userServerId: row.userServerId,
       policy: parseToolPolicy(row.toolPolicy),
       isLocalAgent: row.hostType === "local_agent",
       rpcId,
+      charge: toolCallMeter(session.userId, row.userServerId, body.method === "tools/call"),
     };
     holder.ctx = ctx;
 
+    // Billing gate (contract W2) before anything is woken or sent: a call the
+    // wallet cannot pay never wakes a box.
+    const gated = await billingGate(ctx);
+    if (gated) return gated;
+
     if (ctx.isLocalAgent) return await runOnLocalAgent(ctx);
 
-    // A paused server wakes on its next request (contract K4), before the
-    // quota so a request that cannot be served never eats a Free day.
+    // A paused server wakes on its next request (contract K4).
     let woke = false;
     if (isPausedRuntime({ status: row.serverStatus, hostType: row.hostType, boxId: row.boxId })) {
       const wake = await wakeServer(ctx);
@@ -342,9 +358,13 @@ function failure(
   status: TryStatus,
   code: number,
   message: string,
-  extra?: { retryAfterSec?: number; headers?: Record<string, string> }
+  extra?: {
+    retryAfterSec?: number;
+    headers?: Record<string, string>;
+    data?: Partial<Omit<ProxyErrorData, "requestId">>;
+  }
 ): NextResponse {
-  const raw = jsonRpcErrorBody(ctx.rpcId, code, message, ctx.requestId);
+  const raw = jsonRpcErrorBody(ctx.rpcId, code, message, ctx.requestId, extra?.data);
   return reply(
     ctx,
     httpStatus,
@@ -368,23 +388,26 @@ function waking(ctx: Stamp, message: string, retryAfterSec = 5): NextResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Metering: the proxy's rules, for tools/call only.
+// Metering and billing: the proxy's rules, for tools/call only.
 // ---------------------------------------------------------------------------
 
 function isCall(ctx: TryCtx): boolean {
   return ctx.body.method === "tools/call";
 }
 
-/** usage_metrics, like the proxy's meter(): a tools/call only. */
+/**
+ * Like the proxy's meter(): a tools/call only — usage_metrics on every
+ * outcome, the wallet charge when the MCP answered it (`ok`), at most once.
+ */
 function meter(ctx: TryCtx, ok: boolean): void {
-  if (isCall(ctx)) recordMcpUsage(ctx.userServerId, ok);
+  ctx.charge(ok);
 }
 
 /**
  * Activity log (contract D1, metadata only, fire-and-forget) for a tools/call,
  * from the HTTP status of the final answer, like the proxy's
- * recordTrackedCall: 429 = rate_limited, a policy refusal = denied, other
- * 4xx/5xx = error (the status is the error code), else ok.
+ * recordTrackedCall: 429 = rate_limited, a policy refusal or 402 = denied,
+ * other 4xx/5xx = error (the status is the error code), else ok.
  */
 function recordCall(ctx: TryCtx, httpStatus: number): void {
   if (!isCall(ctx)) return;
@@ -410,8 +433,8 @@ function recordCall(ctx: TryCtx, httpStatus: number): void {
 }
 
 /**
- * Policy gate for a tools/call, before the quota: a refused tool never costs
- * a request. Returns the 403 to send, or null when the tool may run.
+ * Policy gate for a tools/call, before it is sent: a refused tool is never
+ * charged. Returns the 403 to send, or null when the tool may run.
  */
 function denyIfBlocked(
   ctx: TryCtx,
@@ -429,32 +452,36 @@ function denyIfBlocked(
   );
 }
 
-/** Daily quota for a tools/call. Returns the 429 to send, or null. */
-async function quotaGate(ctx: TryCtx): Promise<NextResponse | null> {
+/**
+ * The billing gate of a tools/call (contract W2, as the proxy's billingGate):
+ * the per-minute abuse limiter (429), then the wallet (402 when empty; fails
+ * closed). Returns the answer to send, or null when the call may go on.
+ */
+async function billingGate(ctx: TryCtx): Promise<NextResponse | null> {
   if (!isCall(ctx)) return null;
-  const rl = await checkRateLimit(ctx.userId, ctx.plan);
-  if (rl.ok) return null;
-  meter(ctx, false);
-  void notifyQuotaLimit(ctx.userId, ctx.plan, rl);
-  const now = Date.now();
-  const resetAt = rl.reset > now ? new Date(rl.reset) : nextUtcMidnight(now);
-  const message = rateLimitMessage(
-    true,
-    {
-      plan: ctx.plan,
-      limit: rl.limit,
-      remaining: rl.remaining,
-      reset: rl.reset,
-      trialEligible: ctx.plan === "free" && !ctx.hasStripeCustomer,
-    },
-    resetAt
-  );
-  return failure(ctx, 429, "rate_limited", PROXY_ERROR.RATE_LIMITED, message);
-}
-
-function nextUtcMidnight(now: number): Date {
-  const d = new Date(now);
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+  const burst = checkCallBurst(ctx.userId);
+  if (!burst.ok) {
+    meter(ctx, false);
+    const resetAt = new Date(burst.reset);
+    const message = rateLimitMessage(
+      true,
+      { limit: burst.limit, remaining: 0, reset: burst.reset, window: "minute" },
+      resetAt
+    );
+    const retryAfterSec = Math.max(1, Math.ceil((burst.reset - Date.now()) / 1000));
+    return failure(ctx, 429, "rate_limited", PROXY_ERROR.RATE_LIMITED, message, {
+      retryAfterSec,
+      headers: { "retry-after": String(retryAfterSec) },
+    });
+  }
+  if (!(await walletAllowsCall(ctx.userId))) {
+    meter(ctx, false);
+    void notifyCreditExhausted(ctx.userId, ctx.plan);
+    return failure(ctx, 402, "no_credit", PROXY_ERROR.CREDIT_EXHAUSTED, CREDIT_EXHAUSTED_MESSAGE, {
+      data: CREDIT_ERROR_DATA,
+    });
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -472,6 +499,7 @@ async function wakeServer(ctx: TryCtx): Promise<NextResponse | null> {
     return null;
   } catch (err) {
     if (err instanceof RuntimeGoneError) return runtimeGone(ctx);
+    if (isInsufficientCreditError(err)) return computeRefused(ctx, err);
     console.error("[try] waking a paused server failed:", err);
     Sentry.captureException(err, {
       tags: { area: "mcp-try", stage: "wake-paused", requestId: ctx.requestId },
@@ -480,6 +508,15 @@ async function wakeServer(ctx: TryCtx): Promise<NextResponse | null> {
     meter(ctx, false);
     return waking(ctx, "This server is paused and is waking up (about a minute)…", 5);
   }
+}
+
+/** The wallet refused to wake the box (resumeServer → InsufficientCreditError): 402. */
+function computeRefused(ctx: TryCtx, err: InsufficientCreditError): NextResponse {
+  meter(ctx, false);
+  if (err.reason === "no_credit") void notifyCreditExhausted(ctx.userId, ctx.plan);
+  return failure(ctx, 402, "no_credit", PROXY_ERROR.CREDIT_EXHAUSTED, err.message, {
+    data: CREDIT_ERROR_DATA,
+  });
 }
 
 async function runtimeGone(ctx: TryCtx): Promise<NextResponse> {
@@ -676,6 +713,7 @@ async function openSession(
         await resumeServer(ctx.serverId);
       } catch (err) {
         if (err instanceof RuntimeGoneError) return runtimeGone(ctx);
+        if (isInsufficientCreditError(err)) return computeRefused(ctx, err);
         console.error("[try] resume failed:", err);
         Sentry.captureException(err, {
           tags: { area: "mcp-try", stage: "resume", requestId: ctx.requestId },
@@ -737,8 +775,9 @@ async function runOnBox(ctx: TryCtx, target: Target, woke: boolean): Promise<Nex
       return toolsListReply(ctx, await listAllPages(ctx.rpcId, listPage));
     }
 
-    // tools/call. A read_only policy needs each tool's annotations: list
-    // first (free), then gate. Then the quota, then the call itself, once.
+    // tools/call (the billing gate already passed). A read_only policy needs
+    // each tool's annotations: list first (free), then gate, then the call
+    // itself, once.
     // The proxy's tool cache is shared, so a recent list from an IDE counts.
     let known: McpTool[] | null = null;
     if (policyNeedsToolAnnotations(ctx.policy)) {
@@ -751,8 +790,6 @@ async function runOnBox(ctx: TryCtx, target: Target, woke: boolean): Promise<Nex
     }
     const denied = denyIfBlocked(ctx, known);
     if (denied) return denied;
-    const limited = await quotaGate(ctx);
-    if (limited) return limited;
 
     const call = {
       jsonrpc: "2.0",
@@ -810,8 +847,8 @@ function toolsListReply(ctx: TryCtx, listed: Exchange): NextResponse {
 
 function toolsCallReply(ctx: TryCtx, called: Exchange): NextResponse {
   if (shouldRetry(BILLABLE, called.outcome)) {
-    // Not metered, like the proxy's wakingUp(): the call never ran. The UI
-    // retries it, which is checked against the quota again (as an IDE's
+    // Not metered nor charged, like the proxy's wakingUp(): the call never
+    // ran. The UI retries it, through the billing gate again (as an IDE's
     // retry of the proxy's 503 is).
     return waking(ctx, "The MCP server is waking up (about a minute)…", 5);
   }
@@ -982,8 +1019,6 @@ async function runOnLocalAgent(ctx: TryCtx): Promise<NextResponse> {
       }
       const denied = denyIfBlocked(ctx, known);
       if (denied) return denied;
-      const limited = await quotaGate(ctx);
-      if (limited) return limited;
     }
 
     if (ctx.body.method === "tools/list") {

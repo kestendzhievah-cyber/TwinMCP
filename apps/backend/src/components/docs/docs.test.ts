@@ -82,18 +82,15 @@ describe("docs facts", () => {
     expect(formatCount(50, "fr")).toBe("50");
   });
 
-  it("derives plan facts from the plan and rate-limit modules", () => {
+  it("derives the key allowances from the plan module", () => {
     const f = docsPlanFacts();
-    expect(f.freeDaily).toBe(50);
-    expect(f.proDaily).toBe(5000);
-    expect(f.freeKeys).toBe(3);
-    expect(f.proKeys).toBe(20);
-    expect(f.customMcpPlan).toBe("Pro");
+    expect(f).toEqual({ freeKeys: 3, proKeys: 20 });
   });
 
   it("documents the 24 h rotation overlap and the K2 scope error", () => {
     expect(rotationOverlapHours()).toBe(24);
     expect(RPC_CODES.wrongServer).toBe(-32003);
+    expect(RPC_CODES.noCredit).toBe(-32008);
     expect(SERVER_SCOPE_MESSAGE).toBe("This API key is restricted to another server.");
   });
 });

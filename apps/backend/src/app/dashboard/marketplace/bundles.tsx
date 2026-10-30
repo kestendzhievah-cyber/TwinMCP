@@ -24,7 +24,8 @@ import {
 import { Loader2 } from "lucide-react";
 import type { Plan } from "@/db/schema/core";
 import { BUNDLES, type McpBundle } from "@/lib/mcp/bundles";
-import { isSmallBoxFull, toastBoxFull } from "@/components/billing/upgrade-inline";
+import { isSmallBoxFull, toastBoxFull } from "@/components/billing/top-up-inline";
+import { PROMO_LOCKED_BADGE, canUseMcpOnPromo } from "@/lib/wallet/eligibility";
 import type { CatalogEntry, ServerOption } from "./install-dialog";
 
 interface ResolvedBundle {
@@ -36,11 +37,15 @@ export function McpBundles({
   catalog,
   userServers,
   plan,
+  promoOnly,
 }: {
   catalog: CatalogEntry[];
   userServers: ServerOption[];
-  /** The account's plan: only Free gets the Pro toast when a small box is full. */
+  /** The account's plan: "free" (never funded) gets the top-up toast when a small
+   *  box is full, and skips the MCPs held back from the sign-up credit. */
   plan: Plan;
+  /** Wallet never funded (computed server-side): the excluded MCPs are skipped. */
+  promoOnly: boolean;
 }) {
   const router = useRouter();
 
@@ -64,6 +69,11 @@ export function McpBundles({
   const [serverId, setServerId] = useState("");
   const [installing, setInstalling] = useState(false);
 
+  // MCPs held back from the sign-up credit (lib/wallet/eligibility.ts): the
+  // API refuses them (403) until the first top-up, so they are skipped.
+  const isLocked = (e: CatalogEntry) =>
+    promoOnly && !canUseMcpOnPromo(e.slug, { isOfficial: e.isOfficial });
+
   if (bundles.length === 0) return null;
 
   function open(b: ResolvedBundle) {
@@ -77,6 +87,7 @@ export function McpBundles({
     let installed = 0;
     let already = 0;
     let failed = 0;
+    let locked = 0;
     let capacityHit = false;
     // The small box (the only size Free runs) is full: a plan limit for Free
     // accounts; paid plans get the server's own "use a larger box" message.
@@ -85,6 +96,10 @@ export function McpBundles({
     // Install sequentially so we respect the per-box capacity guard and can
     // report exactly what landed vs. what was already there or didn't fit.
     for (const entry of picking.entries) {
+      if (isLocked(entry)) {
+        locked++;
+        continue;
+      }
       try {
         const res = await fetch(`/api/v2/servers/${serverId}/mcps`, {
           method: "POST",
@@ -118,10 +133,15 @@ export function McpBundles({
       const parts = [`${installed} installed`];
       if (already) parts.push(`${already} already present`);
       if (failed) parts.push(`${failed} failed`);
+      if (locked) parts.push(`${locked} need a top-up`);
       toast.success(`${picking.bundle.name}: ${parts.join(" · ")}`);
       router.push(`/dashboard/servers/${target}` as Route);
-    } else if (already > 0 && failed === 0) {
+    } else if (already > 0 && failed === 0 && locked === 0) {
       toast.info(`${picking.bundle.name}: everything was already installed.`);
+    } else if (locked > 0 && failed === 0) {
+      toast.info(
+        `${picking.bundle.name}: ${locked} MCP${locked > 1 ? "s" : ""} need a top-up; the rest was already installed.`
+      );
     } else if (smallBoxFull && plan === "free") {
       toastBoxFull();
     } else {
@@ -196,6 +216,11 @@ export function McpBundles({
                   className="flex items-baseline justify-between gap-4 px-3 py-2 text-sm"
                 >
                   <span className="min-w-0 truncate">{e.name}</span>
+                  {isLocked(e) && (
+                    <span className="smallcaps tracking-sc shrink-0 border border-warning/40 bg-warning/10 px-1.5 text-xs text-warning">
+                      {PROMO_LOCKED_BADGE}
+                    </span>
+                  )}
                   <span className="shrink-0 font-mono text-xs text-muted-foreground">{e.slug}</span>
                 </li>
               ))}

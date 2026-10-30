@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { count, desc, eq, gte, isNotNull, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   users,
@@ -10,7 +10,9 @@ import {
   usageEvents,
   usageMetrics,
   auditLogs,
+  creditLedger,
 } from "@/db/schema";
+import type { CreditLedgerRow } from "@/db/schema";
 import { forbidden, serverError } from "@/lib/errors";
 import { requireManagementUser } from "@/lib/session";
 import { isAdminEmail } from "@/lib/admin";
@@ -19,10 +21,11 @@ import type { Plan } from "@/db/schema";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Monthly-equivalent price used for the MRR estimate. Cadence isn't stored on
-// the user row, so this is an intentional upper bound (all paid = monthly).
-const PRO_MONTHLY_EUR = 14.99;
-const TEAM_MONTHLY_EUR = 0; // Team isn't sold yet — counted separately, €0 in MRR.
+// Revenue = paid top-ups (Checkout + auto-recharge) over the last 30 days, from
+// the credit ledger: prepaid wallet since 2026-10-29, no subscription MRR. The
+// response keeps the `mrrEstimate` key for the admin UI.
+// Net of clawbacks (refunds, disputes): clawback rows carry negative deltas.
+const REVENUE_KINDS = ["topup", "auto_recharge", "clawback"];
 
 /** UTC calendar-day key, e.g. "2026-07-29". */
 function dayKey(d: Date): string {
@@ -158,7 +161,16 @@ export async function GET(req: NextRequest) {
     const serversByStatus: Record<string, number> = {};
     for (const r of serverStatusRows) serversByStatus[r.status] = r.n;
 
-    const mrrEstimate = byPlan.pro * PRO_MONTHLY_EUR + byPlan.team * TEAM_MONTHLY_EUR;
+    const [revenueRow] = await db
+      .select({ micros: sql<number>`coalesce(sum(${creditLedger.deltaMicros}),0)::bigint` })
+      .from(creditLedger)
+      .where(
+        and(
+          inArray(creditLedger.kind, REVENUE_KINDS as CreditLedgerRow["kind"][]),
+          gte(creditLedger.createdAt, new Date(now - 30 * 86_400_000))
+        )
+      );
+    const mrrEstimate = Number(revenueRow?.micros ?? 0) / 1_000_000;
     const api24 = api24Row[0] ?? { n: 0, errors: 0, avgLatency: 0 };
 
     return NextResponse.json({

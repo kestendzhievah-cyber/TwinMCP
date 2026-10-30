@@ -20,6 +20,27 @@ export interface PublicEndpoint {
   token: string | null;
 }
 
+/**
+ * One box's lifetime usage counters as Upstash reports them (Box.list()).
+ * The counters are OPTIONAL in the SDK types: a null field means Upstash did
+ * not send it, and compute metering then falls back to a wall-clock estimate
+ * (lib/wallet/compute-meter.ts). Counters are lost when the box is deleted,
+ * so a snapshot must be taken before every deleteBox.
+ */
+export interface BoxUsage {
+  id: string;
+  name: string | null;
+  size: BoxSize | null;
+  status: string;
+  keepAlive: boolean | null;
+  /** Cumulative CPU time, nanoseconds. */
+  totalCpuNs: number | null;
+  /** Cumulative compute cost, USD, as Upstash bills it. */
+  totalComputeCostUsd: number | null;
+  lastActivityAt: Date | null;
+  createdAt: Date | null;
+}
+
 export interface BoxClient {
   createBox(opts: {
     runtime: McpRuntime;
@@ -51,6 +72,61 @@ export interface BoxClient {
    * keep-alive box (the SDK refuses to pause those).
    */
   pause(boxId: string): Promise<void>;
+  /** Every box of the account with its usage counters (one API call). */
+  list(): Promise<BoxUsage[]>;
+  /** One box's usage counters; null when the account has no such box. */
+  usage(boxId: string): Promise<BoxUsage | null>;
+}
+
+/**
+ * An Upstash epoch number as a Date. The unit is not documented, so it is
+ * inferred from the magnitude (seconds, milliseconds, microseconds or
+ * nanoseconds). Missing, zero, negative or non-finite → null.
+ */
+export function epochToDate(n: unknown): Date | null {
+  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
+  let ms: number;
+  if (n >= 1e17)
+    ms = n / 1e6; // nanoseconds
+  else if (n >= 1e14)
+    ms = n / 1e3; // microseconds
+  else if (n >= 1e11)
+    ms = n; // milliseconds
+  else ms = n * 1000; // seconds
+  const d = new Date(Math.round(ms));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** A non-negative finite counter, or null when absent / malformed. */
+function counter(n: unknown): number | null {
+  return typeof n === "number" && Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+const SIZES = new Set<string>(["small", "medium", "large"]);
+
+/** Map the SDK's BoxData (fields optional) onto BoxUsage. Pure; exported for tests. */
+export function toBoxUsage(d: {
+  id: string;
+  name?: string;
+  size?: string;
+  status?: string;
+  keep_alive?: boolean;
+  total_cpu_ns?: number;
+  total_compute_cost_usd?: number;
+  last_activity_at?: number;
+  created_at?: number;
+}): BoxUsage {
+  return {
+    id: d.id,
+    name: d.name ?? null,
+    size: d.size && SIZES.has(d.size) ? (d.size as BoxSize) : null,
+    status: d.status ?? "unknown",
+    keepAlive: typeof d.keep_alive === "boolean" ? d.keep_alive : null,
+    totalCpuNs: counter(d.total_cpu_ns),
+    totalComputeCostUsd: counter(d.total_compute_cost_usd),
+    lastActivityAt: epochToDate(d.last_activity_at),
+    createdAt: epochToDate(d.created_at),
+  };
 }
 
 /** Map our DB runtime enum onto the SDK's runtime set (no `-alpine`, `go`→`golang`). */
@@ -129,6 +205,13 @@ class StubBoxClient implements BoxClient {
   }
   async pause(boxId: string): Promise<void> {
     console.warn(`[box stub] pause ${boxId}`);
+  }
+  // No real boxes, so no usage: compute metering skips stub mode entirely.
+  async list(): Promise<BoxUsage[]> {
+    return [];
+  }
+  async usage(): Promise<BoxUsage | null> {
+    return null;
   }
 }
 
@@ -279,6 +362,19 @@ class UpstashBoxClient implements BoxClient {
   async pause(boxId: string): Promise<void> {
     const box = await this.getBox(boxId);
     await box.pause();
+  }
+
+  async list(): Promise<BoxUsage[]> {
+    const rows = await Box.list();
+    return rows.map(toBoxUsage);
+  }
+
+  // The SDK has no single-box usage call (Box.get returns a handle without the
+  // counters), so this filters the account listing.
+  async usage(boxId: string): Promise<BoxUsage | null> {
+    const rows = await Box.list();
+    const row = rows.find((r) => r.id === boxId);
+    return row ? toBoxUsage(row) : null;
   }
 }
 

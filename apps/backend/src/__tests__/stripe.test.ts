@@ -238,29 +238,3 @@ describe("webhook + health helpers", () => {
     }
   });
 });
-
-// The annual line on /plans and the home teaser, from the shared pricing table.
-describe("annual pricing copy", () => {
-  it("states the yearly charge, with and without the free month", async () => {
-    const { PLANS, annualBillingNote, annualMonthlyHint, formatPrice } = await import(
-      "../components/pricing/pricing-data"
-    );
-    const pro = PLANS.find((p) => p.id === "pro")!;
-    const free = PLANS.find((p) => p.id === "free")!;
-    expect(annualBillingNote(pro, "en")).toBe(
-      "€135 billed yearly after your free month · €11.25/mo"
-    );
-    expect(annualBillingNote(pro, "en", { trial: false })).toBe("€135 billed yearly · €11.25/mo");
-    expect(annualBillingNote(pro, "fr")).toBe(
-      "135 € facturés à l’année après votre mois offert · 11,25 €/mois"
-    );
-    expect(annualBillingNote(free, "en")).toBeNull();
-    expect(annualMonthlyHint(pro, "en")).toBe("€11.25/mo billed yearly");
-    // formatPrice output is unchanged by the formatEur refactor.
-    expect(formatPrice(pro, "monthly", "en")).toBe("€14.99");
-    expect(formatPrice(pro, "annual", "fr")).toBe("11,25 €");
-    expect(formatPrice(free, "monthly", "en")).toBe("€0");
-    // €135 a year really is 12 × the advertised monthly equivalent.
-    expect(pro.annualMonthlyUsd * 12).toBe(pro.annualTotalEur);
-  });
-});

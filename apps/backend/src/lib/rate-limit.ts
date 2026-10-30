@@ -1,56 +1,67 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import * as Sentry from "@sentry/nextjs";
 import { getRedis } from "./redis";
-import type { Plan } from "@/db/schema";
 
-// Daily MCP request quota per plan (env-overridable). Pro is the one paid plan
-// and gets 5,000/day — keep in sync with the marketing copy (pricing-data.ts).
-// Team is grandfathered (no longer sold) and keeps its limit.
-const DAILY_LIMITS: Record<Plan, number> = {
-  free: Number(process.env.RATE_LIMIT_FREE_DAILY ?? 50),
-  pro: Number(process.env.RATE_LIMIT_PRO_DAILY ?? 5000),
-  team: Number(process.env.RATE_LIMIT_TEAM_DAILY ?? 5000),
-};
+// Per-minute ABUSE limiter for the MCP proxy, the playground and the docs API.
+//
+// Since 2026-10-29 there is no daily tool-call quota: usage is paid from the
+// prepaid wallet, and the balance is the limit (lib/wallet/*, enforced by the
+// tool-call gate, which FAILS CLOSED). This limiter only stops a runaway loop
+// or a scripted flood from one account. It FAILS OPEN: prod Redis may be down,
+// and a missing abuse limit is far less bad than the product being down.
 
-const limiters = new Map<Plan, Ratelimit>();
+/** Tool calls / docs requests per user per minute (env RATE_LIMIT_PER_MINUTE). */
+export const ABUSE_LIMIT_PER_MINUTE = (() => {
+  const n = Number(process.env.RATE_LIMIT_PER_MINUTE ?? 600);
+  return Number.isInteger(n) && n > 0 ? n : 600;
+})();
 
-// Short-circuits a user already known to be over (or well under) the daily
-// window without a Redis round-trip. Per-process (prod is a single container),
-// so counts stay exact here.
-const ephemeralCache = new Map<string, number>();
-
-function getLimiter(plan: Plan): Ratelimit {
-  const cached = limiters.get(plan);
-  if (cached) return cached;
-  const rl = new Ratelimit({
-    redis: getRedis(),
-    limiter: Ratelimit.fixedWindow(DAILY_LIMITS[plan], "24 h"),
-    // analytics adds extra Redis commands per .limit() — not worth it on the
-    // per-request hot path. ephemeralCache avoids a Redis hop for known users.
-    analytics: false,
-    ephemeralCache,
-    prefix: `rl:${plan}`,
-  });
-  limiters.set(plan, rl);
-  return rl;
+export interface AbuseLimitResult {
+  ok: boolean;
+  /** Requests allowed per one-minute window. */
+  limit: number;
+  /** Requests left in the window (0 once rejected). */
+  remaining: number;
+  /** Epoch ms when the window resets (0 when the limiter is unavailable). */
+  reset: number;
 }
 
-export async function checkRateLimit(userId: string, plan: Plan) {
-  // Fail-OPEN: if Upstash Redis isn't configured or is briefly unreachable,
-  // getLimiter() (missing env) or .limit() (network) throws. We must NOT let
-  // that 500 the MCP proxy / context / libs endpoints — a missing rate limit is
-  // far less bad than the whole product being down. Surfaced via warn + Sentry.
+let limiter: Ratelimit | null = null;
+
+// Short-circuits a user already known to be over the window without a Redis
+// round-trip. Per-process (prod is a single container).
+const ephemeralCache = new Map<string, number>();
+
+function getLimiter(): Ratelimit {
+  if (limiter) return limiter;
+  limiter = new Ratelimit({
+    redis: getRedis(),
+    limiter: Ratelimit.fixedWindow(ABUSE_LIMIT_PER_MINUTE, "1 m"),
+    // analytics adds extra Redis commands per .limit() — not worth it on the
+    // per-request hot path.
+    analytics: false,
+    ephemeralCache,
+    prefix: "rl:min",
+  });
+  return limiter;
+}
+
+/**
+ * Per-user, per-minute abuse limit. Fail-OPEN: when Upstash Redis is
+ * unconfigured or unreachable the request is allowed (warn + Sentry).
+ */
+export async function checkAbuseLimit(userId: string): Promise<AbuseLimitResult> {
   try {
-    const { success, limit, remaining, reset } = await getLimiter(plan).limit(userId);
+    const { success, limit, remaining, reset } = await getLimiter().limit(userId);
     return { ok: success, limit, remaining, reset };
   } catch (err) {
     console.warn("[rate-limit] disabled — Upstash Redis not available:", err);
     Sentry.captureException(err, { tags: { area: "rate-limit", stage: "check" } });
-    const limit = DAILY_LIMITS[plan];
-    return { ok: true, limit, remaining: limit, reset: 0 };
+    return {
+      ok: true,
+      limit: ABUSE_LIMIT_PER_MINUTE,
+      remaining: ABUSE_LIMIT_PER_MINUTE,
+      reset: 0,
+    };
   }
-}
-
-export function getDailyLimit(plan: Plan): number {
-  return DAILY_LIMITS[plan];
 }
