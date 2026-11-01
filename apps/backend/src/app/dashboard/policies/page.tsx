@@ -8,7 +8,6 @@ import { Shield } from "lucide-react";
 import { PoliciesForm } from "./form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { getEntitlements } from "@/lib/wallet/entitlements";
 
@@ -35,11 +34,10 @@ export default async function PoliciesPage() {
     // Same gate as POST /api/v2/team: a funded grandfathered Team account.
     if ((ent?.tier ?? "free") !== "team") {
       return (
-        <div className="space-y-8">
-          <div>
-            <h1 className="smallcaps tracking-sc text-2xl font-medium">Policies</h1>
-            <Separator variant="double" className="mt-4" />
-          </div>
+        <div className="space-y-6 md:space-y-8">
+          <header>
+            <h1 className="font-display text-2xl font-bold tracking-tight">Policies</h1>
+          </header>
           <EmptyState
             icon={Shield}
             title="Policies are not available"
@@ -49,11 +47,10 @@ export default async function PoliciesPage() {
       );
     }
     return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="smallcaps tracking-sc text-2xl font-medium">Policies</h1>
-          <Separator variant="double" className="mt-4" />
-        </div>
+      <div className="space-y-6 md:space-y-8">
+        <header>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Policies</h1>
+        </header>
         <EmptyState
           icon={Shield}
           title="No teamspace yet"
@@ -77,24 +74,22 @@ export default async function PoliciesPage() {
     .limit(1);
 
   return (
-    <div className="space-y-8">
-      {/* Page header (DESIGN.md §5): engraved title, the teamspace as an italic line, double rule. */}
-      <div>
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">Policies</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          Teamspace:{" "}
-          <strong className="font-medium not-italic text-foreground">{ts?.name ?? tsId}</strong>
+    <div className="space-y-6 md:space-y-8">
+      {/* Page header: title, and the teamspace as the one-line description. */}
+      <header>
+        <h1 className="font-display text-2xl font-bold tracking-tight">Policies</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Teamspace: <strong className="font-semibold text-foreground">{ts?.name ?? tsId}</strong>
         </p>
-        <Separator variant="double" className="mt-4" />
-      </div>
-      <Card className="max-w-xl">
+      </header>
+      <Card className="max-w-2xl">
         <CardHeader className="border-b border-border">
           <CardTitle>Library filters</CardTitle>
           <CardDescription>
             Restrict which libraries members of this teamspace can access.
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-[var(--card-padding)]">
           <PoliciesForm
             teamspaceId={tsId}
             minTrustScore={filters?.minTrustScore ?? 0}

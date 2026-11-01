@@ -19,7 +19,14 @@ import { notifyWalletState } from "@/lib/wallet/notify";
 import { pickClientIp } from "@/lib/net/client-ip";
 import { SignupConversion, SubscriptionConversion } from "@/components/analytics/ads-conversion";
 import { getCheckoutConversion } from "@/lib/billing/checkout-conversion";
-import { ONBOARDING_SLUGS, hasRequiredConfig, onboardingRank } from "@/lib/mcp/onboarding-catalog";
+import {
+  ONBOARDING_SLUGS,
+  POPULAR_ONBOARDING_SLUGS,
+  hasRequiredConfig,
+  onboardingRank,
+  popularRank,
+} from "@/lib/mcp/onboarding-catalog";
+import { PROMO_EXCLUDED_MCP_SLUGS } from "@/lib/wallet/eligibility";
 import { IDE_LABELS, type IdeKey } from "@/lib/mcp/client-config";
 
 // New accounts land here right after confirming their email (auth/callback).
@@ -91,9 +98,10 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
     redirect("/dashboard");
   }
 
-  // Step 3 offers only zero-config box MCPs from the curated list, in its
-  // order: no API key, no local agent, so the first tool call can happen in
-  // the next five minutes. A slug missing from the DB simply drops out.
+  // Step 3 offers two groups: well-known apps the user recognises (they need
+  // the user's own API key), then zero-config box MCPs that install with no
+  // key at all, so the first tool call can still happen in five minutes. Each
+  // list keeps its curated order; a slug missing from the DB simply drops out.
   const catalogRows = await db
     .select({
       id: mcpServers.id,
@@ -107,14 +115,28 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
     .from(mcpServers)
     .where(
       and(
-        inArray(mcpServers.slug, [...ONBOARDING_SLUGS]),
+        inArray(mcpServers.slug, [...POPULAR_ONBOARDING_SLUGS, ...ONBOARDING_SLUGS]),
         eq(mcpServers.hostMode, "box"),
         eq(mcpServers.isPublic, true)
       )
     );
-  const catalog = catalogRows
-    .filter((mcp) => !hasRequiredConfig(mcp.configSchema))
-    .sort((a, b) => onboardingRank(a.slug) - onboardingRank(b.slug));
+  const popular = catalogRows
+    .filter(
+      (mcp) =>
+        popularRank(mcp.slug) !== Number.POSITIVE_INFINITY &&
+        !PROMO_EXCLUDED_MCP_SLUGS.includes(mcp.slug)
+    )
+    .sort((a, b) => popularRank(a.slug) - popularRank(b.slug))
+    .map((mcp) => ({ ...mcp, group: "popular" as const }));
+  const instant = catalogRows
+    .filter(
+      (mcp) =>
+        onboardingRank(mcp.slug) !== Number.POSITIVE_INFINITY &&
+        !hasRequiredConfig(mcp.configSchema)
+    )
+    .sort((a, b) => onboardingRank(a.slug) - onboardingRank(b.slug))
+    .map((mcp) => ({ ...mcp, group: "instant" as const }));
+  const catalog = [...popular, ...instant];
 
   // Detect existing server (Free quota = 1) so step 2 can skip ahead.
   const [existing] = await db

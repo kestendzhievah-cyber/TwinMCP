@@ -75,21 +75,19 @@ const faq = [
   },
 ];
 
-// The tool catalogue is typeset as a ledger: mono slug, hairline rows (DESIGN.md §4.5).
+// The tool catalogue is typeset as a ledger: mono slug, hairline rows (docs/DESIGN.md).
 const ledgerRow =
   "grid gap-1 border-b border-border py-4 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8";
-const ledgerName = "font-mono text-sm font-medium text-foreground";
+const ledgerName = "font-mono text-sm font-semibold text-foreground";
 const ledgerBody = "text-base text-muted-foreground";
 
 export default function NotionMcpPage() {
   return (
     <UseCaseLayout useCase={useCase} benefits={benefits} steps={steps} faq={faq}>
-      <section className="rule-double py-16 md:py-20">
+      <section className="border-t border-border py-16 md:py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-            Tools
-          </p>
-          <h2 className="mt-4 text-balance text-3xl font-medium md:text-4xl">
+          <p className="eyebrow">Tools</p>
+          <h2 className="mt-4 text-balance text-3xl font-display font-bold tracking-tight md:text-4xl">
             What the model gets access to
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -101,12 +99,12 @@ export default function NotionMcpPage() {
         <div className="mx-auto mt-12 max-w-3xl">
           <div
             aria-hidden
-            className="smallcaps tracking-sc hidden border-b border-foreground/50 pb-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8"
+            className="hidden border-b border-border pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8"
           >
             <span>Tool</span>
             <span>What it does</span>
           </div>
-          <ul className="border-t border-foreground/50 sm:border-t-0">
+          <ul className="border-t border-border sm:border-t-0">
             <li className={ledgerRow}>
               <strong className={ledgerName}>search_pages</strong>
               <span className={ledgerBody}>
@@ -138,7 +136,7 @@ export default function NotionMcpPage() {
             Want to build a tailored version with custom database queries?{" "}
             <Link
               href={"/blog/notion-mcp-server-tutorial" as Route}
-              className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+              className="text-brand underline underline-offset-4 hover:decoration-2"
             >
               Follow the Notion MCP server tutorial
             </Link>{" "}

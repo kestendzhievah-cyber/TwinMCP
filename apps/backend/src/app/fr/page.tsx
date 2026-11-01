@@ -1,26 +1,30 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Hero, FinalCta } from "@/components/marketing/hero";
-import { SmitheryNotice } from "@/components/marketing/smithery-notice";
 import { IdeLogosBar } from "@/components/marketing/ide-logos-bar";
-import { SocialProof } from "@/components/marketing/social-proof";
-import { ProblemSolution } from "@/components/marketing/problem-solution";
+import { OfferBand } from "@/components/marketing/offer-band";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { MarketplacePreview } from "@/components/marketing/marketplace-preview";
+import { UseCasesStrip } from "@/components/marketing/use-cases-strip";
 import { PricingTeaser } from "@/components/marketing/pricing-teaser";
+import { SocialProof } from "@/components/marketing/social-proof";
 import { Faq, frFaqItems } from "@/components/marketing/faq";
+import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { AttributionLinks } from "@/components/analytics/attribution-links";
 import { trackPageServed } from "@/lib/analytics/server";
 import { JsonLd } from "@/components/seo/json-ld";
 import { softwareApplicationSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
 import { marketingOffers } from "@/components/pricing/pricing-data";
-import { SIGNUP_OFFER } from "@/components/pricing/wallet-copy";
+import { SIGNUP_OFFER, walletFacts } from "@/components/pricing/wallet-copy";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://twinmcp.fr";
 
+/** "10 €": the sign-up credit, from the wallet price list. */
+const FR_CREDIT = walletFacts("fr").signupCredit;
+
 export const metadata: Metadata = {
-  title: { absolute: "Hébergement de serveurs MCP, sans gérer l'infra — TwinMCP" },
+  title: { absolute: "Hébergement de serveurs MCP, sans gérer l’infra — TwinMCP" },
   description:
     "TwinMCP héberge vos serveurs Model Context Protocol dans des runtimes isolés. Installez des MCPs depuis le catalogue, connectez Cursor, Claude Code et Windsurf en 2 minutes. Paiement à l’usage, sans abonnement, crédit offert pour commencer.",
   alternates: {
@@ -31,16 +35,17 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "TwinMCP",
     url: `${SITE_URL}/fr`,
-    title: "Hébergement de serveurs MCP, sans gérer l'infra — TwinMCP",
+    title: "Hébergement de serveurs MCP, sans gérer l’infra — TwinMCP",
     description:
       "Provisionnez des serveurs MCP isolés, installez depuis le catalogue, connectez Cursor / Claude Code / Windsurf en 2 minutes.",
     locale: "fr_FR",
   },
 };
 
-// Faits uniquement : les MCP tournent sous Node.js (npm, via npx) ou Python
+// Faits uniquement : les MCP tournent sous Node.js (npm, via npx) ou Python
 // (PyPI, via uvx) dans la box, et un pont stdio → Streamable HTTP
-// (supergateway) expose chacun d'eux derrière l'URL du proxy.
+// (supergateway) expose chacun d’eux derrière l’URL du proxy. Les trois étapes
+// reprennent les cartes « Comment ça marche » (components/marketing/how-it-works.tsx).
 const howToFr = howToSchema({
   name: "Comment lancer un serveur MCP avec TwinMCP",
   description:
@@ -48,21 +53,17 @@ const howToFr = howToSchema({
   totalTime: "PT2M",
   steps: [
     {
-      name: "Créer un compte TwinMCP",
-      text: `Inscription avec ${SIGNUP_OFFER.fr}. Vous obtenez un serveur et l’accès au catalogue MCP.`,
+      name: "Inscrivez-vous",
+      text: `Créez un compte TwinMCP : ${SIGNUP_OFFER.fr}, disponible dès la création du compte.`,
       url: "/fr/inscription",
     },
     {
-      name: "Provisionner un serveur",
-      text: "Créez un serveur : TwinMCP démarre un sandbox Upstash Box isolé.",
+      name: "Choisissez un MCP",
+      text: "Ajoutez en un clic l’un des plus de 70 MCP du catalogue (Fetch, Wikipedia, Notion, Linear, Postgres…) ou, après votre première recharge, publiez votre propre paquet npm (Node.js) ou PyPI (Python). Il tourne dans un sandbox isolé, et les serveurs stdio sont pontés vers Streamable HTTP pour vous.",
     },
     {
-      name: "Installer des MCP",
-      text: "Choisissez parmi plus de 70 MCP (Fetch, Wikipedia, Notion, Linear, Postgres, Slack…) ou, une fois votre compte rechargé, publiez votre propre paquet npm (Node.js) ou PyPI (Python). Les serveurs stdio sont reliés à Streamable HTTP dans le sandbox.",
-    },
-    {
-      name: "Connecter votre client IA",
-      text: "Copiez l'URL du MCP (https://twinmcp.fr/api/mcp/<serveur>/<mcp>) et une clé API, puis collez le bloc de configuration généré par le tableau de bord dans Cursor, Claude Code, Claude Desktop, VS Code, Windsurf, Cline ou Zed.",
+      name: "Collez l’URL dans votre client",
+      text: "Copiez le bloc de configuration généré par le tableau de bord (l’URL du MCP, https://twinmcp.fr/api/mcp/<serveur>/<mcp>, et une clé API) dans Cursor, Claude Code, Claude Desktop, VS Code, Windsurf, Cline ou Zed.",
       url: "/fr/docs",
     },
   ],
@@ -94,8 +95,7 @@ export default async function FrHomePage({
       <JsonLd
         data={[
           softwareApplicationSchema({
-            description:
-              "TwinMCP héberge n'importe quel serveur Model Context Protocol (catalogue, serveurs stdio compris, ou votre propre paquet npm ou PyPI) dans un sandbox isolé, accessible en Streamable HTTP depuis tous les clients MCP. Prix mensuel fixe, sans facturation à l'usage.",
+            description: `TwinMCP héberge n’importe quel serveur Model Context Protocol (catalogue, serveurs stdio compris, ou votre propre paquet npm ou PyPI) dans un sandbox isolé, accessible en Streamable HTTP depuis tous les clients MCP. Paiement à l’usage depuis un solde prépayé, sans abonnement, ${FR_CREDIT} offerts à l’inscription.`,
             offers: marketingOffers(),
           }),
           faqPageSchema(frFaqItems),
@@ -104,17 +104,13 @@ export default async function FrHomePage({
       />
       <TrackOnMount name="landing_view" properties={{ locale: "fr" }} />
       <AttributionLinks />
-      {/* Paid traffic lands here: the offer that the ads promise comes first
-          (hero + product), then proof, objections, the catalogue, the price and
-          a closing CTA that restates the risk reversal. */}
-      <SmitheryNotice locale="fr" renderedAt={Date.now()} />
+      {/* Paid traffic lands here: the offer the ads promise comes first (hero
+          + what the credit buys), then how it works, the catalogue, use cases,
+          the price, trust, objections and a closing CTA restating the terms. */}
       <Hero locale="fr" />
       <IdeLogosBar locale="fr" />
       <div className={CV}>
-        <SocialProof locale="fr" />
-      </div>
-      <div className={CV}>
-        <ProblemSolution locale="fr" />
+        <OfferBand locale="fr" />
       </div>
       <div className={CV}>
         <HowItWorks locale="fr" />
@@ -123,19 +119,28 @@ export default async function FrHomePage({
         <MarketplacePreview locale="fr" />
       </div>
       <div className={CV}>
+        <UseCasesStrip locale="fr" />
+      </div>
+      <div className={CV}>
         <PricingTeaser locale="fr" />
+      </div>
+      <div className={CV}>
+        <SocialProof locale="fr" />
       </div>
       <div className={CV}>
         <Faq
           locale="fr"
           variant="list"
           title="Questions fréquentes"
-          description="Sécurité, clients IA, offre gratuite : les réponses avant de commencer. Une question manque ? Écrivez à hello@twinmcp.fr."
+          description={
+            "Sécurité, clients IA, crédit offert : les réponses avant de commencer. Une question manque ? Écrivez à hello@twinmcp.fr."
+          }
         />
       </div>
       <div className={CV}>
         <FinalCta locale="fr" />
       </div>
+      <StickyMobileCta locale="fr" />
     </>
   );
 }

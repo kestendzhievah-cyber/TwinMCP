@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { isAdminEmail } from "@/lib/admin";
-import { Separator } from "@/components/ui/separator";
+import { AdminPageHeader } from "../admin-ui";
 import { ClientsPanel } from "./clients-panel";
 
 export const dynamic = "force-dynamic";
@@ -18,18 +18,11 @@ export default async function ClientsPage() {
   if (!isAdminEmail(user.email)) redirect("/dashboard");
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-          Administration
-        </p>
-        <h1 className="smallcaps tracking-sc mt-2 text-2xl font-medium">Clients</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          Tous vos comptes clients — plan, serveurs, MCPs, usage et état, en un coup d'œil. Visible
-          par les admins uniquement.
-        </p>
-        <Separator variant="double" className="mt-4" />
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      <AdminPageHeader
+        title="Clients"
+        description="Tous vos comptes clients — plan, serveurs, MCPs, usage et état, en un coup d’œil. Visible par les admins uniquement."
+      />
       <ClientsPanel />
     </div>
   );

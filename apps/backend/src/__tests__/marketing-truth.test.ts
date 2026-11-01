@@ -10,6 +10,9 @@ import {
   walletFacts,
 } from "@/components/pricing/wallet-copy";
 import { defaultFaqItems, frFaqItems } from "@/components/marketing/faq";
+import { offerCopy, offerFacts } from "@/components/marketing/offer-badge";
+import { getServerBySlug } from "@/lib/servers/catalog";
+import { PROMO_EXCLUDED_MCP_SLUGS } from "@/lib/wallet/eligibility";
 import { buildLlmsFullTxt, buildLlmsTxt } from "@/lib/marketing/llms";
 import { COMPARISONS } from "@/lib/compare/data";
 
@@ -19,7 +22,9 @@ import { COMPARISONS } from "@/lib/compare/data";
 const SRC = join(__dirname, "..");
 const MARKETING_FILES = [
   "components/marketing/hero.tsx",
-  "components/marketing/hero-mockup.tsx",
+  "components/marketing/hero-config-card.tsx",
+  "components/marketing/offer-badge.tsx",
+  "components/marketing/offer-band.tsx",
   "components/marketing/how-it-works.tsx",
   "components/marketing/faq.tsx",
   "components/marketing/pricing-teaser.tsx",
@@ -68,8 +73,18 @@ const PRICING_SURFACES = [
   "app/blog/mcp-server-hosting/page.tsx",
   "app/fr/blog/mcp-server-hosting/page.tsx",
   "components/marketing/social-proof.tsx",
-  "components/marketing/hero-mockup.tsx",
+  "components/marketing/offer-badge.tsx",
+  "components/marketing/offer-band.tsx",
+  "components/marketing/use-cases-strip.tsx",
+  "components/marketing/marketplace-preview.tsx",
+  "components/marketing/sticky-mobile-cta.tsx",
 ];
+
+// Straight and typographic apostrophes are the same word to a reader: compare
+// both the source and the patterns with ’ only, so "à l'usage" is caught by a
+// pattern written "à l’usage" (and the other way round).
+const curly = (text: string) => text.replace(/'/g, "’");
+const curlyRe = (re: RegExp) => new RegExp(curly(re.source), re.flags);
 
 describe("marketing truth", () => {
   it("states the real MCP-per-server rule, never a fixed '5 official MCPs'", () => {
@@ -84,8 +99,10 @@ describe("marketing truth", () => {
 
   it("never describes the retired subscription pricing", () => {
     for (const file of PRICING_SURFACES) {
-      const src = readFileSync(join(SRC, file), "utf8");
-      for (const re of RETIRED_PRICING_PHRASES) expect(src, `${file} ${re}`).not.toMatch(re);
+      const src = curly(readFileSync(join(SRC, file), "utf8"));
+      for (const re of RETIRED_PRICING_PHRASES) {
+        expect(src, `${file} ${re}`).not.toMatch(curlyRe(re));
+      }
       // No daily cap any more: the wallet is the limit.
       expect(src, file).not.toMatch(
         /getDailyLimit|PRO_TRIAL_DAYS|\d[\d,]* tool calls (?:a|per) day/
@@ -107,9 +124,9 @@ describe("marketing truth", () => {
       /cancel your subscription/i,
     ];
     for (const file of legal) {
-      const src = readFileSync(join(SRC, file), "utf8");
+      const src = curly(readFileSync(join(SRC, file), "utf8"));
       for (const re of [...RETIRED_PRICING_PHRASES, ...retired]) {
-        expect(src, `${file} ${re}`).not.toMatch(re);
+        expect(src, `${file} ${re}`).not.toMatch(curlyRe(re));
       }
     }
   });
@@ -123,7 +140,7 @@ describe("marketing truth", () => {
       COMPARISONS.map((c) => [c.rows.map((r) => r.twinmcp), c.chooseTwinmcp, c.faq, c.summary])
     );
     for (const text of [buildLlmsTxt(facts), current, compare, ...Object.values(WALLET_SUMMARY)]) {
-      for (const re of RETIRED_PRICING_PHRASES) expect(text).not.toMatch(re);
+      for (const re of RETIRED_PRICING_PHRASES) expect(curly(text)).not.toMatch(curlyRe(re));
     }
   });
 
@@ -152,6 +169,37 @@ describe("marketing truth", () => {
     expect(fr).toMatch(/facture surprise/);
     expect(fr).toMatch(/sans abonnement/);
     expect(defaultFaqItems).toHaveLength(frFaqItems.length);
+  });
+
+  it("states the offer terms and what the credit buys from the facts", () => {
+    const en = walletFacts("en");
+    const fr = walletFacts("fr");
+    const enOffer = offerCopy("en");
+    const frOffer = offerCopy("fr");
+    expect(enOffer.cta).toBe(`Claim my ${en.signupCredit} credit`);
+    expect(frOffer.cta).toBe(`Récupérer mes ${fr.signupCredit} offerts`);
+    expect(enOffer.termsLine).toContain(`Valid ${en.signupDays} days`);
+    expect(enOffer.termsLine).toMatch(/No card · No subscription/);
+    expect(frOffer.termsLine).toContain(`Valable ${fr.signupDays} jours`);
+    const enFacts = offerFacts("en");
+    expect(enFacts.cells[0].figure).toBe(`≈${en.creditCalls}`);
+    expect(enFacts.cells[2].label).toContain(`up to ${FREE_MCP_LIMIT} MCPs`);
+    // The promo caps make "€10 of compute" untrue: never say it.
+    for (const text of [JSON.stringify(enFacts), JSON.stringify(offerFacts("fr"))]) {
+      expect(text).not.toMatch(/of compute|de calcul offert/i);
+    }
+    // The small print names the MCPs held back from the free credit.
+    expect(enFacts.smallPrint).toMatch(/unlock with your first top-up/);
+  });
+
+  it("names the MCPs held back from the free credit in the FAQ", () => {
+    const en = defaultFaqItems.map((f) => `${f.q} ${f.a}`).join("\n");
+    const fr = frFaqItems.map((f) => `${f.q} ${f.a}`).join("\n");
+    for (const slug of PROMO_EXCLUDED_MCP_SLUGS) {
+      const name = getServerBySlug(slug)?.name ?? slug;
+      expect(en).toContain(name);
+      expect(fr).toContain(name);
+    }
   });
 
   it("never promises what is not sold", () => {

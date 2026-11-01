@@ -13,11 +13,16 @@ export const STATUS_LABEL: Record<Status, string> = {
   lost: "Perdu",
 };
 
-export const STATUS_VARIANT: Record<Status, "secondary" | "success" | "destructive" | "outline"> = {
-  new: "outline",
-  contacted: "secondary",
-  replied: "secondary",
-  meeting: "success",
+// Stage colours use the semantic and brand tints only (spec §6, never rose);
+// the badge always carries the stage name, so colour is never the only cue.
+export const STATUS_VARIANT: Record<
+  Status,
+  "secondary" | "info" | "brand" | "warning" | "success" | "destructive"
+> = {
+  new: "secondary",
+  contacted: "info",
+  replied: "brand",
+  meeting: "warning",
   won: "success",
   lost: "destructive",
 };

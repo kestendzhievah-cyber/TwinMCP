@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Info, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Lock, XCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { track } from "@/lib/analytics/funnel";
@@ -79,6 +80,9 @@ export function CreditsActions({
   const params = useSearchParams();
   const [banner, setBanner] = useState<Banner | null>(null);
   const [loading, setLoading] = useState("");
+  // ?amount=25 (a quick-amount chip, or GET /api/v2/wallet/topup/start
+  // bouncing a cross-site link): pre-select that amount in the top-up card.
+  const [requestedAmount] = useState(() => params.get("amount"));
 
   // Surface the Stripe round trip, then strip the query so a refresh doesn't
   // re-trigger it. Mount-only on purpose: router.replace changes `params`, and
@@ -154,101 +158,51 @@ export function CreditsActions({
   const expiresAt = wallet?.promoExpiresAt ? new Date(wallet.promoExpiresAt) : null;
 
   return (
-    <div className="space-y-8">
-      {/* The Stripe round trip: a tinted memo line (DESIGN.md §5 callouts). */}
+    <div className="space-y-6 md:space-y-8">
+      {/* The Stripe round trip: a tinted strip with its icon. */}
       {banner && <BannerLine banner={banner} />}
 
       {legacySubscription && (
         <div
           className={cn(
-            "border border-l-2 px-4 py-3 text-sm",
-            legacyPastDue
-              ? "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive"
-              : "border-info/40 border-l-info bg-info/10 text-info"
+            "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+            legacyPastDue ? "border-destructive/30 bg-destructive/10" : "border-info/30 bg-info/10"
           )}
         >
-          <p className="font-medium">Your subscription will be converted to credit</p>
-          <p className="mt-1 italic text-muted-foreground">
-            TwinMCP now bills pay as you go from a prepaid balance. The unused part of your current
-            period will be added to your balance and the subscription cancelled; you will get an
-            email. There is nothing to do.
-            {legacyPastDue &&
-              " Your last renewal could not be charged: add credit below to keep your tool calls running."}
-          </p>
+          {legacyPastDue ? (
+            <AlertTriangle aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+          ) : (
+            <Info aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-info" />
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold text-foreground">
+              Your subscription will be converted to credit
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              TwinMCP now bills pay as you go from a prepaid balance. The unused part of your
+              current period will be added to your balance and the subscription cancelled; you will
+              get an email. There is nothing to do.
+              {legacyPastDue &&
+                " Your last renewal could not be charged: add credit below to keep your tool calls running."}
+            </p>
+          </div>
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Balance card: the total in large lining figures, then the two buckets. */}
-        <Card>
-          <CardHeader>
-            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
-              Balance
-            </CardDescription>
-            {wallet ? (
-              <CardTitle
-                className={cn(
-                  "lining text-4xl",
-                  level === "limit" && "text-destructive",
-                  level === "warning" && "text-warning"
-                )}
-              >
-                {eur(wallet.totalMicros)}
-              </CardTitle>
-            ) : (
-              <CardTitle className="text-base font-normal italic text-muted-foreground">
-                Your balance could not be loaded. Refresh the page in a moment.
-              </CardTitle>
-            )}
-          </CardHeader>
-          {wallet && (
-            <CardContent className="space-y-3">
-              <dl className="lining divide-y divide-border border-y border-border text-sm">
-                <div className="flex items-baseline justify-between gap-4 py-2">
-                  <dt className="smallcaps tracking-sc text-xs text-muted-foreground">
-                    Free credit
-                  </dt>
-                  <dd className="text-right">
-                    <span className="font-medium">{eur(wallet.promoMicros)}</span>
-                    {expiresAt && wallet.promoMicros > 0 && (
-                      <span className="block text-xs italic text-muted-foreground">
-                        Expires {expiryCountdown(expiresAt, now)} · {formatDate(expiresAt)}
-                      </span>
-                    )}
-                    {wallet.promoExpired && (
-                      <span className="block text-xs italic text-muted-foreground">Expired</span>
-                    )}
-                  </dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4 py-2">
-                  <dt className="smallcaps tracking-sc text-xs text-muted-foreground">
-                    Paid credit
-                  </dt>
-                  <dd className="font-medium">{eur(wallet.paidMicros)}</dd>
-                </div>
-              </dl>
-              <p className="text-xs italic text-muted-foreground">
-                Free credit is spent first. Tool calls are refused when the balance reaches zero.
-              </p>
-              {level === "limit" && (
-                <p className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  Your credit is used up: top up to continue.
-                </p>
-              )}
-            </CardContent>
-          )}
-        </Card>
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+        <BalanceCard wallet={wallet} level={level} now={now} expiresAt={expiresAt} />
 
         <TopUpCard
           presetsEur={presetsEur}
           minTopupEur={minTopupEur}
           maxTopupEur={maxTopupEur}
           funded={Boolean(wallet?.funded)}
+          requestedAmount={requestedAmount}
           onError={(message) => setBanner({ type: "error", message })}
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {wallet && (
           <AutoRechargeCard
             initial={wallet.autoRecharge}
@@ -258,7 +212,7 @@ export function CreditsActions({
         )}
         <Card>
           <CardHeader>
-            <CardTitle>Receipts and payment methods</CardTitle>
+            <CardTitle as="h2">Receipts and payment methods</CardTitle>
             <CardDescription>
               Card top-ups come with an invoice; automatic recharges come with a Stripe receipt by
               email. Download invoices and manage your saved cards from the Stripe billing portal.
@@ -266,16 +220,14 @@ export function CreditsActions({
           </CardHeader>
           <CardContent className="space-y-3">
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={openPortal}
               disabled={!!loading || !hasStripeCustomer}
             >
               {loading === "portal" ? "Redirecting…" : "Billing portal"}
             </Button>
             {!hasStripeCustomer && (
-              <p className="text-xs italic text-muted-foreground">
-                Available after your first top-up.
-              </p>
+              <p className="text-xs text-muted-foreground">Available after your first top-up.</p>
             )}
           </CardContent>
         </Card>
@@ -284,29 +236,151 @@ export function CreditsActions({
   );
 }
 
+/**
+ * The balance hero: the total as the page's key figure, a stacked bar of the
+ * two buckets (free credit in rose, paid credit in blue) and the two figures.
+ */
+function BalanceCard({
+  wallet,
+  level,
+  now,
+  expiresAt,
+}: {
+  wallet: CreditsWallet | null;
+  level: NudgeLevel;
+  now: Date;
+  expiresAt: Date | null;
+}) {
+  if (!wallet) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Balance</CardTitle>
+          <CardDescription className="flex items-start gap-2">
+            <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            Your balance could not be loaded. Refresh the page in a moment.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  const promo = Math.max(0, wallet.promoMicros);
+  const paid = Math.max(0, wallet.paidMicros);
+  const whole = promo + paid;
+  const pct = (part: number) => (whole > 0 ? (part / whole) * 100 : 0);
+
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle as="h2" className="text-sm font-semibold text-muted-foreground">
+          Balance
+        </CardTitle>
+        <p
+          className={cn(
+            "font-display text-5xl font-bold leading-tight tracking-tight tabular-nums",
+            level === "limit"
+              ? "text-destructive"
+              : level === "warning"
+                ? "text-warning"
+                : "text-primary"
+          )}
+        >
+          {eur(wallet.totalMicros)}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div
+          role="img"
+          aria-label={`Free credit ${eur(promo)}, paid credit ${eur(paid)}`}
+          className="flex h-2.5 w-full overflow-hidden rounded-full bg-secondary"
+        >
+          <div className="h-full bg-primary" style={{ width: `${pct(promo)}%` }} />
+          <div className="h-full bg-brand" style={{ width: `${pct(paid)}%` }} />
+        </div>
+        <dl className="grid grid-cols-2 gap-4">
+          <div className="min-w-0 space-y-0.5">
+            <dt className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+              Free credit
+            </dt>
+            <dd className="font-display text-xl font-bold tabular-nums">
+              {eur(wallet.promoMicros)}
+            </dd>
+            {expiresAt && wallet.promoMicros > 0 && (
+              <dd className="text-xs tabular-nums text-muted-foreground">
+                Expires {expiryCountdown(expiresAt, now)} · {formatDate(expiresAt)}
+              </dd>
+            )}
+            {wallet.promoExpired && <dd className="text-xs text-muted-foreground">Expired</dd>}
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <dt className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand" />
+              Paid credit
+            </dt>
+            <dd className="font-display text-xl font-bold tabular-nums">
+              {eur(wallet.paidMicros)}
+            </dd>
+          </div>
+        </dl>
+        <p className="text-xs text-muted-foreground">
+          Free credit is spent first. Tool calls are refused when the balance reaches zero.
+        </p>
+        {level === "limit" && (
+          <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <XCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+            Your credit is used up: top up to continue.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function BannerLine({ banner }: { banner: Banner }) {
+  const Icon = banner.type === "success" ? CheckCircle2 : banner.type === "error" ? XCircle : Info;
   return (
     <div
       role="status"
       className={cn(
-        "flex items-start gap-3 border border-l-2 px-4 py-3 text-sm",
+        "flex items-start gap-3 rounded-xl border px-4 py-3 text-sm text-foreground",
         banner.type === "success"
-          ? "border-success/40 border-l-success bg-success/10 text-success"
+          ? "border-success/30 bg-success/10"
           : banner.type === "error"
-            ? "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive"
-            : "border-info/40 border-l-info bg-info/10 text-info"
+            ? "border-destructive/30 bg-destructive/10"
+            : "border-info/30 bg-info/10"
       )}
     >
-      {banner.type === "success" ? (
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-      ) : banner.type === "error" ? (
-        <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
-      ) : (
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-      )}
+      <Icon
+        aria-hidden
+        className={cn(
+          "mt-0.5 h-4 w-4 shrink-0",
+          banner.type === "success"
+            ? "text-success"
+            : banner.type === "error"
+              ? "text-destructive"
+              : "text-info"
+        )}
+      />
       <span>{banner.message}</span>
     </div>
   );
+}
+
+/** The amount the page was opened with (?amount=): a preset, or a valid custom amount. */
+function initialChoice(
+  requested: string | null,
+  presetsEur: number[],
+  min: number,
+  max: number
+): { preset: number | null; custom: string } {
+  const fallback = { preset: presetsEur[1] ?? presetsEur[0] ?? null, custom: "" };
+  if (!requested) return fallback;
+  const n = Number(requested);
+  if (presetsEur.includes(n)) return { preset: n, custom: "" };
+  const check = checkTopupAmount(requested, min, max);
+  return check.ok ? { preset: null, custom: String(check.amountEur) } : fallback;
 }
 
 function TopUpCard({
@@ -314,16 +388,21 @@ function TopUpCard({
   minTopupEur,
   maxTopupEur,
   funded,
+  requestedAmount,
   onError,
 }: {
   presetsEur: number[];
   minTopupEur: number;
   maxTopupEur: number;
   funded: boolean;
+  requestedAmount: string | null;
   onError: (message: string) => void;
 }) {
-  const [preset, setPreset] = useState<number | null>(presetsEur[1] ?? presetsEur[0] ?? null);
-  const [custom, setCustom] = useState("");
+  const [initial] = useState(() =>
+    initialChoice(requestedAmount, presetsEur, minTopupEur, maxTopupEur)
+  );
+  const [preset, setPreset] = useState<number | null>(initial.preset);
+  const [custom, setCustom] = useState(initial.custom);
   const [saveCard, setSaveCard] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -366,7 +445,7 @@ function TopUpCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add credit</CardTitle>
+        <CardTitle as="h2">Add credit</CardTitle>
         <CardDescription>
           {funded
             ? "Top up any time. The amount is added to your balance as soon as the payment goes through."
@@ -375,12 +454,8 @@ function TopUpCard({
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} className="space-y-4" noValidate>
-          {/* Hairline stamps side by side; the chosen amount is pressed in ink. */}
-          <div
-            role="group"
-            aria-label="Amount"
-            className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4"
-          >
+          {/* Preset chips; the chosen amount is selected in blue. */}
+          <div role="group" aria-label="Amount" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {presetsEur.map((amount) => (
               <button
                 key={amount}
@@ -392,10 +467,10 @@ function TopUpCard({
                 }}
                 aria-pressed={preset === amount}
                 className={cn(
-                  "lining h-10 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:translate-y-px",
+                  "h-11 rounded-lg border text-sm font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px",
                   preset === amount
-                    ? "bg-foreground text-background"
-                    : "bg-card text-muted-foreground hover:text-foreground"
+                    ? "border-brand bg-brand/10 text-brand"
+                    : "border-input bg-card text-foreground hover:bg-accent"
                 )}
               >
                 {formatEurAmount(amount)}
@@ -417,9 +492,9 @@ function TopUpCard({
               }}
               aria-invalid={!!error}
               aria-describedby={error ? "topup-custom-hint topup-error" : "topup-custom-hint"}
-              className="lining"
+              className="tabular-nums"
             />
-            <p id="topup-custom-hint" className="text-xs italic text-muted-foreground">
+            <p id="topup-custom-hint" className="text-xs text-muted-foreground">
               Whole euros, from {formatEurAmount(minTopupEur)} to {formatEurAmount(maxTopupEur)}.
             </p>
           </div>
@@ -428,11 +503,11 @@ function TopUpCard({
               type="checkbox"
               checked={saveCard}
               onChange={(e) => setSaveCard(e.target.checked)}
-              className="mt-1 h-4 w-4 accent-foreground"
+              className="mt-1 h-4 w-4 accent-brand"
             />
             <span>
               Save this card for auto-recharge
-              <span className="block text-xs italic text-muted-foreground">
+              <span className="block text-xs text-muted-foreground">
                 Nothing is charged automatically until you turn auto-recharge on.
               </span>
             </span>
@@ -441,22 +516,35 @@ function TopUpCard({
             <p
               id="topup-error"
               role="alert"
-              className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
+              <XCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
               {error}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" size="lg" className="w-full" disabled={loading}>
             {loading
               ? "Redirecting…"
               : chosen.ok
-                ? `Top up ${formatEurAmount(chosen.amountEur)}`
-                : "Top up"}
+                ? `Add ${formatEurAmount(chosen.amountEur)}`
+                : "Add credit"}
           </Button>
-          <p className="text-xs italic text-muted-foreground">
-            Secure payment by Stripe. No subscription, nothing charged again unless you top up or
-            turn on auto-recharge.
-          </p>
+          <div className="space-y-1.5 text-center">
+            <a
+              href="https://stripe.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              <Lock aria-hidden className="h-3.5 w-3.5" />
+              Payments secured by
+              <BrandLogo slug="stripe" size={14} decorative />
+              Stripe
+            </a>
+            <p className="text-xs text-muted-foreground">
+              No subscription, nothing charged again unless you top up or turn on auto-recharge.
+            </p>
+          </div>
         </form>
       </CardContent>
     </Card>
@@ -552,7 +640,7 @@ function AutoRechargeCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex flex-wrap items-center gap-3">
+        <CardTitle as="h2" className="flex flex-wrap items-center gap-3">
           Auto-recharge
           <Badge variant={initial.enabled ? "success" : "secondary"}>
             {initial.enabled ? "On" : "Off"}
@@ -565,13 +653,26 @@ function AutoRechargeCard({
       </CardHeader>
       <CardContent>
         <form onSubmit={save} className="space-y-4" noValidate>
-          <label className="flex min-h-10 cursor-pointer items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-              className="h-4 w-4 accent-foreground"
-            />
+          {/* A switch: a native checkbox with the switch role, drawn as a track and knob. */}
+          <label className="flex min-h-10 cursor-pointer items-center gap-3 text-sm font-medium">
+            <span className="relative inline-flex h-6 w-11 shrink-0">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-checked={enabled}
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+                className="peer sr-only"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-full bg-input transition-colors peer-checked:bg-brand peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background motion-reduce:transition-none"
+              />
+              <span
+                aria-hidden
+                className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-card shadow-sm transition-transform peer-checked:translate-x-5 motion-reduce:transition-none"
+              />
+            </span>
             Turn on auto-recharge
           </label>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -600,7 +701,7 @@ function AutoRechargeCard({
               hint={`Up to ${formatEurAmount(limits.maxMonthlyCapEur)}`}
             />
           </div>
-          <p className="lining text-xs italic text-muted-foreground">
+          <p className="text-xs tabular-nums text-muted-foreground">
             {card
               ? `Card: ${card.brand} ending ${card.last4}, expires ${String(card.expMonth).padStart(2, "0")}/${card.expYear}.`
               : initial.hasPaymentMethod
@@ -614,13 +715,14 @@ function AutoRechargeCard({
             <p
               id="ar-error"
               role="alert"
-              className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
+              <XCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
               {error}
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" variant="outline" disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </Button>
             {initial.hasPaymentMethod && (
@@ -667,9 +769,9 @@ function AmountField({
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={!!errorId}
         aria-describedby={errorId ? `${hintId} ${errorId}` : hintId}
-        className="lining"
+        className="tabular-nums"
       />
-      <p id={hintId} className="lining text-xs italic text-muted-foreground">
+      <p id={hintId} className="text-xs tabular-nums text-muted-foreground">
         {hint}
       </p>
     </div>

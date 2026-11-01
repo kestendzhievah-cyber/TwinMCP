@@ -21,26 +21,26 @@ export default function ApiReferencePage() {
           { name: "API Reference", url: "/docs/api-reference" },
         ])}
       />
-      {/* The card's top line: a small-caps breadcrumb on one hairline, above the
-          Scalar renderer (which draws its own chrome below). */}
+      {/* A breadcrumb bar on one hairline, above the Scalar renderer (which
+          draws its own chrome below). */}
       <nav
         aria-label="Breadcrumb"
-        className="smallcaps tracking-sc border-b border-border px-4 py-3 text-xs text-muted-foreground sm:px-6"
+        className="border-b border-border bg-card px-4 py-3 text-sm text-muted-foreground sm:px-6"
       >
-        <ol className="flex items-center gap-2">
+        <ol className="flex flex-wrap items-center gap-2">
           <li>
-            <Link href="/" className="hover:text-foreground">
+            <Link href="/" className="transition-colors hover:text-foreground">
               Home
             </Link>
           </li>
           <li aria-hidden>·</li>
           <li>
-            <Link href={"/docs" as Route} className="hover:text-foreground">
+            <Link href={"/docs" as Route} className="transition-colors hover:text-foreground">
               Docs
             </Link>
           </li>
           <li aria-hidden>·</li>
-          <li aria-current="page" className="text-foreground">
+          <li aria-current="page" className="font-medium text-foreground">
             API Reference
           </li>
         </ol>

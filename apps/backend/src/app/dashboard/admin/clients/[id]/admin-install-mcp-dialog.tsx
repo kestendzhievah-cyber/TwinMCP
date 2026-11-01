@@ -130,9 +130,9 @@ export function AdminInstallMcpDialog({
         </DialogHeader>
         <div className="space-y-5">
           <div className="flex flex-col gap-2">
-            <Label>Connecteur</Label>
+            <Label htmlFor="admin-install-mcp">Connecteur</Label>
             <Select value={mcpId} onValueChange={setMcpId}>
-              <SelectTrigger>
+              <SelectTrigger id="admin-install-mcp">
                 <SelectValue placeholder={loading ? "Chargement…" : "Choisir un MCP"} />
               </SelectTrigger>
               <SelectContent>
@@ -145,22 +145,21 @@ export function AdminInstallMcpDialog({
               </SelectContent>
             </Select>
             {selected?.description && (
-              <p className="text-xs italic text-muted-foreground">{selected.description}</p>
+              <p className="text-xs text-muted-foreground">{selected.description}</p>
             )}
           </div>
 
           {props.length > 0 && (
-            <div className="space-y-4 border border-border bg-secondary/40 p-4">
-              <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-                Configuration
-              </p>
+            <div className="space-y-4 rounded-xl border border-border bg-secondary p-4">
+              <p className="eyebrow">Configuration</p>
               {props.map(([key, def]) => (
                 <div key={key} className="flex flex-col gap-2">
-                  <Label>
-                    <code className="no-smallcaps">{key}</code>
+                  <Label htmlFor={`admin-cfg-${key}`}>
+                    <code className="font-mono">{key}</code>
                     {def.required ? " *" : ""}
                   </Label>
                   <Input
+                    id={`admin-cfg-${key}`}
                     type={def.secret ? "password" : "text"}
                     value={config[key] ?? ""}
                     onChange={(e) => setConfig((c) => ({ ...c, [key]: e.target.value }))}

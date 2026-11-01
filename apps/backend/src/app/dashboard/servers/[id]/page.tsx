@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { Route } from "next";
 import { formatDateTime } from "@/lib/format";
-import { AlertCircle, PauseCircle, ServerOff, Zap } from "lucide-react";
+import { AlertTriangle, PauseCircle, ServerOff, Zap } from "lucide-react";
 import { lifecycleState } from "@/lib/server-lifecycle";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
@@ -15,18 +15,20 @@ import { ServerControls } from "./controls";
 import { InstalledMcps } from "./installed-mcps";
 import { ConnectPanel } from "./connect-panel";
 import { ServerStatusBadge } from "./server-status-badge";
-import { ServerNav } from "./activity/server-nav";
+import { ServerHeader } from "./server-header";
 // Lazy: the logs viewer (and its 2s polling) only mounts when the Logs tab is
 // opened — split it into its own chunk instead of the server-detail bundle.
 const LogsViewer = dynamic(() => import("./logs-viewer").then((m) => m.LogsViewer));
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
 import { IDE_LABELS, type IdeKey } from "@/lib/mcp/client-config";
 
-// Runtime facts are typeset as address lines: a small-caps label over its value.
-const factLabel = "smallcaps tracking-sc text-xs text-muted-foreground";
+// Runtime facts: a small muted label over its value.
+const factLabel = "text-xs font-medium text-muted-foreground";
+// A status callout: a rounded tinted strip with a leading icon.
+const callout = "flex items-start gap-2 rounded-xl border px-4 py-3 text-sm";
 
 export default async function ServerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -104,27 +106,20 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
   const installedOptions = installations.map((i) => ({ slug: i.mcpSlug, name: i.mcpName }));
 
   return (
-    <div className="space-y-8">
-      {/* Page header (DESIGN.md §5): a "Servers" eyebrow with its rule, the
-          engraved name with the live status beside it, the slug in Courier,
-          controls top-right, then the double rule. */}
-      <div>
-        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-          <div className="min-w-0">
-            <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-              Servers
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <h1 className="smallcaps tracking-sc text-2xl font-medium">{srv.name}</h1>
-              <ServerStatusBadge
-                serverId={srv.id}
-                initialStatus={srv.status}
-                hostType={srv.hostType}
-                initialBoxId={srv.boxId}
-              />
-            </div>
-            <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{srv.slug}</p>
-          </div>
+    <div className="space-y-6 md:space-y-8">
+      <ServerHeader
+        serverId={srv.id}
+        name={srv.name}
+        slug={srv.slug}
+        status={
+          <ServerStatusBadge
+            serverId={srv.id}
+            initialStatus={srv.status}
+            hostType={srv.hostType}
+            initialBoxId={srv.boxId}
+          />
+        }
+        actions={
           <ServerControls
             serverId={srv.id}
             serverName={srv.name}
@@ -132,124 +127,54 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
             hostType={srv.hostType}
             boxId={srv.boxId}
           />
-        </div>
-        <Separator variant="double" className="mt-4" />
-        {/* Page-level sections (real routes): Overview · Try it · Activity. */}
-        <div className="mt-4">
-          <ServerNav serverId={srv.id} />
-        </div>
-      </div>
+        }
+      />
 
       {/* `stopped` reads two ways (lib/server-lifecycle.ts): paused with its
           box kept, or no runtime at all. Say which, in plain words. */}
       {lifecycle === "paused" && (
-        <div className="flex items-start gap-2 border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
-          <PauseCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className={cn(callout, "border-info/30 bg-info/10 text-info")}>
+          <PauseCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            <strong className="font-medium">Paused.</strong> The box and its data are kept. The next
-            MCP request wakes it after a short delay, or press{" "}
-            <strong className="font-medium">Resume</strong>.
+            <strong className="font-semibold">Paused.</strong> The box and its data are kept. The
+            next MCP request wakes it after a short delay, or press{" "}
+            <strong className="font-semibold">Resume</strong>.
           </p>
         </div>
       )}
       {lifecycle === "no_runtime" && (
-        <div className="flex items-start gap-2 border border-border border-l-2 border-l-foreground/40 bg-secondary px-3 py-2 text-sm text-muted-foreground">
-          <ServerOff className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className={cn(callout, "border-border bg-secondary text-muted-foreground")}>
+          <ServerOff aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            <strong className="font-medium text-foreground">No runtime.</strong> Your MCPs and their
-            configuration are saved. <strong className="font-medium text-foreground">Start</strong>{" "}
-            creates a fresh box and installs them.
+            <strong className="font-semibold text-foreground">No runtime.</strong> Your MCPs and
+            their configuration are saved.{" "}
+            <strong className="font-semibold text-foreground">Start</strong> creates a fresh box and
+            installs them.
           </p>
         </div>
       )}
 
       {srv.status === "error" && (
-        // An oxblood memo (DESIGN.md §5 callouts): tint, hairline, a rule down the left.
-        <div className="flex items-start gap-2 border border-destructive/40 border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className={cn(callout, "border-destructive/30 bg-destructive/10 text-destructive")}>
+          <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             This server&apos;s runtime failed to start. Open the{" "}
-            <strong className="font-medium">Logs</strong> tab below to see why, then{" "}
-            <strong className="font-medium">Restart</strong> it.
+            <strong className="font-semibold">Logs</strong> tab below to see why, then{" "}
+            <strong className="font-semibold">Restart</strong> it.
           </p>
         </div>
       )}
 
+      {/* Sub-sections of the overview. Segmented, so they read one level below
+          the underline section nav above. */}
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview">Setup</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <Card>
-            <CardHeader className="border-b border-border">
-              <CardTitle className="text-base">Runtime</CardTitle>
-              <CardDescription>
-                {srv.hostType === "local_agent"
-                  ? "Runs on your machine via the local agent."
-                  : "Upstash Box hosting this MCP server."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {/* Address lines: each fact on its own hairline, two to a row on wide stock. */}
-              <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className={factLabel}>Box ID</dt>
-                  <dd className="mt-0.5 break-all font-mono text-xs">{srv.boxId ?? "—"}</dd>
-                </div>
-                <div className="border-t border-border pt-3 sm:border-t-0 sm:pt-0">
-                  <dt className={factLabel}>Endpoint</dt>
-                  <dd className="mt-0.5 break-all font-mono text-xs">{srv.endpointUrl ?? "—"}</dd>
-                </div>
-                <div className="border-t border-border pt-3">
-                  <dt className={factLabel}>Size</dt>
-                  <dd className="mt-0.5 capitalize">{srv.boxSize}</dd>
-                </div>
-                <div className="border-t border-border pt-3">
-                  <dt className={factLabel}>Region</dt>
-                  <dd className="mt-0.5 font-mono text-xs">{srv.region ?? "—"}</dd>
-                </div>
-                <div className="border-t border-border pt-3">
-                  <dt className={factLabel}>Last heartbeat</dt>
-                  <dd className="lining mt-0.5">
-                    {srv.lastHeartbeatAt ? formatDateTime(srv.lastHeartbeatAt) : "—"}
-                  </dd>
-                </div>
-                <div className="border-t border-border pt-3">
-                  <dt className={factLabel}>Created</dt>
-                  <dd className="lining mt-0.5">{formatDateTime(srv.createdAt)}</dd>
-                </div>
-                <div className="border-t border-border pt-3">
-                  <dt className={factLabel}>Mode</dt>
-                  {warm ? (
-                    <dd className="mt-0.5 flex items-center gap-1.5">
-                      <Zap className="h-4 w-4 text-warning" />
-                      <span>Always-on</span>
-                    </dd>
-                  ) : (
-                    <dd className="mt-0.5 italic text-muted-foreground">Sleeps when idle</dd>
-                  )}
-                </div>
-              </dl>
-
-              {/* Upsell only when the feature is live (flag on) but this plan
-                  doesn't have it — never advertise warm boxes before they work. */}
-              {warmEnabled && !warm && (
-                <Link
-                  href={"/dashboard/billing" as Route}
-                  className="mt-4 flex items-center gap-2 border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning transition-colors hover:border-warning"
-                >
-                  <Zap className="h-4 w-4 shrink-0" />
-                  <span>
-                    <span className="smallcaps tracking-sc font-medium">Add credit</span> for
-                    always-on servers — no cold start on the first request.
-                  </span>
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-
+          {/* Connect first: it is the next step for a new server. */}
           <ConnectPanel
             serverSlug={srv.slug}
             serverName={srv.name}
@@ -280,6 +205,73 @@ export default async function ServerDetailPage({ params }: { params: Promise<{ i
               hasConfig: hasConfigFields(i.mcpConfigSchema),
             }))}
           />
+
+          <Card>
+            <CardHeader className="border-b border-border">
+              <CardTitle as="h2">Runtime</CardTitle>
+              <CardDescription>
+                {srv.hostType === "local_agent"
+                  ? "Runs on your machine via the local agent."
+                  : "Upstash Box hosting this MCP server."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-5 sm:pt-6">
+              <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className={factLabel}>Box ID</dt>
+                  <dd className="mt-1 break-all font-mono text-xs">{srv.boxId ?? "—"}</dd>
+                </div>
+                <div className="border-t border-border pt-3 sm:border-t-0 sm:pt-0">
+                  <dt className={factLabel}>Endpoint</dt>
+                  <dd className="mt-1 break-all font-mono text-xs">{srv.endpointUrl ?? "—"}</dd>
+                </div>
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Size</dt>
+                  <dd className="mt-1 capitalize">{srv.boxSize}</dd>
+                </div>
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Region</dt>
+                  <dd className="mt-1 font-mono text-xs">{srv.region ?? "—"}</dd>
+                </div>
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Last heartbeat</dt>
+                  <dd className="mt-1 tabular-nums">
+                    {srv.lastHeartbeatAt ? formatDateTime(srv.lastHeartbeatAt) : "—"}
+                  </dd>
+                </div>
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Created</dt>
+                  <dd className="mt-1 tabular-nums">{formatDateTime(srv.createdAt)}</dd>
+                </div>
+                <div className="border-t border-border pt-3">
+                  <dt className={factLabel}>Mode</dt>
+                  {warm ? (
+                    <dd className="mt-1 flex items-center gap-1.5">
+                      <Zap aria-hidden className="h-4 w-4 text-warning" />
+                      <span>Always-on</span>
+                    </dd>
+                  ) : (
+                    <dd className="mt-1 text-muted-foreground">Sleeps when idle</dd>
+                  )}
+                </div>
+              </dl>
+
+              {/* Upsell only when the feature is live (flag on) but this plan
+                  does not have it: never advertise warm boxes before they work. */}
+              {warmEnabled && !warm && (
+                <Link
+                  href={"/dashboard/billing" as Route}
+                  className="mt-5 flex items-center gap-2 rounded-xl border border-offer-border bg-offer px-4 py-3 text-sm text-offer-foreground transition hover:shadow-md"
+                >
+                  <Zap aria-hidden className="h-4 w-4 shrink-0" />
+                  <span>
+                    <span className="font-semibold">Add credit</span> for always-on servers — no
+                    cold start on the first request.
+                  </span>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="logs">

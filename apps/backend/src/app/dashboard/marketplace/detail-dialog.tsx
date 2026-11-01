@@ -32,7 +32,9 @@ import {
 import { parseSchema, type CatalogEntry, type ServerOption } from "./install-dialog";
 import { useMcpConfigSchema } from "./use-config-schema";
 import { cliCommand } from "@/lib/cli";
-import { PROMO_LOCKED_BADGE, PROMO_LOCKED_MCP_MESSAGE } from "@/lib/wallet/eligibility";
+import { PROMO_LOCKED_MCP_MESSAGE } from "@/lib/wallet/eligibility";
+import { McpLogo } from "./mcp-logo";
+import { LockedPill } from "./locked-pill";
 
 const IDE_KEYS = Object.keys(IDE_LABELS) as IdeKey[];
 
@@ -86,42 +88,42 @@ export function DetailDialog({
     <Dialog open={!!mcp} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{mcp.name}</DialogTitle>
-          {/* Seal and meta line: an official MCP gets the one gilt seal of the
-              view (§4.8); category in small caps, runtime and version in Courier. */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
-            {mcp.isOfficial && <Badge variant="gilt">official</Badge>}
-            {local && <Badge variant="info">local</Badge>}
-            {locked && (
-              <Badge variant="warning">
-                <Lock aria-hidden className="h-3 w-3" />
-                {PROMO_LOCKED_BADGE}
-              </Badge>
-            )}
-            <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-              {mcp.category && (
-                <>
-                  <span className="smallcaps tracking-sc">{categoryLabel(mcp.category)}</span>
-                  <span aria-hidden>·</span>
-                </>
-              )}
-              <span className="font-mono">{mcp.runtime}</span>
-              <span aria-hidden>·</span>
-              <span className="font-mono">v{mcp.version}</span>
-            </p>
+          <div className="flex items-start gap-3 pr-6">
+            <McpLogo slug={mcp.slug} category={mcp.category} size={40} />
+            <div className="min-w-0 space-y-1">
+              <DialogTitle>{mcp.name}</DialogTitle>
+              <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                {mcp.category && (
+                  <>
+                    <span>{categoryLabel(mcp.category)}</span>
+                    <span aria-hidden>·</span>
+                  </>
+                )}
+                <span className="font-mono">{mcp.runtime}</span>
+                <span aria-hidden>·</span>
+                <span className="font-mono">v{mcp.version}</span>
+              </p>
+            </div>
           </div>
-          <DialogDescription className="pt-2 not-italic leading-relaxed text-foreground/80">
+          {(mcp.isOfficial || local || locked) && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {mcp.isOfficial && <Badge variant="brand">official</Badge>}
+              {local && <Badge variant="info">local</Badge>}
+              {locked && <LockedPill />}
+            </div>
+          )}
+          <DialogDescription className="pt-2 leading-relaxed text-foreground">
             {mcp.description || "No description provided."}
           </DialogDescription>
         </DialogHeader>
 
         {isInstalled && (
-          // Success memo: green tint, ink-green left rule, the servers as links.
-          <div className="border border-success/40 border-l-2 border-l-success bg-success/10 px-3 pt-2.5 text-sm">
+          // Success note: green tint, the servers as links.
+          <div className="rounded-xl border border-success/30 bg-success/10 px-4 pt-3 text-sm">
             <p className="flex items-center gap-2 font-medium text-success">
               <Check aria-hidden className="h-4 w-4" />
               <span>
-                Installed on <span className="lining">{installed.length}</span> server
+                Installed on <span className="tabular-nums">{installed.length}</span> server
                 {installed.length === 1 ? "" : "s"}
               </span>
             </p>
@@ -130,7 +132,7 @@ export function DetailDialog({
                 <Link
                   key={s.serverId}
                   href={`/dashboard/servers/${s.serverId}` as Route}
-                  className="inline-flex min-h-10 items-center text-foreground underline decoration-success/40 underline-offset-4 transition-colors hover:decoration-success"
+                  className="inline-flex min-h-10 items-center font-medium text-brand underline-offset-4 hover:underline"
                 >
                   {s.serverName}
                 </Link>
@@ -140,44 +142,45 @@ export function DetailDialog({
         )}
 
         {locked && (
-          <p className="border border-warning/40 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-sm text-warning">
-            {PROMO_LOCKED_MCP_MESSAGE}. It runs code or a browser on demand, so it is not available
-            on the free sign-up credit.
+          <p className="flex items-start gap-2 rounded-xl border border-offer-border bg-offer px-4 py-3 text-sm text-offer-foreground">
+            <Lock aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              {PROMO_LOCKED_MCP_MESSAGE}. It runs code or a browser on demand, so it is not
+              available on the free sign-up credit.
+            </span>
           </p>
         )}
 
         {local && (
-          <p className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+          <p className="rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info">
             Runs on your machine via the TwinMCP local agent (
             <code className="font-mono">{cliCommand("connect")}</code>) — install it on a{" "}
             <strong className="font-medium">Local (agent)</strong> server.
           </p>
         )}
 
-        {/* Configuration: a ledger of the fields the installer will ask for —
-            mono keys and types, required/secret as small seals. */}
+        {/* Configuration: the fields the installer will ask for, mono keys
+            and types, required/secret as pills. */}
         <section className="space-y-3">
-          <h4 className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-            Configuration
-          </h4>
+          <h4 className="eyebrow">Configuration</h4>
           {schemaLoading ? (
-            <p className="text-sm italic text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : fields.length === 0 ? (
-            <p className="text-sm italic text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               No configuration needed — install and connect.
             </p>
           ) : (
-            <ul className="divide-y divide-border border border-border">
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
               {fields.map(([key, def]) => (
                 <li key={key} className="px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <code className="font-mono text-sm">{key}</code>
                     <span className="font-mono text-xs text-muted-foreground">{def.type}</span>
-                    {def.required && <Badge variant="destructive">required</Badge>}
+                    {def.required && <Badge variant="secondary">required</Badge>}
                     {def.secret && <Badge variant="outline">secret</Badge>}
                   </div>
                   {def.description && (
-                    <p className="mt-1 text-xs italic text-muted-foreground">{def.description}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{def.description}</p>
                   )}
                 </li>
               ))}
@@ -191,7 +194,7 @@ export function DetailDialog({
             href={mcp.repoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-10 w-fit items-center gap-2 text-sm text-brand underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand"
+            className="inline-flex min-h-10 w-fit items-center gap-2 text-sm font-medium text-brand underline-offset-4 hover:underline"
           >
             <ExternalLink aria-hidden className="h-4 w-4" />
             Source / documentation
@@ -201,9 +204,7 @@ export function DetailDialog({
         {/* Connection preview */}
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-              Connection snippet
-            </h4>
+            <h4 className="eyebrow">Connection snippet</h4>
             <Select value={ide} onValueChange={(v) => setIde(v as IdeKey)}>
               <SelectTrigger className="w-44" aria-label="Preview client">
                 <SelectValue />
@@ -224,9 +225,9 @@ export function DetailDialog({
               filename={preview.filename}
             />
           )}
-          <p className="text-xs italic text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Preview with placeholders. After installing, your real URL and a{" "}
-            <code className="font-mono not-italic">ctx7sk_</code> key appear on the server page.
+            <code className="font-mono">ctx7sk_</code> key appear on the server page.
           </p>
         </section>
 
@@ -236,7 +237,10 @@ export function DetailDialog({
           </Button>
           {locked && !isInstalled ? (
             <Button asChild>
-              <Link href={"/dashboard/billing" as Route}>Top up to install</Link>
+              <Link href={"/dashboard/billing" as Route}>
+                <Lock aria-hidden className="h-4 w-4" />
+                Top up to unlock
+              </Link>
             </Button>
           ) : userServers.length === 0 ? (
             <Button asChild>

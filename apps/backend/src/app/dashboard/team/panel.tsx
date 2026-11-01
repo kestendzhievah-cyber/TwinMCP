@@ -101,7 +101,7 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
 
   if (!teamspace) {
     return (
-      <Card className="max-w-xl">
+      <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle>No teamspace yet</CardTitle>
           <CardDescription>Create one to manage members and policies.</CardDescription>
@@ -129,17 +129,17 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
 
   return (
     <Card>
-      {/* Ruled header: hairline icon square + the teamspace name; head-count and plan seal right. */}
-      <CardHeader className="border-b border-border px-6 py-4">
+      {/* Header row: icon tile + the teamspace name; head-count and plan badge right. */}
+      <CardHeader className="border-b border-border">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
-              <Users className="h-4 w-4" />
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-brand">
+              <Users aria-hidden className="size-4" />
             </span>
             {teamspace.name}
           </CardTitle>
           <div className="flex items-center gap-3">
-            <span className="smallcaps tracking-sc lining text-xs text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {members.length} member{members.length === 1 ? "" : "s"}
             </span>
             <Badge
@@ -153,7 +153,10 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
       </CardHeader>
       <CardContent className="p-0">
         {isOwner && (
-          <form onSubmit={invite} className="space-y-2 border-b border-border px-6 py-5">
+          <form
+            onSubmit={invite}
+            className="space-y-2 border-b border-border p-[var(--card-padding)]"
+          >
             <Label htmlFor="invite-email">Add a member</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
@@ -168,21 +171,27 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
                 {inviting ? "Adding…" : "Add member"}
               </Button>
             </div>
-            <p className="text-xs italic text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               They must already have a TwinMCP account.
             </p>
           </form>
         )}
         <div>
-          <h3 className="smallcaps tracking-sc px-6 pb-2 pt-5 text-sm font-medium">Members</h3>
-          {/* Ledger: small-caps header on a firmer rule, hairline rows, flush to the card edges. */}
+          <h3 className="px-[var(--card-padding)] pb-3 pt-5 font-display text-base font-semibold tracking-tight">
+            Members
+          </h3>
+          {/* Members table, flush to the card edges (the card is the frame). */}
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="pl-6">Email</TableHead>
                 <TableHead className="w-28">Role</TableHead>
                 <TableHead className="w-36">Joined</TableHead>
-                {isOwner && <TableHead className="w-16 pr-6"></TableHead>}
+                {isOwner && (
+                  <TableHead className="w-16 pr-6">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -224,8 +233,8 @@ export function TeamPanel({ userId, teamspace, members }: Props) {
             <DialogHeader>
               <DialogTitle>Remove this member?</DialogTitle>
               <DialogDescription>
-                <code className="font-mono not-italic">{removeTarget?.email}</code> will immediately
-                lose access to this teamspace.
+                <code className="font-mono">{removeTarget?.email}</code> will immediately lose
+                access to this teamspace.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

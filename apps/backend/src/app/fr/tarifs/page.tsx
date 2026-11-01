@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/marketing/section";
+import { OfferBadge, offerCopy } from "@/components/marketing/offer-badge";
+import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
 import { Faq, type FaqItem } from "@/components/marketing/faq";
 import { PricingExperience } from "@/components/pricing/pricing-experience";
 import { TrustSignals } from "@/components/pricing/trust-signals";
@@ -12,12 +14,7 @@ import { TrackOnMount } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
 import { faqPageSchema, breadcrumbListSchema } from "@/lib/seo/schema";
 import { trackPageServed } from "@/lib/analytics/server";
-import {
-  FUNDED_UNLOCKS,
-  SIGNUP_OFFER,
-  walletFacts,
-  walletProductSchema,
-} from "@/components/pricing/wallet-copy";
+import { FUNDED_UNLOCKS, walletFacts, walletProductSchema } from "@/components/pricing/wallet-copy";
 
 // French twin of /plans. Same facts (lib/wallet/pricing.ts through
 // components/pricing/wallet-copy.ts, lib/plan-features.ts), same components
@@ -105,36 +102,49 @@ export default async function TarifsPage({ searchParams }: { searchParams: Searc
       />
       <TrackOnMount name="pricing_view" />
 
-      <Section>
-        <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
-          <p className="eyebrow mb-4 flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']">
-            Tarifs
-          </p>
-          <h1 className="text-3xl font-medium md:text-4xl">
-            Payez à l’usage. {W.signupCredit} offerts pour commencer.
+      {/* Hero: the offer first (pill, the € figure in the H1, the CTA label),
+          then the terms line, so the free credit is never oversold. */}
+      <section className="bg-background pb-14 pt-10 md:pb-20 md:pt-16">
+        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+          <OfferBadge locale="fr" />
+          <h1 className="mt-5 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+            Payez à l’usage. <span className="text-primary">{W.signupCredit} offerts</span> pour
+            commencer.
           </h1>
-          <p className="mt-4 text-balance text-lg text-muted-foreground">
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-muted-foreground md:text-xl">
             Sans abonnement. Vous rechargez un solde prépayé et ne payez que ce que vos serveurs
             utilisent : les appels d’outils et le temps CPU actif. À zéro, tout s’arrête : aucune
             facture surprise.
           </p>
-          <div className="mt-8 flex justify-center">
-            <Button asChild size="lg">
-              <Link href={"/fr/inscription" as Route} data-cta-location="tarifs_hero">
+          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <Button asChild size="xl" className="w-full sm:w-auto">
+              <Link href={"/fr/inscription" as Route} id="hero-cta" data-cta-location="tarifs_hero">
                 Recevoir {W.signupCredit} de crédit offert
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight aria-hidden />
               </Link>
             </Button>
+            <Button asChild size="xl" variant="outline" className="w-full sm:w-auto">
+              <a href="#estimator">
+                <Calculator aria-hidden />
+                Estimer mon coût
+              </a>
+            </Button>
           </div>
+          <TrustSignals locale="fr" className="mt-6" />
         </div>
+      </section>
+
+      <Section
+        id="prix"
+        className="scroll-mt-16 bg-surface-alt"
+        eyebrow="Grille tarifaire"
+        title="Payez uniquement ce que vous utilisez"
+        description={`Deux compteurs, tous deux en euros : les appels d’outils et le temps CPU actif. Rechargez dès ${W.minTopup} quand il vous en faut plus.`}
+      >
         <PricingExperience locale="fr" />
-        <div className="mx-auto mt-12 max-w-3xl border-y border-border py-4">
-          <TrustSignals locale="fr" />
-        </div>
       </Section>
 
       <Section
-        bordered
         eyebrow="Votre compte"
         title="Crédit offert, puis paiement à l’usage"
         description="Les mêmes prix avant et après votre première recharge. Alimenter le compte lève les limites qui protègent le crédit offert des abus."
@@ -142,37 +152,45 @@ export default async function TarifsPage({ searchParams }: { searchParams: Searc
         <ComparisonTable locale="fr" />
       </Section>
 
-      <Faq
-        locale="fr"
-        items={pricingFaqFr}
-        eyebrow="FAQ tarifs"
-        title="Vos questions sur les tarifs"
-        description="Si une réponse manque, écrivez à hello@twinmcp.fr : nous lisons tout."
-        id="faq-tarifs"
-      />
+      <div className="bg-surface-alt">
+        <Faq
+          locale="fr"
+          items={pricingFaqFr}
+          eyebrow="FAQ tarifs"
+          title="Vos questions sur les tarifs"
+          description="Si une réponse manque, écrivez à hello@twinmcp.fr : nous lisons tout."
+          id="faq-tarifs"
+        />
+      </div>
 
-      <Section bordered>
-        <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 border border-border bg-card px-6 py-12 text-center shadow-sm md:px-12 md:py-14">
-          <h2 className="text-balance text-3xl font-medium md:text-4xl">
-            Le contexte de votre agent, là où il tourne.
-          </h2>
-          <div className="h-px w-12 bg-foreground/40" />
-          <p className="max-w-xl text-balance text-lg text-muted-foreground">
-            Commencez avec {W.signupCredit} offerts. Rechargez seulement quand il vous en faut plus.
-          </p>
-          <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href={"/fr/inscription" as Route} data-cta-location="tarifs_final">
-                {SIGNUP_OFFER.fr.charAt(0).toUpperCase() + SIGNUP_OFFER.fr.slice(1)}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href={"/fr/docs#credit" as Route}>Comment fonctionne le crédit</Link>
-            </Button>
+      {/* Final CTA: a strong-band panel (never navy: a rose button on navy fails contrast). */}
+      <section id="final-cta" data-sticky-cta-hide className="bg-background py-16 md:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto flex max-w-4xl flex-col items-center rounded-3xl bg-surface-band p-8 text-center md:p-14">
+            <OfferBadge locale="fr" />
+            <h2 className="mt-5 max-w-2xl text-balance font-display text-3xl font-bold tracking-tight md:text-4xl">
+              Votre premier serveur MCP hébergé, en ligne en 2 minutes environ.
+            </h2>
+            <p className="mt-4 max-w-xl text-balance text-lg text-muted-foreground">
+              Commencez avec {W.signupCredit} offerts. Rechargez seulement quand il vous en faut
+              plus.
+            </p>
+            <div className="mt-8 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
+              <Button asChild size="xl" className="w-full sm:w-auto">
+                <Link href={"/fr/inscription" as Route} data-cta-location="tarifs_final">
+                  {offerCopy("fr").cta}
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild size="xl" variant="outline" className="w-full sm:w-auto">
+                <Link href={"/fr/docs#credit" as Route}>Comment fonctionne le crédit</Link>
+              </Button>
+            </div>
+            <TrustSignals locale="fr" className="mt-6" />
           </div>
         </div>
-      </Section>
+      </section>
+      <StickyMobileCta locale="fr" />
     </>
   );
 }

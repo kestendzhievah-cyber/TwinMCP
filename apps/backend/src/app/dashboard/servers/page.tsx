@@ -8,12 +8,9 @@ import { desc, eq } from "drizzle-orm";
 import { SERVER_QUOTAS } from "@/lib/quota";
 import { PLAN_CAPABILITIES, PLAN_LABELS } from "@/lib/plan-features";
 import { getEntitlements } from "@/lib/wallet/entitlements";
-import { cn } from "@/lib/utils";
 import { CreateServerDialog } from "./create-dialog";
 import { TopUpInline } from "@/components/billing/top-up-inline";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableHeader,
@@ -25,6 +22,7 @@ import {
 import { ArrowRight, Boxes, Plus } from "lucide-react";
 import { lifecycleLabel } from "@/lib/server-lifecycle-label";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { LifecycleBadge } from "./lifecycle-badge";
 
 export default async function ServersPage() {
   const supabase = await createClient();
@@ -64,31 +62,27 @@ export default async function ServersPage() {
   const proBoxes = `${pro.boxSizes.slice(0, -1).join(", ")} or ${pro.boxSizes[pro.boxSizes.length - 1]}`;
 
   return (
-    <div className="space-y-8">
-      {/* Page header: the engraved title, the quota as an italic line under it,
-          the page action top-right, then the double rule (DESIGN.md §5). */}
-      <div>
-        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-          <div>
-            <h1 className="smallcaps tracking-sc text-2xl font-medium">Servers</h1>
-            <p className="mt-1 text-sm italic text-muted-foreground">
-              <span className="lining">{active}</span> active ·{" "}
-              <span className="lining">{remaining}</span> remaining ·{" "}
-              <span className="smallcaps font-medium not-italic text-foreground">
-                {PLAN_LABELS[plan]}
-              </span>
+    <div className="space-y-6 md:space-y-8">
+      {/* Header row: title, a one-line description, the page's single primary
+          action on the right (hidden while the empty state carries it). */}
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl font-bold tracking-tight">Servers</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="tabular-nums">{active}</span> active ·{" "}
+              <span className="tabular-nums">{remaining}</span> remaining ·{" "}
+              <span className="font-medium text-foreground">{PLAN_LABELS[plan]}</span>
             </p>
           </div>
-          <CreateServerDialog plan={plan} disabled={remaining === 0} />
+          {rows.length > 0 && <CreateServerDialog plan={plan} disabled={remaining === 0} />}
         </div>
-        <Separator variant="double" className="mt-4" />
         {atFreeLimit && (
           <TopUpInline
             source="servers"
             level="offer"
             reason="servers_limit"
             description={`Free credit accounts run ${PLAN_CAPABILITIES.free.servers} server. After a first top-up you can run up to ${pro.servers} servers on ${proBoxes} boxes.`}
-            className="lining mt-4"
           />
         )}
       </div>
@@ -103,56 +97,82 @@ export default async function ServersPage() {
               plan={plan}
               disabled={remaining === 0}
               trigger={
-                <Button size="lg" disabled={remaining === 0}>
+                <Button size="lg" disabled={remaining === 0} className="w-full sm:w-auto">
                   <Plus className="h-4 w-4" />
-                  Create your first server
+                  Create server
                 </Button>
               }
             />
           }
         />
       ) : (
-        // The ledger (DESIGN.md §4.5): small-capital column heads on a firmer
-        // rule, hairline rows, mono slugs and regions, lining dates.
-        <div className="border border-border bg-card shadow-sm">
-          <Table>
+        <>
+          {/* Phones: one card per server. */}
+          <ul className="space-y-3 md:hidden">
+            {rows.map((s) => {
+              const view = lifecycleLabel(s);
+              return (
+                <li key={s.id}>
+                  <Link
+                    href={`/dashboard/servers/${s.id}` as Route}
+                    className="block rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-input hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground">{s.name}</p>
+                        <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+                          {s.slug}
+                        </p>
+                      </div>
+                      <ArrowRight
+                        aria-hidden
+                        className="mt-1 h-4 w-4 shrink-0 text-muted-foreground"
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+                      <LifecycleBadge view={view} className="whitespace-normal" />
+                      <span className="capitalize">{s.boxSize}</span>
+                      <span aria-hidden>·</span>
+                      <span className="tabular-nums">{formatDate(s.createdAt)}</span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* From md: the table. */}
+          <Table containerClassName="hidden shadow-sm md:block">
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead className="w-44">Status</TableHead>
+                <TableHead className="w-48">Status</TableHead>
                 <TableHead className="w-24">Size</TableHead>
                 <TableHead className="w-32">Region</TableHead>
                 <TableHead className="w-32">Created</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-12">
+                  <span className="sr-only">Open</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((s) => {
                 // `stopped` reads two ways: paused (box kept) or no runtime
-                // (lib/server-lifecycle-label.ts), with the status tints of DESIGN.md §4.9.
+                // (lib/server-lifecycle-label.ts).
                 const view = lifecycleLabel(s);
                 return (
                   <TableRow key={s.id}>
                     <TableCell>
                       <Link
                         href={`/dashboard/servers/${s.id}` as Route}
-                        className="font-medium text-foreground decoration-brand/40 underline-offset-4 transition-colors hover:text-brand hover:underline"
+                        className="font-semibold text-foreground underline-offset-4 transition-colors hover:text-brand hover:underline"
                       >
                         {s.name}
                       </Link>
                       <div className="mt-0.5 font-mono text-xs text-muted-foreground">{s.slug}</div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={view.variant} title={view.help}>
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "h-1.5 w-1.5 shrink-0 rounded-full bg-current",
-                            view.transient && "animate-pulse"
-                          )}
-                        />
-                        {view.label}
-                      </Badge>
+                      <LifecycleBadge view={view} />
                     </TableCell>
                     <TableCell className="capitalize">{s.boxSize}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
@@ -165,7 +185,7 @@ export default async function ServersPage() {
                       <Link
                         href={`/dashboard/servers/${s.id}` as Route}
                         aria-label={`Open ${s.name}`}
-                        className="inline-flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <ArrowRight className="h-4 w-4" />
                       </Link>
@@ -175,7 +195,7 @@ export default async function ServersPage() {
               })}
             </TableBody>
           </Table>
-        </div>
+        </>
       )}
     </div>
   );

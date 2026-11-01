@@ -3,17 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import {
-  Activity,
-  AlertCircle,
-  Boxes,
-  CreditCard,
-  Download,
-  RefreshCw,
-  Search,
-  Users,
-} from "lucide-react";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Activity, Boxes, CreditCard, Download, RefreshCw, Search, Users } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { DENSE_TABLE, EmptyNote, ErrorNotice, StatTile } from "../admin-ui";
 
 type Plan = "free" | "pro" | "team";
 
@@ -137,61 +129,53 @@ export function ClientsPanel() {
   }
 
   if (error) {
-    return (
-      <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>
-          {error}{" "}
-          <button
-            className="smallcaps tracking-sc font-medium underline decoration-destructive/40 underline-offset-4 hover:decoration-destructive"
-            onClick={() => void load()}
-          >
-            Réessayer
-          </button>
-        </p>
-      </div>
-    );
+    return <ErrorNotice onRetry={() => void load()}>{error}</ErrorNotice>;
   }
 
   const totals = data?.totals ?? { count: 0, paying: 0, runningServers: 0, mrr: 0 };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi icon={<Users className="h-4 w-4" />} label="Clients" value={nf.format(totals.count)} />
-        <Kpi
-          icon={<CreditCard className="h-4 w-4" />}
-          label="Payants"
-          value={nf.format(totals.paying)}
-        />
-        <Kpi
-          icon={<Boxes className="h-4 w-4" />}
+        <StatTile icon={<Users />} label="Clients" value={nf.format(totals.count)} />
+        <StatTile icon={<CreditCard />} label="Payants" value={nf.format(totals.paying)} />
+        <StatTile
+          icon={<Boxes />}
           label="Serveurs actifs"
           value={nf.format(totals.runningServers)}
         />
-        <Kpi
-          icon={<Activity className="h-4 w-4" />}
+        <StatTile
+          icon={<Activity />}
           label="Recharges nettes 30 j"
           value={eur.format(totals.mrr)}
         />
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher un client (email, nom)…"
+              aria-label="Rechercher un client"
               className="pl-9"
             />
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {/* A filter toggle: selected = brand tint (never rose). */}
             <Button
-              variant={zeroOnly ? "default" : "outline"}
+              variant="outline"
               aria-pressed={zeroOnly}
               onClick={() => setZeroOnly((v) => !v)}
+              className={cn(
+                zeroOnly &&
+                  "border-brand bg-brand/10 text-brand hover:border-brand hover:bg-brand/15"
+              )}
             >
               Solde nul
             </Button>
@@ -216,13 +200,10 @@ export function ClientsPanel() {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
-            <Search className="mx-auto h-5 w-5 text-muted-foreground" />
-            <p className="mt-3 text-sm italic text-muted-foreground">Aucun client ne correspond.</p>
-          </div>
+          <EmptyNote icon={<Search />}>Aucun client ne correspond.</EmptyNote>
         ) : (
-          <Card>
-            <Table>
+          <Card className="overflow-hidden">
+            <Table className={DENSE_TABLE}>
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-6">Client</TableHead>
@@ -248,8 +229,14 @@ export function ClientsPanel() {
                 {filtered.map((c) => (
                   <TableRow
                     key={c.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer focus-visible:bg-accent focus-visible:outline-none"
+                    tabIndex={0}
                     onClick={() => router.push(`/dashboard/admin/clients/${c.id}` as Route)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        router.push(`/dashboard/admin/clients/${c.id}` as Route);
+                      }
+                    }}
                   >
                     <TableCell className="pl-6">
                       <div className="flex items-center gap-2">
@@ -259,8 +246,12 @@ export function ClientsPanel() {
                             HEALTH_COLOR[c.health] ?? "bg-muted-foreground/40"
                           )}
                           title={`Santé : ${HEALTH_LABEL[c.health] ?? c.health}`}
+                          aria-hidden
                         />
-                        <span className="font-medium">{c.name || c.email}</span>
+                        <span className="sr-only">
+                          Santé : {HEALTH_LABEL[c.health] ?? c.health}.
+                        </span>
+                        <span className="font-semibold">{c.name || c.email}</span>
                         {c.crmStatus === "won" && <Badge variant="success">Client gagné</Badge>}
                       </div>
                       {c.name && (
@@ -298,20 +289,5 @@ export function ClientsPanel() {
         )}
       </div>
     </div>
-  );
-}
-
-// Stat card (DESIGN.md §5): small-caps caption, lining number.
-function Kpi({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
-          {icon}
-          {label}
-        </CardDescription>
-        <CardTitle className="lining text-3xl">{value}</CardTitle>
-      </CardHeader>
-    </Card>
   );
 }

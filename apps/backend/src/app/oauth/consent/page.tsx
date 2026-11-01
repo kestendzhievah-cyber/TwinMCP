@@ -4,8 +4,9 @@ import type { Route } from "next";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, ne } from "drizzle-orm";
-import { AlertCircle, Check, Minus } from "lucide-react";
+import { AlertTriangle, Check, Minus } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { AUTH_LINK, AUTH_TITLE, AuthError } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
 import { servers } from "@/db/schema/platform";
@@ -48,12 +49,9 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
     return (
       <AuthShell locale="en">
         <div className="space-y-4">
-          <h1 className="smallcaps tracking-sc text-2xl font-medium">Authorization failed</h1>
-          <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{r.description}.</span>
-          </p>
-          <p className="text-sm italic text-muted-foreground">
+          <h1 className={AUTH_TITLE}>Authorization failed</h1>
+          <AuthError>{r.description}.</AuthError>
+          <p className="text-sm text-muted-foreground">
             Start the connection again from the app you were using. If it keeps failing, remove the
             connector there and add it again.
           </p>
@@ -62,7 +60,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
             // where the link goes and chooses to follow it.
             <p className="text-sm">
               <a
-                className="underline underline-offset-4"
+                className={AUTH_LINK}
                 rel="noreferrer"
                 href={buildRedirect(r.redirectUri, {
                   error: r.error,
@@ -94,13 +92,13 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
     return (
       <AuthShell locale="en">
         <div className="space-y-4">
-          <h1 className="smallcaps tracking-sc text-2xl font-medium">Request expired</h1>
-          <p className="text-sm italic text-muted-foreground">
+          <h1 className={AUTH_TITLE}>Request expired</h1>
+          <p className="text-sm text-muted-foreground">
             This authorization request is no longer active in this browser.
           </p>
           {/* A full navigation, not <Link>: /oauth/authorize is a route handler
               that sets the CSRF cookie and redirects back here. */}
-          <Button asChild>
+          <Button asChild size="lg" className="w-full">
             <a href={`/oauth/authorize?${query}`}>Continue</a>
           </Button>
         </div>
@@ -127,11 +125,11 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
       <div className="space-y-6">
         <div className="space-y-2">
           <p className="eyebrow">Authorize a connector</p>
-          <h1 className="text-2xl font-medium">
+          <h1 className="font-display text-2xl font-bold tracking-tight">
             <span className="break-words">{r.client.clientName}</span> wants to use your TwinMCP
             servers
           </h1>
-          <p className="text-sm italic text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Signed in as {user.email ?? "your account"}.
           </p>
         </div>
@@ -140,8 +138,8 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
           <li className="flex items-start gap-2">
             <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-success" />
             <span>
-              List and call the tools of the MCPs on the server you choose. Tool calls count against
-              your plan&apos;s daily quota.
+              List and call the tools of the MCPs on the server you choose. Tool calls are paid from
+              your TwinMCP balance, like any other call.
             </span>
           </li>
           <li className="flex items-start gap-2">
@@ -166,53 +164,54 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
           ))}
 
           <fieldset className="space-y-2">
-            <legend className="smallcaps tracking-sc mb-2 text-sm font-medium">Access</legend>
+            <legend className="mb-2 text-sm font-semibold">Access</legend>
             {owned.map((s) => (
               <label
                 key={s.id}
-                className="flex cursor-pointer items-center gap-3 border border-border bg-card px-3 py-2 text-sm hover:border-foreground/60"
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-input has-[:checked]:border-brand has-[:checked]:bg-brand/5 has-[:checked]:ring-1 has-[:checked]:ring-brand"
               >
                 <input
                   type="radio"
                   name="server"
                   value={s.id}
                   defaultChecked={s.id === preselected}
-                  className="accent-foreground"
+                  className="h-4 w-4 accent-brand"
                 />
                 <span className="font-medium">{s.name}</span>
                 <span className="ml-auto font-mono text-xs text-muted-foreground">{s.slug}</span>
               </label>
             ))}
-            <label className="flex cursor-pointer items-center gap-3 border border-border bg-card px-3 py-2 text-sm hover:border-foreground/60">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-input has-[:checked]:border-brand has-[:checked]:bg-brand/5 has-[:checked]:ring-1 has-[:checked]:ring-brand">
               <input
                 type="radio"
                 name="server"
                 value="all"
                 defaultChecked={preselected === "all"}
-                className="accent-foreground"
+                className="h-4 w-4 accent-brand"
               />
               <span className="font-medium">All my servers</span>
-              <span className="ml-auto text-xs italic text-muted-foreground">
-                including future ones
-              </span>
+              <span className="ml-auto text-xs text-muted-foreground">including future ones</span>
             </label>
             {owned.length === 0 && (
-              <p className="text-xs italic text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 You have no server yet. Create one in the dashboard after connecting.
               </p>
             )}
           </fieldset>
 
-          <div className="space-y-2 border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
-            <p>
-              Only approve if you started this from {r.client.clientName}. The name is supplied by
-              the app and is not verified by TwinMCP.
-            </p>
-            <p>
-              After approval you will be sent to{" "}
-              <span className="break-all font-mono text-xs">{target}</span>
-              {nativeApp ? " (an app on your computer)." : "."}
-            </p>
+          <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+            <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 space-y-2">
+              <p>
+                Only approve if you started this from {r.client.clientName}. The name is supplied by
+                the app and is not verified by TwinMCP.
+              </p>
+              <p>
+                After approval you will be sent to{" "}
+                <span className="break-all font-mono text-xs">{target}</span>
+                {nativeApp ? " (an app on your computer)." : "."}
+              </p>
+            </div>
           </div>
 
           {/* Deny comes first in the DOM, so pressing Enter never grants access. */}
@@ -225,13 +224,10 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
             </Button>
           </div>
 
-          <p className="text-xs italic text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Access lasts while the app keeps using it and ends after 30 days without use. Revoke it
             any time in{" "}
-            <Link
-              href={"/dashboard/settings/connectors" as Route}
-              className="text-brand underline underline-offset-4"
-            >
+            <Link href={"/dashboard/settings/connectors" as Route} className={AUTH_LINK}>
               Settings, Connectors
             </Link>
             .

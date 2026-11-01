@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle,
+  AlertTriangle,
   BellRing,
   Clock,
   Download,
@@ -19,12 +19,13 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -77,6 +78,7 @@ import { ProspectsAnalytics } from "./prospects-analytics";
 import { ImportDialog } from "./import-dialog";
 import { TimelineDialog } from "./timeline-dialog";
 import { WhatsappQuickDialog } from "./whatsapp-dialog";
+import { DENSE_TABLE, EmptyNote, ErrorNotice, StatTile } from "../admin-ui";
 
 type FormState = {
   company: string;
@@ -375,23 +377,19 @@ export function ProspectsPanel() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* KPI cards (DESIGN.md §5 stat card): small-caps caption, lining figure. */}
+    <div className="space-y-6 md:space-y-8">
+      {/* Stat tiles; the last one ("À relancer") doubles as a filter toggle. */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Kpi icon={<Users className="h-4 w-4" />} label="Prospects" value={String(stats.total)} />
-        <Kpi
-          icon={<TrendingUp className="h-4 w-4" />}
+        <StatTile icon={<Users />} label="Prospects" value={String(stats.total)} />
+        <StatTile
+          icon={<TrendingUp />}
           label="Pipeline ouvert"
           value={eur.format(stats.pipeline)}
         />
-        <Kpi
-          icon={<Gauge className="h-4 w-4" />}
-          label="Prévision pondérée"
-          value={eur.format(stats.weighted)}
-        />
-        <Kpi icon={<Trophy className="h-4 w-4" />} label="Gagné" value={eur.format(stats.won)} />
-        <Kpi
-          icon={<BellRing className="h-4 w-4" />}
+        <StatTile icon={<Gauge />} label="Prévision pondérée" value={eur.format(stats.weighted)} />
+        <StatTile icon={<Trophy />} label="Gagné" value={eur.format(stats.won)} />
+        <DueKpi
+          icon={<BellRing />}
           label="À relancer"
           value={String(stats.due)}
           highlight={stats.due > 0}
@@ -405,11 +403,15 @@ export function ProspectsPanel() {
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Rechercher une entreprise, un contact…"
+                aria-label="Rechercher un prospect"
                 className="pl-9"
               />
             </div>
@@ -417,7 +419,7 @@ export function ProspectsPanel() {
               value={statusFilter}
               onValueChange={(v) => setStatusFilter(v as "all" | Status)}
             >
-              <SelectTrigger className="sm:w-44">
+              <SelectTrigger className="sm:w-44" aria-label="Filtrer par statut">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -455,18 +457,7 @@ export function ProspectsPanel() {
         </div>
 
         {error ? (
-          <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>
-              {error}{" "}
-              <button
-                className="smallcaps tracking-sc font-medium underline decoration-destructive/40 underline-offset-4 hover:decoration-destructive"
-                onClick={() => void load()}
-              >
-                Réessayer
-              </button>
-            </p>
-          </div>
+          <ErrorNotice onRetry={() => void load()}>{error}</ErrorNotice>
         ) : (
           <Tabs defaultValue="list">
             <TabsList>
@@ -478,31 +469,24 @@ export function ProspectsPanel() {
             {/* Liste */}
             <TabsContent value="list">
               {items.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 border border-dashed border-foreground/40 px-6 py-12 text-center">
-                  <Users className="h-8 w-8 text-muted-foreground" />
-                  <div className="space-y-1">
-                    <p className="smallcaps tracking-sc font-medium">
-                      Aucun prospect pour l'instant
-                    </p>
-                    <p className="text-sm italic text-muted-foreground">
-                      Ajoutez votre première entreprise à démarcher, ou importez une liste.
-                    </p>
-                  </div>
-                  <Button onClick={openCreate} className="mt-2">
-                    <Plus className="h-4 w-4" />
+                <EmptyNote icon={<Users />} className="py-12">
+                  <p className="font-display text-lg font-semibold tracking-tight text-foreground">
+                    Aucun prospect pour l’instant
+                  </p>
+                  <p className="mt-1">
+                    Ajoutez votre première entreprise à démarcher, ou importez une liste.
+                  </p>
+                  {/* Outline: the toolbar's "Ajouter" is this screen's one rose primary. */}
+                  <Button onClick={openCreate} variant="outline" className="mt-4">
+                    <Plus aria-hidden />
                     Ajouter un prospect
                   </Button>
-                </div>
+                </EmptyNote>
               ) : filtered.length === 0 ? (
-                <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
-                  <Search className="mx-auto h-5 w-5 text-muted-foreground" />
-                  <p className="mt-3 text-sm italic text-muted-foreground">
-                    Aucun prospect ne correspond à ces filtres.
-                  </p>
-                </div>
+                <EmptyNote icon={<Search />}>Aucun prospect ne correspond à ces filtres.</EmptyNote>
               ) : (
-                <Card>
-                  <Table>
+                <Card className="overflow-hidden">
+                  <Table className={DENSE_TABLE}>
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="pl-6">Entreprise</TableHead>
@@ -520,7 +504,7 @@ export function ProspectsPanel() {
                           <TableRow key={p.id}>
                             <TableCell className="pl-6">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{p.company}</span>
+                                <span className="font-semibold">{p.company}</span>
                                 {p.hasAccount && (
                                   <Badge
                                     variant="success"
@@ -531,16 +515,14 @@ export function ProspectsPanel() {
                                 )}
                               </div>
                               {p.source && (
-                                <div className="text-xs italic text-muted-foreground">
-                                  {p.source}
-                                </div>
+                                <div className="text-xs text-muted-foreground">{p.source}</div>
                               )}
                             </TableCell>
                             <TableCell>
                               {p.contactName || p.email || p.phone ? (
                                 <div className="text-sm">
                                   <div>{p.contactName || "—"}</div>
-                                  {/* Role in the serif; email and phone typewritten, as in the cockpit's follow-up list. */}
+                                  {/* Role in plain text; email and phone in mono, as in the cockpit's follow-up list. */}
                                   <div className="text-xs text-muted-foreground">
                                     {p.role}
                                     {p.role && (p.email || p.phone) ? " · " : null}
@@ -560,7 +542,10 @@ export function ProspectsPanel() {
                                 value={p.status}
                                 onValueChange={(v) => void changeStatus(p.id, v as Status)}
                               >
-                                <SelectTrigger className="h-10 w-full border-0 bg-transparent px-1 shadow-none focus-visible:ring-1 focus-visible:ring-ring">
+                                <SelectTrigger
+                                  aria-label={`Statut de ${p.company}`}
+                                  className="h-10 w-full border-0 bg-transparent px-1 shadow-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
                                   <Badge variant={STATUS_VARIANT[p.status]}>
                                     {STATUS_LABEL[p.status]}
                                   </Badge>
@@ -585,10 +570,11 @@ export function ProspectsPanel() {
                                     due && "font-medium text-destructive"
                                   )}
                                 >
-                                  {/* Overdue: the same oxblood status dot as the kanban card. */}
+                                  {/* Overdue: the same alert icon as the kanban card (never colour alone). */}
                                   {due && (
-                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+                                    <AlertTriangle aria-hidden className="size-3.5 shrink-0" />
                                   )}
+                                  {due && <span className="sr-only">En retard :</span>}
                                   {shortDate.format(new Date(p.nextActionAt))}
                                 </span>
                               ) : (
@@ -603,6 +589,7 @@ export function ProspectsPanel() {
                                       variant="ghost"
                                       size="icon"
                                       title="Envoyer un email"
+                                      aria-label="Envoyer un email"
                                       disabled={!p.email}
                                     >
                                       <Mail className="h-4 w-4" />
@@ -625,6 +612,7 @@ export function ProspectsPanel() {
                                   variant="ghost"
                                   size="icon"
                                   title={p.phone ? "Envoyer un WhatsApp" : "Aucun numéro"}
+                                  aria-label={p.phone ? "Envoyer un WhatsApp" : "Aucun numéro"}
                                   onClick={() => void sendWhatsapp(p)}
                                   disabled={!p.phone}
                                 >
@@ -634,6 +622,7 @@ export function ProspectsPanel() {
                                   variant="ghost"
                                   size="icon"
                                   title="Historique / notes"
+                                  aria-label="Historique / notes"
                                   onClick={() => {
                                     setTimelineProspect(p);
                                     setTimelineOpen(true);
@@ -645,6 +634,7 @@ export function ProspectsPanel() {
                                   variant="ghost"
                                   size="icon"
                                   title="Modifier"
+                                  aria-label="Modifier"
                                   onClick={() => openEdit(p)}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -653,6 +643,7 @@ export function ProspectsPanel() {
                                   variant="ghost"
                                   size="icon"
                                   title="Supprimer"
+                                  aria-label="Supprimer"
                                   onClick={() => void remove(p)}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -671,15 +662,11 @@ export function ProspectsPanel() {
             {/* Kanban */}
             <TabsContent value="kanban">
               {items.length === 0 ? (
-                <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
-                  <p className="text-sm italic text-muted-foreground">
-                    Ajoutez des prospects pour utiliser le tableau Kanban.
-                  </p>
-                </div>
+                <EmptyNote>Ajoutez des prospects pour utiliser le tableau Kanban.</EmptyNote>
               ) : (
                 <>
-                  <p className="mb-3 text-xs italic text-muted-foreground">
-                    Glissez une carte d'une colonne à l'autre pour changer son statut.
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Glissez une carte d’une colonne à l’autre pour changer son statut.
                   </p>
                   <ProspectsKanban
                     items={boardItems}
@@ -790,11 +777,11 @@ export function ProspectsPanel() {
               />
             </Field>
             <Field label="Notes" className="sm:col-span-2">
-              <textarea
+              <Textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 placeholder="Contexte, besoins, prochaines étapes…"
-                className="flex min-h-[96px] w-full border border-input bg-card px-3 py-2 text-sm text-foreground shadow-inner transition-colors placeholder:italic placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-[96px]"
               />
             </Field>
           </div>
@@ -819,7 +806,7 @@ export function ProspectsPanel() {
   );
 }
 
-function Kpi({
+function DueKpi({
   icon,
   label,
   value,
@@ -832,26 +819,40 @@ function Kpi({
   value: string;
   highlight?: boolean;
   active?: boolean;
-  onClick?: () => void;
+  onClick: () => void;
 }) {
-  // Stat card (DESIGN.md §5). The clickable one ("À relancer") toggles a filter:
-  // hover draws the ink hairline, the active state keeps it and darkens the stock.
+  // The clickable stat tile toggles the "à relancer" filter: interactive card
+  // recipe on hover, the "selected" recipe (brand ring) while active.
   return (
     <Card
+      role="button"
+      tabIndex={0}
+      aria-pressed={active}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        onClick && "cursor-pointer transition-colors hover:border-foreground/60",
-        active && "border-foreground/70 bg-secondary/60 shadow-press"
+        "cursor-pointer transition hover:border-input hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        active && "border-brand ring-1 ring-brand hover:border-brand"
       )}
     >
-      <CardHeader>
-        <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
+      <CardHeader className="space-y-2">
+        <CardDescription className="flex items-center gap-2 text-xs font-medium [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-brand">
           {icon}
           {label}
         </CardDescription>
-        <CardTitle className={cn("lining text-2xl xl:text-3xl", highlight && "text-destructive")}>
+        <p
+          className={cn(
+            "font-display text-2xl font-bold leading-tight tabular-nums tracking-tight",
+            highlight && "text-destructive"
+          )}
+        >
           {value}
-        </CardTitle>
+        </p>
       </CardHeader>
     </Card>
   );

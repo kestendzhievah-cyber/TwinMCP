@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { UsagePanel } from "./panel";
 import { CostSection } from "./cost-section";
 import { CustomersSection } from "./customers-section";
@@ -13,15 +13,11 @@ export default async function UsagePage() {
   } = await supabase.auth.getUser();
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">Usage</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          What your usage costs per day, tool calls handled by your MCPs, error rate, and API
-          activity.
-        </p>
-        <Separator variant="double" className="mt-4" />
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      <PageHeader
+        title="Usage"
+        description="What your usage costs per day, tool calls handled by your MCPs, error rate, and API activity."
+      />
       {/* Euros per day from the credit ledger (server-rendered). */}
       {user && <CostSection userId={user.id} />}
       <UsagePanel />

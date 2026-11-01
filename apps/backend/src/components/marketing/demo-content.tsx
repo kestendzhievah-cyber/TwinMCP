@@ -6,6 +6,7 @@ import { Section } from "@/components/marketing/section";
 import { Faq } from "@/components/marketing/faq";
 import { DemoRequestForm, type DemoPack } from "@/components/marketing/demo-request-form";
 import { walletFacts } from "@/components/pricing/wallet-copy";
+import { BrandLogo, hasBrandLogo } from "@/components/brand/brand-logo";
 import { MCP_BUNDLES } from "@/lib/mcp-bundles";
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { solutionForBundle } from "@/lib/solutions/data";
@@ -231,16 +232,13 @@ export const DEMO_FAQ: Record<Locale, { q: string; a: string }[]> = {
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 
-const EYEBROW_RULES =
-  "eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']";
-const LINK =
-  "text-brand underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand";
+const LINK = "font-medium text-brand underline underline-offset-4 hover:decoration-2";
 
 function Numeral({ n }: { n: number }) {
   return (
     <span
       aria-hidden
-      className="lining grid h-9 w-9 shrink-0 place-items-center border border-foreground/60 text-base font-medium"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-sm font-semibold tabular-nums text-brand-foreground"
     >
       {n}
     </span>
@@ -259,22 +257,21 @@ export function DemoContent({
   const t = copy(locale);
   return (
     <>
-      {/* The centred name: eyebrow, engraved H1, hairline, lead, CTAs. */}
-      <section className="w-full py-20 md:py-28">
-        <div className="mx-auto max-w-5xl px-6 text-center">
-          <p className={EYEBROW_RULES}>{t.hero.eyebrow}</p>
-          <h1 className="display letterpress mx-auto mt-6 max-w-4xl text-balance text-4xl md:text-5xl lg:text-6xl">
+      {/* Hero: eyebrow, H1, lead, one rose CTA (the request), the self-serve path. */}
+      <section className="w-full py-16 md:py-24">
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
+          <p className="eyebrow">{t.hero.eyebrow}</p>
+          <h1 className="mx-auto mt-3 max-w-4xl text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             {t.hero.title}
           </h1>
-          <div className="mx-auto mt-8 h-px w-12 bg-foreground/40" />
-          <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
             {t.hero.lead}
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild size="lg" className="w-full max-w-xs sm:w-auto sm:max-w-none">
+          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <Button asChild size="lg">
               <a href="#request" data-cta-location="demo_hero">
                 {t.hero.primary}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight aria-hidden />
               </a>
             </Button>
             <Button asChild size="lg" variant="ghost">
@@ -287,12 +284,15 @@ export function DemoContent({
       </section>
 
       <Section bordered eyebrow={t.setup.eyebrow} title={t.setup.title}>
-        <ol className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2">
+        <ol className="mx-auto grid max-w-5xl gap-4 md:grid-cols-2 md:gap-6">
           {t.setup.items.map((item, i) => (
-            <li key={item.name} className="flex gap-4 border border-border bg-card p-6">
+            <li
+              key={item.name}
+              className="flex gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
+            >
               <Numeral n={i + 1} />
               <div>
-                <h3 className="smallcaps tracking-sc text-lg font-medium">{item.name}</h3>
+                <h3 className="font-display text-lg font-semibold tracking-tight">{item.name}</h3>
                 <p className="mt-2 text-base text-muted-foreground">{item.body}</p>
               </div>
             </li>
@@ -300,24 +300,23 @@ export function DemoContent({
         </ol>
 
         <div className="mx-auto mt-14 max-w-5xl">
-          <h3 className="smallcaps tracking-sc border-b border-foreground/50 pb-3 text-lg font-medium">
+          <h3 className="mb-4 font-display text-lg font-semibold tracking-tight">
             {t.setup.packsTitle}
           </h3>
-          <dl className="divide-y divide-border border-b border-border">
+          <dl className="divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
             {MCP_BUNDLES.map((b) => (
               <div
                 key={b.id}
-                className="grid gap-1 py-4 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:gap-8"
+                className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:gap-8"
               >
-                <dt className="smallcaps tracking-sc text-base font-medium">
-                  {bundleLabel(b.id, b.label, locale)}
-                </dt>
+                <dt className="text-base font-semibold">{bundleLabel(b.id, b.label, locale)}</dt>
                 <dd className="flex flex-wrap gap-2">
                   {b.slugs.map((s) => (
                     <code
                       key={s}
-                      className="border border-border bg-background px-2 py-0.5 font-mono text-sm text-muted-foreground"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-0.5 font-mono text-sm text-muted-foreground"
                     >
+                      {hasBrandLogo(s) ? <BrandLogo slug={s} size={14} decorative /> : null}
                       {s}
                     </code>
                   ))}
@@ -325,17 +324,20 @@ export function DemoContent({
               </div>
             ))}
           </dl>
-          <p className="mt-4 text-sm italic text-muted-foreground">{t.setup.packsNote}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t.setup.packsNote}</p>
         </div>
       </Section>
 
       <Section bordered eyebrow={t.how.eyebrow} title={t.how.title}>
-        <ol className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
+        <ol className="mx-auto grid max-w-5xl gap-4 md:grid-cols-3 md:gap-6">
           {t.how.steps.map((step, i) => (
-            <li key={step.name} className="border-t border-foreground/60 pt-5">
+            <li
+              key={step.name}
+              className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
+            >
               <div className="flex items-center gap-3">
                 <Numeral n={i + 1} />
-                <h3 className="smallcaps tracking-sc text-lg font-medium">{step.name}</h3>
+                <h3 className="font-display text-lg font-semibold tracking-tight">{step.name}</h3>
               </div>
               <p className="mt-3 text-base text-muted-foreground">{step.body}</p>
             </li>
@@ -344,11 +346,12 @@ export function DemoContent({
       </Section>
 
       <Section bordered eyebrow={t.cost.eyebrow}>
-        <div className="mx-auto max-w-3xl border border-foreground/60 bg-card px-6 py-10 text-center sm:px-10">
-          <h2 className="text-balance text-2xl font-medium md:text-3xl">{t.cost.title}</h2>
-          <div className="mx-auto mt-5 h-px w-12 bg-foreground/40" />
-          <p className="lining mt-5 text-base text-muted-foreground">{t.cost.body}</p>
-          <p className="lining mt-4 text-sm italic text-muted-foreground">{t.cost.freeNote}</p>
+        <div className="mx-auto max-w-3xl rounded-3xl bg-surface-band px-6 py-10 text-center sm:px-10">
+          <h2 className="text-balance font-display text-2xl font-bold tracking-tight md:text-3xl">
+            {t.cost.title}
+          </h2>
+          <p className="mt-5 text-base tabular-nums text-muted-foreground">{t.cost.body}</p>
+          <p className="mt-4 text-sm tabular-nums text-muted-foreground">{t.cost.freeNote}</p>
         </div>
       </Section>
 
@@ -370,7 +373,7 @@ export function DemoContent({
         </div>
       </Section>
 
-      <div className="rule-double">
+      <div className="border-t border-border">
         <Faq
           locale={locale}
           items={DEMO_FAQ[locale]}

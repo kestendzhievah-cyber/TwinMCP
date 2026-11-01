@@ -14,7 +14,9 @@ import { CREDIT_DOCS_ANCHOR, PRICE_TABLE, walletFacts } from "./wallet-copy";
 /** JSON-RPC error code of a tool call refused for lack of credit (contract W2). */
 export const CREDIT_RPC_CODE = RPC_CODES.noCredit;
 
-const LINK = "text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand";
+// Links in running text stay underlined (colour alone is not enough next to navy text).
+const LINK =
+  "font-medium text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand";
 
 function excludedNames(): string[] {
   return PROMO_EXCLUDED_MCP_SLUGS.map((slug) => SERVERS.find((s) => s.slug === slug)?.name ?? slug);
@@ -29,8 +31,10 @@ export function CreditDocsSection({ locale = "en" }: { locale?: Locale }) {
   const notes = PRICE_TABLE.notes[locale];
 
   return (
-    <section id={CREDIT_DOCS_ANCHOR} className="scroll-mt-20 py-12">
-      <h2 className="text-3xl font-medium">{fr ? "Crédit et tarifs" : "Credits & pricing"}</h2>
+    <section id={CREDIT_DOCS_ANCHOR} className="scroll-mt-24 py-12">
+      <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+        {fr ? "Crédit et tarifs" : "Credits & pricing"}
+      </h2>
       <p className="mt-3 text-base leading-7 text-muted-foreground">
         {fr
           ? "TwinMCP n’a pas d’abonnement. Votre compte a un solde prépayé en euros, et chaque usage le fait baisser. Tant qu’il reste du crédit, tout fonctionne ; à zéro, tout s’arrête."
@@ -39,25 +43,30 @@ export function CreditDocsSection({ locale = "en" }: { locale?: Locale }) {
 
       <div className="mt-6 divide-y divide-border">
         <div className="py-5 first:pt-0">
-          <h3 className="text-2xl font-medium">{fr ? "Ce qui est facturé" : "What is charged"}</h3>
-          <ul role="list" className="lining mt-3 divide-y divide-border border-y border-border">
-            <li className="flex items-baseline justify-between gap-4 py-2.5">
+          <h3 className="font-display text-xl font-semibold tracking-tight">
+            {fr ? "Ce qui est facturé" : "What is charged"}
+          </h3>
+          <ul
+            role="list"
+            className="mt-4 divide-y divide-border rounded-xl border border-border bg-card px-4 tabular-nums"
+          >
+            <li className="flex items-baseline justify-between gap-4 py-3">
               <span>{fr ? "Appels d’outils (tools/call)" : "Tool calls (tools/call)"}</span>
-              <span className="font-medium">
+              <span className="whitespace-nowrap font-semibold">
                 {w.per1000Calls} {fr ? "les 1 000" : "per 1,000"}
               </span>
             </li>
-            <li className="flex items-baseline justify-between gap-4 py-2.5">
+            <li className="flex items-baseline justify-between gap-4 py-3">
               <span>
                 {fr
                   ? "Calcul, box small (heure de CPU actif)"
                   : "Compute, small box (active CPU-hour)"}
               </span>
-              <span className="font-medium">{w.cpuHour.small}</span>
+              <span className="whitespace-nowrap font-semibold">{w.cpuHour.small}</span>
             </li>
-            <li className="flex items-baseline justify-between gap-4 py-2.5">
+            <li className="flex items-baseline justify-between gap-4 py-3">
               <span>{fr ? "Calcul, box medium et large" : "Compute, medium and large boxes"}</span>
-              <span className="text-right italic text-muted-foreground">
+              <span className="text-right text-sm text-muted-foreground">
                 {fr ? "le coût que la box déclare" : "the cost the box reports"}
               </span>
             </li>
@@ -84,7 +93,7 @@ export function CreditDocsSection({ locale = "en" }: { locale?: Locale }) {
         </div>
 
         <div id="signup-credit" className="py-5">
-          <h3 className="text-2xl font-medium">
+          <h3 className="font-display text-xl font-semibold tracking-tight">
             {fr
               ? `Le crédit d’inscription de ${w.signupCredit}`
               : `The ${w.signupCredit} sign-up credit`}
@@ -134,7 +143,7 @@ export function CreditDocsSection({ locale = "en" }: { locale?: Locale }) {
         </div>
 
         <div id="zero-balance" className="py-5">
-          <h3 className="text-2xl font-medium">
+          <h3 className="font-display text-xl font-semibold tracking-tight">
             {fr ? "Quand le solde arrive à zéro" : "When the balance reaches zero"}
           </h3>
           <p className="mt-2 text-base leading-7">
@@ -167,7 +176,7 @@ export function CreditDocsSection({ locale = "en" }: { locale?: Locale }) {
         </div>
 
         <div id="top-ups" className="py-5">
-          <h3 className="text-2xl font-medium">
+          <h3 className="font-display text-xl font-semibold tracking-tight">
             {fr ? "Recharges et recharge automatique" : "Top-ups and auto-recharge"}
           </h3>
           <p className="mt-2 text-base leading-7">

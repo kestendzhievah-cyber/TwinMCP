@@ -1,92 +1,50 @@
 import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
 
-// Design system: a letterpress business card (see docs/DESIGN.md).
-// Global overrides below deliberately re-map Tailwind's defaults so the whole
-// app inherits the card's voice without per-file churn:
-// - every radius is 0 (card stock has square corners; `rounded-full` stays
-//   round for dots and avatars),
-// - weights are lightened (Garamond's bold is too heavy for letterpress),
-// - tracking-tight becomes neutral (negative tracking is a grotesque habit),
-// - the type scale is ~6% larger (Garamond's x-height is small),
-// - shadows become hairline/stacked-card effects instead of soft blurs.
+// Design system: "Clear sky" (see docs/DESIGN.md).
+// - Tailwind's default type scale, weights and tracking are back (Inter does
+//   not need the letterpress overrides).
+// - Radii are soft (buttons 10px, cards 16px), shadows are navy-tinted blurs
+//   driven by --shadow-color so they adapt to dark mode.
+const SANS = ["var(--font-sans)", "system-ui", "-apple-system", "Segoe UI", "sans-serif"];
+const shadow = (alpha: number) => `hsl(var(--shadow-color) / ${alpha})`;
+
 export default {
   darkMode: ["class"],
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: { DEFAULT: "1rem", sm: "1.5rem", lg: "2rem" },
       screens: { "2xl": "1400px" },
     },
     fontFamily: {
-      sans: ["var(--font-serif)", "Garamond", "Georgia", "serif"],
-      serif: ["var(--font-serif)", "Garamond", "Georgia", "serif"],
-      mono: ["var(--font-mono)", "Courier New", "Courier", "monospace"],
-    },
-    fontSize: {
-      xs: ["0.8125rem", { lineHeight: "1.25rem" }],
-      sm: ["0.9375rem", { lineHeight: "1.4rem" }],
-      base: ["1.0625rem", { lineHeight: "1.65rem" }],
-      lg: ["1.1875rem", { lineHeight: "1.75rem" }],
-      xl: ["1.375rem", { lineHeight: "1.85rem" }],
-      "2xl": ["1.625rem", { lineHeight: "2.1rem" }],
-      "3xl": ["2rem", { lineHeight: "2.4rem" }],
-      "4xl": ["2.5rem", { lineHeight: "2.85rem" }],
-      "5xl": ["3.25rem", { lineHeight: "1.08" }],
-      "6xl": ["4rem", { lineHeight: "1.05" }],
-      "7xl": ["5rem", { lineHeight: "1" }],
-      "8xl": ["6rem", { lineHeight: "1" }],
-      "9xl": ["8rem", { lineHeight: "1" }],
-    },
-    fontWeight: {
-      thin: "300",
-      extralight: "300",
-      light: "300",
-      normal: "400",
-      medium: "500",
-      semibold: "500",
-      bold: "600",
-      extrabold: "700",
-      black: "700",
-    },
-    letterSpacing: {
-      tighter: "-0.01em",
-      tight: "0",
-      normal: "0",
-      wide: "0.05em",
-      wider: "0.1em",
-      widest: "0.2em",
-      sc: "0.12em",
-      eyebrow: "0.28em",
+      sans: SANS,
+      display: ["var(--font-display)", "var(--font-sans)", "sans-serif"],
+      mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
     },
     borderRadius: {
       none: "0",
-      sm: "0",
-      DEFAULT: "0",
-      md: "0",
-      lg: "0",
-      xl: "0",
-      "2xl": "0",
-      "3xl": "0",
+      sm: "6px",
+      DEFAULT: "8px",
+      md: "8px",
+      lg: "10px",
+      xl: "12px",
+      "2xl": "16px",
+      "3xl": "24px",
       full: "9999px",
     },
     boxShadow: {
       none: "none",
-      sm: "0 1px 0 0 hsl(var(--foreground) / 0.06)",
-      DEFAULT: "0 1px 0 0 hsl(var(--foreground) / 0.06)",
-      md: "0 1px 2px 0 hsl(var(--foreground) / 0.08)",
-      lg: "3px 3px 0 0 hsl(var(--card)), 3px 3px 0 1px hsl(var(--border))",
-      xl: "4px 4px 0 0 hsl(var(--card)), 4px 4px 0 1px hsl(var(--border)), 8px 8px 0 0 hsl(var(--card)), 8px 8px 0 1px hsl(var(--border))",
-      "2xl":
-        "4px 4px 0 0 hsl(var(--card)), 4px 4px 0 1px hsl(var(--border)), 8px 8px 0 0 hsl(var(--card)), 8px 8px 0 1px hsl(var(--border))",
-      // A stack of cards — the photo's signature. Use on hero mockups, dialogs,
-      // the highlighted pricing tier.
-      stack:
-        "4px 4px 0 0 hsl(var(--card)), 4px 4px 0 1px hsl(var(--border)), 8px 8px 0 0 hsl(var(--card)), 8px 8px 0 1px hsl(var(--border))",
-      // Ink pressed into stock — for inputs and pressed states.
-      press: "inset 0 1px 2px 0 hsl(var(--foreground) / 0.12)",
-      inner: "inset 0 1px 2px 0 hsl(var(--foreground) / 0.08)",
+      sm: `0 1px 2px 0 ${shadow(0.06)}`,
+      DEFAULT: `0 1px 3px 0 ${shadow(0.08)}, 0 1px 2px -1px ${shadow(0.06)}`,
+      md: `0 4px 12px -2px ${shadow(0.08)}, 0 2px 4px -2px ${shadow(0.05)}`,
+      lg: `0 12px 24px -6px ${shadow(0.1)}, 0 4px 8px -4px ${shadow(0.06)}`,
+      xl: `0 24px 48px -12px ${shadow(0.16)}`,
+      "2xl": `0 24px 48px -12px ${shadow(0.16)}`,
+      inner: `inset 0 1px 2px 0 ${shadow(0.06)}`,
+      // Soft rose glow under the primary button.
+      cta: "0 6px 16px -4px hsl(var(--primary) / 0.35)",
     },
     extend: {
       colors: {
@@ -95,9 +53,15 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        surface: {
+          alt: "hsl(var(--surface-alt))",
+          band: "hsl(var(--surface-band))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          hover: "hsl(var(--primary-hover))",
+          active: "hsl(var(--primary-active))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -123,15 +87,17 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Semantic accents (see globals.css). Use as text/border + a /10 tint,
-        // e.g. `border-success/40 bg-success/10 text-success`.
+        // The €10 offer: soft pink surface, dark rose text, pink hairline.
+        offer: {
+          DEFAULT: "hsl(var(--offer))",
+          foreground: "hsl(var(--offer-foreground))",
+          border: "hsl(var(--offer-border))",
+        },
+        // Semantic accents. Use as text/border + a /10 tint,
+        // e.g. `border-success/30 bg-success/10 text-success`.
         brand: {
           DEFAULT: "hsl(var(--brand))",
           foreground: "hsl(var(--brand-foreground))",
-        },
-        gilt: {
-          DEFAULT: "hsl(var(--gilt))",
-          foreground: "hsl(var(--gilt-foreground))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",

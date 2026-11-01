@@ -91,22 +91,20 @@ const faq = [
   },
 ];
 
-// The routes are typeset as a ledger: name, where it runs, hairline rows (DESIGN.md §4.5).
+// The routes are typeset as a ledger: name, where it runs, hairline rows (docs/DESIGN.md).
 const ledgerRow =
   "grid gap-1 border-b border-border py-4 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8";
-const ledgerName = "text-base font-medium text-foreground";
+const ledgerName = "text-base font-semibold text-foreground";
 const ledgerBody = "text-base text-muted-foreground";
-const LINK = "text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand";
+const LINK = "text-brand underline underline-offset-4 hover:decoration-2";
 
 export default function GithubMcpPage() {
   return (
     <UseCaseLayout useCase={useCase} benefits={benefits} steps={steps} faq={faq}>
-      <section className="rule-double py-16 md:py-20">
+      <section className="border-t border-border py-16 md:py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-            Routes
-          </p>
-          <h2 className="mt-4 text-balance text-3xl font-medium md:text-4xl">
+          <p className="eyebrow">Routes</p>
+          <h2 className="mt-4 text-balance text-3xl font-display font-bold tracking-tight md:text-4xl">
             Four ways to give your agent GitHub or Git context
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -116,12 +114,12 @@ export default function GithubMcpPage() {
         <div className="mx-auto mt-12 max-w-3xl">
           <div
             aria-hidden
-            className="smallcaps tracking-sc hidden border-b border-foreground/50 pb-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8"
+            className="hidden border-b border-border pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:gap-8"
           >
             <span>Route</span>
             <span>What it involves</span>
           </div>
-          <ul className="border-t border-foreground/50 sm:border-t-0">
+          <ul className="border-t border-border sm:border-t-0">
             <li className={ledgerRow}>
               <strong className={ledgerName}>GitHub&apos;s remote server</strong>
               <span className={ledgerBody}>

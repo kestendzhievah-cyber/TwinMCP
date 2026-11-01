@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fillCostDays, formatCredit, type DailyCost } from "@/lib/billing/upgrade-state";
+import { cn } from "@/lib/utils";
 
 const DAYS = 30;
 const DAY_MS = 86_400_000;
@@ -62,21 +63,24 @@ export async function CostSection({ userId }: { userId: string }) {
   const eur = (m: number) => formatCredit(m, { precise: false });
 
   return (
-    <Card>
-      <CardHeader className="border-b border-border px-6 py-4">
-        <CardTitle className="lining flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b border-border pb-4">
+        <CardTitle as="h2" className="flex items-center gap-3 tabular-nums">
+          <span
+            aria-hidden
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-secondary text-brand"
+          >
             <Euro className="h-4 w-4" />
           </span>
           Cost per day · {DAYS}d
         </CardTitle>
-        <CardDescription className="pl-12">
+        <CardDescription className="sm:pl-12">
           What your usage took from your credit each day (UTC): tool calls and server CPU time.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         {days === null ? (
-          <p className="px-6 py-8 text-center text-sm italic text-muted-foreground">
+          <p className="px-6 py-8 text-center text-sm text-muted-foreground">
             Costs could not be loaded. Refresh the page in a moment.
           </p>
         ) : (
@@ -84,6 +88,31 @@ export async function CostSection({ userId }: { userId: string }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  /** The spend total: the one rose figure of the page. */
+  accent?: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-surface-alt p-4">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "mt-1 font-display text-2xl font-bold tracking-tight tabular-nums",
+          accent ? "text-primary" : "text-foreground"
+        )}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -97,7 +126,7 @@ function CostBody({ days, eur }: { days: DailyCost[]; eur: (m: number) => string
 
   if (sum === 0) {
     return (
-      <p className="px-6 py-8 text-center text-sm italic text-muted-foreground">
+      <p className="px-6 py-8 text-center text-sm text-muted-foreground">
         No usage charged in the last {days.length} days.
       </p>
     );
@@ -105,50 +134,69 @@ function CostBody({ days, eur }: { days: DailyCost[]; eur: (m: number) => string
 
   return (
     <>
-      <div className="space-y-2 p-6">
-        <p className="lining text-sm">
-          <span className="font-medium">{eur(sum)}</span>{" "}
-          <span className="italic text-muted-foreground">
-            in {days.length} days · tool calls {eur(calls)} · compute {eur(compute)}
-          </span>
-        </p>
-        {/* Ink bars on a hairline baseline — a ledger chart, no rounding, no fills. */}
-        <div className="flex h-28 items-end gap-px border-b border-foreground/50">
-          {days.map((d, i) => (
-            <div
-              key={d.day}
-              className="flex h-full flex-1 flex-col justify-end"
-              title={`${d.day} · ${eur(totals[i])}`}
-            >
-              <div
-                className="w-full bg-foreground/80"
-                style={{ height: `${(totals[i] / max) * 100}%` }}
-              />
-            </div>
-          ))}
+      <div className="space-y-5 p-5 sm:p-6">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatTile label={`Spent · ${days.length} days`} value={eur(sum)} accent />
+          <StatTile label="Tool calls" value={eur(calls)} />
+          <StatTile label="Compute" value={eur(compute)} />
         </div>
-        <div className="lining flex justify-between text-xs text-muted-foreground">
-          <span>{days[0]?.day}</span>
-          <span>{days[days.length - 1]?.day}</span>
+        {/* Stacked daily bars: tool calls in brand blue, compute in muted navy. */}
+        <div>
+          <div className="flex h-28 items-end gap-px border-b border-border" aria-hidden>
+            {days.map((d, i) => (
+              <div
+                key={d.day}
+                className="flex h-full flex-1 flex-col justify-end"
+                title={`${d.day} · ${eur(totals[i])}`}
+              >
+                <div
+                  className="flex w-full flex-col overflow-hidden rounded-t-sm"
+                  style={{ height: `${(totals[i] / max) * 100}%` }}
+                >
+                  <div
+                    className="w-full bg-muted-foreground/45"
+                    style={{
+                      height: totals[i] > 0 ? `${(d.computeMicros / totals[i]) * 100}%` : "0%",
+                    }}
+                  />
+                  <div className="w-full flex-1 bg-brand" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-muted-foreground">
+            <span>{days[0]?.day}</span>
+            <span className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden className="h-2 w-2 rounded-full bg-brand" />
+                Tool calls
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden className="h-2 w-2 rounded-full bg-muted-foreground/45" />
+                Compute
+              </span>
+            </span>
+            <span>{days[days.length - 1]?.day}</span>
+          </div>
         </div>
       </div>
-      <div className="overflow-x-auto border-t border-border">
+      <div className="border-t border-border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="pl-6">Day</TableHead>
+              <TableHead className="pl-5 sm:pl-6">Day</TableHead>
               <TableHead className="w-28 text-right">Tool calls</TableHead>
               <TableHead className="w-28 text-right">Compute</TableHead>
-              <TableHead className="w-28 pr-6 text-right">Total</TableHead>
+              <TableHead className="w-28 pr-5 text-right sm:pr-6">Total</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {spent.map((d) => (
               <TableRow key={d.day}>
-                <TableCell className="pl-6">{d.day}</TableCell>
+                <TableCell className="whitespace-nowrap pl-5 sm:pl-6">{d.day}</TableCell>
                 <TableCell className="text-right">{formatCredit(d.toolCallsMicros)}</TableCell>
                 <TableCell className="text-right">{formatCredit(d.computeMicros)}</TableCell>
-                <TableCell className="pr-6 text-right font-medium">
+                <TableCell className="pr-5 text-right font-semibold sm:pr-6">
                   {formatCredit(d.toolCallsMicros + d.computeMicros)}
                 </TableCell>
               </TableRow>

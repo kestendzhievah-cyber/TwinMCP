@@ -7,7 +7,9 @@ export function ThemeProvider({ children, ...props }: ComponentProps<typeof Next
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
+      // Light-blue is the brand identity: default to light, keep "System" in
+      // the toggle for people who want the OS preference.
+      defaultTheme="light"
       enableSystem
       disableTransitionOnChange
       {...props}

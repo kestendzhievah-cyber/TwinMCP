@@ -1,5 +1,6 @@
 import type { Route } from "next";
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import type { Locale } from "@/lib/i18n/locales";
 import { localizedDescription, type ServerEntry } from "@/lib/servers/catalog";
 import {
@@ -11,10 +12,11 @@ import {
   type ServerPageData,
 } from "@/lib/seo/server-pages";
 import { getPostsBySlugs } from "@/lib/blog/posts";
+import { PROMO_EXCLUDED_MCP_SLUGS } from "@/lib/wallet/eligibility";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbListSchema, faqPageSchema, howToSchema } from "@/lib/seo/schema";
+import { BrandLogo, hasBrandLogo } from "@/components/brand/brand-logo";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -23,11 +25,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
 import { COPY } from "./copy";
-import { Breadcrumbs, HostCta, SectionTitle, SnippetTabs } from "./parts";
+import { Breadcrumbs, HostCta, SectionTitle, ServerMark, SnippetTabs } from "./parts";
 
+// Links in running text: brand blue, underlined at rest.
 const LINK =
-  "text-foreground underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand";
+  "font-medium text-brand underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand";
+
+// A related card (blog post or MCP): the interactive card recipe.
+const RELATED_CARD =
+  "group flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-input hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+const SECTION = "mt-14 border-t border-border pt-10";
 
 export function ServerPageView({
   data,
@@ -41,6 +51,7 @@ export function ServerPageView({
   const snippets = clientSnippets(data.slug, locale);
   const guides = locale === "en" || hasFrClientGuides(data.slug);
   const posts = locale === "en" ? getPostsBySlugs(data.relatedBlogSlugs) : [];
+  const locked = PROMO_EXCLUDED_MCP_SLUGS.includes(data.slug);
 
   const crumbs = [
     { name: t.home, href: t.homeHref },
@@ -62,44 +73,68 @@ export function ServerPageView({
         ]}
       />
 
-      <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20" lang={locale}>
+      <article
+        className="mx-auto max-w-3xl px-4 pb-16 pt-10 sm:px-6 md:pb-24 md:pt-14"
+        lang={locale}
+      >
         <Breadcrumbs crumbs={crumbs} />
 
-        <header className="pb-10 text-center">
-          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-            {data.categoryLabel}
-          </p>
-          <h1 className="display letterpress mt-6 text-4xl sm:text-5xl md:text-6xl">{data.h1}</h1>
-          <div className="mx-auto mt-7 h-px w-12 bg-foreground/40" />
-          <p className="mx-auto mt-7 max-w-2xl text-lg text-muted-foreground md:text-xl">
+        <header className="border-b border-border pb-10 text-center">
+          <ServerMark
+            slug={data.slug}
+            category={data.categoryKey}
+            size="lg"
+            className="mx-auto mb-5"
+          />
+          <p className="eyebrow">{data.categoryLabel}</p>
+          <h1 className="mt-3 text-balance font-display text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-4xl md:text-5xl">
+            {data.h1}
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-muted-foreground md:text-xl">
             {data.description}
           </p>
-          <p className="smallcaps tracking-sc lining mt-7 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-            {data.facts.map((f, i) => (
-              <span key={f} className="flex items-center gap-x-3">
-                {i > 0 && <span aria-hidden>·</span>}
-                <span>{f}</span>
-              </span>
+          <ul className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            {data.facts.map((f) => (
+              <li
+                key={f}
+                className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium tabular-nums text-muted-foreground"
+              >
+                {f}
+              </li>
             ))}
-          </p>
+            {locked && (
+              <li>
+                <Badge variant="offer" className="px-3 py-1">
+                  <Lock className="h-3 w-3" aria-hidden />
+                  {t.unlocks}
+                </Badge>
+              </li>
+            )}
+          </ul>
         </header>
-        <Separator variant="double" />
+
+        {locked && (
+          <aside className="mt-10 flex gap-3 rounded-xl border border-offer-border bg-offer p-4 text-sm text-offer-foreground">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <p>{t.unlocksText}</p>
+          </aside>
+        )}
 
         {data.hostMode === "local" && (
-          <aside className="mt-10 border border-info/40 border-l-2 border-l-info bg-info/10 p-4 text-sm text-info">
-            <strong className="smallcaps tracking-sc font-medium">{t.localTitle}</strong>
-            <p className="mt-2 text-foreground/90">{t.localText(data.name)}</p>
+          <aside className="mt-10 rounded-xl border border-info/30 bg-info/10 p-4 text-sm">
+            <strong className="font-semibold text-info">{t.localTitle}</strong>
+            <p className="mt-1.5 text-foreground">{t.localText(data.name)}</p>
           </aside>
         )}
 
         {/* What it does: the seed description, then the exact package and command. */}
         <section className="mt-10">
           <SectionTitle>{t.whatItDoes}</SectionTitle>
-          <p className="text-lg leading-8 text-foreground/90">{data.description}</p>
-          <dl className="mt-6 divide-y divide-border border-y border-border text-sm">
+          <p className="text-lg leading-8 text-foreground">{data.description}</p>
+          <dl className="mt-6 divide-y divide-border rounded-xl border border-border bg-card px-4 text-sm">
             {data.launch.packageName && (
               <div className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
-                <dt className="smallcaps tracking-sc text-muted-foreground">{t.packageLabel}</dt>
+                <dt className="font-medium text-muted-foreground">{t.packageLabel}</dt>
                 <dd className="min-w-0">
                   <code className="break-all font-mono text-foreground">
                     {data.launch.packageName}
@@ -127,7 +162,7 @@ export function ServerPageView({
               </div>
             )}
             <div className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
-              <dt className="smallcaps tracking-sc text-muted-foreground">{t.commandLabel}</dt>
+              <dt className="font-medium text-muted-foreground">{t.commandLabel}</dt>
               <dd className="min-w-0">
                 <code className="break-all font-mono text-foreground">{data.launch.command}</code>
               </dd>
@@ -136,14 +171,14 @@ export function ServerPageView({
         </section>
 
         {/* Keys and settings: the real config schema, with where to get each value. */}
-        <section className="mt-14 border-t border-border pt-10">
+        <section className={SECTION}>
           <SectionTitle>{t.keysTitle}</SectionTitle>
           {data.fields.length === 0 ? (
             <p className="text-base text-muted-foreground">{t.noKeysText}</p>
           ) : (
             <>
               <p className="mb-6 text-base text-muted-foreground">{t.keysLead}</p>
-              <Table className="border-b border-border">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[36%]">{t.colField}</TableHead>
@@ -174,22 +209,20 @@ export function ServerPageView({
         </section>
 
         {/* Three steps on TwinMCP (also the HowTo structured data). */}
-        <section className="mt-14 border-t border-border pt-10">
+        <section className={SECTION}>
           <SectionTitle>{t.stepsTitle}</SectionTitle>
           <ol className="space-y-5">
             {data.steps.map((s, i) => (
               <li key={s.name} className="flex gap-4">
                 <span
                   aria-hidden
-                  className="lining mt-0.5 grid h-8 w-8 shrink-0 place-items-center border border-border bg-card text-xs font-medium"
+                  className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-sm font-semibold tabular-nums text-brand-foreground"
                 >
                   {i + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="smallcaps tracking-sc block text-sm font-medium text-foreground">
-                    {s.name}
-                  </span>
-                  <span className="mt-1 block break-words text-base leading-7 text-foreground/90">
+                  <span className="block font-semibold text-foreground">{s.name}</span>
+                  <span className="mt-1 block break-words text-base leading-7 text-muted-foreground">
                     {s.text}
                   </span>
                 </span>
@@ -199,7 +232,7 @@ export function ServerPageView({
         </section>
 
         {/* Connect snippets for every client, from the Connect panel's generator. */}
-        <section className="mt-14 border-t border-border pt-10">
+        <section className={SECTION}>
           <SectionTitle>{t.connectTitle}</SectionTitle>
           <p className="mb-6 break-words text-base text-muted-foreground">
             {t.connectLead(data.mcpUrl)}
@@ -215,17 +248,24 @@ export function ServerPageView({
         </section>
 
         {guides && (
-          <section className="mt-14 border-t border-border pt-10">
+          <section className={SECTION}>
             <SectionTitle>{t.clientsTitle(data.name)}</SectionTitle>
             <ul className="grid gap-3 sm:grid-cols-2">
               {snippets.map((s) => (
-                <li key={s.client}>
+                <li key={s.client} className="min-w-0">
                   <Link
                     href={clientPath(data.slug, s.client, locale) as Route}
-                    className="smallcaps tracking-sc flex items-center justify-between gap-4 border border-border bg-card px-4 py-3 text-sm transition-colors hover:border-foreground/60"
+                    className="group flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium shadow-sm transition hover:border-input hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
-                    <span>{s.label}</span>
-                    <span aria-hidden className="text-muted-foreground">
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      {hasBrandLogo(s.client) ? (
+                        <BrandLogo slug={s.client} size={18} decorative />
+                      ) : (
+                        <span aria-hidden className="h-[18px] w-[18px] shrink-0" />
+                      )}
+                      <span className="truncate">{s.label}</span>
+                    </span>
+                    <span aria-hidden className="text-muted-foreground group-hover:text-brand">
                       →
                     </span>
                   </Link>
@@ -235,19 +275,19 @@ export function ServerPageView({
           </section>
         )}
 
-        <section className="mt-14 border-t border-border pt-10">
+        <section className={SECTION}>
           <SectionTitle>{t.faqTitle}</SectionTitle>
-          <dl className="divide-y divide-border border-y border-border">
+          <dl className="divide-y divide-border rounded-2xl border border-border bg-card px-5 sm:px-6">
             {data.faq.map((item) => (
               <div key={item.q} className="py-5">
-                <dt className="text-lg font-medium">{item.q}</dt>
+                <dt className="text-base font-semibold text-foreground">{item.q}</dt>
                 <dd className="mt-2 break-words text-base text-muted-foreground">{item.a}</dd>
               </div>
             ))}
           </dl>
         </section>
 
-        <footer className="rule-double mt-14 pt-12">
+        <footer className="mt-14 border-t border-border pt-12">
           <HostCta
             name={data.name}
             locale={locale}
@@ -257,17 +297,14 @@ export function ServerPageView({
 
           {posts.length > 0 && (
             <div className="mt-14">
-              <h2 className="eyebrow mb-6 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+              <h2 className="mb-5 font-display text-xl font-bold tracking-tight">
                 {t.readingTitle}
               </h2>
               <ul className="grid gap-4 sm:grid-cols-2">
                 {posts.map((p) => (
-                  <li key={p.slug}>
-                    <Link
-                      href={`/blog/${p.slug}` as Route}
-                      className="group flex h-full flex-col border border-border bg-card p-5 transition-colors hover:border-foreground/60"
-                    >
-                      <h3 className="text-lg font-medium leading-snug group-hover:underline group-hover:decoration-brand group-hover:underline-offset-4">
+                  <li key={p.slug} className="min-w-0">
+                    <Link href={`/blog/${p.slug}` as Route} className={RELATED_CARD}>
+                      <h3 className="font-display text-lg font-semibold leading-snug tracking-tight group-hover:text-brand">
                         {p.title}
                       </h3>
                     </Link>
@@ -279,20 +316,20 @@ export function ServerPageView({
 
           {related.length > 0 && (
             <div className="mt-14">
-              <h2 className="eyebrow mb-6 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+              <h2 className="mb-5 font-display text-xl font-bold tracking-tight">
                 {t.relatedTitle}
               </h2>
               <ul className="grid gap-4 sm:grid-cols-2">
                 {related.map((r) => (
-                  <li key={r.slug}>
-                    <Link
-                      href={serverPath(r.slug, locale) as Route}
-                      className="group flex h-full flex-col border border-border bg-card p-5 transition-colors hover:border-foreground/60"
-                    >
-                      <h3 className="smallcaps tracking-sc text-lg font-medium leading-snug group-hover:underline group-hover:decoration-brand group-hover:underline-offset-[6px]">
-                        {r.name}
-                      </h3>
-                      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                  <li key={r.slug} className="min-w-0">
+                    <Link href={serverPath(r.slug, locale) as Route} className={RELATED_CARD}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ServerMark slug={r.slug} category={r.categoryKey} />
+                        <h3 className="min-w-0 truncate font-display text-lg font-semibold leading-snug tracking-tight group-hover:text-brand">
+                          {r.name}
+                        </h3>
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
                         {localizedDescription(r, locale)}
                       </p>
                     </Link>
@@ -303,6 +340,7 @@ export function ServerPageView({
           )}
         </footer>
       </article>
+      <StickyMobileCta locale={locale} />
     </>
   );
 }

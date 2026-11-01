@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { Route } from "next";
 import { ArrowLeft } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -24,53 +23,45 @@ export const metadata: Metadata = {
 
 const LAST_UPDATED = "October 22, 2026";
 
-// Typeset as a document on the card stock (docs/DESIGN.md §4–5): a centred
-// header over the double rule, numbered sections with hanging small-caps
-// numerals, the purposes and sub-processors as ledger tables, the labelled
-// lists between hairlines, pinstripe links.
-const EYEBROW =
-  "eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']";
+// A legal document in the "Clear sky" style (docs/DESIGN.md): a plain header,
+// the text on one white card, numbered sections with brand numerals, the
+// identity details and lists as rounded ledgers, underlined blue links.
+const EYEBROW = "eyebrow";
 const LANG_SWITCH =
-  "smallcaps tracking-sc inline-flex min-h-10 items-center text-xs text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground hover:decoration-foreground/60";
+  "inline-flex min-h-10 shrink-0 items-center rounded-lg border border-input bg-card px-3 text-sm font-medium text-foreground shadow-sm transition hover:bg-accent";
 const DOC =
-  "text-base leading-7 text-foreground [&_a:hover]:decoration-brand [&_a]:text-brand [&_a]:underline [&_a]:decoration-brand/40 [&_a]:underline-offset-4 [&_strong]:font-medium [&_strong]:text-foreground";
-const NOTE =
-  "border border-l-2 border-info/40 border-l-info bg-info/10 px-4 py-3 text-sm text-info";
+  "rounded-2xl border border-border bg-card p-5 text-base leading-7 text-foreground shadow-sm sm:p-10 [&_a:hover]:decoration-2 [&_a]:font-medium [&_a]:text-brand [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-semibold [&_strong]:text-foreground";
+const NOTE = "rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info";
 const SECTION = "mt-10 border-t border-border pt-8";
-const H2 = "flex items-baseline text-2xl font-medium";
-const NUM = "smallcaps lining w-10 shrink-0 text-base font-normal text-muted-foreground";
+const H2 = "flex items-baseline font-display text-xl font-bold tracking-tight sm:text-2xl";
+const NUM = "w-10 shrink-0 text-base font-semibold tabular-nums text-brand";
 const BODY = "mt-4 space-y-4 sm:pl-10";
 const SUBSECTIONS = "mt-6 space-y-8 sm:pl-10";
 const SUBSECTION = "space-y-3";
-const H3 = "flex items-baseline text-xl font-medium sm:-ml-10";
-const SUBNUM = "smallcaps lining w-10 shrink-0 text-sm font-normal text-muted-foreground";
+const H3 = "flex items-baseline font-display text-lg font-semibold tracking-tight sm:-ml-10";
+const SUBNUM = "w-10 shrink-0 text-sm font-semibold tabular-nums text-brand";
 const LIST = "list-disc space-y-2 pl-6 marker:text-muted-foreground";
-const RULED = "lining divide-y divide-border border-y border-border [&>li]:py-3";
-const LEDGER = "border-b border-border";
+const RULED =
+  "divide-y divide-border rounded-xl border border-border tabular-nums [&>li]:px-4 [&>li]:py-3";
+const LEDGER = "text-sm";
 const CELL = "align-top";
-const FOOTER_LINK = "inline-flex min-h-10 items-center gap-2 hover:text-foreground";
+const FOOTER_LINK =
+  "inline-flex min-h-10 items-center gap-2 font-medium text-brand underline-offset-4 hover:underline";
 
 export default function PrivacyPageEn() {
   return (
-    <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-24">
-      {/* The document header: the language switch in the top-right corner,
-          then the centred name — eyebrow between rules, the title, a short
-          rule, the dateline — over the double rule. */}
-      <header className="mb-10">
-        <div className="flex justify-end">
+    <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 md:py-20">
+      <header className="mb-8">
+        <div className="flex items-center justify-between gap-4">
+          <p className={EYEBROW}>Legal document</p>
           <Link href={"/legal/privacy" as Route} className={LANG_SWITCH}>
             Français
           </Link>
         </div>
-        <div className="mt-4 text-center">
-          <p className={EYEBROW}>Legal document</p>
-          <h1 className="letterpress mt-6 text-4xl font-medium sm:text-5xl">Privacy Policy</h1>
-          <div aria-hidden className="mx-auto mt-6 h-px w-12 bg-foreground/40" />
-          <p className="lining mt-6 text-sm italic text-muted-foreground">
-            Last updated: {LAST_UPDATED}
-          </p>
-        </div>
-        <Separator variant="double" className="mt-10" />
+        <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl">
+          Privacy Policy
+        </h1>
+        <p className="mt-4 text-sm text-muted-foreground">Last updated: {LAST_UPDATED}</p>
       </header>
 
       <div className={DOC}>
@@ -465,7 +456,7 @@ export default function PrivacyPageEn() {
         </section>
       </div>
 
-      <footer className="rule-double smallcaps tracking-sc mt-16 flex flex-wrap items-center justify-center gap-x-3 pt-4 text-xs text-muted-foreground">
+      <footer className="mt-10 flex flex-wrap items-center justify-center gap-x-3 text-sm text-muted-foreground">
         <Link href={"/legal/en/terms" as Route} className={FOOTER_LINK}>
           <ArrowLeft aria-hidden className="h-3.5 w-3.5" />
           Terms of Service

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import {
-  AlertCircle,
   AlertTriangle,
   BellRing,
   CheckCircle2,
@@ -21,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { ErrorNotice, IconTile } from "../admin-ui";
 
 interface Attention {
   followUpsDue: {
@@ -80,9 +80,8 @@ function relTime(iso: string | null): string {
 
 const CRM: Route = "/dashboard/admin/prospects" as Route;
 
-// Quiet navigation links inside the ledgers: small capitals, brand underline on hover.
-const quietLink =
-  "smallcaps tracking-sc shrink-0 text-xs text-muted-foreground decoration-brand underline-offset-4 hover:text-foreground hover:underline";
+// Navigation links inside the lists: brand blue, underline on hover.
+const quietLink = "shrink-0 text-xs font-medium text-brand underline-offset-4 hover:underline";
 
 export function CockpitPanel() {
   const [data, setData] = useState<Attention | null>(null);
@@ -131,20 +130,7 @@ export function CockpitPanel() {
   if (loading) return <Skeleton className="h-80 w-full" />;
 
   if (error || !data) {
-    return (
-      <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>
-          {error || "Aucune donnée."}{" "}
-          <button
-            className="underline decoration-destructive/40 underline-offset-4 hover:decoration-destructive"
-            onClick={() => void load()}
-          >
-            Réessayer
-          </button>
-        </p>
-      </div>
-    );
+    return <ErrorNotice onRetry={() => void load()}>{error || "Aucune donnée."}</ErrorNotice>;
   }
 
   const {
@@ -187,18 +173,27 @@ export function CockpitPanel() {
             <Mail className="h-4 w-4" />
             {sending ? "Envoi…" : "M'envoyer le digest"}
           </Button>
-          <Button variant="outline" size="icon" onClick={() => void load()} disabled={refreshing}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => void load()}
+            disabled={refreshing}
+            aria-label="Rafraîchir"
+            title="Rafraîchir"
+          >
             <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
           </Button>
         </div>
       </div>
 
       {counts.total === 0 && clientsAtRisk.length === 0 && (
-        <Card className="border-dashed border-foreground/40 bg-transparent shadow-none">
-          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
-            <CheckCircle2 className="h-8 w-8 text-success" />
-            <p className="smallcaps tracking-sc font-medium">Tout est à jour</p>
-            <p className="text-sm italic text-muted-foreground">
+        <Card className="border-2 border-dashed border-border shadow-none">
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <span className="grid size-12 place-items-center rounded-full bg-success/10 text-success">
+              <CheckCircle2 aria-hidden className="size-6" />
+            </span>
+            <p className="font-display text-lg font-semibold tracking-tight">Tout est à jour</p>
+            <p className="text-sm text-muted-foreground">
               Aucune relance en retard, aucun serveur en erreur, aucun nouveau lead à traiter.
             </p>
           </CardContent>
@@ -231,7 +226,7 @@ export function CockpitPanel() {
                     </span>
                   )}
                 </span>
-                <span className="lining shrink-0 text-xs font-medium text-destructive">
+                <span className="tabular-nums shrink-0 text-xs font-medium text-destructive">
                   {relTime(p.nextActionAt)}
                 </span>
               </li>
@@ -259,7 +254,7 @@ export function CockpitPanel() {
                   <span className="font-medium">{p.company}</span>
                   {p.source && <span className="text-xs text-muted-foreground"> · {p.source}</span>}
                 </span>
-                <span className="lining shrink-0 text-xs text-muted-foreground">
+                <span className="tabular-nums shrink-0 text-xs text-muted-foreground">
                   {relTime(p.createdAt)}
                 </span>
               </li>
@@ -355,13 +350,13 @@ export function CockpitPanel() {
                 <span className="flex min-w-0 items-center gap-2">
                   <Link
                     href={`/dashboard/admin/clients/${u.id}` as Route}
-                    className="truncate font-mono text-xs decoration-brand underline-offset-4 hover:underline"
+                    className="truncate font-mono text-xs text-brand underline-offset-4 hover:underline"
                   >
                     {u.email}
                   </Link>
                   <Badge variant={u.plan === "free" ? "secondary" : "success"}>{u.plan}</Badge>
                 </span>
-                <span className="lining shrink-0 text-xs text-muted-foreground">
+                <span className="tabular-nums shrink-0 text-xs text-muted-foreground">
                   {relTime(u.createdAt)}
                 </span>
               </li>
@@ -373,8 +368,8 @@ export function CockpitPanel() {
   );
 }
 
-// A tally chip: square, hairline, small-caps caption with a lining count.
-// The total gets an ink hairline; anything broken gets the oxblood tint.
+// A tally chip: a rounded pill with its count. The total gets the brand tint;
+// anything broken gets the destructive tint plus an icon (never colour alone).
 function Chip({
   label,
   value,
@@ -390,19 +385,22 @@ function Chip({
   return (
     <span
       className={cn(
-        "smallcaps tracking-sc inline-flex h-8 items-center gap-2 border border-border px-2.5 text-xs text-muted-foreground",
-        highlight && "border-foreground/60 text-foreground",
-        alert && "border-destructive/40 bg-destructive/10 text-destructive"
+        "inline-flex h-8 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground",
+        highlight && "border-brand/30 bg-brand/10 text-brand",
+        alert && "border-destructive/30 bg-destructive/10 text-destructive"
       )}
     >
+      {alert && <AlertTriangle aria-hidden className="size-3.5 shrink-0" />}
       {label}
-      <span className={cn("lining font-medium", !alert && "text-foreground")}>{value}</span>
+      <span className={cn("font-semibold tabular-nums", !alert && !highlight && "text-foreground")}>
+        {value}
+      </span>
     </span>
   );
 }
 
-// A ledger card: hairline icon square, small-caps title with its count, a
-// hairline under the header, rows divided by hairlines inside.
+// A section card: icon tile, title with its count, a hairline under the
+// header, rows divided by hairlines inside.
 function Section({
   icon,
   title,
@@ -418,15 +416,13 @@ function Section({
 }) {
   return (
     <Card>
-      <CardHeader className="border-b border-border pb-4">
+      <CardHeader className="border-b border-border py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
-              {icon}
-            </span>
+            <IconTile>{icon}</IconTile>
             <CardTitle className="text-base">{title}</CardTitle>
             {typeof count === "number" && (
-              <Badge variant="outline" className="lining">
+              <Badge variant="secondary" className="tabular-nums">
                 {count}
               </Badge>
             )}
@@ -434,7 +430,7 @@ function Section({
           {action}
         </div>
       </CardHeader>
-      <CardContent>{children}</CardContent>
+      <CardContent className="py-2">{children}</CardContent>
     </Card>
   );
 }

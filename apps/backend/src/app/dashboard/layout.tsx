@@ -13,7 +13,7 @@ import {
   type SerializedWalletNudge,
 } from "@/components/billing/balance-banner";
 import { needsOnboarding } from "@/lib/auth/return-to";
-import { DashboardNav } from "./nav";
+import { DashboardNav, type NavBalance } from "./nav";
 import { OnboardingGate } from "./onboarding-gate";
 
 export const dynamic = "force-dynamic";
@@ -79,15 +79,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
     teamMember: (teamRow?.n ?? 0) > 0,
   });
 
-  // The one wallet decision (lib/billing/upgrade-state.ts): the strip under
-  // the header and the balance pill in the nav both read from it.
+  // The one wallet decision (lib/billing/upgrade-state.ts): the strip above
+  // the page and the balance pill card in the sidebar both read from it.
   const nudge = computeWalletNudge(signals);
   const bannerNudge: SerializedWalletNudge = {
     ...nudge,
     promoExpiresAt: nudge.promoExpiresAt?.toISOString() ?? null,
   };
-  const balance = signals.walletAvailable
-    ? { totalMicros: nudge.totalMicros, funded: signals.funded, level: nudge.level }
+  const balance: NavBalance | null = signals.walletAvailable
+    ? {
+        totalMicros: nudge.totalMicros,
+        funded: signals.funded,
+        level: nudge.level,
+        reason: nudge.reason,
+        promoMicros: signals.promoMicros,
+        promoDaysLeft: nudge.promoDaysLeft,
+      }
     : null;
 
   // Admin-only "à relancer" nav badge: prospects with a past-due follow-up still
@@ -114,7 +121,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background md:flex-row">
+    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <DashboardNav
         email={user.email ?? ""}
         plan={plan}
@@ -124,15 +131,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
         showTeam={showTeam}
         balance={balance}
       />
-      {/* Bone stock beside the sidebar: 16 px gutters on mobile; min-w-0 so a wide
-          ledger table scrolls inside its card instead of widening the column. */}
-      <main
-        id="main-content"
-        className="w-full min-w-0 max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-10"
-      >
-        {BANNER_LEVELS.has(nudge.level) && <BalanceBanner nudge={bannerNudge} />}
-        <OnboardingGate active={gateActive}>{children}</OnboardingGate>
-      </main>
+      {/* The page column beside the sidebar: 16 px gutters on phones; min-w-0 so a
+          wide table scrolls inside its frame instead of widening the column. */}
+      <div className="min-w-0 flex-1">
+        <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 md:py-8">
+          {BANNER_LEVELS.has(nudge.level) && <BalanceBanner nudge={bannerNudge} />}
+          <OnboardingGate active={gateActive}>{children}</OnboardingGate>
+        </main>
+      </div>
     </div>
   );
 }

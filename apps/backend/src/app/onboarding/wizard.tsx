@@ -16,8 +16,10 @@ import { StepConnect } from "@/components/onboarding/step-connect";
 import { track } from "@/lib/analytics/funnel";
 
 // No Plan step: every account starts on its free sign-up credit (prepaid
-// wallet, no subscription), shown on the welcome step.
+// wallet, no subscription), shown on the welcome step. STEPS names the steps in
+// analytics events (keep as is); STEP_LABELS is what the stepper shows.
 const STEPS = ["IDE", "Server", "MCP", "Connect"] as const;
+const STEP_LABELS = ["Welcome", "Server", "MCP", "Connect"] as const;
 
 type WizardServer = { id: string; name: string; slug: string; endpointUrl: string | null };
 
@@ -104,31 +106,21 @@ export function OnboardingWizard({
     : "TwinMCP Docs";
 
   return (
-    <div className="space-y-8">
-      {/* Title block: the ledger of steps with the skip action on the same row
-          (DESIGN.md §4.5, §5). */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-        <div className="min-w-0 flex-1">
-          <OnboardingProgress current={step} total={STEPS.length} labels={[...STEPS]} />
+    <div className="space-y-6">
+      {/* The stepper, with the skip action under it on the right. */}
+      <header className="space-y-3">
+        <OnboardingProgress current={step} total={STEPS.length} labels={[...STEP_LABELS]} />
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={handleSkip} disabled={skipping}>
+            {skipping ? "Skipping…" : "Skip onboarding"}
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          onClick={handleSkip}
-          disabled={skipping}
-          className="shrink-0 self-end sm:self-auto"
-        >
-          {skipping ? "Skipping…" : "Skip onboarding"}
-        </Button>
       </header>
 
-      {/* The step sits on one piece of bone stock with a hairline, under a
-          running head in small caps between a rule and the step name (§4.7). */}
-      <div className="border border-border bg-card p-6 shadow-sm md:p-8">
-        <p className="eyebrow mb-6 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-          <span>
-            Step <span className="lining">{step + 1}</span> of{" "}
-            <span className="lining">{STEPS.length}</span> · {STEPS[step]}
-          </span>
+      {/* The step: one white card on the light-blue page. */}
+      <div className="rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-8">
+        <p className="eyebrow mb-5 tabular-nums">
+          Step {step + 1} of {STEPS.length} · {STEP_LABELS[step]}
         </p>
         {step === 0 && (
           <StepWelcome

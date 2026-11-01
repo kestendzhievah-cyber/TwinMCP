@@ -1,267 +1,415 @@
-# TwinMCP design system — "the card"
+# TwinMCP design system: "Clear sky"
 
-**Reference:** a letterpress business card on bone stock (the *Pierce & Pierce* card:
-phone top-left, firm + "Mergers and Acquisitions" top-right, the name and title engraved
-dead-centre in letterspaced small capitals, one address line along the bottom). The whole
-product — marketing site, auth, onboarding, dashboard, docs, blog — is typeset like that
-card. Think 1987 Wall Street: restraint, hairlines, serif small caps, bone paper, ink.
-No gradients, no glass, no glow, no rounded pills, no emoji.
+Light-blue grounds, white cards, navy ink. **Rose** is the colour of the one thing we want
+you to do (claim the free credit, take the next activation step, top up). **Blue** is for
+links, selection and eyebrows. Sans-serif type, sentence case, soft corners, soft
+navy-tinted shadows, and the real logos of the tools people already use.
 
-Everything below is already encoded in `apps/backend/src/app/globals.css`,
+This replaces the letterpress "card" system (EB Garamond small caps, bone paper, radius 0),
+retired on 2026-10-31.
+
+Everything below is encoded in `apps/backend/src/app/globals.css`,
 `apps/backend/tailwind.config.ts` and `apps/backend/src/components/ui/*`. Pages compose
-those primitives; this document says how.
+those primitives; this document says how. Paths below are relative to `apps/backend/`.
 
 ---
 
-## 1. Material
+## 1. Principles
 
-| Token | Light ("the card") | Dark ("after hours") | Use |
-|---|---|---|---|
-| `background` | bone `hsl(40 35% 93%)` + paper grain | ink stock `hsl(36 12% 8%)` | page |
-| `card` / `popover` | lighter bone `hsl(42 45% 96%)` | `hsl(34 13% 10%)` | cards, dialogs, inputs |
-| `foreground` | pressed charcoal `hsl(30 8% 16%)` | bone `hsl(42 31% 87%)` | ink |
-| `muted-foreground` | `hsl(35 9% 37%)` | `hsl(39 11% 62%)` | secondary text (AA on bone) |
-| `secondary` / `muted` / `accent` | darker bone `hsl(40 31% 89%)` | `hsl(26 10% 14%)` | chips, hover surfaces, skeletons |
-| `border` / `input` | warm hairline `hsl(40 21% 81%)` | `hsl(33 12% 19%)` | every rule |
-| `primary` | ink | bone | filled buttons/badges |
-| `brand` | pinstripe navy `hsl(222 37% 22%)` | steel `hsl(219 35% 68%)` | links, active nav marker, selection |
-| `gilt` | brass foil `hsl(41 55% 36%)` | `hsl(42 52% 56%)` | "Most popular", Pro/Team seals, admin markers — rare |
-| `success` | racing green | lighter green | running / paid / ok |
-| `warning` | ochre | lighter ochre | provisioning / pending / quota |
-| `info` | steel blue | lighter steel | neutral notices |
-| `destructive` | oxblood `hsl(355 50% 33%)` | `hsl(357 47% 62%)` | errors, danger buttons |
+1. **Conversion first.** Each screen has one primary action, drawn as the rose `Button`
+   (`variant="default"`). On marketing pages that action is "claim the €10"; in the app it
+   is the next activation step, or a top-up when the balance is low. Everything else is
+   `outline`, `ghost` or `link`, so the rose stands out because it is rare.
+2. **The offer is the headline, not the small print**, and it is never misleading: the terms
+   line (30 days, no card, no subscription, the server limit, the MCPs that wait for a
+   top-up) is always next to the CTA.
+3. **Clarity over ornament.** No small caps, no italic subtitles, no paper grain, no double
+   rules, no gradients, no clipped text.
+4. **Light and friendly.** Light-blue grounds, rounded corners, soft shadows, generous
+   spacing.
+5. **Honest EU/FR trust.** Prices in euros, FR as a first-class locale, GDPR / DPA /
+   sub-processors linked. No claim the facts do not support (see §7).
+6. **Accessible by construction.** Every text pair below meets WCAG AA. Focus is always a
+   visible 2px navy ring with a 2px offset. Errors never rely on colour alone.
 
-Rules:
-- Semantic colours are **text + hairline + 10 % tint**: `border-success/40 bg-success/10 text-success`.
-  Never a solid fill except `destructive` buttons and the `default` badge.
-- **No Tailwind palette classes** (`emerald-500`, `amber-100`, `sky-700`, `violet-…`, `blue-…`,
-  `red-400`, `green-…`, `zinc/gray/slate/neutral-…`). The vitest guard
-  `src/__tests__/design-tokens.test.ts` fails on them.
-- No `dark:` colour overrides — tokens already flip. (`dark:` for layout is fine.)
-- Light-on-ink panels ("ink stock"): give the panel the `dark` class so tokens flip locally
-  (`<div className="dark bg-background text-foreground">`). Use for the logs viewer and code
-  terminal mockups, nothing else.
+---
 
-## 2. Type
+## 2. Tokens
 
-- **Everything** is EB Garamond (`font-serif`; `font-sans` is aliased to it). Code, slugs, keys,
-  URLs, logs, IDs = Courier Prime (`font-mono`).
-- Weights: `font-normal` 400 (body), `font-medium` 500 (headings, labels, buttons). `font-semibold`
-  and `font-bold` are remapped to 500/600 — write `font-medium` in new code.
-- The scale is ~6 % larger than Tailwind's (Garamond has a small x-height). Do **not** use
-  `text-[10px]`, `text-[11px]`, `text-[12px]`, `text-[13px]`: minimum is `text-xs` (13 px).
-- **Small capitals** are the card's voice. Utility `smallcaps` (= `font-variant-caps: small-caps`
-  + 0.08 em tracking). Use it, adding `tracking-sc` (0.12 em) where it needs more air, for:
-  wordmark, nav links, eyebrows, buttons, badges, labels, table headers, tabs, breadcrumbs,
-  stat captions, footer "address line", dialog/card titles, dashboard page `<h1>`s.
-  Never on body copy, never on code, never on number-heavy cells.
-- `eyebrow` utility = tiny, 0.28 em tracked, muted small caps (the "Mergers and Acquisitions" line).
-- `display` utility = big engraved small caps for marketing `<h1>`s:
-  `display letterpress text-5xl md:text-6xl lg:text-7xl`.
-- Section `<h2>`s: sentence case, `text-3xl md:text-4xl font-medium` (no small caps, no negative tracking).
-- Secondary/explanatory lines may be *italic* (card/dialog descriptions, captions, placeholders).
-  Keep italics short; never italicise a paragraph.
-- Numerals: body is old-style (`onum`) by default; data is lining tabular. Tables, code, inputs and
-  `<time>` are already lining. Add the `lining` utility on any stat, price, quota, count or date
-  outside those.
-- `tracking-tight` is remapped to 0 — remove it when you touch a line. Negative tracking is banned.
-- Never `uppercase` + `tracking-[0.18em]`/`tracking-wider` for labels anymore — that is the Inter
-  look. Use `smallcaps` (keep the original casing of the text).
+HSL triplets in `globals.css`, so `bg-x/10` alpha works. Light is the default theme
+(`ThemeProvider defaultTheme="light"`, `enableSystem` kept so the toggle offers System).
 
-## 3. Shape, rules, elevation
+### 2.1 Light (`:root`)
 
-- Radius is **0 everywhere** (`rounded-*` are all remapped to 0). Only `rounded-full` stays, for
-  status dots and avatars, nothing else (no pill buttons, no round icon tiles). Delete
-  `rounded-xl/2xl/lg/md/sm` from class strings when you touch a line.
-- Hairline: `border border-border`. Ink hairline for emphasis (dialogs, popovers, the highlighted
-  pricing tier, focused inputs): `border-foreground/60` to `/70`.
-- Double rule (`rule-double` utility or `<Separator variant="double" />`): under dashboard
-  page-title blocks, on top of major marketing sections (`bordered`), around the footer address line.
-- Shadows: `shadow-sm` (hairline lift, cards), `shadow-lg` (one card offset under: popovers,
-  toasts), `shadow-stack` (two bone cards fanned under at 4 px / 8 px — the photo): hero mockup,
-  dialogs, highlighted pricing tier, auth side-panel figure, 404/error card. Nothing else.
-  `shadow-inner` on inputs (debossed). Remove `shadow-2xl shadow-black/5`, `blur-*`,
-  `backdrop-blur`, halos, `bg-gradient-*`, `bg-clip-text`, `bg-[radial-gradient(...)]`.
-- Dividers between inline meta: a middle dot `·` in `text-muted-foreground`, not a pipe.
-- Icons: lucide, stroke 1.5 (global), `h-4 w-4` default, muted colour. Icons never sit in round
-  tinted circles: put them bare, or in a hairline square
-  (`grid h-9 w-9 place-items-center border border-border text-muted-foreground`).
-- Spacing rhythm: marketing sections `py-20 md:py-28`, dashboard pages `space-y-8`, cards `p-6`.
+| Token                                                          | Hex     | HSL                 | Role                                           |
+| -------------------------------------------------------------- | ------- | ------------------- | ---------------------------------------------- |
+| `--background`                                                 | #F3F8FF | `215 100% 97.6%`    | Page background (light blue)                   |
+| `--surface-alt`                                                | #E6F0FC | `212.7 78.6% 94.5%` | Alternate section, table header, sidebar hover |
+| `--surface-band`                                               | #D6E6FA | `213.3 78.3% 91%`   | Strong band (logo bar, auth side panel)        |
+| `--card` / `--popover`                                         | #FFFFFF | `0 0% 100%`         | Cards, dialogs, menus, inputs                  |
+| `--foreground` (+ card/popover/secondary/accent `-foreground`) | #0B1F3A | `214.5 68.1% 13.5%` | Ink (navy)                                     |
+| `--muted-foreground`                                           | #3D5272 | `216.2 30.3% 34.3%` | Secondary text                                 |
+| `--secondary` / `--muted` / `--accent`                         | #E6F0FC | `212.7 78.6% 94.5%` | Quiet fills, ghost hover                       |
+| `--border`                                                     | #D2DEEE | `214.3 45.2% 87.8%` | Decorative hairlines, card borders             |
+| `--input`                                                      | #7489A9 | `216.2 23.6% 55.9%` | Form controls and outline buttons              |
+| `--ring`                                                       | #0B1F3A | `214.5 68.1% 13.5%` | Focus ring                                     |
+| `--primary`                                                    | #C2255C | `339 68% 45.3%`     | Rose: primary buttons, key figures             |
+| `--primary-foreground`                                         | #FFFFFF | `0 0% 100%`         |                                                |
+| `--primary-hover`                                              | #A61E4D | `339.3 69.4% 38.4%` | Button hover                                   |
+| `--primary-active`                                             | #8C1940 | `339.7 69.7% 32.4%` | Button pressed                                 |
+| `--offer`                                                      | #FFE8EE | `344.3 100% 95.5%`  | Soft pink surface (offer badge, credit card)   |
+| `--offer-foreground`                                           | #8A1538 | `342.1 73.6% 31.2%` | Text on the pink surface                       |
+| `--offer-border`                                               | #F3A6BA | `344.4 76.2% 80.2%` | 1px border on pink surfaces                    |
+| `--brand`                                                      | #1E4FC2 | `222.1 73.2% 43.9%` | Links, selected nav/chip/tab, eyebrows         |
+| `--brand-foreground`                                           | #FFFFFF | `0 0% 100%`         |                                                |
+| `--success`                                                    | #0E7A4B | `153.9 79.4% 26.7%` |                                                |
+| `--warning`                                                    | #8A5A00 | `39.1 100% 27.1%`   |                                                |
+| `--info`                                                       | #1D62B5 | `212.8 72.4% 41.2%` |                                                |
+| `--destructive`                                                | #B42318 | `4.2 76.5% 40%`     | Error red (hue 4° vs the rose's 339°)          |
+| status `-foreground`                                           | #FFFFFF | `0 0% 100%`         |                                                |
+| `--shadow-color`                                               | navy    | `214.5 68.1% 13.5%` | `hsl(var(--shadow-color) / a)`                 |
+| `--radius`                                                     |         | `0.75rem`           |                                                |
 
-## 4. Motifs (use them — they are what makes it *the card*)
+Tailwind names: `bg-surface-alt`, `bg-surface-band`, `bg-primary-hover`,
+`bg-primary-active`, `bg-offer`, `text-offer-foreground`, `border-offer-border`, plus the
+usual shadcn names.
 
-1. **Card header** (marketing header, auth header, onboarding header): `<Logo />` is the small-caps
-   wordmark with the tagline "Managed MCP Runtimes" under it. The header is a bone bar with one
-   hairline below (`border-b border-border bg-background/95`, sticky). Nav links:
-   `smallcaps tracking-sc text-sm text-muted-foreground hover:text-foreground`; hovered/active link
-   `underline decoration-brand underline-offset-[6px]`. Primary CTA = default button, secondary = ghost.
-2. **The centred name** (home hero, pricing hero, use-case heroes, 404): eyebrow-with-rules →
-   `display letterpress` `<h1>` centred → a short centred hairline (`mx-auto h-px w-12 bg-foreground/40`)
-   → lead paragraph `mx-auto max-w-2xl text-lg md:text-xl text-muted-foreground` → buttons → one
-   small-caps "address line" of facts (`smallcaps tracking-sc text-xs text-muted-foreground`,
-   items separated by ` · `).
-3. **Stacked cards**: anything that is "the product" (hero mockup, dialogs, the auth figure) sits on
-   `shadow-stack`. Keep it square — no rotation.
-4. **Address line** (footer bottom, auth footer, onboarding footer): one centred line of small caps
-   separated by ` · `, between two hairlines:
-   `twinmcp.fr · hello@twinmcp.fr · security@twinmcp.fr · status.twinmcp.fr`.
-   Only real facts — never invent a phone, fax, telex, street address, city or founding date.
-5. **Ledger tables**: `Table` primitive — small-caps header row on a firmer rule, hairline rows,
-   lining numerals, mono slugs.
-6. **Typewriter code**: `CodeSnippet` / `<pre>` on `border border-border bg-secondary/60`, Courier,
-   `text-sm leading-relaxed`; filename tab in `smallcaps tracking-sc text-xs text-muted-foreground`.
-   The copy button is a hairline square (`border border-border bg-card`).
-7. **Eyebrow with rules** (section headers): the eyebrow sits between two short hairlines:
-   `<p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">`.
-   Left-aligned variants drop the `after:` half.
-8. **Seal** (`<Badge variant="gilt">`): "Most popular", "Official", "Pro". At most one per view.
-9. **Status**: `success` running · `warning` provisioning / pending · `secondary` stopped ·
-   `destructive` error · `outline` destroyed / unknown · `info` informational · `brand` "current / you".
-10. **Hero mockup**: a bone dashboard card on `shadow-stack`: titlebar = hairline row with the mono
-    URL (no traffic-light dots), sidebar with small-caps items (active = left ink rule), a ledger
-    table of servers with status badges (§4.9), mono slugs and regions.
+**Light contrast ratios** (WCAG relative luminance; AA = 4.5 body, 3.0 large text / UI):
 
-## 5. Component recipes (page level)
+| Pair                                                                       | Ratio                            | Result                                                           |
+| -------------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
+| foreground on background / card / surface-alt / surface-band               | 15.48 / 16.52 / 14.34 / 13.02    | AAA                                                              |
+| muted-foreground on background / card / surface-alt / surface-band / offer | 7.43 / 7.93 / 6.89 / 6.25 / 6.81 | AAA                                                              |
+| White on primary (rest / hover / active)                                   | 5.66 / 7.21 / 9.02               | AA                                                               |
+| Primary as text on background / card / surface-alt                         | 5.30 / 5.66 / 4.91               | AA                                                               |
+| Primary as text on surface-band                                            | **4.46**                         | **Fails small text**: use `text-offer-foreground` or ≥ 24px      |
+| Primary button fill against the page (1.4.11)                              | 5.30                             | Passes 3:1                                                       |
+| offer-foreground on offer                                                  | 8.03                             | AAA                                                              |
+| Primary text on offer                                                      | 4.86                             | AA                                                               |
+| brand on background / card / surface-alt / surface-band                    | 6.67 / 7.11 / 6.18 / 5.61        | AA                                                               |
+| White on brand                                                             | 7.11                             | AA                                                               |
+| input border on card / background / surface-alt                            | 3.56 / 3.34 / 3.09               | Passes 3:1                                                       |
+| success / warning / info / destructive on card                             | 5.38 / 5.93 / 6.06 / 6.57        | AA                                                               |
+| ... on background                                                          | 5.04 / 5.55 / 5.68 / 6.16        | AA                                                               |
+| ... on their 10% tint (`bg-x/10` over white)                               | 4.72 / 5.29 / 5.16 / 5.65        | AA                                                               |
+| White on success / warning / info / destructive fills                      | 5.38 / 5.93 / 6.06 / 6.57        | AA                                                               |
+| Focus ring (navy) on background                                            | 15.48                            | Passes                                                           |
+| border on card                                                             | 1.36                             | Decorative only, never the sole cue for a control                |
+| offer on background                                                        | 1.09                             | Pink surfaces always get `border-offer-border` + meaningful text |
+| **Do not use:** rose button on a navy surface                              | 2.92                             | No navy band holds a rose button; use white text links           |
 
-- **Marketing `Section`**: `py-20 md:py-28`; `bordered` → `rule-double` on top. Header block
-  centred `max-w-2xl`: eyebrow-with-rules, `<h2 className="text-3xl md:text-4xl font-medium">`,
-  description `mt-4 text-lg text-muted-foreground`.
-- **Feature / benefit card**: `border border-border bg-card p-6`, title
-  `smallcaps tracking-sc text-lg font-medium`, body `mt-2 text-base text-muted-foreground`.
-  Hover: `hover:border-foreground/60` only. Numbered steps: the number in a hairline square,
-  `lining font-medium`.
-- **Pricing tier**: card; highlighted tier gets `border-foreground/70 shadow-stack` and a `gilt`
-  seal `absolute -top-3 left-6`. Price `lining text-4xl font-medium`, cadence
-  `text-sm italic text-muted-foreground`. Check marks `<Check className="h-4 w-4 text-success" />`,
-  missing `<Minus className="h-4 w-4 text-muted-foreground/50" />`.
-- **Dashboard page header**: `<h1 className="smallcaps tracking-sc text-2xl font-medium">` +
-  `<p className="mt-1 text-sm italic text-muted-foreground">`, then
-  `<Separator variant="double" className="mt-4" />` (or `rule-double` on the wrapper's bottom).
-  Page-level actions (e.g. "New server") sit on the same row, right-aligned.
-- **Stat card**: `CardDescription` (caption) + `CardTitle className="lining text-3xl"` (number) with
-  `<span className="text-sm font-normal text-muted-foreground">/ limit</span>`. Progress bar:
-  `h-1.5 w-full bg-secondary` + `h-full bg-foreground`. Quota warning → `bg-warning`,
-  exhausted → `bg-destructive`.
-- **Empty state**: `border border-dashed border-foreground/40 bg-transparent`, bare icon in
-  `text-muted-foreground`, title small caps, body italic.
-- **Forms**: `Label` (small caps) + `Input`; help text `text-xs italic text-muted-foreground`;
-  errors: `flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive`
-  with `AlertCircle`. Success confirmations use the `success` tint the same way.
-- **Callouts / alerts**: the tint recipe per semantic (`info`, `warning`, `success`, `destructive`),
-  `border-l-2 border-l-<semantic>` optional for a memo feel.
-- **Dialogs**: already styled (ink hairline, `shadow-stack`, small-caps title, hairline under the
-  header). Keep `DialogDescription`.
-- **Sidebar nav (dashboard)**: bone, `border-r border-border`, `w-64`. Top block
-  `<Logo tagline="Control Plane" />`; identity block = email `text-xs break-all text-muted-foreground`
-  + plan badge (`success` for paid, `secondary` for free, `gilt` for team/enterprise); links
-  `smallcaps tracking-sc text-sm`, active = `border-l-2 border-foreground pl-[11px] text-foreground`
-  (inactive `border-l-2 border-transparent text-muted-foreground hover:text-foreground`); count
-  badges = `Badge variant="destructive"` with `lining`. Icons `h-4 w-4`. Mobile drawer: same list.
-- **Logs viewer**: the panel gets `dark bg-background text-foreground font-mono text-xs` (tokens flip
-  locally); levels: info `text-foreground`, debug `text-muted-foreground`, warn `text-warning`,
-  error `text-destructive`.
-- **Kanban / columns**: hairline-separated (`divide-x divide-border`), column titles small caps with
-  a `lining` count, cards inside are plain `border border-border bg-card p-3`.
-- **Breadcrumbs**: `smallcaps tracking-sc text-xs text-muted-foreground`, separators `·`,
-  current page `text-foreground`.
-- **Blog `Prose`**: body `text-lg leading-8`; h2 `mt-12 text-3xl font-medium`; h3 `mt-8 text-2xl font-medium`;
-  links `text-brand underline underline-offset-4 decoration-brand/40 hover:decoration-brand`;
-  inline code `bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]`; `pre` as the typewriter block;
-  blockquote `border-l-2 border-foreground/40 pl-5 italic`; tables as ledgers (hairlines only,
-  header small caps); `hr` → `rule-double`.
-- **404 / error pages**: a centred card on the stack (`border border-border bg-card p-10 shadow-stack`),
-  `eyebrow` code ("404" / "Error"), serif title `text-3xl font-medium`, italic body, two buttons.
-- **OG image** (`src/app/opengraph-image.tsx`): literally the business card at 1200×630: bone
-  background `#f4f0e8`, a hairline frame inset 48 px (`#d8d1c3`), "TwinMCP" centred in letterspaced
-  capitals (ink `#2b2825`, EB Garamond, ~110 px, letterSpacing 10), "MANAGED MCP RUNTIMES" under it
-  (28 px, letterSpacing 8, muted `#665f55`), "twinmcp.fr" top-right in Courier, and one bottom line
-  in small Courier caps: `CURSOR · CLAUDE CODE · WINDSURF · CLINE   —   HELLO@TWINMCP.FR`.
-  Fonts: `src/app/fonts/EBGaramond-Medium.ttf` and `src/app/fonts/CourierPrime-Regular.ttf`,
-  loaded with `await fetch(new URL("./fonts/EBGaramond-Medium.ttf", import.meta.url)).then(r => r.arrayBuffer())`
-  (edge runtime, Satori needs real TTF). Satori has no `font-variant-caps`: write the small-caps
-  lines in uppercase with letterSpacing instead.
+### 2.2 Dark (`.dark`)
 
-## 6. Migration map (old → new)
+| Token                                              | Hex     | HSL                 |
+| -------------------------------------------------- | ------- | ------------------- |
+| background                                         | #0A1424 | `216.9 56.5% 9%`    |
+| surface-alt                                        | #0D1A2E | `216.4 55.9% 11.6%` |
+| surface-band                                       | #13233D | `217.1 52.5% 15.7%` |
+| card / popover                                     | #101D33 | `217.7 52.2% 13.1%` |
+| foreground (and `-foreground` on neutral surfaces) | #E8EFFA | `216.7 64.3% 94.5%` |
+| muted-foreground                                   | #A6B6CF | `216.6 29.9% 73.1%` |
+| secondary / muted / accent                         | #13233D | `217.1 52.5% 15.7%` |
+| border                                             | #263A5C | `217.8 41.5% 25.5%` |
+| input                                              | #5B7299 | `217.7 25.4% 47.8%` |
+| ring                                               | #E8EFFA | `216.7 64.3% 94.5%` |
+| primary                                            | #F06A93 | `341.6 81.7% 67.8%` |
+| primary-foreground                                 | #1B0610 | `331.4 63.6% 6.5%`  |
+| primary-hover                                      | #FF85A8 | `342.8 100% 76.1%`  |
+| primary-active                                     | #E0517D | `341.5 69.8% 59.8%` |
+| offer                                              | #3A1426 | `331.6 48.7% 15.3%` |
+| offer-foreground                                   | #FFB8CB | `343.9 100% 86.1%`  |
+| offer-border                                       | #7A2A4A | `336 48.8% 32.2%`   |
+| brand                                              | #8FB4FF | `220.2 100% 78%`    |
+| brand / status `-foreground`                       | #0A1424 | `216.9 56.5% 9%`    |
+| success                                            | #4ACB8E | `151.6 55.4% 54.3%` |
+| warning                                            | #F2B755 | `37.5 85.8% 64.1%`  |
+| info                                               | #7DB3F5 | `213 85.7% 72.5%`   |
+| destructive                                        | #FF8A7A | `7.2 100% 73.9%`    |
+| shadow-color                                       | black   | `0 0% 0%`           |
 
-| Old | New |
-|---|---|
-| `rounded-xl / rounded-2xl / rounded-lg / rounded-md / rounded-sm / rounded` | delete |
-| `rounded-full` on icon tiles / pills / buttons / toggles | delete (square) — keep only on dots & avatars |
-| `shadow-2xl shadow-black/5 dark:shadow-black/40` | `shadow-stack` |
-| `shadow-md shadow-foreground/[0.04]` | `shadow-stack` (if highlighted) else `shadow-sm` |
-| `bg-gradient-to-r … bg-clip-text text-transparent` | plain `text-foreground` (or wrap in `<em>`) |
-| radial/halo `bg-[radial-gradient…]`, `blur-2xl` divs | delete the element |
-| `backdrop-blur supports-[backdrop-filter]:bg-background/60` | `bg-background/95` |
-| `text-emerald-500` (check marks) | `text-success` |
-| `bg-emerald-100 text-emerald-800 dark:…` / `ring-emerald-…` | `border border-success/40 bg-success/10 text-success` |
-| `bg-amber-…`, `text-amber-…`, `border-amber-…` | `border-warning/40 bg-warning/10 text-warning` |
-| `border-sky-500/30 bg-sky-500/5 text-sky-700 dark:text-sky-400` | `border-info/40 bg-info/10 text-info` |
-| `text-red-400` / `text-red-…` | `text-destructive` |
-| `text-green-600` | `text-success` |
-| `text-zinc-…`, `bg-zinc-950`, `text-cyan-400` (logs) | the `dark` panel trick + tokens (§5 logs) |
-| `bg-emerald-500 text-white` / `bg-emerald-600 … hover:bg-emerald-700` (promo) | `bg-gilt text-gilt-foreground hover:bg-gilt/90` or `Badge variant="gilt"` |
-| `bg-yellow-400` (password meter) | `bg-warning`; weak `bg-destructive`; strong `bg-success` |
-| `from-violet-500 to-blue-500` | delete |
-| `text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground` | `eyebrow` |
-| `text-xs font-semibold uppercase tracking-wider` | `smallcaps tracking-sc text-xs font-medium` |
-| `text-[10px]` / `text-[11px]` / `text-[12px]` / `text-[13px]` | `text-xs` |
-| `font-semibold` / `font-bold` | `font-medium` |
-| `tracking-tight` | delete |
-| `bg-muted/40 px-4 py-2` code header | `bg-secondary/60` + small-caps filename |
-| `h-9` inputs/buttons | `h-10` |
-| icon in `rounded-full bg-secondary` / `rounded-md bg-secondary` tile | bare icon, or hairline square |
-| `border-dashed` empty state | keep dashed, `border-foreground/40` |
-| `hover:bg-accent` on links | `hover:text-brand` or `hover:bg-secondary` |
-| `text-foreground underline decoration-dotted` | `text-brand underline underline-offset-4` |
-| `bg-black/50` overlays | `bg-foreground/30` |
-| `text-white` | `text-primary-foreground` / `text-background` |
+| Dark pair                                      | Ratio                     |
+| ---------------------------------------------- | ------------------------- |
+| Text on background / card / band               | 15.95 / 14.58 / 13.60     |
+| Muted text on background / card / band         | 8.97 / 8.20 / 7.65        |
+| #1B0610 on primary (rest / hover / active)     | 6.65 / 8.49 / 5.22        |
+| Primary as text on background / card           | 6.31 / 5.77               |
+| brand on card                                  | 8.14                      |
+| success / warning / info / destructive on card | 8.21 / 9.38 / 7.74 / 7.36 |
+| offer-foreground on offer                      | 9.92                      |
+| input border on card                           | 3.46                      |
 
-## 7. Non-negotiables when restyling a file
+**Dark rule:** primary buttons use dark text (`text-primary-foreground` already does it).
+White on #F06A93 is 2.92 and fails.
 
-1. **Behaviour is frozen.** Do not change logic, state, data fetching, handlers, props, exports,
-   routes, `Route` casts, `"use client"`, analytics (`track`, `TrackOnMount`), SEO (`metadata`,
-   `JsonLd`, hreflang), i18n string tables, a11y attributes (`aria-*`, `role`, `sr-only`,
-   landmarks, heading levels, `autoFocus`), `content-visibility` wrappers, or comments explaining
-   why something exists.
-2. Copy may be **lightly** adjusted only where a motif needs it (a footer address line, an
-   eyebrow). Never invent facts: no phone/fax/telex numbers, street address, city, founding year,
-   customer names, testimonials, or stats that are not already on the page.
-3. No new dependencies. No new fonts. No inline `style` colours (except in the OG image renderer,
-   which cannot use CSS classes).
-4. Keep files prettier-clean (`printWidth 100`, double quotes, trailing commas es5, LF).
-5. Keep the dark theme working: tokens only.
-6. Mobile first: 16 px gutters, no horizontal overflow, tap targets ≥ 40 px.
-7. Only touch the files you were assigned. Shared primitives live in `components/ui` and are done;
-   if one seems wrong, report it instead of editing it.
+---
 
-## 8. Checklist per file (run before you return)
+## 3. Rose budget
 
-- [ ] zero Tailwind palette colours, zero `dark:` colour classes, zero gradients/blur
-- [ ] zero `rounded-*` except `rounded-full` on dots/avatars
-- [ ] labels/eyebrows/buttons/badges/tabs/table heads in `smallcaps`; body copy not
-- [ ] numbers in data contexts use `lining` (or live inside Table/code)
-- [ ] h1/h2 sizes follow §2; no `tracking-tight`, no `font-bold`, no `text-[10px]`
-- [ ] one `gilt` seal max per view; `shadow-stack` only on the product / dialogs / highlight
-- [ ] the page still reads correctly in dark mode (tokens only)
-- [ ] behaviour / props / exports / i18n / SEO / a11y untouched
+| Use                                                                                                                                                                        | Colour                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Primary button (at most **one solid rose button per viewport**), the offer badge, the € figure in the H1, balance and credit figures, the "Unlocks with first top-up" pill | Rose / offer                                                                          |
+| Links, eyebrows, selected nav item, selected chip or tab, info, completed steps                                                                                            | Brand blue                                                                            |
+| Text, tables, outline and ghost buttons, icons                                                                                                                             | Navy / muted                                                                          |
+| Errors                                                                                                                                                                     | Destructive red, **always with a lucide icon** (`AlertTriangle`, `XCircle`, `Trash2`) |
+| Logos                                                                                                                                                                      | Never tinted with theme colours (§7)                                                  |
 
-## 9. Logo
+- A second action on the same screen is `outline`. When in doubt, demote.
+- `Badge` default is **blue**, not rose.
+- Destructive buttons are `outline` + `text-destructive` everywhere except the confirm
+  button inside a confirmation dialog, which is `variant="destructive"`.
 
-The brand is typography. The monogram is the engraved "T" inside a double-rule frame; the
-lockup pairs it with the small-caps wordmark and the tagline. All files are true vectors
-(EB Garamond outlines, no font dependency) and live in `apps/backend/public/`:
+---
 
-| File | Use |
-|---|---|
-| `logo.svg` / `logo-dark.svg` | horizontal lockup (mark + wordmark + tagline), ink / bone |
-| `logo-wordmark.svg` / `-dark.svg` | wordmark + tagline only |
-| `logo-mark.svg` / `-dark.svg` | monogram on transparent |
-| `twinmcp-icon.svg` | monogram on bone (same drawing, legacy name) |
-| `twinmcp-logo.svg` | = `logo.svg` (legacy name) |
-| `icon-192.png`, `icon-512.png`, `src/app/icon.png`, `apple-icon.png` | PWA / favicon rasters of the monogram |
-| `cover.png` | the social card (same render as `/opengraph-image`) |
+## 4. Typography
 
-In the UI use the `Logo` component (`mark` prop draws the same monogram in `currentColor`).
-Never stretch, recolour outside ink/bone, or add effects. Minimum size: 16 px for the mark.
-The generator script is not in the repo; regenerate from the EB Garamond Medium TTF if the
-drawing changes.
+Loaded with `next/font/google` in `src/app/layout.tsx`, self-hosted (CSP `font-src 'self'`),
+variable fonts, normal style only:
+
+| Role                                                | Font                           | Variable         | Tailwind       |
+| --------------------------------------------------- | ------------------------------ | ---------------- | -------------- |
+| UI and body                                         | Inter (`latin`, `latin-ext`)   | `--font-sans`    | `font-sans`    |
+| Display (H1–H3, `.display`, card and dialog titles) | Plus Jakarta Sans              | `--font-display` | `font-display` |
+| Code, keys, slugs, logs                             | JetBrains Mono (not preloaded) | `--font-mono`    | `font-mono`    |
+
+Tailwind's default type scale, weights and tracking apply. There is no `font-serif`
+stack any more (the guard test bans the class). `h1`–`h3` default to `font-display font-bold tracking-tight`; `h4`–`h6` to
+`font-sans font-semibold`.
+
+| Element              | Classes                                                                                      | Desktop   |
+| -------------------- | -------------------------------------------------------------------------------------------- | --------- |
+| Hero H1              | `font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.05]` | 60px      |
+| Section H2           | `font-display text-3xl md:text-4xl font-bold tracking-tight`                                 | 36px      |
+| H3 / card title      | `font-display text-xl font-semibold tracking-tight` (cards `text-lg`)                        | 20 / 18px |
+| Dashboard page title | `font-display text-2xl font-bold tracking-tight`                                             | 24px      |
+| Lead                 | `text-lg md:text-xl text-muted-foreground`                                                   | 20px      |
+| Body                 | `text-base`                                                                                  | 16px      |
+| UI / table           | `text-sm`                                                                                    | 14px      |
+| Caption / terms      | `text-xs sm:text-sm text-muted-foreground`                                                   | 12–14px   |
+| Eyebrow              | `.eyebrow` (12px, 600, 0.08em, uppercase, brand blue)                                        | 12px      |
+
+- Weights: body 400, UI labels 500, buttons and table headers 600, headings 700–800.
+- Numbers: `tabular-nums` for balances, tables and prices (tables, inputs, code and `<time>`
+  get it by default).
+- Body features `"cv11" 1, "ss01" 1`. Lucide icons use `stroke-width: 2`.
+- No `italic` in class names except on `<em>`, quotes and blog prose.
+- The Open Graph card (`src/app/opengraph-image.tsx`) cannot use `next/font`, so it reads
+  static OFL TTFs from `src/app/fonts/`: `Inter-SemiBold.ttf` and
+  `PlusJakartaSans-ExtraBold.ttf` (licences alongside). Nothing else lives there.
+
+---
+
+## 5. Radius, shadows, spacing, motion
+
+| Radius                   | Value  | Where                                              |
+| ------------------------ | ------ | -------------------------------------------------- |
+| `rounded-none`           | 0      |                                                    |
+| `rounded-sm`             | 6px    |                                                    |
+| `rounded` / `rounded-md` | 8px    | Menu items, skeletons                              |
+| `rounded-lg`             | 10px   | Buttons, inputs, tab triggers                      |
+| `rounded-xl`             | 12px   | Tabs list, table frame, toasts, menus, `xl` button |
+| `rounded-2xl`            | 16px   | Cards, dialogs                                     |
+| `rounded-3xl`            | 24px   | Hero panels, offer band                            |
+| `rounded-full`           | 9999px | Badges, pills, avatars                             |
+
+Shadows are navy-tinted (`c = hsl(var(--shadow-color)`), black in dark mode:
+
+| Key                        | Value                                                             |
+| -------------------------- | ----------------------------------------------------------------- |
+| `shadow-sm`                | `0 1px 2px 0 c / .06)`                                            |
+| `shadow`                   | `0 1px 3px 0 c / .08), 0 1px 2px -1px c / .06)`                   |
+| `shadow-md`                | `0 4px 12px -2px c / .08), 0 2px 4px -2px c / .05)`               |
+| `shadow-lg`                | `0 12px 24px -6px c / .10), 0 4px 8px -4px c / .06)`              |
+| `shadow-xl` / `shadow-2xl` | `0 24px 48px -12px c / .16)`                                      |
+| `shadow-inner`             | `inset 0 1px 2px 0 c / .06)`                                      |
+| `shadow-cta`               | `0 6px 16px -4px hsl(var(--primary) / .35)` (primary button only) |
+
+Spacing uses Tailwind's 4px scale.
+
+- Marketing container: `mx-auto max-w-6xl px-4 sm:px-6` (16px phone gutter is a
+  requirement; `container` pads 1rem / 1.5rem / 2rem).
+- Section rhythm `py-16 md:py-24`, alternating `bg-background` and `bg-surface-alt`.
+- Card padding `--card-padding` (20px, 24px from `sm`); grid gaps `gap-4 md:gap-6`.
+- Dashboard `main`: `max-w-6xl px-4 sm:px-6 py-6 md:py-8`, stacks `space-y-6 md:space-y-8`.
+- Mobile: 375–390px with no horizontal page scroll; touch targets ≥ 40px; buttons
+  `w-full` on phones where labels are long (FR).
+- Motion: short colour/shadow transitions only. `prefers-reduced-motion: reduce` collapses
+  every animation and transition globally (`globals.css`).
+
+---
+
+## 6. Component recipes (`src/components/ui/*`)
+
+`components/ui` is owned by the foundation package; change requests go there instead of
+local overrides.
+
+**Button.** Base `rounded-lg border font-semibold`, 2px navy focus ring with offset,
+`active:translate-y-px`, icons 16px.
+
+| Variant       | Use                                                                                                |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `default`     | Rose primary with `shadow-cta`; hover `primary-hover`, pressed `primary-active`. One per viewport. |
+| `outline`     | Secondary: white card, `border-input`, hover `bg-accent`.                                          |
+| `secondary`   | Quiet fill `bg-secondary`, hover `bg-surface-band`.                                                |
+| `ghost`       | Transparent, hover `bg-accent`.                                                                    |
+| `link`        | Brand blue text, no padding, underline on hover.                                                   |
+| `destructive` | Solid red. Only inside confirmation dialogs.                                                       |
+
+Sizes: `sm` h-9, `default` h-10, `lg` h-12, `xl` h-14 `rounded-xl text-lg` (hero and
+final CTA), `icon` 40×40.
+
+**Card.** `rounded-2xl border bg-card shadow-sm`; `CardTitle` `font-display text-lg
+font-semibold`; `CardDescription` plain muted `text-sm` (no italic). Recipes via
+`className`: interactive `transition hover:border-input hover:shadow-md`; offer
+`border-offer-border bg-offer`; selected `border-brand ring-1 ring-brand`.
+
+**Badge.** Pill, `text-xs font-semibold`. `default` brand blue fill; `secondary`;
+`outline`; `success` / `warning` / `info` / `destructive` / `brand` as `border-x/30
+bg-x/10 text-x`; `offer` as `border-offer-border bg-offer text-offer-foreground` (the "unlocks with
+first top-up" pill).
+
+**Offer badge** (`components/marketing/offer-badge.tsx`). Pill with a lucide `Gift`,
+`bg-offer text-offer-foreground border-offer-border`; `tone="solid"` (rose fill) for use on
+the surface-band. Copy comes from the wallet facts (§8).
+
+**Input / Textarea / Select.** White, `rounded-lg border-input`, `h-10`; focus
+`border-brand` + 3px `ring-brand/25`; `aria-invalid="true"` turns the border red (always
+with a message). Select list `rounded-xl shadow-lg`, items `rounded-md`, hover `bg-accent`.
+`Label` is `text-sm font-medium`.
+
+**Table.** Rounded white frame (`rounded-xl border`) that scrolls horizontally inside
+itself; inside a `Card` the frame drops its own border. Header row `bg-surface-alt`,
+`text-xs font-semibold uppercase tracking-wide`; cells `px-4 py-3 tabular-nums`; row hover
+`bg-accent/40`, selected `bg-brand/5`. Frame styling via `containerClassName`.
+
+**Tabs.** `TabsList` default is **segmented** (light-blue track, active trigger a white pill
+with `shadow-sm`, scrolls when it overflows). `<TabsList variant="underline">` is the index
+line with a brand-blue underline (server detail sections, settings on mobile).
+
+**Dialog.** `rounded-2xl border bg-card shadow-xl`, overlay `bg-foreground/40` with a 2px
+blur (page wash in dark mode); title `font-display text-xl font-bold`.
+
+**Dropdown.** `rounded-xl shadow-lg`, items `rounded-md`, hover `bg-accent`.
+**Accordion.** Hairline between items; trigger `py-4 font-semibold hover:text-brand`;
+chevron rotates. **Separator.** 1px `bg-border`, horizontal or vertical. **Skeleton.** `rounded-md bg-secondary animate-pulse`. **Toasts
+(sonner).** `rounded-xl border shadow-lg`; success / error / warning / info icons tinted
+with the status token.
+
+**Brand logo (TwinMCP).** A 28px `rounded-lg bg-foreground` square holding a white "T"
+(Plus Jakarta 800) with a 6px `bg-primary` dot at the top right; wordmark "TwinMCP" in
+`font-display font-extrabold tracking-tight`.
+
+**Empty states.** `rounded-2xl border-2 border-dashed bg-card p-8 sm:p-10 text-center`, a
+48px `bg-secondary text-brand` icon circle, a `font-display text-lg font-semibold` title,
+one muted line, one primary button and an optional `link` button.
+
+### Retired letterpress classes
+
+The letterpress system (EB Garamond small caps, bone paper, radius 0) is gone, and so is its
+compatibility layer: no `.smallcaps` / `.letterpress` / `.rule-double` / `.oldstyle` shims,
+no `gilt` token or Badge variant, no `sc` / `eyebrow` tracking keys, no `shadow-stack` /
+`shadow-press`, no `font-serif`, no `variant` prop on `Separator`. The guard test (§9) fails
+on any of those class names. If you port old markup, translate it like this:
+
+| Old                                                                           | New                                                                     |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `smallcaps`, `tracking-sc`, `tracking-eyebrow`, `letterpress`, `no-smallcaps` | Remove                                                                  |
+| `oldstyle`                                                                    | `tabular-nums` on numbers, otherwise remove                             |
+| `italic` on descriptions, subtitles, leads                                    | Remove (keep on `<em>`, quotes, blog prose)                             |
+| `border-foreground/{10–40}`                                                   | `border-border`                                                         |
+| `border-foreground/{50–100}`                                                  | `border-input` (controls) or `border-border` (containers)               |
+| `bg-foreground text-background` (selected chip or tab)                        | `bg-brand text-brand-foreground`                                        |
+| `rule-double`, `rule-double-ink`                                              | `border-t border-border`                                                |
+| eyebrow with `before:` / `after:` hairlines                                   | plain `eyebrow`                                                         |
+| `shadow-stack`                                                                | `shadow-lg`                                                             |
+| `text-gilt` / `bg-gilt/10` / `border-gilt/50`                                 | `text-offer-foreground` / `bg-offer` / `border-offer-border`            |
+| `<Badge variant="gilt">`                                                      | `variant="offer"`                                                       |
+| `font-serif`                                                                  | `font-sans` (body default) or `font-display` (headings)                 |
+| Headings with `font-medium`                                                   | `font-display font-bold tracking-tight` (H1–H2) or `font-semibold` (H3) |
+| `text-brand underline decoration-brand/40 …` links                            | `text-brand underline-offset-4 hover:underline`                         |
+
+The one navy surface left on purpose is the Smithery announcement bar
+(`bg-foreground text-background`); it holds white text links, never a rose button.
+
+---
+
+## 7. Logos and trademark rules
+
+Third-party marks come from Simple Icons (pinned `simple-icons@16.35.0`, CC0 paths; Git is
+CC-BY-3.0, credit Jason Long), generated once into `src/components/brand/logos.generated.ts`
+by `scripts/build-brand-logos.ts` (no runtime CDN call) and rendered by
+`<BrandLogo slug size mono />`. Callers fall back to their lucide icon when
+`hasBrandLogo(slug)` is false.
+
+- Never tint a logo with theme colours. Marks whose hex is `null` render `currentColor`
+  and follow `text-foreground` (so they flip in dark mode). Claude marks stay Clay
+  `#D97757` in both themes. ClickHouse and DuckDB are forced monochrome.
+- Logos sit on `bg-card` tiles or the surface-band, never on rose. Unmodified: no lockups
+  with the TwinMCP mark, no badges or overlays on the glyph.
+- Placement is always "works with / connect to / available in the catalogue". No "built
+  on" infrastructure band (Upstash, Supabase, Next.js, Hostinger).
+- Stripe appears only on the billing page ("Payments secured by Stripe", linked to
+  stripe.com), in slate, blurple or white.
+- **Excluded:** GitHub (retired slug), VS Code / Excel / MarkItDown (Microsoft rules: VS
+  Code is text only, never the Copilot icon in its place), Slack (until the media-kit
+  asset is obtained), NASA, Revit, Airbnb, YouTube / `youtube-data`. Marks not in Simple
+  Icons keep their fallback.
+- Write "Cursor", never "Cursor AI". Windsurf black or white only. Zed `#1348DC`, black or
+  white only.
+- Every marketing and auth page carries the trademark line: "Logos are trademarks of their
+  respective owners; their use does not imply endorsement." / "Les logos sont des marques
+  de leurs propriétaires respectifs ; leur présence n’implique aucun partenariat."
+
+---
+
+## 8. Copy rules
+
+- **Facts only from the helpers.** Every number in copy comes from `walletFacts()`,
+  `SIGNUP_OFFER`, `FUNDED_UNLOCKS`, `TEN_EURO`, `PRICE_TABLE`
+  (`components/pricing/wallet-copy.ts`) and `FREE_MCP_LIMIT`
+  (`components/pricing/pricing-data.ts`). Never type "€10", "100,000" or "4" by hand in JSX;
+  build template strings over those facts.
+- **The offer terms line is mandatory** wherever the credit is promoted: 30 days, no card,
+  no subscription, the server limit, the compute-heavy MCPs that wait for a top-up.
+- No invented customers, testimonials, usage counts, certifications or hosting region.
+  "EU company" only once `lib/legal/entity.ts` is filled in; "hosted in the EU" only once
+  the VPS, Upstash Box and Supabase regions are all confirmed EU; "prices incl. VAT" only
+  once the OSS VAT set-up is confirmed (until then: "Prices in euros").
+- Marketing is EN at `/` and FR at `/fr`, one shared component per section with a
+  `locale?: Locale` prop defaulting to `"en"`. Natural French with a narrow no-break space
+  (U+202F) before `; : ! ? »`. The dashboard stays English.
+- Keep every existing `data-cta-location`; new ones only where the redesign spec names them
+  (`offer_band`, `sticky_mobile`, `home_trust`).
+- Sentence case everywhere; no small caps, no ALL CAPS except the `.eyebrow` utility and
+  table headers.
+
+---
+
+## 9. Guard tests
+
+`src/__tests__/design-tokens.test.ts` fails the suite when UI code:
+
+1. uses a raw Tailwind palette colour (`bg-rose-600`, `text-sky-50`, …);
+2. uses an arbitrary colour value in a class name (`bg-[#C2255C]`, `text-[rgb(…)]`,
+   `border-[hsl(…)]`). Files that legitimately hold hex constants (`components/brand/**`
+   via the SVG `fill` attribute, `opengraph-image.tsx`, `lib/email-layout.ts`,
+   `lib/admin/digest-email.ts`, `api-reference-client.tsx`) use attributes, inline styles
+   or CSS strings, so the pattern does not match them;
+3. uses a gradient or clipped text (`bg-gradient-to-*`, `bg-clip-text`);
+4. uses a retired letterpress class (`smallcaps`, `no-smallcaps`, `tracking-sc`,
+   `tracking-eyebrow`, `letterpress`, `rule-double(-ink)`, `oldstyle`, `shadow-stack`,
+   `shadow-press`, `font-serif`, `text-/bg-/border-gilt…`), in `.ts`/`.tsx` and in every
+   `.css` file under `src/`. `.eyebrow`, `.display` and `.lining` are real utilities and
+   stay allowed.
+
+`src/__tests__/brand-logos.test.ts` guards the logo allow-list and deny-list.
+
+Per-file checklist before you return:
+
+- [ ] tokens only: no palette classes, no arbitrary colours, no gradients
+- [ ] one rose primary per viewport; extras demoted to `outline`
+- [ ] no rose text below 24px on `surface-band`; no rose button on navy
+- [ ] errors carry an icon; destructive buttons outline-only outside confirm dialogs
+- [ ] letterpress classes removed per the migration table (§6)
+- [ ] numbers from the wallet-copy / pricing helpers; offer terms line present
+- [ ] light and dark both read correctly; 375–390px with no horizontal scroll
+- [ ] behaviour, props, exports, i18n, SEO, analytics and a11y attributes untouched

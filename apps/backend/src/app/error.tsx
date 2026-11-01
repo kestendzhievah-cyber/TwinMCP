@@ -26,26 +26,26 @@ export default function RootError({
       id="main-content"
       className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-16"
     >
-      <div className="w-full max-w-md border border-foreground/60 bg-card p-10 text-center shadow-stack">
-        <p className="eyebrow flex items-center justify-center gap-4 text-destructive before:h-px before:w-8 before:bg-border before:content-[''] after:h-px after:w-8 after:bg-border after:content-['']">
-          <AlertCircle className="h-3.5 w-3.5" aria-hidden />
-          Error
-        </p>
-        <h1 className="mt-5 text-3xl font-medium">Something went wrong</h1>
-        <p className="mt-3 italic text-muted-foreground">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-lg sm:p-10">
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-destructive/10 text-destructive">
+          <AlertCircle className="h-6 w-6" aria-hidden />
+        </div>
+        <p className="eyebrow mt-4 text-destructive">Error</p>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">
+          Something went wrong
+        </h1>
+        <p className="mt-3 text-muted-foreground">
           An unexpected error occurred. You can retry, or head back home — if it keeps happening,
           contact support.
         </p>
-        <div className="rule-double my-6" />
+        <div className="my-6 border-t border-border" />
         <div className="flex flex-wrap justify-center gap-2">
           <Button onClick={reset}>Try again</Button>
           <Button asChild variant="outline">
             <Link href="/">Go home</Link>
           </Button>
         </div>
-        <p className="smallcaps tracking-sc mt-6 text-xs text-muted-foreground">
-          twinmcp.fr · hello@twinmcp.fr
-        </p>
+        <p className="mt-6 text-xs text-muted-foreground">twinmcp.fr · hello@twinmcp.fr</p>
       </div>
     </main>
   );

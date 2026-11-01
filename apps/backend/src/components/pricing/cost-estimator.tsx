@@ -3,8 +3,9 @@
 import { useId, useMemo, useState } from "react";
 import type { Locale } from "@/lib/i18n/locales";
 import type { PublicPriceTable } from "@/lib/wallet/pricing";
-import { Input } from "@/components/ui/input";
+import { Input, fieldClasses } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   ESTIMATE_DAYS,
   WORKLOADS,
@@ -69,8 +70,7 @@ const COPY = {
   },
 } as const;
 
-const SELECT =
-  "flex h-10 w-full border border-input bg-card px-3 py-2 text-sm text-foreground shadow-inner focus-visible:border-foreground focus-visible:outline-none";
+const SELECT = cn("flex h-10 py-2", fieldClasses);
 
 function toNumber(raw: string): number {
   const n = Number(raw);
@@ -86,10 +86,141 @@ function toNumber(raw: string): number {
 export function CostEstimator({
   table,
   locale = "en",
+  variant = "full",
 }: {
   table: PublicPriceTable;
   locale?: Locale;
+  /** "full" (pricing pages) or "compact" (home teaser: calls and hours only,
+   *  one small server, the "light" workload; no frame of its own). */
+  variant?: "full" | "compact";
 }) {
+  if (variant === "compact") return <CompactEstimator table={table} locale={locale} />;
+  return <FullEstimator table={table} locale={locale} />;
+}
+
+const COMPACT = {
+  en: {
+    label: "Usage estimator",
+    calls: "Tool calls per day",
+    hours: "Hours in use per day",
+    hoursValue: (h: number) => `${h} h`,
+    total: "Monthly estimate",
+    perMonth: (amount: string) => `≈ ${amount} / month`,
+    lasts: (credit: string, days: string) => `Your ${credit} lasts ≈ ${days} days`,
+    lastsLong: (credit: string, days: number) => `Your ${credit} lasts ≈ ${days}+ days`,
+    lastsShort: (credit: string) => `Your ${credit} lasts less than a day`,
+    caveat: (share: string) =>
+      `Indicative: assumes a small server averages ${share} of a core during the hours in use.`,
+  },
+  fr: {
+    label: "Estimateur d’usage",
+    calls: "Appels d’outils par jour",
+    hours: "Heures d’utilisation par jour",
+    hoursValue: (h: number) => `${h} h`,
+    total: "Estimation mensuelle",
+    perMonth: (amount: string) => `≈ ${amount} / mois`,
+    lasts: (credit: string, days: string) => `Vos ${credit} durent ≈ ${days} jours`,
+    lastsLong: (credit: string, days: number) => `Vos ${credit} durent ≈ ${days}+ jours`,
+    lastsShort: (credit: string) => `Vos ${credit} durent moins d’un jour`,
+    caveat: (share: string) =>
+      `Indicatif : suppose qu’un petit serveur utilise en moyenne ${share} d’un cœur pendant les heures d’utilisation.`,
+  },
+} as const;
+
+const COMPACT_WORKLOAD: WorkloadId = "light";
+
+/**
+ * The home teaser: two sliders (calls a day, hours a day) on one small server
+ * with the "light" workload, priced by estimateMonthly() — no formula of its
+ * own. "Your €10 lasts N days" is the credit's daily burn at that rate,
+ * floored, and shown as "30+" past the credit's validity.
+ */
+function CompactEstimator({ table, locale = "en" }: { table: PublicPriceTable; locale?: Locale }) {
+  const t = COMPACT[locale];
+  const id = useId();
+  const [calls, setCalls] = useState(300);
+  const [hours, setHours] = useState(4);
+  const cpuShare = WORKLOADS.find((w) => w.id === COMPACT_WORKLOAD)?.cpuShare ?? 0.05;
+  const est = useMemo(
+    () =>
+      estimateMonthly(
+        { servers: 1, hoursPerDay: hours, callsPerDay: calls, cpuShare, days: ESTIMATE_DAYS },
+        table
+      ),
+    [hours, calls, cpuShare, table]
+  );
+  const nf = locale === "fr" ? "fr-FR" : "en-US";
+  const credit = eurAmount(table.signupCreditEur, locale);
+  const cap = table.signupCreditDays;
+  let lasts: string;
+  if (!Number.isFinite(est.creditDays) || est.creditDays > cap) lasts = t.lastsLong(credit, cap);
+  else if (est.creditDays < 1) lasts = t.lastsShort(credit);
+  else lasts = t.lasts(credit, String(Math.floor(est.creditDays)));
+  const share = (cpuShare * 100).toLocaleString(nf, { maximumFractionDigits: 1 });
+  const shareLabel = locale === "fr" ? `${share} %` : `${share}%`;
+  const range = "h-2 w-full cursor-pointer accent-brand";
+
+  return (
+    <form className="grid gap-5" onSubmit={(e) => e.preventDefault()} aria-label={t.label}>
+      <div className="grid gap-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <Label htmlFor={`${id}-calls`}>{t.calls}</Label>
+          <output
+            htmlFor={`${id}-calls`}
+            className="font-display text-base font-bold tabular-nums text-foreground"
+          >
+            {count(calls, locale)}
+          </output>
+        </div>
+        <input
+          id={`${id}-calls`}
+          type="range"
+          min={0}
+          max={5000}
+          step={50}
+          value={calls}
+          onChange={(e) => setCalls(toNumber(e.target.value))}
+          className={range}
+        />
+      </div>
+      <div className="grid gap-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <Label htmlFor={`${id}-hours`}>{t.hours}</Label>
+          <output
+            htmlFor={`${id}-hours`}
+            className="font-display text-base font-bold tabular-nums text-foreground"
+          >
+            {t.hoursValue(hours)}
+          </output>
+        </div>
+        <input
+          id={`${id}-hours`}
+          type="range"
+          min={0}
+          max={24}
+          step={1}
+          value={hours}
+          onChange={(e) => setHours(toNumber(e.target.value))}
+          className={range}
+        />
+      </div>
+      <div aria-live="polite" className="grid gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">{t.total}</p>
+          <p className="font-display text-3xl font-bold tracking-tight text-primary tabular-nums">
+            {t.perMonth(formatMicrosEur(est.totalMicros, locale))}
+          </p>
+        </div>
+        <p className="w-fit rounded-full border border-offer-border bg-offer px-3 py-1 text-sm font-semibold text-offer-foreground">
+          {lasts}
+        </p>
+      </div>
+      <p className="text-xs text-muted-foreground">{t.caveat(shareLabel)}</p>
+    </form>
+  );
+}
+
+function FullEstimator({ table, locale = "en" }: { table: PublicPriceTable; locale?: Locale }) {
   const t = COPY[locale];
   const id = useId();
   const [servers, setServers] = useState(1);
@@ -124,7 +255,7 @@ export function CostEstimator({
     );
 
   return (
-    <div className="mx-auto max-w-[960px] border border-border bg-card shadow-sm">
+    <div className="mx-auto max-w-[960px] rounded-2xl border border-border bg-card shadow-sm">
       <div className="grid md:grid-cols-[3fr_2fr]">
         <form
           className="grid gap-5 p-6 sm:grid-cols-2 md:p-8"
@@ -132,8 +263,8 @@ export function CostEstimator({
           aria-label={t.title}
         >
           <div className="sm:col-span-2">
-            <h3 className="smallcaps tracking-sc text-lg font-medium">{t.title}</h3>
-            <p className="mt-1 text-sm italic text-muted-foreground">{t.lead}</p>
+            <h3 className="font-display text-lg font-semibold tracking-tight">{t.title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{t.lead}</p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor={`${id}-servers`}>{t.servers}</Label>
@@ -193,26 +324,24 @@ export function CostEstimator({
           className="flex flex-col border-t border-border p-6 md:border-l md:border-t-0 md:p-8"
           aria-live="polite"
         >
-          <p className="smallcaps tracking-sc text-xs font-medium text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t.total(ESTIMATE_DAYS)}
           </p>
-          <p className="lining mt-2 text-4xl font-medium">
+          <p className="mt-2 font-display text-4xl font-bold tracking-tight text-primary tabular-nums">
             {formatMicrosEur(est.totalMicros, locale)}
           </p>
-          <dl className="lining mt-5 divide-y divide-border border-y border-border text-sm">
+          <dl className="mt-5 divide-y divide-border border-y border-border text-sm tabular-nums">
             <div className="flex items-baseline justify-between gap-4 py-2.5">
               <dt>
                 {t.compute}
-                <span className="block text-xs italic text-muted-foreground">
-                  {t.cpuHours(fmtHours)}
-                </span>
+                <span className="block text-xs text-muted-foreground">{t.cpuHours(fmtHours)}</span>
               </dt>
               <dd className="font-medium">{formatMicrosEur(est.computeMicros, locale)}</dd>
             </div>
             <div className="flex items-baseline justify-between gap-4 py-2.5">
               <dt>
                 {t.callsLine}
-                <span className="block text-xs italic text-muted-foreground">
+                <span className="block text-xs text-muted-foreground">
                   {t.callCount(count(est.calls, locale))}
                 </span>
               </dt>
@@ -220,7 +349,7 @@ export function CostEstimator({
             </div>
           </dl>
           <p className="mt-4 text-sm text-foreground/90">{creditLine}</p>
-          <p className="mt-auto pt-4 text-xs italic text-muted-foreground">{t.caveat}</p>
+          <p className="mt-auto pt-4 text-xs text-muted-foreground">{t.caveat}</p>
         </div>
       </div>
     </div>

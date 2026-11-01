@@ -23,10 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { Plan } from "@/db/schema/core";
 import { allowedBoxSizes } from "@/lib/plan-features";
-import { PROMO_LOCKED_BADGE } from "@/lib/wallet/eligibility";
 import { TopUpLink } from "@/components/billing/top-up-inline";
 import { cliCommand, localAgentCommand } from "@/lib/cli";
 
@@ -88,20 +88,22 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button disabled={disabled}>
-            <Plus className="h-4 w-4" /> New server
+          // At the server limit the top-up is the next step, so a disabled
+          // trigger is not the page's rose primary.
+          <Button disabled={disabled} variant={disabled ? "outline" : "default"}>
+            <Plus className="h-4 w-4" /> Create server
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create a new server</DialogTitle>
+          <DialogTitle>Create a server</DialogTitle>
           <DialogDescription>
             {isLocal ? (
               <>
                 A local server hosts tools that run on your own machine (e.g. Blender) — bring it
                 online with the TwinMCP local agent (
-                <code className="font-mono text-xs not-italic">{cliCommand("connect")}</code>).
+                <code className="font-mono text-xs">{cliCommand("connect")}</code>).
               </>
             ) : (
               "A new Upstash Box runtime will be provisioned. TwinMCP Docs is auto-installed."
@@ -152,23 +154,24 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
                       const allowed = allowedBoxSizes(plan).includes(s.value);
                       return (
                         <SelectItem key={s.value} value={s.value} disabled={!allowed}>
-                          {s.label}
-                          {!allowed ? ` · ${PROMO_LOCKED_BADGE}` : ""}
+                          <span className="flex flex-wrap items-center gap-2">
+                            {s.label}
+                            {!allowed && (
+                              <Badge variant="offer">
+                                <Lock aria-hidden className="h-3 w-3" />
+                                After first top-up
+                              </Badge>
+                            )}
+                          </span>
                         </SelectItem>
                       );
                     })}
                   </SelectContent>
                 </Select>
                 {allowedBoxSizes(plan).length < BOX_SIZES.length && (
-                  <p className="text-xs italic text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Medium and large boxes unlock with your first top-up.{" "}
-                    <TopUpLink
-                      source="servers"
-                      level="offer"
-                      reason="box_size"
-                      label="Top up"
-                      className="not-italic"
-                    />
+                    <TopUpLink source="servers" level="offer" reason="box_size" label="Top up" />
                   </p>
                 )}
               </div>
@@ -180,7 +183,7 @@ export function CreateServerDialog({ plan, disabled, trigger }: CreateServerDial
               Cancel
             </Button>
             <Button type="submit" disabled={submitting || !name.trim()}>
-              {submitting ? "Creating…" : "Create"}
+              {submitting ? "Creating…" : "Create server"}
             </Button>
           </DialogFooter>
         </form>

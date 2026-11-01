@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -178,34 +179,33 @@ export function ImportDialog({ onImported }: { onImported: () => void }) {
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* The native file button, set like an outline button (small caps, ink
-                hairline, inverts on hover); the chosen file name stays an italic aside. */}
+            {/* The native file button, drawn like an outline button. */}
             <input
               type="file"
               accept=".csv,text/csv,text/plain"
               onChange={onFile}
-              className="block w-full cursor-pointer text-sm italic text-muted-foreground file:smallcaps file:tracking-sc file:mr-4 file:h-10 file:cursor-pointer file:border file:border-solid file:border-foreground/60 file:bg-transparent file:px-5 file:text-sm file:font-medium file:not-italic file:text-foreground file:transition-colors hover:file:border-foreground hover:file:bg-foreground hover:file:text-background"
+              aria-label="Fichier CSV"
+              className="block w-full cursor-pointer text-sm text-muted-foreground file:mr-4 file:h-10 file:cursor-pointer file:rounded-lg file:border file:border-solid file:border-input file:bg-card file:px-4 file:text-sm file:font-semibold file:text-foreground file:shadow-sm file:transition-colors hover:file:bg-accent"
             />
-            {/* Typewriter block (DESIGN.md §4.6): a small-caps tab over a Courier field;
-                the whole block takes the ink hairline on focus, like an input. */}
-            <div className="border border-input transition-colors focus-within:border-foreground">
-              <p className="smallcaps tracking-sc border-b border-border bg-secondary/60 px-3 py-1.5 text-xs text-muted-foreground">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="import-csv" className="text-sm font-medium">
                 CSV
-              </p>
-              <textarea
+              </label>
+              <Textarea
+                id="import-csv"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={8}
                 placeholder={
                   "entreprise,contact,email,téléphone,rôle,source,valeur\nAcme SAS,Marie Dupont,marie@acme.fr,+33612345678,CTO,LinkedIn,5000"
                 }
-                className="block w-full resize-y border-0 bg-card px-3 py-2 font-mono text-xs leading-relaxed text-foreground shadow-inner placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-0"
+                className="resize-y font-mono text-xs leading-relaxed"
               />
             </div>
             <p
               className={cn(
-                "lining text-xs italic text-muted-foreground",
-                rows.length > 0 && "not-italic text-success"
+                "text-xs tabular-nums text-muted-foreground",
+                rows.length > 0 && "font-medium text-success"
               )}
             >
               {rows.length > 0
@@ -219,7 +219,7 @@ export function ImportDialog({ onImported }: { onImported: () => void }) {
               Annuler
             </Button>
             <Button
-              className="lining"
+              className="tabular-nums"
               onClick={() => void runImport()}
               disabled={importing || rows.length === 0}
             >

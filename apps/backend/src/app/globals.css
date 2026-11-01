@@ -3,86 +3,131 @@
 @tailwind utilities;
 
 /*
-  TwinMCP design system — "the card".
-  A letterpress business card on bone stock: warm paper, charcoal ink pressed
-  into it, hairline rules, small capitals, and a sober 1980s accent set
-  (pinstripe navy, brass, racing green, ochre, oxblood). Dark mode is the same
-  card after hours: ink stock, bone type. Tokens are HSL triplets so Tailwind
-  can apply <alpha-value> (e.g. bg-success/10).
-  See docs/DESIGN.md for the full brief and component recipes.
+  TwinMCP design system: "Clear sky".
+  Light-blue grounds, white cards, navy ink. Rose is reserved for the one
+  primary action per screen and for key figures (the €10 credit, balances);
+  blue carries links, selection and eyebrows. Dark mode redefines every token
+  and is opt-in (the ThemeProvider defaults to light).
+  Tokens are HSL triplets so Tailwind can apply <alpha-value> (bg-success/10).
+  See docs/DESIGN.md for the contrast table and component recipes.
 */
 @layer base {
   :root {
-    --background: 40 35% 93%; /* bone card stock */
-    --foreground: 30 8% 16%; /* pressed charcoal ink */
-    --card: 42 45% 96%;
-    --card-foreground: 30 8% 16%;
-    --popover: 42 45% 96%;
-    --popover-foreground: 30 8% 16%;
-    --primary: 30 8% 16%;
-    --primary-foreground: 42 45% 96%;
-    --secondary: 40 31% 89%;
-    --secondary-foreground: 30 8% 16%;
-    --muted: 40 31% 89%;
-    --muted-foreground: 35 9% 37%;
-    --accent: 40 31% 89%;
-    --accent-foreground: 30 8% 16%;
-    --destructive: 355 50% 33%; /* oxblood */
-    --destructive-foreground: 42 45% 96%;
-    --border: 40 21% 81%;
-    --input: 40 21% 81%;
-    --ring: 30 8% 16%;
-    --radius: 0rem;
+    color-scheme: light;
 
-    /* Semantic accents — used sparingly, never as large fills. */
-    --brand: 222 37% 22%; /* pinstripe navy */
-    --brand-foreground: 42 45% 96%;
-    --gilt: 41 55% 36%; /* brass foil */
-    --gilt-foreground: 42 45% 96%;
-    --success: 150 30% 27%; /* racing green */
-    --success-foreground: 42 45% 96%;
-    --warning: 36 62% 30%; /* ochre */
-    --warning-foreground: 42 45% 96%;
-    --info: 210 32% 34%; /* steel blue */
-    --info-foreground: 42 45% 96%;
+    /* Grounds and surfaces */
+    --background: 215 100% 97.6%; /* #F3F8FF page */
+    --surface-alt: 212.7 78.6% 94.5%; /* #E6F0FC alternate section, table head */
+    --surface-band: 213.3 78.3% 91%; /* #D6E6FA strong band */
+    --card: 0 0% 100%;
+    --card-foreground: 214.5 68.1% 13.5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 214.5 68.1% 13.5%;
 
-    /* Paper grain: a tiled SVG noise, tinted ink, ~3% visible. */
-    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.19 0 0 0 0 0.16 0 0 0 0 0.13 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    /* Ink */
+    --foreground: 214.5 68.1% 13.5%; /* #0B1F3A navy */
+    --muted-foreground: 216.2 30.3% 34.3%; /* #3D5272 */
+
+    /* Quiet fills */
+    --secondary: 212.7 78.6% 94.5%;
+    --secondary-foreground: 214.5 68.1% 13.5%;
+    --muted: 212.7 78.6% 94.5%;
+    --accent: 212.7 78.6% 94.5%;
+    --accent-foreground: 214.5 68.1% 13.5%;
+
+    /* Lines and focus */
+    --border: 214.3 45.2% 87.8%; /* decorative only */
+    --input: 216.2 23.6% 55.9%; /* form controls, outline buttons (3:1) */
+    --ring: 214.5 68.1% 13.5%;
+
+    /* Rose: primary buttons and key figures */
+    --primary: 339 68% 45.3%; /* #C2255C */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 339.3 69.4% 38.4%; /* #A61E4D */
+    --primary-active: 339.7 69.7% 32.4%; /* #8C1940 */
+
+    /* Offer: soft pink surfaces (badge, credit card) */
+    --offer: 344.3 100% 95.5%; /* #FFE8EE */
+    --offer-foreground: 342.1 73.6% 31.2%; /* #8A1538 */
+    --offer-border: 344.4 76.2% 80.2%; /* #F3A6BA */
+
+    /* Blue: links, selection, eyebrows */
+    --brand: 222.1 73.2% 43.9%; /* #1E4FC2 */
+    --brand-foreground: 0 0% 100%;
+
+    /* Status */
+    --success: 153.9 79.4% 26.7%;
+    --success-foreground: 0 0% 100%;
+    --warning: 39.1 100% 27.1%;
+    --warning-foreground: 0 0% 100%;
+    --info: 212.8 72.4% 41.2%;
+    --info-foreground: 0 0% 100%;
+    --destructive: 4.2 76.5% 40%; /* hue 4deg, distinct from the 339deg rose */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Shadows are navy-tinted: hsl(var(--shadow-color) / a) */
+    --shadow-color: 214.5 68.1% 13.5%;
+
+    --radius: 0.75rem;
+
+    /* Card padding: 20px on phones, 24px from sm. A variable (not sm:p-6) so a
+       caller's p-0 / pt-6 still overrides it through tailwind-merge. */
+    --card-padding: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    :root {
+      --card-padding: 1.5rem;
+    }
   }
 
   .dark {
-    --background: 36 12% 8%;
-    --foreground: 42 31% 87%;
-    --card: 34 13% 10%;
-    --card-foreground: 42 31% 87%;
-    --popover: 34 13% 10%;
-    --popover-foreground: 42 31% 87%;
-    --primary: 42 31% 87%;
-    --primary-foreground: 36 12% 8%;
-    --secondary: 26 10% 14%;
-    --secondary-foreground: 42 31% 87%;
-    --muted: 26 10% 14%;
-    --muted-foreground: 39 11% 62%;
-    --accent: 26 10% 14%;
-    --accent-foreground: 42 31% 87%;
-    --destructive: 357 47% 62%;
-    --destructive-foreground: 36 12% 8%;
-    --border: 33 12% 19%;
-    --input: 33 12% 19%;
-    --ring: 42 31% 87%;
+    color-scheme: dark;
 
-    --brand: 219 35% 68%;
-    --brand-foreground: 36 12% 8%;
-    --gilt: 42 52% 56%;
-    --gilt-foreground: 36 12% 8%;
-    --success: 144 25% 60%;
-    --success-foreground: 36 12% 8%;
-    --warning: 35 56% 60%;
-    --warning-foreground: 36 12% 8%;
-    --info: 212 36% 66%;
-    --info-foreground: 36 12% 8%;
+    --background: 216.9 56.5% 9%; /* #0A1424 */
+    --surface-alt: 216.4 55.9% 11.6%;
+    --surface-band: 217.1 52.5% 15.7%;
+    --card: 217.7 52.2% 13.1%;
+    --card-foreground: 216.7 64.3% 94.5%;
+    --popover: 217.7 52.2% 13.1%;
+    --popover-foreground: 216.7 64.3% 94.5%;
 
-    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.92 0 0 0 0 0.88 0 0 0 0 0.8 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    --foreground: 216.7 64.3% 94.5%; /* #E8EFFA */
+    --muted-foreground: 216.6 29.9% 73.1%;
+
+    --secondary: 217.1 52.5% 15.7%;
+    --secondary-foreground: 216.7 64.3% 94.5%;
+    --muted: 217.1 52.5% 15.7%;
+    --accent: 217.1 52.5% 15.7%;
+    --accent-foreground: 216.7 64.3% 94.5%;
+
+    --border: 217.8 41.5% 25.5%;
+    --input: 217.7 25.4% 47.8%;
+    --ring: 216.7 64.3% 94.5%;
+
+    /* Dark text on the pink primary: white on #F06A93 fails (2.92). */
+    --primary: 341.6 81.7% 67.8%; /* #F06A93 */
+    --primary-foreground: 331.4 63.6% 6.5%; /* #1B0610 */
+    --primary-hover: 342.8 100% 76.1%;
+    --primary-active: 341.5 69.8% 59.8%;
+
+    --offer: 331.6 48.7% 15.3%;
+    --offer-foreground: 343.9 100% 86.1%;
+    --offer-border: 336 48.8% 32.2%;
+
+    --brand: 220.2 100% 78%;
+    --brand-foreground: 216.9 56.5% 9%;
+
+    --success: 151.6 55.4% 54.3%;
+    --success-foreground: 216.9 56.5% 9%;
+    --warning: 37.5 85.8% 64.1%;
+    --warning-foreground: 216.9 56.5% 9%;
+    --info: 213 85.7% 72.5%;
+    --info-foreground: 216.9 56.5% 9%;
+    --destructive: 7.2 100% 73.9%;
+    --destructive-foreground: 216.9 56.5% 9%;
+
+    --shadow-color: 0 0% 0%;
   }
 }
 
@@ -96,27 +141,44 @@
     text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-background font-serif text-foreground;
-    background-image: var(--paper-grain);
+    @apply bg-background font-sans text-foreground;
     font-feature-settings:
-      "kern" 1,
-      "liga" 1,
-      "onum" 1,
-      "pnum" 1;
+      "cv11" 1,
+      "ss01" 1;
   }
   ::selection {
-    background: hsl(var(--brand) / 0.18);
+    background: hsl(var(--primary) / 0.18);
   }
   h1,
   h2,
+  h3 {
+    @apply font-display font-bold tracking-tight;
+    text-wrap: balance;
+  }
+  /* Plus Jakarta Sans has a narrow word space (about 0.18em); under
+     tracking-tight it nearly vanishes at small sizes ("Your MCP, in Cursor"
+     read as "YourMCP, inCursor"). Widen it back towards Inter's. */
+  h1,
+  h2,
   h3,
+  .font-display,
+  .display {
+    word-spacing: 0.08em;
+  }
+  /* Not on H1s: their spaces read at display sizes, and the extra width
+     would re-wrap the hero headline onto another line on phones. */
+  h1,
+  h1.font-display,
+  h1.display {
+    word-spacing: normal;
+  }
   h4,
   h5,
   h6 {
-    @apply font-serif font-medium;
+    @apply font-sans font-semibold;
     text-wrap: balance;
   }
-  /* Data and code read in lining, tabular figures; prose keeps old-style. */
+  /* Data and code read in tabular figures. */
   table,
   code,
   kbd,
@@ -134,64 +196,42 @@
   samp {
     @apply font-mono;
   }
-  /* Thin, engraved icon strokes. */
   svg.lucide {
-    stroke-width: 1.5;
+    stroke-width: 2;
+  }
+}
+
+/* Motion is decoration: honour the OS setting everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 @layer utilities {
-  /* Small capitals — the card's voice. Pair with tracking-sc / tracking-eyebrow. */
-  .smallcaps {
-    font-variant-caps: small-caps;
-    letter-spacing: 0.08em;
-  }
-  .no-smallcaps {
-    font-variant-caps: normal;
-    letter-spacing: normal;
-  }
-  /* Section eyebrow: tiny, wide, muted small caps ("Mergers and Acquisitions"). */
+  /* Eyebrow: a small uppercase blue label above a section heading. */
   .eyebrow {
-    font-variant-caps: small-caps;
-    letter-spacing: 0.28em;
-    font-size: 0.8125rem;
-    line-height: 1.25rem;
-    font-weight: 500;
-    color: hsl(var(--muted-foreground));
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: hsl(var(--brand));
   }
-  /* Display headings: the engraved name on the card. */
+  /* Display headings (hero H1, big figures). */
   .display {
-    font-variant-caps: small-caps;
-    letter-spacing: 0.04em;
-    font-weight: 500;
+    font-family: var(--font-display), var(--font-sans), sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.025em;
     line-height: 1.05;
-  }
-  /* Debossed ink on light stock. */
-  .letterpress {
-    text-shadow: 0 1px 0 hsl(0 0% 100% / 0.45);
-  }
-  .dark .letterpress {
-    text-shadow: none;
+    font-variant-caps: normal;
   }
   .lining {
     font-variant-numeric: lining-nums tabular-nums;
-  }
-  .oldstyle {
-    font-variant-numeric: oldstyle-nums proportional-nums;
-  }
-  /* Double hairline rule (section / page-title separator). */
-  .rule-double {
-    border-top-width: 3px;
-    border-top-style: double;
-    border-top-color: hsl(var(--border));
-  }
-  .rule-double-ink {
-    border-top-width: 3px;
-    border-top-style: double;
-    border-top-color: hsl(var(--foreground) / 0.7);
-  }
-  /* Pressed-button micro-interaction. */
-  .press:active {
-    transform: translateY(1px);
   }
 }

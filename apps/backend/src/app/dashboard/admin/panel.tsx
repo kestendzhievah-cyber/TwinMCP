@@ -1,17 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Activity,
-  AlertCircle,
-  AlertTriangle,
-  Boxes,
-  CreditCard,
-  RefreshCw,
-  Server,
-  Users,
-} from "lucide-react";
+import { Activity, AlertTriangle, Boxes, CreditCard, RefreshCw, Server, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DENSE_TABLE, ErrorNotice, StatTile } from "./admin-ui";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -163,18 +155,9 @@ export function AdminAnalyticsPanel() {
 
   if (error && !data) {
     return (
-      <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>
-          {error}{" "}
-          <button
-            className="underline decoration-destructive/40 underline-offset-4 hover:decoration-destructive"
-            onClick={() => void load()}
-          >
-            Retry
-          </button>
-        </p>
-      </div>
+      <ErrorNotice onRetry={() => void load()} retryLabel="Retry">
+        {error}
+      </ErrorNotice>
     );
   }
 
@@ -189,9 +172,9 @@ export function AdminAnalyticsPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-success" />
-          <span className="smallcaps tracking-sc font-medium text-foreground">Live</span>
-          <span>·</span>
-          <span className="lining italic">
+          <span className="font-semibold text-foreground">Live</span>
+          <span aria-hidden>·</span>
+          <span className="tabular-nums">
             updated <RelTime iso={data.generatedAt} />
           </span>
         </p>
@@ -203,38 +186,38 @@ export function AdminAnalyticsPanel() {
 
       {/* KPI cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Kpi
-          icon={<Users className="h-4 w-4" />}
+        <StatTile
+          icon={<Users />}
           label="Total users"
           value={fmt(users.total)}
           sub={`+${fmt(users.new7d)} in 7d · +${fmt(users.new30d)} in 30d`}
         />
-        <Kpi
-          icon={<CreditCard className="h-4 w-4" />}
+        <StatTile
+          icon={<CreditCard />}
           label="Funded users · net top-ups 30d"
           value={`${fmt(users.paying)} · ${formatEurAmount(revenue.mrrEstimate)}`}
           sub={`${users.byPlan.pro} funded · ${users.byPlan.team} Team (legacy)`}
         />
-        <Kpi
-          icon={<Server className="h-4 w-4" />}
+        <StatTile
+          icon={<Server />}
           label="Servers running"
           value={`${fmt(servers.running)} / ${fmt(servers.total)}`}
           sub={`+${fmt(servers.new7d)} new in 7d`}
         />
-        <Kpi
-          icon={<Activity className="h-4 w-4" />}
+        <StatTile
+          icon={<Activity />}
           label="API requests · 24h"
           value={fmt(traffic.api24h)}
           sub={`${fmt(traffic.api7d)} in 7d · ${traffic.apiAvgLatency24h}ms avg`}
         />
-        <Kpi
-          icon={<AlertTriangle className="h-4 w-4" />}
+        <StatTile
+          icon={<AlertTriangle />}
           label="API error rate · 24h"
           value={`${errRate24}%`}
           sub={`${fmt(traffic.apiErrors24h)} failed of ${fmt(traffic.api24h)}`}
         />
-        <Kpi
-          icon={<Boxes className="h-4 w-4" />}
+        <StatTile
+          icon={<Boxes />}
           label="MCP runtime req · 7d"
           value={fmt(traffic.mcpRequests7d)}
           sub={`${fmt(traffic.mcpErrors7d)} errors · ${catalog.mcpServers} MCPs, ${catalog.communityMcps} community`}
@@ -248,7 +231,7 @@ export function AdminAnalyticsPanel() {
             <CardTitle className="text-base">Signups · 30d</CardTitle>
             <CardDescription>New users per day (UTC).</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-[var(--card-padding)]">
             <MiniBars points={series.signups30d} />
           </CardContent>
         </Card>
@@ -257,7 +240,7 @@ export function AdminAnalyticsPanel() {
             <CardTitle className="text-base">API requests · 14d</CardTitle>
             <CardDescription>Requests to the TwinMCP API per day (UTC).</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-[var(--card-padding)]">
             <MiniBars points={series.api14d} />
           </CardContent>
         </Card>
@@ -273,15 +256,15 @@ export function AdminAnalyticsPanel() {
             <ul className="divide-y divide-border text-sm">
               <li className="flex items-center justify-between gap-3 py-2.5">
                 <Badge variant="secondary">Free credit</Badge>
-                <span className="lining font-medium">{fmt(users.byPlan.free)}</span>
+                <span className="tabular-nums font-medium">{fmt(users.byPlan.free)}</span>
               </li>
               <li className="flex items-center justify-between gap-3 py-2.5">
                 <Badge variant="success">Funded</Badge>
-                <span className="lining font-medium">{fmt(users.byPlan.pro)}</span>
+                <span className="tabular-nums font-medium">{fmt(users.byPlan.pro)}</span>
               </li>
               <li className="flex items-center justify-between gap-3 py-2.5">
                 <Badge variant="success">Team</Badge>
-                <span className="lining font-medium">{fmt(users.byPlan.team)}</span>
+                <span className="tabular-nums font-medium">{fmt(users.byPlan.team)}</span>
               </li>
             </ul>
           </CardContent>
@@ -292,7 +275,7 @@ export function AdminAnalyticsPanel() {
           </CardHeader>
           <CardContent>
             {Object.keys(servers.byStatus).length === 0 ? (
-              <p className="py-2.5 text-sm italic text-muted-foreground">No servers yet.</p>
+              <p className="py-2.5 text-sm text-muted-foreground">No servers yet.</p>
             ) : (
               <ul className="divide-y divide-border text-sm">
                 {Object.entries(servers.byStatus).map(([status, n]) => (
@@ -312,7 +295,7 @@ export function AdminAnalyticsPanel() {
                     >
                       {status}
                     </Badge>
-                    <span className="lining font-medium">{fmt(n)}</span>
+                    <span className="tabular-nums font-medium">{fmt(n)}</span>
                   </li>
                 ))}
               </ul>
@@ -326,13 +309,13 @@ export function AdminAnalyticsPanel() {
         <CardHeader className="border-b border-border pb-4">
           <CardTitle className="text-base">Top API endpoints · 24h</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {traffic.topEndpoints.length === 0 ? (
-            <p className="py-2.5 text-sm italic text-muted-foreground">
+            <p className="p-[var(--card-padding)] text-sm text-muted-foreground">
               No API calls in the last 24 hours.
             </p>
           ) : (
-            <Table>
+            <Table className={DENSE_TABLE}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Endpoint</TableHead>
@@ -364,7 +347,7 @@ export function AdminAnalyticsPanel() {
           </CardHeader>
           <CardContent>
             {data.recentSignups.length === 0 ? (
-              <p className="py-2.5 text-sm italic text-muted-foreground">No users yet.</p>
+              <p className="py-2.5 text-sm text-muted-foreground">No users yet.</p>
             ) : (
               <ul className="divide-y divide-border text-sm">
                 {data.recentSignups.map((u, i) => (
@@ -375,7 +358,7 @@ export function AdminAnalyticsPanel() {
                     <span className="truncate font-mono text-xs">{u.email}</span>
                     <span className="flex shrink-0 items-center gap-2">
                       <Badge variant={u.plan === "free" ? "secondary" : "success"}>{u.plan}</Badge>
-                      <span className="lining text-xs text-muted-foreground">
+                      <span className="tabular-nums text-xs text-muted-foreground">
                         <RelTime iso={u.createdAt} />
                       </span>
                     </span>
@@ -391,7 +374,7 @@ export function AdminAnalyticsPanel() {
           </CardHeader>
           <CardContent>
             {data.recentActivity.length === 0 ? (
-              <p className="py-2.5 text-sm italic text-muted-foreground">No activity yet.</p>
+              <p className="py-2.5 text-sm text-muted-foreground">No activity yet.</p>
             ) : (
               <ul className="divide-y divide-border text-sm">
                 {data.recentActivity.map((a, i) => (
@@ -405,7 +388,7 @@ export function AdminAnalyticsPanel() {
                         </span>
                       )}
                     </span>
-                    <span className="lining shrink-0 text-xs text-muted-foreground">
+                    <span className="tabular-nums shrink-0 text-xs text-muted-foreground">
                       <RelTime iso={a.createdAt} />
                     </span>
                   </li>
@@ -419,51 +402,18 @@ export function AdminAnalyticsPanel() {
   );
 }
 
-// A stat card from the brief: small-caps caption with a bare icon, the figure
-// in lining numerals, one muted line of context under it.
-function Kpi({
-  icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
-          <span className="shrink-0 text-muted-foreground">{icon}</span>
-          {label}
-        </CardDescription>
-        <CardTitle className="lining text-3xl">{value}</CardTitle>
-      </CardHeader>
-      {sub && (
-        <CardContent>
-          <p className="lining text-xs text-muted-foreground">{sub}</p>
-        </CardContent>
-      )}
-    </Card>
-  );
-}
-
-// Ink bars on a hairline baseline — a ledger chart, no rounding, no fills.
+// Brand-blue bars on a hairline baseline (spec §6: charts in brand blue).
 function MiniBars({ points }: { points: Point[] }) {
   const max = Math.max(1, ...points.map((p) => p.value));
   const total = points.reduce((s, p) => s + p.value, 0);
   if (total === 0) {
     return (
-      <p className="py-8 text-center text-sm italic text-muted-foreground">
-        No data in this window.
-      </p>
+      <p className="py-8 text-center text-sm text-muted-foreground">No data in this window.</p>
     );
   }
   return (
     <div>
-      <div className="flex h-32 items-end gap-px border-b border-foreground/50">
+      <div className="flex h-32 items-end gap-0.5 border-b border-border">
         {points.map((p) => (
           <div
             key={p.date}
@@ -471,13 +421,13 @@ function MiniBars({ points }: { points: Point[] }) {
             title={`${p.date} · ${p.value}`}
           >
             <div
-              className="w-full bg-foreground/80"
+              className="w-full rounded-t-sm bg-brand"
               style={{ height: `${(p.value / max) * 100}%` }}
             />
           </div>
         ))}
       </div>
-      <div className="lining mt-2 flex justify-between text-xs text-muted-foreground">
+      <div className="tabular-nums mt-2 flex justify-between text-xs text-muted-foreground">
         <span>{points[0]?.date}</span>
         <span>{points[points.length - 1]?.date}</span>
       </div>

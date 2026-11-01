@@ -174,7 +174,7 @@ export function SecretField({
           {value && !selectedName && !saveOpen && (
             <button
               type="button"
-              className="text-xs italic text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
               onClick={() => setSaveOpen(true)}
               disabled={disabled}
             >
@@ -229,7 +229,7 @@ export function SecretField({
               No secret named {selectedName} yet: this MCP will not start until you add it.
             </p>
           ) : names !== null && names.length === 0 ? (
-            <p className="text-xs italic text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               No saved secrets yet. Paste the value instead, or{" "}
               <a
                 href={SECRETS_HREF}
@@ -242,7 +242,7 @@ export function SecretField({
               .
             </p>
           ) : (
-            <p className="text-xs italic text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Stored encrypted and filled in when the MCP starts.{" "}
               <a
                 href={SECRETS_HREF}

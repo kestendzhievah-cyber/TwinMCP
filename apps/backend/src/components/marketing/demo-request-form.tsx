@@ -6,7 +6,7 @@ import type { Route } from "next";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, fieldClasses } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Locale } from "@/lib/i18n/locales";
 import { trackDemoConversion } from "@/lib/analytics/google-ads";
@@ -117,8 +117,8 @@ const COPY = {
 } as const;
 
 // Same debossed field as the Input primitive, for the select and the textarea.
-const FIELD =
-  "flex w-full border border-input bg-card px-3 text-sm text-foreground shadow-inner transition-colors placeholder:italic placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-0";
+// Native select and textarea share the Input field styles (components/ui/input).
+const FIELD = `flex ${fieldClasses}`;
 
 /** The MCP pack the visitor came from (/solutions/<pack> → /demo?bundle=<id>). */
 export interface DemoPack {
@@ -230,20 +230,20 @@ export function DemoRequestForm({
           aria-live="polite"
           className="flex flex-col items-center gap-4 px-6 py-12 text-center"
         >
-          <div className="grid h-12 w-12 place-items-center border border-success/40 bg-success/10 text-success">
+          <div className="grid h-12 w-12 place-items-center rounded-full border border-success/30 bg-success/10 text-success">
             <CheckCircle2 className="h-6 w-6" aria-hidden />
           </div>
           <h2
             ref={doneHeading}
             tabIndex={-1}
-            className="smallcaps tracking-sc text-xl font-medium focus:outline-none"
+            className="font-display text-xl font-bold tracking-tight focus:outline-none"
           >
             {t.doneTitle}
           </h2>
           <p className="text-sm text-muted-foreground">
             {t.doneBody} <span className="font-mono text-foreground">{email}</span>.
           </p>
-          <p className="text-sm italic text-muted-foreground">{t.doneNote}</p>
+          <p className="text-sm text-muted-foreground">{t.doneNote}</p>
         </CardContent>
       </Card>
     );
@@ -251,10 +251,10 @@ export function DemoRequestForm({
 
   return (
     <Card className="mx-auto w-full max-w-2xl">
-      <CardHeader className="border-b border-border">
+      <CardHeader className="border-b border-border sm:pb-5">
         <CardTitle>{t.title}</CardTitle>
         <CardDescription>{t.description}</CardDescription>
-        <p className="text-xs italic text-muted-foreground">{t.required}</p>
+        <p className="text-xs text-muted-foreground">{t.required}</p>
       </CardHeader>
       <CardContent className="pt-6">
         <form onSubmit={submit} className="space-y-5">
@@ -351,7 +351,7 @@ export function DemoRequestForm({
 
           <fieldset className="space-y-2" aria-describedby="demo-clients-hint">
             <legend className="text-sm font-medium leading-none">{t.clients}</legend>
-            <p id="demo-clients-hint" className="text-xs italic text-muted-foreground">
+            <p id="demo-clients-hint" className="text-xs text-muted-foreground">
               {t.clientsHint}
             </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1 sm:grid-cols-4">
@@ -361,7 +361,7 @@ export function DemoRequestForm({
                     type="checkbox"
                     checked={clients.includes(c)}
                     onChange={(e) => toggleClient(c, e.target.checked)}
-                    className="h-4 w-4 shrink-0 accent-foreground"
+                    className="h-4 w-4 shrink-0 rounded accent-brand"
                   />
                   <span>{demoClientLabel(c, locale)}</span>
                 </label>
@@ -370,16 +370,16 @@ export function DemoRequestForm({
           </fieldset>
 
           {bundle && pack ? (
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border border-border px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-sm">
               <p>
-                <span className="smallcaps tracking-sc text-muted-foreground">{t.pack}</span>{" "}
-                <span className="font-medium">{pack.name}</span>{" "}
+                <span className="text-muted-foreground">{t.pack}</span>{" "}
+                <span className="font-semibold">{pack.name}</span>{" "}
                 <span className="text-muted-foreground">({pack.mcps.join(", ")})</span>
               </p>
               <button
                 type="button"
                 onClick={() => setPack(undefined)}
-                className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                className="text-xs font-medium text-brand underline underline-offset-4 hover:decoration-2"
               >
                 {t.packRemove}
               </button>
@@ -423,7 +423,7 @@ export function DemoRequestForm({
               type="checkbox"
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-foreground"
+              className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded accent-brand"
               aria-invalid={bad("consent")}
               required
             />
@@ -432,7 +432,7 @@ export function DemoRequestForm({
               <Req />{" "}
               <Link
                 href={t.privacyHref as Route}
-                className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+                className="font-medium text-brand underline underline-offset-4 hover:decoration-2"
               >
                 {t.privacy}
               </Link>
@@ -442,14 +442,14 @@ export function DemoRequestForm({
           {error && (
             <p
               role="alert"
-              className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span>{error}</span>
             </p>
           )}
 
-          <Button type="submit" disabled={submitting} className="w-full">
+          <Button type="submit" size="lg" disabled={submitting} className="w-full">
             {submitting ? t.sending : t.submit}
           </Button>
         </form>
@@ -468,5 +468,5 @@ function Req() {
 }
 
 function Opt({ label }: { label: string }) {
-  return <span className="ml-1 text-xs font-normal italic text-muted-foreground">{label}</span>;
+  return <span className="ml-1 text-xs font-normal text-muted-foreground">{label}</span>;
 }

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbListSchema, articleSchema } from "@/lib/seo/schema";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { SOCIAL_LINKS } from "@/lib/site-links";
 import { ClientSetupList } from "@/components/docs/client-setup-list";
 import { DocsCodeBlock } from "@/components/docs/docs-code-block";
@@ -42,16 +41,18 @@ export const metadata: Metadata = {
   },
 };
 
-// Links in running text: pinstripe navy with a hairline underline (DESIGN.md §5).
-const LINK = "text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand";
+// Links in running text: brand blue, and underlined at rest (colour alone is
+// not enough next to navy body text).
+const LINK =
+  "font-medium text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand";
 
-// Section eyebrow sitting between two short hairlines (DESIGN.md §4.7).
-const EYEBROW_RULES =
-  "eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']";
-
-// Numbered steps: the number pressed into a hairline square (DESIGN.md §5).
+// Numbered steps: the number in a brand-blue circle, as on the home page.
 const STEP =
-  "flex gap-4 [counter-increment:step] before:grid before:h-9 before:w-9 before:shrink-0 before:place-items-center before:border before:border-border before:text-sm before:font-medium before:text-foreground before:content-[counter(step)] before:[font-variant-numeric:lining-nums]";
+  "flex gap-4 [counter-increment:step] before:grid before:h-9 before:w-9 before:shrink-0 before:place-items-center before:rounded-full before:bg-brand before:text-sm before:font-semibold before:tabular-nums before:text-brand-foreground before:content-[counter(step)]";
+
+// "On this page" chips under the header.
+const TOC_LINK =
+  "inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-sm font-medium text-foreground transition-colors hover:border-input hover:text-brand";
 
 // Account facts from lib/plan-features.ts, prices from lib/wallet/pricing.ts
 // (via wallet-copy.ts); key rules from lib/auth/key-scope.ts. Never hand-typed.
@@ -105,39 +106,87 @@ export default function DocsPage() {
         ]}
       />
 
-      <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-24 [&_code]:bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em] [&_strong]:font-medium">
-        <nav
-          aria-label="Breadcrumb"
-          className="smallcaps tracking-sc mb-10 text-xs text-muted-foreground"
-        >
-          <ol className="flex items-center gap-2">
+      <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-24 [&_code]:rounded-md [&_code]:bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.875em] [&_strong]:font-semibold">
+        <nav aria-label="Breadcrumb" className="mb-8 text-sm text-muted-foreground">
+          <ol className="flex flex-wrap items-center gap-2">
             <li>
-              <Link href="/" className="hover:text-foreground">
+              <Link href="/" className="transition-colors hover:text-foreground">
                 Home
               </Link>
             </li>
             <li aria-hidden>·</li>
-            <li aria-current="page" className="text-foreground">
+            <li aria-current="page" className="font-medium text-foreground">
               Docs
             </li>
           </ol>
         </nav>
 
-        <header className="mb-14 text-center">
-          <p className={EYEBROW_RULES}>Reference guide</p>
-          <h1 className="display letterpress mt-5 text-4xl sm:text-5xl">TwinMCP Documentation</h1>
-          <div aria-hidden className="mx-auto mt-6 h-px w-12 bg-foreground/40" />
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
+        <header className="mb-12">
+          <p className="eyebrow">Reference guide</p>
+          <h1 className="mt-3 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
+            TwinMCP Documentation
+          </h1>
+          <p className="mt-5 max-w-2xl text-lg text-muted-foreground md:text-xl">
             Provision Model Context Protocol servers in isolated runtimes, install MCPs from the
             marketplace, and connect them to Cursor, Claude Code, VS Code and every other MCP client
             in two minutes.
           </p>
-          <Separator variant="double" className="mt-10" />
+          <nav aria-label="On this page" className="mt-8">
+            <ul className="flex flex-wrap gap-2">
+              <li>
+                <a href="#quick-start" className={TOC_LINK}>
+                  Quick start
+                </a>
+              </li>
+              <li>
+                <a href="#concepts" className={TOC_LINK}>
+                  Core concepts
+                </a>
+              </li>
+              <li>
+                <a href="#ide-setup" className={TOC_LINK}>
+                  Connect your IDE
+                </a>
+              </li>
+              <li>
+                <a href="#api-keys" className={TOC_LINK}>
+                  API keys
+                </a>
+              </li>
+              <li>
+                <a href="#lifecycle" className={TOC_LINK}>
+                  Server lifecycle
+                </a>
+              </li>
+              <li>
+                <a href="#credit" className={TOC_LINK}>
+                  Credits & pricing
+                </a>
+              </li>
+              <li>
+                <a href="#api" className={TOC_LINK}>
+                  REST API
+                </a>
+              </li>
+              <li>
+                <a href="#troubleshooting" className={TOC_LINK}>
+                  Troubleshooting
+                </a>
+              </li>
+              <li>
+                <a href="#resources" className={TOC_LINK}>
+                  Resources
+                </a>
+              </li>
+            </ul>
+          </nav>
         </header>
 
-        <div className="divide-y divide-border">
-          <section id="quick-start" className="py-12 first:pt-0">
-            <h2 className="text-3xl font-medium">Quick start</h2>
+        <div className="divide-y divide-border border-t border-border">
+          <section id="quick-start" className="scroll-mt-24 py-12">
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+              Quick start
+            </h2>
             <ol role="list" className="mt-6 list-none space-y-5 [counter-reset:step]">
               <li className={STEP}>
                 <span className="pt-1.5">
@@ -173,12 +222,14 @@ export default function DocsPage() {
             </ol>
           </section>
 
-          <section id="concepts" className="py-12">
-            <h2 className="text-3xl font-medium">Core concepts</h2>
+          <section id="concepts" className="scroll-mt-24 py-12">
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+              Core concepts
+            </h2>
 
             <div className="mt-6 divide-y divide-border">
               <div className="py-5 first:pt-0">
-                <h3 className="text-2xl font-medium">MCP server</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">MCP server</h3>
                 <p className="mt-2 text-base leading-7">
                   An isolated runtime that hosts one or more Model Context Protocol servers. Each
                   TwinMCP server runs in its own Upstash Box sandbox with its own encrypted secrets
@@ -187,7 +238,9 @@ export default function DocsPage() {
               </div>
 
               <div className="py-5">
-                <h3 className="text-2xl font-medium">Marketplace MCPs</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  Marketplace MCPs
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   Curated, one-click installable MCPs. Install GitLab, Notion, Linear, Slack,
                   Postgres, Stripe, and dozens more without writing glue code. Each installed MCP
@@ -197,7 +250,7 @@ export default function DocsPage() {
               </div>
 
               <div className="py-5 last:pb-0">
-                <h3 className="text-2xl font-medium">Your own MCP</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">Your own MCP</h3>
                 <p className="mt-2 text-base leading-7">
                   Once your account is funded (after a first top-up),{" "}
                   <strong>Publish an MCP</strong> packages any stdio MCP server — an npm package run
@@ -209,8 +262,10 @@ export default function DocsPage() {
             </div>
           </section>
 
-          <section id="ide-setup" className="py-12">
-            <h2 className="text-3xl font-medium">Connect your IDE</h2>
+          <section id="ide-setup" className="scroll-mt-24 py-12">
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+              Connect your IDE
+            </h2>
             <p className="mt-3 text-base leading-7 text-muted-foreground">
               TwinMCP exposes a standard Streamable HTTP endpoint per MCP. Below is the exact block
               for each supported client, with an example URL and the key placeholder{" "}
@@ -225,8 +280,8 @@ export default function DocsPage() {
             </p>
           </section>
 
-          <section id="api-keys" className="py-12">
-            <h2 className="text-3xl font-medium">API keys</h2>
+          <section id="api-keys" className="scroll-mt-24 py-12">
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">API keys</h2>
             <p className="mt-3 text-base leading-7 text-muted-foreground">
               Every MCP request carries a TwinMCP key (prefix <code>ctx7sk_</code>) in the{" "}
               <code>Authorization: Bearer</code> header. Create keys in{" "}
@@ -236,7 +291,9 @@ export default function DocsPage() {
 
             <div className="mt-6 divide-y divide-border">
               <div className="py-5 first:pt-0">
-                <h3 className="text-2xl font-medium">Full-access keys</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  Full-access keys
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   Reach the REST API (servers, keys, billing) and every MCP on every one of your
                   servers. Keep them for scripts that manage your account, never in a shared config
@@ -245,7 +302,9 @@ export default function DocsPage() {
               </div>
 
               <div className="py-5">
-                <h3 className="text-2xl font-medium">MCP-proxy keys</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  MCP-proxy keys
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   Can only call MCP endpoints, and can be bound to a single server. This is the key
                   to paste into an IDE config, where it sits in plain text: if it leaks, it cannot
@@ -257,7 +316,9 @@ export default function DocsPage() {
               </div>
 
               <div className="py-5 last:pb-0">
-                <h3 className="text-2xl font-medium">Rotation, expiry and revocation</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  Rotation, expiry and revocation
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   <strong>Rotate</strong> mints a replacement with the same name, scope and server
                   binding; the old key keeps working for {OVERLAP_HOURS} hours so you can update
@@ -270,12 +331,14 @@ export default function DocsPage() {
             </div>
           </section>
 
-          <section id="lifecycle" className="py-12">
-            <h2 className="text-3xl font-medium">Server lifecycle</h2>
+          <section id="lifecycle" className="scroll-mt-24 py-12">
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+              Server lifecycle
+            </h2>
 
             <div className="mt-6 divide-y divide-border">
               <div className="py-5 first:pt-0">
-                <h3 className="text-2xl font-medium">Pause</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">Pause</h3>
                 <p className="mt-2 text-base leading-7">
                   Pauses the server&apos;s box and keeps its disk: installed MCPs, their
                   configuration, secrets and data are all kept. The next MCP request — or{" "}
@@ -289,7 +352,9 @@ export default function DocsPage() {
               </div>
 
               <div className="py-5">
-                <h3 className="text-2xl font-medium">Delete runtime</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  Delete runtime
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   Destroys the server&apos;s box and the data stored in it. It asks you to type the
                   server name first and cannot be undone. Use <strong>Pause</strong> whenever you
@@ -298,7 +363,7 @@ export default function DocsPage() {
               </div>
 
               <div className="py-5 last:pb-0">
-                <h3 className="text-2xl font-medium">Restart</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">Restart</h3>
                 <p className="mt-2 text-base leading-7">
                   Recreates the runtime: the current box is deleted and a fresh one is created,
                   reinstalling every MCP from its saved configuration. Files written inside the old
@@ -310,8 +375,10 @@ export default function DocsPage() {
 
           <CreditDocsSection locale="en" />
 
-          <section id="api" className="py-12">
-            <h2 className="text-3xl font-medium">REST API reference</h2>
+          <section id="api" className="scroll-mt-24 py-12">
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+              REST API reference
+            </h2>
             <p className="mt-3 text-base leading-7 text-muted-foreground">
               The TwinMCP control plane is a REST API authenticated with Bearer tokens (a
               full-access key). Full OpenAPI reference (interactive):
@@ -323,8 +390,10 @@ export default function DocsPage() {
             </p>
           </section>
 
-          <section id={TROUBLESHOOTING_ANCHOR} className="py-12">
-            <h2 className="text-3xl font-medium">Troubleshooting</h2>
+          <section id={TROUBLESHOOTING_ANCHOR} className="scroll-mt-24 py-12">
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+              Troubleshooting
+            </h2>
             <p className="mt-3 text-base leading-7 text-muted-foreground">
               Each entry quotes the exact message you&apos;ll see, so you can find it with Ctrl+F.
               Errors from an MCP endpoint are JSON-RPC errors whose <code>error.data</code> carries
@@ -334,7 +403,9 @@ export default function DocsPage() {
 
             <div className="mt-6 divide-y divide-border">
               <div className="py-6 first:pt-0">
-                <h3 className="text-2xl font-medium">Server stuck on “provisioning”</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  Server stuck on “provisioning”
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   Provisioning normally takes about 30 seconds. If the badge hasn&apos;t settled
                   after a couple of minutes, refresh the page — the platform automatically flags
@@ -345,7 +416,9 @@ export default function DocsPage() {
               </div>
 
               <div id="error-401" className="py-6">
-                <h3 className="text-2xl font-medium">“Invalid API key” (HTTP 401)</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  “Invalid API key” (HTTP 401)
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   The key in your client config is wrong, revoked, expired (including an old key{" "}
                   {OVERLAP_HOURS} hours after a rotation), or still the placeholder{" "}
@@ -359,7 +432,7 @@ export default function DocsPage() {
               </div>
 
               <div id="error-403" className="py-6">
-                <h3 className="text-2xl font-medium">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
                   “{SERVER_SCOPE_MESSAGE}” (HTTP 403, JSON-RPC {RPC_CODES.wrongServer})
                 </h3>
                 <p className="mt-2 text-base leading-7">
@@ -375,7 +448,7 @@ export default function DocsPage() {
               </div>
 
               <div id="error-402" className="py-6">
-                <h3 className="text-2xl font-medium">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
                   “Your TwinMCP credit is used up” (HTTP 402, JSON-RPC {CREDIT_RPC_CODE})
                 </h3>
                 <p className="mt-2 text-base leading-7">
@@ -393,7 +466,9 @@ export default function DocsPage() {
               </div>
 
               <div id="error-429" className="py-6">
-                <h3 className="text-2xl font-medium">“Too many requests” (HTTP 429)</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  “Too many requests” (HTTP 429)
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   Too many tool calls in a short time from one account: a per-minute limit protects
                   the platform from runaway loops. There is no daily cap — your balance is the only
@@ -403,7 +478,7 @@ export default function DocsPage() {
               </div>
 
               <div id="error-503" className="py-6">
-                <h3 className="text-2xl font-medium">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
                   “Waking up” or “still installing” (HTTP 503, JSON-RPC {RPC_CODES.notReady})
                 </h3>
                 <p className="mt-2 text-base leading-7">
@@ -417,7 +492,9 @@ export default function DocsPage() {
               </div>
 
               <div id="paused" className="py-6">
-                <h3 className="text-2xl font-medium">The server is paused</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  The server is paused
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   A paused server resumes on its next MCP request — the proxy wakes the box and
                   usually answers that request, a little slower; if the wake fails or the box is
@@ -432,7 +509,7 @@ export default function DocsPage() {
               </div>
 
               <div id="error-504" className="py-6">
-                <h3 className="text-2xl font-medium">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
                   “The MCP server did not answer in time.” (HTTP 504, JSON-RPC {RPC_CODES.uncertain}
                   )
                 </h3>
@@ -444,7 +521,7 @@ export default function DocsPage() {
               </div>
 
               <div id="tool-blocked" className="py-6">
-                <h3 className="text-2xl font-medium">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
                   “Tool … is blocked by this MCP&apos;s tool access policy” (HTTP 200, JSON-RPC{" "}
                   {TOOL_POLICY_DENIED_CODE})
                 </h3>
@@ -457,7 +534,7 @@ export default function DocsPage() {
               </div>
 
               <div className="py-6">
-                <h3 className="text-2xl font-medium">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
                   Status “error” — “The runtime failed to start.”
                 </h3>
                 <p className="mt-2 text-base leading-7">
@@ -469,7 +546,7 @@ export default function DocsPage() {
               </div>
 
               <div className="py-6">
-                <h3 className="text-2xl font-medium">
+                <h3 className="font-display text-xl font-semibold tracking-tight">
                   Claude Desktop / Zed can&apos;t connect (mcp-remote bridge)
                 </h3>
                 <p className="mt-2 text-base leading-7">
@@ -483,7 +560,9 @@ export default function DocsPage() {
               </div>
 
               <div id="support" className="py-6 last:pb-0">
-                <h3 className="text-2xl font-medium">Still stuck? Contact support</h3>
+                <h3 className="font-display text-xl font-semibold tracking-tight">
+                  Still stuck? Contact support
+                </h3>
                 <p className="mt-2 text-base leading-7">
                   Email{" "}
                   <a href="mailto:hello@twinmcp.fr" className={LINK}>
@@ -506,9 +585,14 @@ export default function DocsPage() {
             </div>
           </section>
 
-          <section id="resources" className="py-12 last:pb-0">
-            <h2 className="text-3xl font-medium">Resources</h2>
-            <ul role="list" className="mt-6 divide-y divide-border border-y border-border">
+          <section id="resources" className="scroll-mt-24 py-12 last:pb-0">
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+              Resources
+            </h2>
+            <ul
+              role="list"
+              className="mt-6 divide-y divide-border rounded-xl border border-border bg-card px-4"
+            >
               <li className="py-3 leading-7">
                 <Link href="/plans" className={LINK}>
                   Pricing

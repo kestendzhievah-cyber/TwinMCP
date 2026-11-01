@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Loader2, Server } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowRight, Check, Loader2, Server } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { walletFacts } from "@/components/pricing/wallet-copy";
+
+// The small box's MCP allowance, from the plan rules (lib/plan-features.ts).
+const W = walletFacts("en");
 
 const PROVISIONING_TIMEOUT_MS = 30_000;
 const POLL_INTERVAL_MS = 1_500;
@@ -103,17 +107,19 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
     return (
       <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-medium md:text-3xl">You already have a server.</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+            You already have a server.
+          </h2>
           <p className="mt-2 text-base text-muted-foreground">
             We&apos;ll continue the rest of the onboarding with{" "}
             <span className="font-mono text-foreground">{existingServer.name}</span>.
           </p>
         </div>
-        {/* One ledger line: hairline icon square, mono name, status badge (DESIGN.md §4.5, §4.9). */}
-        <div className="flex items-center gap-4 border border-border bg-secondary/40 p-4">
+        {/* The server as one row: icon, mono name, status badge. */}
+        <div className="flex items-center gap-4 rounded-xl border border-border bg-surface-alt p-4">
           <span
             aria-hidden
-            className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-card text-muted-foreground"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-card text-brand shadow-sm"
           >
             <Server className="h-4 w-4" />
           </span>
@@ -128,6 +134,7 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
           </Button>
           <Button size="lg" onClick={() => onReady(existingServer)}>
             Continue
+            <ArrowRight aria-hidden />
           </Button>
         </div>
       </div>
@@ -138,7 +145,7 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
     return (
       <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-medium md:text-3xl">
+          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
             {phase === "stuck" ? "Still provisioning…" : "Spinning up your runtime…"}
           </h2>
           <p className="mt-2 text-base text-muted-foreground">
@@ -148,18 +155,19 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
           </p>
         </div>
 
-        {/* Typewriter status line; the ochre tint once it is overdue. */}
+        {/* Status line in mono; the warning tint once it is overdue. */}
         <div
+          role="status"
           className={
             phase === "stuck"
-              ? "flex items-center gap-3 border border-warning/40 bg-warning/10 px-4 py-3 font-mono text-xs text-warning"
-              : "flex items-center gap-3 border border-border bg-secondary/60 px-4 py-3 font-mono text-xs text-muted-foreground"
+              ? "flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 font-mono text-xs text-warning"
+              : "flex items-center gap-3 rounded-lg border border-border bg-secondary px-4 py-3 font-mono text-xs text-muted-foreground"
           }
         >
           {phase === "provisioning" ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            <Loader2 aria-hidden className="h-4 w-4 shrink-0 animate-spin text-brand" />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0" />
+            <AlertTriangle aria-hidden className="h-4 w-4 shrink-0" />
           )}
           <span>
             {phase === "provisioning" ? "status: provisioning" : "status: still provisioning"}
@@ -167,8 +175,8 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
         </div>
 
         {error && (
-          <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
             {error}
           </p>
         )}
@@ -194,11 +202,34 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-medium md:text-3xl">Name your first server.</h2>
+        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+          Name your first server.
+        </h2>
         <p className="mt-2 text-base text-muted-foreground">
           One free server. You can rename it later. Provisioning takes about 15 seconds; each MCP
           you add then installs in about a minute.
         </p>
+      </div>
+
+      {/* The box size: small, the size every new server starts on. Shown as
+          the selected option; larger boxes come with a funded account. */}
+      <div>
+        <p className="mb-2 text-sm font-medium">Box size</p>
+        <div className="flex items-center gap-3 rounded-xl border border-brand bg-brand/5 p-4 ring-1 ring-brand">
+          <span
+            aria-hidden
+            className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand text-brand-foreground"
+          >
+            <Check className="h-3.5 w-3.5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Small</p>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              Runs up to {W.smallMcps} MCPs at once. Medium and large boxes are available on a
+              funded account.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -211,14 +242,14 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
           maxLength={80}
           autoFocus
         />
-        <p className="text-xs italic text-muted-foreground">
-          Used to derive a slug like <code className="font-mono not-italic">my-mcp</code>.
+        <p className="text-xs text-muted-foreground">
+          Used to derive a slug like <code className="font-mono">my-mcp</code>.
         </p>
       </div>
 
       {error && (
-        <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           {error}
         </p>
       )}
@@ -228,7 +259,8 @@ export function StepServer({ existingServer, onReady, onBack }: StepServerProps)
           Back
         </Button>
         <Button size="lg" onClick={handleCreate} disabled={!name.trim()}>
-          Provision server
+          Create server
+          <ArrowRight aria-hidden />
         </Button>
       </div>
     </div>

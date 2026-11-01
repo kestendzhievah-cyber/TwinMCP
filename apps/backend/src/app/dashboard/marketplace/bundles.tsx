@@ -25,7 +25,10 @@ import { Loader2 } from "lucide-react";
 import type { Plan } from "@/db/schema/core";
 import { BUNDLES, type McpBundle } from "@/lib/mcp/bundles";
 import { isSmallBoxFull, toastBoxFull } from "@/components/billing/top-up-inline";
-import { PROMO_LOCKED_BADGE, canUseMcpOnPromo } from "@/lib/wallet/eligibility";
+import { canUseMcpOnPromo } from "@/lib/wallet/eligibility";
+import { Label } from "@/components/ui/label";
+import { McpLogo } from "./mcp-logo";
+import { LockedPill } from "./locked-pill";
 import type { CatalogEntry, ServerOption } from "./install-dialog";
 
 interface ResolvedBundle {
@@ -155,36 +158,45 @@ export function McpBundles({
 
   return (
     <section className="space-y-4">
-      {/* Section head: the small-capital title running into a hairline, one
-          italic line beneath — the same voice as "All MCPs" below. */}
       <div>
-        <h2 className="smallcaps tracking-sc flex items-center gap-4 text-xl font-medium after:h-px after:flex-1 after:bg-border after:content-['']">
-          Starter bundles
-        </h2>
-        <p className="mt-1 text-sm italic text-muted-foreground">
+        <h2 className="font-display text-xl font-semibold tracking-tight">Starter bundles</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Install a curated set of MCPs in one click — zero setup, ready to use.
         </p>
       </div>
 
-      {/* Bundle cards: bone stock, one hairline, the contents set as a small
-          ledger (one hairline row per MCP), the action under a rule. */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Bundle cards: a stack of the bundle's marks, the name and tagline,
+          the contents as one muted line, then an outline action (the
+          dialog holds the primary). */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {bundles.map((b) => (
           <Card key={b.bundle.id} className="flex flex-col">
             <CardHeader className="flex-1 space-y-0">
-              <CardTitle className="text-base leading-snug">{b.bundle.name}</CardTitle>
-              <CardDescription className="mt-2">{b.bundle.tagline}</CardDescription>
-              <ul className="mt-4 divide-y divide-border border-y border-border text-sm">
+              <div aria-hidden className="flex -space-x-2">
                 {b.entries.map((e) => (
-                  <li key={e.id} className="py-1.5">
-                    {e.name}
-                  </li>
+                  <span
+                    key={e.id}
+                    className="grid h-10 w-10 place-items-center rounded-full border-2 border-card bg-card shadow-sm ring-1 ring-border"
+                  >
+                    <McpLogo
+                      slug={e.slug}
+                      category={e.category}
+                      size={22}
+                      className="rounded-full"
+                    />
+                  </span>
                 ))}
-              </ul>
+              </div>
+              <CardTitle className="mt-4 text-base leading-snug">{b.bundle.name}</CardTitle>
+              <CardDescription className="mt-1.5">{b.bundle.tagline}</CardDescription>
+              <p className="mt-3 text-xs text-muted-foreground">
+                {b.entries.map((e) => e.name).join(" · ")}
+              </p>
             </CardHeader>
-            <CardContent className="border-t border-border px-6 py-4">
+            <CardContent className="border-t border-border pt-4 sm:pt-4">
               <Button
-                className="lining w-full"
+                variant="outline"
+                className="w-full"
                 onClick={() => open(b)}
                 disabled={boxServers.length === 0}
               >
@@ -202,25 +214,22 @@ export function McpBundles({
           <DialogHeader>
             <DialogTitle>Install the {picking?.bundle.name} bundle</DialogTitle>
             <DialogDescription>
-              <span className="lining">{picking?.entries.length}</span> MCPs will be installed on
-              your server, ready to use.
+              <span className="tabular-nums">{picking?.entries.length}</span> MCPs will be installed
+              on your server, ready to use.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5">
-            {/* The bundle's contents as a ledger: name, then the mono slug. */}
-            <ul className="divide-y divide-border border border-border bg-secondary/40">
+            {/* The bundle's contents: mark, name, the lock pill if any, the mono slug. */}
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
               {picking?.entries.map((e) => (
                 <li
                   key={e.id}
-                  className="flex items-baseline justify-between gap-4 px-3 py-2 text-sm"
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm"
                 >
-                  <span className="min-w-0 truncate">{e.name}</span>
-                  {isLocked(e) && (
-                    <span className="smallcaps tracking-sc shrink-0 border border-warning/40 bg-warning/10 px-1.5 text-xs text-warning">
-                      {PROMO_LOCKED_BADGE}
-                    </span>
-                  )}
+                  <McpLogo slug={e.slug} category={e.category} size={20} />
+                  <span className="min-w-0 flex-1 truncate font-medium">{e.name}</span>
+                  {isLocked(e) && <LockedPill />}
                   <span className="shrink-0 font-mono text-xs text-muted-foreground">{e.slug}</span>
                 </li>
               ))}
@@ -228,20 +237,16 @@ export function McpBundles({
 
             {boxServers.length > 1 && (
               <div className="space-y-2">
-                <label className="smallcaps tracking-sc text-xs font-medium text-foreground/85">
-                  Target server
-                </label>
+                <Label htmlFor="bundle-server">Target server</Label>
                 <Select value={serverId} onValueChange={setServerId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="bundle-server">
                     <SelectValue placeholder="Pick a server" />
                   </SelectTrigger>
                   <SelectContent>
                     {boxServers.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
-                        <span className="smallcaps tracking-sc ml-2 text-xs text-muted-foreground">
-                          {s.status}
-                        </span>
+                        <span className="ml-2 text-xs text-muted-foreground">{s.status}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -254,7 +259,7 @@ export function McpBundles({
             <Button variant="outline" onClick={() => setPicking(null)} disabled={installing}>
               Cancel
             </Button>
-            <Button className="lining" onClick={installBundle} disabled={installing || !serverId}>
+            <Button onClick={installBundle} disabled={installing || !serverId}>
               {installing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />

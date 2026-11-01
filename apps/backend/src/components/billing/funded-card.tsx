@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Route } from "next";
 import { Lock, ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { minTopupLabel } from "@/lib/wallet/pricing";
@@ -23,44 +22,58 @@ interface FundedCardProps {
  * Pages decide when to render it (see FundedGate for the common allow/deny
  * wrapper). It is a UI convenience only — the server enforces access.
  *
- * Typeset as an empty slot on the card (DESIGN.md §5): dashed ink hairline, a
- * bare lock, a hairline seal, small-caps title, italic body, one ink button.
- * The seal is outline, not gilt (one gilt seal per view at most).
+ * An offer card (docs/DESIGN.md, Card recipes): the soft-pink surface, a lock
+ * in a white circle, the "Unlocks with first top-up" pill and one primary
+ * button. A feature that no top-up unlocks gets the neutral dashed slot.
  */
 export function FundedCard({
   title,
   description,
-  ctaLabel = "Add credit",
+  ctaLabel = "Top up",
   href = "/dashboard/billing",
   unavailable = false,
   className,
 }: FundedCardProps) {
   return (
-    <Card
-      className={cn("border-dashed border-foreground/40 bg-transparent shadow-none", className)}
+    <div
+      className={cn(
+        "flex flex-col items-center gap-4 rounded-2xl border p-8 text-center sm:p-10",
+        unavailable
+          ? "border-2 border-dashed border-border bg-card"
+          : "border-offer-border bg-offer",
+        className
+      )}
     >
-      <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-        <Lock aria-hidden className="h-6 w-6 text-muted-foreground" />
-        {!unavailable && <Badge variant="outline">Paid credit</Badge>}
-        <div className="max-w-md space-y-2">
-          <h2 className="smallcaps tracking-sc text-base font-medium">{title}</h2>
-          {description && <p className="text-sm italic text-muted-foreground">{description}</p>}
-          <p className="text-xs italic text-muted-foreground">
-            {unavailable
-              ? "Not available on current accounts."
-              : `Unlocked by a first top-up (from ${minTopupLabel()}). No subscription: you pay for what you use.`}
-          </p>
-        </div>
-        {!unavailable && (
-          <Button asChild className="mt-1">
-            <Link href={href as Route}>
-              {ctaLabel}
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
-          </Button>
+      <span
+        aria-hidden
+        className={cn(
+          "grid h-12 w-12 place-items-center rounded-full",
+          unavailable ? "bg-secondary text-muted-foreground" : "bg-card text-offer-foreground"
         )}
-      </CardContent>
-    </Card>
+      >
+        <Lock className="h-5 w-5" />
+      </span>
+      {!unavailable && <Badge variant="offer">Unlocks with first top-up</Badge>}
+      <div className="max-w-md space-y-2">
+        <h2 className="font-display text-lg font-semibold tracking-tight">{title}</h2>
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        <p
+          className={cn("text-xs", unavailable ? "text-muted-foreground" : "text-offer-foreground")}
+        >
+          {unavailable
+            ? "Not available on current accounts."
+            : `Unlocked by a first top-up (from ${minTopupLabel()}). No subscription: you pay for what you use.`}
+        </p>
+      </div>
+      {!unavailable && (
+        <Button asChild className="mt-1 w-full sm:w-auto">
+          <Link href={href as Route}>
+            {ctaLabel}
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      )}
+    </div>
   );
 }
 

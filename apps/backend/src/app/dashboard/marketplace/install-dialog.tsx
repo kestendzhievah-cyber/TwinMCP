@@ -10,6 +10,8 @@ import { cliCommand } from "@/lib/cli";
 import type { Plan } from "@/db/schema/core";
 import { isSmallBoxFull, toastBoxFull } from "@/components/billing/top-up-inline";
 import { PROMO_LOCKED_MCP_MESSAGE } from "@/lib/wallet/eligibility";
+import { Lock } from "lucide-react";
+import { McpLogo } from "./mcp-logo";
 import {
   Dialog,
   DialogContent,
@@ -179,26 +181,34 @@ export function InstallDialog({
     <Dialog open={!!mcp} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Install {mcp.name}</DialogTitle>
-          <DialogDescription className="not-italic">{mcp.description}</DialogDescription>
+          <div className="flex items-start gap-3 pr-6">
+            <McpLogo slug={mcp.slug} category={mcp.category} size={32} />
+            <div className="min-w-0 space-y-1.5">
+              <DialogTitle>Install {mcp.name}</DialogTitle>
+              <DialogDescription>{mcp.description}</DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           {locked && (
-            <p className="border border-warning/40 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-sm text-warning">
-              {PROMO_LOCKED_MCP_MESSAGE}.{" "}
-              <Link
-                href={"/dashboard/billing" as Route}
-                className="font-medium underline decoration-warning/40 underline-offset-4 hover:decoration-warning"
-              >
-                Top up
-              </Link>
+            <p className="flex items-start gap-2 rounded-xl border border-offer-border bg-offer px-4 py-3 text-sm text-offer-foreground">
+              <Lock aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                {PROMO_LOCKED_MCP_MESSAGE}.{" "}
+                <Link
+                  href={"/dashboard/billing" as Route}
+                  className="font-semibold underline underline-offset-4"
+                >
+                  Top up
+                </Link>
+              </span>
             </p>
           )}
 
           <div className="space-y-2">
             <Label htmlFor="server">Target server</Label>
             {compatible.length === 0 ? (
-              <p className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+              <p className="rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info">
                 {isLocalTool
                   ? "This tool runs locally — create a Local (agent) server first, then install it here."
                   : "Create a cloud-box server first to install this tool."}
@@ -212,40 +222,36 @@ export function InstallDialog({
                   {compatible.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}{" "}
-                      <span className="smallcaps tracking-sc ml-2 text-xs text-muted-foreground">
-                        {s.status}
-                      </span>
+                      <span className="ml-2 text-xs text-muted-foreground">{s.status}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
             {isLocalTool && compatible.length > 0 && (
-              <p className="text-xs italic text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Runs on your machine via the TwinMCP local agent (
-                <code className="font-mono not-italic">{cliCommand("connect")}</code>); the
-                server&apos;s Connect panel has the exact command.
+                <code className="font-mono">{cliCommand("connect")}</code>); the server&apos;s
+                Connect panel has the exact command.
               </p>
             )}
           </div>
 
           {schemaLoading && (
-            <p className="border-t border-border pt-4 text-xs italic text-muted-foreground">
+            <p className="border-t border-border pt-4 text-xs text-muted-foreground">
               Loading configuration…
             </p>
           )}
 
           {!schemaLoading && fields.length > 0 && (
-            // Configuration block: eyebrow with a leading rule, then one field
-            // per key — the key in Courier, help in italic (DESIGN.md §5 forms).
+            // Configuration block: an eyebrow, then one field per key, the key
+            // in mono with its help under the control.
             <div className="space-y-4 border-t border-border pt-4">
-              <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-                Configuration
-              </p>
+              <p className="eyebrow">Configuration</p>
               {fields.map(([key, def]) => (
                 <div key={key} className="space-y-2">
                   <Label htmlFor={key} className="flex items-center gap-1">
-                    <span className="no-smallcaps font-mono text-foreground">{key}</span>
+                    <span className="font-mono text-foreground">{key}</span>
                     {def.required && <span className="text-destructive">*</span>}
                   </Label>
                   {def.type === "boolean" ? (
@@ -282,7 +288,7 @@ export function InstallDialog({
                     />
                   )}
                   {def.description && (
-                    <p className="text-xs italic text-muted-foreground">{def.description}</p>
+                    <p className="text-xs text-muted-foreground">{def.description}</p>
                   )}
                 </div>
               ))}
@@ -294,11 +300,11 @@ export function InstallDialog({
               type="checkbox"
               checked={startReadOnly}
               onChange={(e) => setStartReadOnly(e.target.checked)}
-              className="mt-1 h-4 w-4 accent-foreground"
+              className="mt-1 h-4 w-4 accent-brand"
             />
             <span className="space-y-1">
               <span className="block font-medium">Start read-only</span>
-              <span className="block text-xs italic text-muted-foreground">
+              <span className="block text-xs text-muted-foreground">
                 Expose only the tools the MCP marks read-only. Change it later under Tool access.
               </span>
             </span>

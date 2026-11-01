@@ -11,6 +11,8 @@ interface CodeSnippetProps {
   language?: string;
   filename?: string;
   className?: string;
+  /** Extra classes on the <pre> (e.g. a fixed height so tabs never shift the layout). */
+  codeClassName?: string;
   /** Language of the copy button's label and toasts (the code itself is never translated). */
   locale?: Locale;
 }
@@ -28,13 +30,14 @@ const STRINGS: Record<Locale, { copy: string; copied: string; failed: string }> 
   },
 };
 
-// Typewriter code: Courier on a darker bone panel with one hairline around it.
-// The filename is an engraved tab; the copy button a hairline square.
+// A code block: mono on a quiet light-blue panel with a rounded hairline frame,
+// an optional filename bar with a language chip, and a copy button.
 export function CodeSnippet({
   code,
   language = "json",
   filename,
   className,
+  codeClassName,
   locale = "en",
 }: CodeSnippetProps) {
   const [copied, setCopied] = useState(false);
@@ -52,18 +55,23 @@ export function CodeSnippet({
   }
 
   return (
-    <div className={cn("relative overflow-hidden border border-border bg-secondary/60", className)}>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl border border-border bg-secondary",
+        className
+      )}
+    >
       {filename && (
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
-          <span className="smallcaps tracking-sc min-w-0 break-words text-xs text-muted-foreground">
+          <span className="min-w-0 break-words font-mono text-xs text-muted-foreground">
             {filename}
           </span>
-          <span className="smallcaps tracking-sc shrink-0 border border-border px-1.5 text-xs leading-5 text-muted-foreground">
+          <span className="shrink-0 rounded-md border border-border bg-card px-1.5 font-mono text-xs leading-5 text-muted-foreground">
             {language}
           </span>
         </div>
       )}
-      <pre className="overflow-x-auto p-4 pr-16 text-sm leading-relaxed">
+      <pre className={cn("overflow-x-auto p-4 pr-16 text-sm leading-relaxed", codeClassName)}>
         <code className="font-mono text-foreground">{code}</code>
       </pre>
       <button
@@ -72,7 +80,7 @@ export function CodeSnippet({
         aria-label={t.copy}
         title={t.copy}
         className={cn(
-          "absolute right-3 grid h-10 w-10 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground",
+          "absolute right-3 grid h-10 w-10 place-items-center rounded-lg border border-input bg-card text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           filename ? "top-12" : "top-3",
           copied && "border-success/40 bg-success/10 text-success"
         )}

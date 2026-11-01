@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { SignInForm } from "./form";
 
 // Login page: no SEO value — keep it out of the index (also dropped from sitemap).
@@ -16,8 +17,10 @@ export const metadata: Metadata = {
 
 export default function SignInPage() {
   return (
-    <Suspense>
-      <SignInForm />
-    </Suspense>
+    <AuthShell locale="en">
+      <Suspense>
+        <SignInForm />
+      </Suspense>
+    </AuthShell>
   );
 }

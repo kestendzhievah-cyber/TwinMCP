@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Activity, AlertTriangle, Download, Gauge, Lock, Server } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  Download,
+  Gauge,
+  Lock,
+  Server,
+  type LucideIcon,
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { RangeChips } from "./range-chips";
 
 interface DailyPoint {
   date: string;
@@ -102,27 +110,24 @@ export function UsagePanel() {
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-28 w-full" />
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
           ))}
         </div>
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
-        <p className="text-sm italic text-muted-foreground">
-          {error || "No data."}{" "}
-          <button
-            type="button"
-            className="not-italic text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
-            onClick={() => load(days)}
-          >
-            Retry
-          </button>
+      <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card px-6 py-10 text-center">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <AlertTriangle aria-hidden className="h-4 w-4 shrink-0 text-destructive" />
+          {error || "No data."}
         </p>
+        <Button variant="outline" size="sm" onClick={() => load(days)}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -135,30 +140,9 @@ export function UsagePanel() {
 
   return (
     <div className="space-y-6">
-      {/* Range + export: hairline stamps for the window, the chosen one pressed in ink. */}
+      {/* Range + export. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div
-          role="group"
-          aria-label="Range"
-          className="inline-flex divide-x divide-border border border-border bg-card"
-        >
-          {RANGES.map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setDays(r)}
-              aria-pressed={days === r}
-              className={cn(
-                "lining h-10 px-4 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:translate-y-px",
-                days === r
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {r}d
-            </button>
-          ))}
-        </div>
+        <RangeChips ranges={RANGES} value={days} onChange={setDays} />
         {data.usageExport ? (
           <Button asChild variant="outline">
             <a href={`/api/v2/usage/export?days=${days}`} download>
@@ -176,74 +160,51 @@ export function UsagePanel() {
         )}
       </div>
 
-      {/* Stat cards (DESIGN.md §5): small-caps caption, lining number, italic footnote. */}
+      {/* Stat tiles: label, figure in the display face, one muted line. */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
-              <Gauge className="h-4 w-4" />
-              Tool calls today
-            </CardDescription>
-            <CardTitle className="lining text-3xl">{fmt(todayReq)}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="lining text-xs italic text-muted-foreground">
-              Since midnight UTC. Each call that reaches your MCP is charged.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
-              <Activity className="h-4 w-4" />
-              Tool calls · {data.days}d
-            </CardDescription>
-            <CardTitle className="lining text-3xl">{fmt(runtime.totals.requests)}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="lining text-xs italic text-muted-foreground">
-              Across {runtime.perMcp.length} MCP{runtime.perMcp.length === 1 ? "" : "s"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
-              <AlertTriangle className="h-4 w-4" />
-              Error rate · {data.days}d
-            </CardDescription>
-            <CardTitle className="lining text-3xl">{errRate}%</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="lining text-xs italic text-muted-foreground">
-              {fmt(runtime.totals.errors)} failed of {fmt(runtime.totals.requests)}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          icon={Gauge}
+          label="Tool calls today"
+          value={fmt(todayReq)}
+          note="Since midnight UTC. Each call that reaches your MCP is charged."
+        />
+        <StatCard
+          icon={Activity}
+          label={`Tool calls · ${data.days}d`}
+          value={fmt(runtime.totals.requests)}
+          note={`Across ${runtime.perMcp.length} MCP${runtime.perMcp.length === 1 ? "" : "s"}`}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          label={`Error rate · ${data.days}d`}
+          value={`${errRate}%`}
+          note={`${fmt(runtime.totals.errors)} failed of ${fmt(runtime.totals.requests)}`}
+        />
       </div>
 
       {/* Daily chart */}
       <Card>
-        <CardHeader className="border-b border-border px-6 py-4">
-          <CardTitle className="flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+        <CardHeader className="border-b border-border pb-4">
+          <CardTitle as="h2" className="flex items-center gap-3">
+            <span
+              aria-hidden
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-secondary text-brand"
+            >
               <Activity className="h-4 w-4" />
             </span>
             Tool calls per day
           </CardTitle>
-          <CardDescription className="pl-12">
-            Bar height is total tool calls; the red portion is errors.
+          <CardDescription className="sm:pl-12">
+            Bar height is total tool calls; the red part is errors.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-5 sm:p-6">
           {empty ? (
-            <div className="border border-dashed border-foreground/40 px-6 py-8 text-center">
-              <p className="text-sm italic text-muted-foreground">
+            <div className="rounded-xl border-2 border-dashed border-border px-6 py-8 text-center">
+              <p className="text-sm text-muted-foreground">
                 No tool calls yet. Connect an MCP from the{" "}
-                <span className="font-medium not-italic">Marketplace</span> and make a call to see
-                it here.
+                <span className="font-medium text-foreground">Marketplace</span> and make a call to
+                see it here.
               </p>
             </div>
           ) : (
@@ -254,9 +215,12 @@ export function UsagePanel() {
 
       {/* Per-MCP breakdown — a ledger, flush to the card edges. */}
       <Card>
-        <CardHeader className="border-b border-border px-6 py-4">
-          <CardTitle className="lining flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+        <CardHeader className="border-b border-border pb-4">
+          <CardTitle as="h2" className="flex items-center gap-3 tabular-nums">
+            <span
+              aria-hidden
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-secondary text-brand"
+            >
               <Server className="h-4 w-4" />
             </span>
             By MCP · {data.days}d
@@ -264,7 +228,7 @@ export function UsagePanel() {
         </CardHeader>
         <CardContent className="p-0">
           {runtime.perMcp.length === 0 ? (
-            <p className="px-6 py-8 text-center text-sm italic text-muted-foreground">
+            <p className="px-6 py-8 text-center text-sm text-muted-foreground">
               No tool calls in this window.
             </p>
           ) : (
@@ -272,16 +236,16 @@ export function UsagePanel() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="pl-6">MCP</TableHead>
+                    <TableHead className="pl-5 sm:pl-6">MCP</TableHead>
                     <TableHead className="w-28 text-right">Tool calls</TableHead>
                     <TableHead className="w-24 text-right">Errors</TableHead>
-                    <TableHead className="w-28 pr-6 text-right">Error rate</TableHead>
+                    <TableHead className="w-28 pr-5 sm:pr-6 text-right">Error rate</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(showAllMcp ? runtime.perMcp : runtime.perMcp.slice(0, ROW_CAP)).map((m) => (
                     <TableRow key={m.slug}>
-                      <TableCell className="pl-6">
+                      <TableCell className="pl-5 sm:pl-6">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="font-medium">{m.name}</span>
                           <span className="font-mono text-xs text-muted-foreground">{m.slug}</span>
@@ -289,10 +253,10 @@ export function UsagePanel() {
                       </TableCell>
                       <TableCell className="text-right">{fmt(m.requests)}</TableCell>
                       <TableCell className="text-right">{fmt(m.errors)}</TableCell>
-                      <TableCell className="pr-6 text-right">
+                      <TableCell className="pr-5 sm:pr-6 text-right">
                         <Badge
                           variant={pctOf(m.errors, m.requests) > 0 ? "destructive" : "secondary"}
-                          className="lining"
+                          className="tabular-nums"
                         >
                           {pctOf(m.errors, m.requests)}%
                         </Badge>
@@ -305,7 +269,7 @@ export function UsagePanel() {
                 <button
                   type="button"
                   onClick={() => setShowAllMcp(true)}
-                  className="smallcaps tracking-sc lining w-full border-t border-border py-2.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                  className="w-full border-t border-border py-3 text-sm font-medium text-brand transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   Show all {runtime.perMcp.length}
                 </button>
@@ -317,21 +281,24 @@ export function UsagePanel() {
 
       {/* API activity (24h) */}
       <Card>
-        <CardHeader className="border-b border-border px-6 py-4">
-          <CardTitle className="lining flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+        <CardHeader className="border-b border-border pb-4">
+          <CardTitle as="h2" className="flex items-center gap-3 tabular-nums">
+            <span
+              aria-hidden
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-secondary text-brand"
+            >
               <Gauge className="h-4 w-4" />
             </span>
             API activity · last 24h
           </CardTitle>
-          <CardDescription className="lining pl-12">
+          <CardDescription className="tabular-nums sm:pl-12">
             {fmt(data.last24h)} request{data.last24h === 1 ? "" : "s"} to the TwinMCP API (context &
             library lookups).
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {data.perEndpoint.length === 0 ? (
-            <p className="px-6 py-8 text-center text-sm italic text-muted-foreground">
+            <p className="px-6 py-8 text-center text-sm text-muted-foreground">
               No API calls in the last 24 hours.
             </p>
           ) : (
@@ -339,17 +306,17 @@ export function UsagePanel() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="pl-6">Endpoint</TableHead>
+                    <TableHead className="pl-5 sm:pl-6">Endpoint</TableHead>
                     <TableHead className="w-28 text-right">Requests</TableHead>
-                    <TableHead className="w-32 pr-6 text-right">Avg latency</TableHead>
+                    <TableHead className="w-32 pr-5 sm:pr-6 text-right">Avg latency</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(showAllEp ? data.perEndpoint : data.perEndpoint.slice(0, ROW_CAP)).map((e) => (
                     <TableRow key={e.endpoint}>
-                      <TableCell className="pl-6 font-mono text-xs">{e.endpoint}</TableCell>
+                      <TableCell className="pl-5 sm:pl-6 font-mono text-xs">{e.endpoint}</TableCell>
                       <TableCell className="text-right">{fmt(e.n)}</TableCell>
-                      <TableCell className="pr-6 text-right">{e.avgLatency} ms</TableCell>
+                      <TableCell className="pr-5 sm:pr-6 text-right">{e.avgLatency} ms</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -358,7 +325,7 @@ export function UsagePanel() {
                 <button
                   type="button"
                   onClick={() => setShowAllEp(true)}
-                  className="smallcaps tracking-sc lining w-full border-t border-border py-2.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                  className="w-full border-t border-border py-3 text-sm font-medium text-brand transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   Show all {data.perEndpoint.length}
                 </button>
@@ -371,12 +338,38 @@ export function UsagePanel() {
   );
 }
 
-// Ink bars on a hairline baseline — a ledger chart, no rounding, no fills.
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  note,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Icon aria-hidden className="h-4 w-4 text-brand" />
+          {label}
+        </p>
+        <p className="mt-2 font-display text-2xl font-bold tracking-tight tabular-nums">{value}</p>
+        <p className="mt-1 text-xs tabular-nums text-muted-foreground">{note}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Daily bars in brand blue on a hairline baseline; the error share in red,
+// with a legend so the colour is never the only cue.
 function DailyChart({ daily }: { daily: DailyPoint[] }) {
   const max = Math.max(1, ...daily.map((d) => d.requests));
   return (
     <div>
-      <div className="flex h-40 items-end gap-px border-b border-foreground/50">
+      <div className="flex h-40 items-end gap-px border-b border-border" aria-hidden>
         {daily.map((d) => {
           const h = (d.requests / max) * 100;
           const errPct = d.requests > 0 ? (d.errors / d.requests) * 100 : 0;
@@ -386,7 +379,10 @@ function DailyChart({ daily }: { daily: DailyPoint[] }) {
               className="flex h-full flex-1 flex-col justify-end"
               title={`${d.date} · ${d.requests} tool calls, ${d.errors} errors`}
             >
-              <div className="w-full overflow-hidden bg-foreground/80" style={{ height: `${h}%` }}>
+              <div
+                className="w-full overflow-hidden rounded-t-sm bg-brand"
+                style={{ height: `${h}%` }}
+              >
                 {errPct > 0 && (
                   <div className="w-full bg-destructive" style={{ height: `${errPct}%` }} />
                 )}
@@ -395,8 +391,18 @@ function DailyChart({ daily }: { daily: DailyPoint[] }) {
           );
         })}
       </div>
-      <div className="lining mt-2 flex justify-between text-xs text-muted-foreground">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-muted-foreground">
         <span>{daily[0]?.date}</span>
+        <span className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2 w-2 rounded-full bg-brand" />
+            Tool calls
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2 w-2 rounded-full bg-destructive" />
+            Errors
+          </span>
+        </span>
         <span>{daily[daily.length - 1]?.date}</span>
       </div>
     </div>

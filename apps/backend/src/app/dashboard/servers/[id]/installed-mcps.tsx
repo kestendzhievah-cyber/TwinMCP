@@ -16,7 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ListChecks, Power, Settings, Trash2 } from "lucide-react";
+import { ListChecks, Power, Settings, Store, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { McpLogo } from "@/app/dashboard/marketplace/mcp-logo";
 import { ReconfigureDialog } from "./reconfigure-dialog";
 import { ToolPolicyDialog } from "./tool-policy-dialog";
 
@@ -85,58 +87,72 @@ export function InstalledMcps({
     <Card>
       <CardHeader className="border-b border-border">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <CardTitle className="text-base">Installed MCPs</CardTitle>
+          <div className="min-w-0 space-y-1.5">
+            <CardTitle as="h2">Installed MCPs</CardTitle>
             <CardDescription>
-              <span className="lining">{items.length}</span> installed · clients call them at{" "}
-              <code className="font-mono text-xs not-italic">
+              <span className="tabular-nums">{items.length}</span> installed · clients call them at{" "}
+              <code className="break-all font-mono text-xs">
                 /api/mcp/{serverSlug}/&lt;slug&gt;
               </code>
             </CardDescription>
           </div>
           <Button asChild variant="outline">
-            <Link href={"/dashboard/marketplace" as Route}>Browse marketplace</Link>
+            <Link href={"/dashboard/marketplace" as Route}>
+              <Store className="h-4 w-4" />
+              Browse marketplace
+            </Link>
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent className="pt-5 sm:pt-6">
         {items.length === 0 ? (
-          <div className="border border-dashed border-foreground/40 px-4 py-8 text-center text-sm italic text-muted-foreground">
+          <div className="rounded-xl border-2 border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
             No MCPs installed yet.
           </div>
         ) : (
-          // A ledger of installations: hairline rows, the name with its mono
-          // slug and engraved labels, the actions bare at the end (DESIGN.md §4.5).
-          <div className="divide-y divide-border border border-border">
+          <ul className="space-y-3">
             {items.map((item) => {
               const isProtected = item.mcpSlug === twinmcpDocsSlug;
               const showConfigure = !isProtected && item.hasConfig;
               return (
-                <div key={item.id} className="flex items-start justify-between gap-4 px-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-medium">{item.mcpName}</span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {item.mcpSlug}
-                      </span>
-                      {item.mcpIsOfficial && <Badge variant="outline">official</Badge>}
-                      <Badge variant="secondary">{item.mcpRuntime}</Badge>
-                      {!item.enabled && <Badge variant="warning">disabled</Badge>}
+                <li
+                  key={item.id}
+                  className={cn(
+                    "flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-start sm:justify-between",
+                    !item.enabled && "bg-secondary/50"
+                  )}
+                >
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <McpLogo slug={item.mcpSlug} size={36} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-semibold">{item.mcpName}</span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {item.mcpSlug}
+                        </span>
+                        {item.mcpIsOfficial && <Badge variant="outline">official</Badge>}
+                        <Badge variant="secondary">{item.mcpRuntime}</Badge>
+                        {!item.enabled && <Badge variant="warning">disabled</Badge>}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                        {item.mcpDescription}
+                      </p>
                     </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                      {item.mcpDescription}
-                    </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="-mr-2 flex shrink-0 items-center gap-1 self-end sm:self-start">
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => toggle(item)}
                       disabled={busy === item.id}
                       aria-label={item.enabled ? "Disable" : "Enable"}
+                      title={item.enabled ? "Disable" : "Enable"}
                     >
                       <Power
-                        className={`h-4 w-4 ${item.enabled ? "text-success" : "text-muted-foreground"}`}
+                        className={cn(
+                          "h-4 w-4",
+                          item.enabled ? "text-success" : "text-muted-foreground"
+                        )}
                       />
                     </Button>
                     <Button
@@ -156,6 +172,7 @@ export function InstalledMcps({
                         onClick={() => setReconfigureId(item.id)}
                         disabled={busy === item.id}
                         aria-label="Configure"
+                        title="Configure"
                       >
                         <Settings className="h-4 w-4 text-muted-foreground" />
                       </Button>
@@ -167,15 +184,17 @@ export function InstalledMcps({
                         onClick={() => setConfirm(item.id)}
                         disabled={busy === item.id}
                         aria-label="Uninstall"
+                        title="Uninstall"
+                        className="hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     )}
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </CardContent>
 

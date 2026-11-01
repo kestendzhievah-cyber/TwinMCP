@@ -78,12 +78,10 @@ const faq = [
 export default function ClaudeMcpHostingPage() {
   return (
     <UseCaseLayout useCase={useCase} benefits={benefits} steps={steps} faq={faq}>
-      <section className="rule-double py-16 md:py-20">
+      <section className="border-t border-border py-16 md:py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-            Configuration
-          </p>
-          <h2 className="mt-4 text-balance text-3xl font-medium md:text-4xl">
+          <p className="eyebrow">Configuration</p>
+          <h2 className="mt-4 text-balance text-3xl font-display font-bold tracking-tight md:text-4xl">
             The Claude config snippets, ready to paste
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -91,17 +89,17 @@ export default function ClaudeMcpHostingPage() {
             your dashboard, copy, paste. No path resolution, no environment-variable juggling.
           </p>
         </div>
-        {/* Two clients, one sheet split by a hairline */}
+        {/* Two clients, side by side, split by a hairline. */}
         <div className="mt-12 grid gap-10 md:grid-cols-2 md:gap-0 md:divide-x md:divide-border">
           <div className="md:pr-10">
-            <h3 className="smallcaps tracking-sc text-lg font-medium">Claude Desktop</h3>
+            <h3 className="text-lg font-display font-semibold tracking-tight">Claude Desktop</h3>
             <p className="mt-3 text-base text-muted-foreground">
               Claude Desktop does not read remote MCP URLs from{" "}
-              <code className="bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">
+              <code className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">
                 claude_desktop_config.json
               </code>
               . Add the server through the UI instead:{" "}
-              <strong className="font-medium text-foreground">
+              <strong className="font-semibold text-foreground">
                 Settings &rarr; Connectors &rarr; Add custom connector
               </strong>
               , paste the streamable-HTTP URL and bearer token from your TwinMCP dashboard. Claude
@@ -109,14 +107,12 @@ export default function ClaudeMcpHostingPage() {
             </p>
           </div>
           <div className="md:pl-10">
-            <h3 className="smallcaps tracking-sc text-lg font-medium">Claude Code</h3>
-            {/* Typewriter block: engraved tab, Courier on darker bone (DESIGN.md §4.6) */}
-            <div className="mt-3 border border-border bg-secondary/60">
+            <h3 className="text-lg font-display font-semibold tracking-tight">Claude Code</h3>
+            {/* Terminal block: a labelled header over mono code. */}
+            <div className="mt-3 overflow-hidden rounded-xl border border-border bg-surface-alt">
               <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
-                <span className="smallcaps tracking-sc text-xs text-muted-foreground">
-                  Terminal
-                </span>
-                <span className="smallcaps tracking-sc border border-border px-1.5 text-xs leading-5 text-muted-foreground">
+                <span className="text-xs font-medium text-muted-foreground">Terminal</span>
+                <span className="rounded-md border border-border bg-card px-1.5 font-mono text-xs leading-5 text-muted-foreground">
                   bash
                 </span>
               </div>
@@ -134,7 +130,7 @@ export default function ClaudeMcpHostingPage() {
           apply), read the full{" "}
           <Link
             href={"/blog/claude-desktop-mcp" as Route}
-            className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+            className="text-brand underline underline-offset-4 hover:decoration-2"
           >
             Claude Desktop MCP installation guide
           </Link>

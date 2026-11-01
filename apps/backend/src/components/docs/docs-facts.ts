@@ -36,7 +36,7 @@ export { MANAGEMENT_SCOPE_MESSAGE, SERVER_SCOPE_MESSAGE };
 /** Format an integer the way each locale writes it ("5,000" / "5 000"). */
 export function formatCount(n: number, locale: Locale): string {
   // fr-FR groups with a narrow no-break space; plain no-break space reads the
-  // same in EB Garamond and survives copy-paste into search boxes.
+  // the same in Inter and survives copy-paste into search boxes.
   return n.toLocaleString(locale === "fr" ? "fr-FR" : "en-US").replace(/ /g, " ");
 }
 

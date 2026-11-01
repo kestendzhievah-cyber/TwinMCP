@@ -1,11 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, CheckCircle2, Copy, Plus, Send, Trash2, Webhook } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  Copy,
+  Plus,
+  Send,
+  Trash2,
+  Webhook,
+} from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import {
   MAX_ENDPOINTS_PER_USER,
@@ -17,10 +24,10 @@ import {
 import type { PublicWebhookDelivery, PublicWebhookEndpoint } from "@/lib/webhooks/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, fieldClasses } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -59,7 +66,7 @@ function DeliveryStatus({ d }: { d: Delivery }) {
   }
 }
 
-/** Debossed square checkbox, as on the Settings page (native input kept for a11y). */
+/** Rounded checkbox that fills with brand blue, as on the Settings page (native input kept for a11y). */
 function EventCheckbox({
   id,
   checked,
@@ -84,13 +91,13 @@ function EventCheckbox({
       />
       <span
         aria-hidden
-        className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center border border-input bg-card text-transparent shadow-inner transition-colors peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:ring-1 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background"
+        className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border border-input bg-card text-transparent transition-colors peer-checked:border-brand peer-checked:bg-brand peer-checked:text-brand-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background"
       >
         <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
       </span>
       <span>
         <span className="font-medium">{label}</span>
-        <span className="block text-xs italic text-muted-foreground">{help}</span>
+        <span className="block text-xs text-muted-foreground">{help}</span>
       </span>
     </label>
   );
@@ -216,41 +223,49 @@ export function WebhooksPanel({
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-sm text-muted-foreground">
-          <Link href={"/dashboard/settings" as Route} className="underline underline-offset-4">
-            Settings
-          </Link>{" "}
-          / Webhooks
-        </p>
-        <h1 className="smallcaps tracking-sc mt-1 text-2xl font-medium">Webhooks</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          Get an HTTPS request when something happens on your account.
-        </p>
-        <Separator variant="double" className="mt-4" />
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      {/* Page header: title, one line, and the page's single primary action. */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight">Webhooks</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Get an HTTPS request when something happens on your account.
+          </p>
+        </div>
+        <Button
+          onClick={() => setCreateOpen(true)}
+          disabled={atLimit || loadFailed}
+          className="w-full shrink-0 sm:w-auto"
+        >
+          <Plus aria-hidden />
+          Add endpoint
+        </Button>
+      </header>
 
       {loadFailed && (
-        <div className="border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
+        >
+          <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
           Webhooks could not be loaded right now. Try again in a moment.
         </div>
       )}
 
       {secret && (
-        <div className="border border-success/40 bg-success/10 p-3 text-sm">
+        <div className="rounded-xl border border-success/30 bg-success/10 p-4 text-sm">
           <p className="mb-2 flex items-center gap-2 font-medium text-success">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             Signing secret — copy it now, it won&apos;t be shown again
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 break-all border border-border bg-card px-2 py-1.5 font-mono text-xs">
+            <code className="flex-1 break-all rounded-lg border border-border bg-card px-3 py-2 font-mono text-xs">
               {secret}
             </code>
             <Button
               size="icon"
               variant="outline"
-              className="shrink-0 border-border bg-card"
+              className="shrink-0"
               onClick={copySecret}
               aria-label="Copy secret"
             >
@@ -264,26 +279,22 @@ export function WebhooksPanel({
       )}
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-border">
-          <div>
-            <CardTitle>Endpoints</CardTitle>
-            <CardDescription>
-              <span className="lining font-medium not-italic text-foreground">
-                {endpoints.length}/{MAX_ENDPOINTS_PER_USER}
-              </span>{" "}
-              endpoints. Available on every plan.
-            </CardDescription>
-          </div>
-          <Button onClick={() => setCreateOpen(true)} disabled={atLimit || loadFailed}>
-            <Plus className="h-4 w-4" />
-            Add endpoint
-          </Button>
+        <CardHeader className="border-b border-border">
+          <CardTitle>Endpoints</CardTitle>
+          <CardDescription>
+            <span className="font-semibold tabular-nums text-foreground">
+              {endpoints.length}/{MAX_ENDPOINTS_PER_USER}
+            </span>{" "}
+            endpoints. Available on every plan.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-[var(--card-padding)]">
           {endpoints.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
-              <Webhook className="h-6 w-6" />
-              <p className="italic">No endpoints yet.</p>
+            <div className="flex flex-col items-center gap-3 py-8 text-center text-sm text-muted-foreground">
+              <span className="grid size-12 place-items-center rounded-full bg-secondary text-brand">
+                <Webhook aria-hidden className="size-5" />
+              </span>
+              <p>No endpoints yet.</p>
             </div>
           ) : (
             <ul className="divide-y divide-border">
@@ -295,13 +306,13 @@ export function WebhooksPanel({
                       {e.active ? (
                         <Badge variant="success">Active</Badge>
                       ) : (
-                        <Badge variant="destructive">Disabled</Badge>
+                        <Badge variant="secondary">Disabled</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {e.events.map(eventLabel).join(" · ")}
                     </p>
-                    <p className="lining text-xs italic text-muted-foreground">
+                    <p className="text-xs tabular-nums text-muted-foreground">
                       Added {formatDateTime(e.createdAt)}
                       {e.lastSuccessAt
                         ? ` · last delivered ${formatDateTime(e.lastSuccessAt)}`
@@ -322,7 +333,7 @@ export function WebhooksPanel({
                     </Button>
                     <Button
                       size="sm"
-                      variant="secondary"
+                      variant="outline"
                       disabled={busyId === e.id}
                       onClick={() => setActive(e.id, !e.active)}
                     >
@@ -330,8 +341,8 @@ export function WebhooksPanel({
                     </Button>
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="text-destructive"
+                      variant="outline"
+                      className="border-destructive/40 text-destructive hover:border-destructive hover:bg-destructive/10"
                       disabled={busyId === e.id}
                       onClick={() => setDeleteTarget(e)}
                       aria-label={`Delete ${e.url}`}
@@ -360,7 +371,10 @@ export function WebhooksPanel({
               aria-label="Filter by endpoint"
               value={filter}
               onChange={(ev) => setFilter(ev.target.value)}
-              className="h-9 w-full border border-input sm:max-w-[14rem] bg-card px-2 text-sm text-foreground shadow-inner focus-visible:border-foreground focus-visible:outline-none [&>option]:bg-card [&>option]:text-foreground"
+              className={cn(
+                fieldClasses,
+                "h-10 sm:max-w-[14rem] [&>option]:bg-card [&>option]:text-foreground"
+              )}
             >
               <option value="all">All endpoints</option>
               {endpoints.map((e) => (
@@ -371,9 +385,9 @@ export function WebhooksPanel({
             </select>
           )}
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="p-0">
           {shownDeliveries.length === 0 ? (
-            <p className="py-6 text-center text-sm italic text-muted-foreground">
+            <p className="px-[var(--card-padding)] py-8 text-center text-sm text-muted-foreground">
               No deliveries yet. Send a test event to try an endpoint.
             </p>
           ) : (
@@ -398,7 +412,7 @@ export function WebhooksPanel({
                     <TableCell>
                       <DeliveryStatus d={d} />
                       {d.status === "retrying" && d.nextAttemptAt && (
-                        <span className="mt-1 block text-xs italic text-muted-foreground">
+                        <span className="mt-1 block text-xs text-muted-foreground">
                           next {formatDateTime(d.nextAttemptAt)}
                         </span>
                       )}
@@ -423,7 +437,7 @@ export function WebhooksPanel({
         </CardContent>
       </Card>
 
-      <Card className="max-w-3xl">
+      <Card>
         <CardHeader>
           <CardTitle>Verifying requests</CardTitle>
           <CardDescription>
@@ -472,9 +486,7 @@ export function WebhooksPanel({
               />
             </div>
             <fieldset className="space-y-3">
-              <legend className="smallcaps tracking-sc mb-2 text-xs font-medium text-foreground/85">
-                Events
-              </legend>
+              <legend className="mb-2 text-sm font-medium">Events</legend>
               {SUBSCRIBABLE_EVENTS.map((ev) => (
                 <EventCheckbox
                   key={ev}

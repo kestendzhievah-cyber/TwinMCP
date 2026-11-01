@@ -11,7 +11,7 @@ import { usageLabel, type SecretUsage } from "@/lib/vault/usage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -44,18 +44,18 @@ interface Missing {
 }
 
 function UsedBy({ usedBy }: { usedBy: SecretUsage[] }) {
-  if (usedBy.length === 0) return <span className="italic text-muted-foreground">unused</span>;
+  if (usedBy.length === 0) return <span className="text-muted-foreground">unused</span>;
   return (
     <ul className="space-y-0.5">
       {usedBy.map((u) => (
         <li key={u.userServerId} className="text-sm">
           <Link
             href={`/dashboard/servers/${u.serverId}` as Route}
-            className="underline-offset-4 hover:underline"
+            className="font-medium text-brand underline-offset-4 hover:underline"
           >
             {usageLabel(u)}
           </Link>
-          {!u.enabled && <span className="ml-1 text-xs italic text-muted-foreground">(off)</span>}
+          {!u.enabled && <span className="ml-1 text-xs text-muted-foreground">(off)</span>}
         </li>
       ))}
     </ul>
@@ -180,36 +180,27 @@ export function SecretsPanel() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Page header (DESIGN.md §5): small-caps name, italic line, double rule. */}
-      <div>
-        <p className="smallcaps tracking-sc text-xs text-muted-foreground">
-          <Link href="/dashboard/settings" className="hover:text-foreground">
-            Settings
-          </Link>{" "}
-          · <span className="text-foreground">Secrets</span>
-        </p>
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="smallcaps tracking-sc text-2xl font-medium">Secrets</h1>
-            <p className="mt-1 max-w-2xl text-sm italic text-muted-foreground">
-              Save an API token once and use it in any MCP config as{" "}
-              <code className="font-mono text-xs not-italic text-foreground">
-                {secretRef("NAME")}
-              </code>
-              . Values are stored encrypted, never shown again, and filled in when the MCP starts.
-            </p>
-          </div>
-          <Button onClick={() => openAdd()}>
-            <Plus aria-hidden />
-            Add secret
-          </Button>
+    <div className="space-y-6 md:space-y-8">
+      {/* Page header: title, one line, and the page's single primary action. */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-bold tracking-tight">Secrets</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Save an API token once and use it in any MCP config as{" "}
+            <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs text-foreground">
+              {secretRef("NAME")}
+            </code>
+            . Values are stored encrypted, never shown again, and filled in when the MCP starts.
+          </p>
         </div>
-        <Separator variant="double" className="mt-4" />
-      </div>
+        <Button onClick={() => openAdd()} className="w-full shrink-0 sm:w-auto">
+          <Plus aria-hidden />
+          Add secret
+        </Button>
+      </header>
 
       {missing.length > 0 && (
-        <div className="space-y-2 border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+        <div className="space-y-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
           <p className="flex items-center gap-2 font-medium">
             <AlertTriangle aria-hidden className="h-4 w-4 shrink-0" />
             Referenced but not saved: these MCPs will not start until you add them.
@@ -231,81 +222,80 @@ export function SecretsPanel() {
       )}
 
       {loadError && !secrets ? (
-        <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           Could not load your secrets. Refresh the page to try again.
         </p>
       ) : secrets === null ? (
-        <p className="text-sm italic text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : secrets.length === 0 ? (
-        // Empty state (DESIGN.md §5).
-        <div className="flex flex-col items-center gap-2 border border-dashed border-foreground/40 bg-transparent px-6 py-10 text-center">
-          <KeyRound aria-hidden className="h-6 w-6 text-muted-foreground" />
-          <p className="smallcaps tracking-sc mt-1 font-medium">No secrets yet</p>
-          <p className="max-w-sm text-sm italic text-muted-foreground">
-            Add a token here, then pick it with &ldquo;Use saved secret&rdquo; when you install or
-            configure an MCP. Rotate it in one place for every MCP that uses it.
-          </p>
-        </div>
+        // Empty state: the header's "Add secret" stays the one primary action.
+        <EmptyState
+          icon={KeyRound}
+          title="No secrets yet"
+          description={
+            <>
+              Add a token here, then pick it with &ldquo;Use saved secret&rdquo; when you install or
+              configure an MCP. Rotate it in one place for every MCP that uses it.
+            </>
+          }
+        />
       ) : (
-        <div className="overflow-x-auto border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Used by</TableHead>
-                <TableHead>Last used</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead className="w-24"></TableHead>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Used by</TableHead>
+              <TableHead>Last used</TableHead>
+              <TableHead>Updated</TableHead>
+              <TableHead className="w-24">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {secrets.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell className="font-mono text-xs">{s.name}</TableCell>
+                <TableCell>
+                  <UsedBy usedBy={s.usedBy} />
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {s.lastUsedAt ? formatDateTime(s.lastUsedAt) : "never"}
+                </TableCell>
+                <TableCell className="text-muted-foreground">{formatDate(s.updatedAt)}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditValue("");
+                        setEditTarget(s);
+                      }}
+                      aria-label={`Update the value of ${s.name}`}
+                      title="Update value"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setDeleteTarget(s)}
+                      aria-label={`Delete ${s.name}`}
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {secrets.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-mono text-xs">{s.name}</TableCell>
-                  <TableCell>
-                    <UsedBy usedBy={s.usedBy} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {s.lastUsedAt ? (
-                      <span className="lining">{formatDateTime(s.lastUsedAt)}</span>
-                    ) : (
-                      <span className="italic">never</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    <span className="lining">{formatDate(s.updatedAt)}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditValue("");
-                          setEditTarget(s);
-                        }}
-                        aria-label={`Update the value of ${s.name}`}
-                        title="Update value"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setDeleteTarget(s)}
-                        aria-label={`Delete ${s.name}`}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
@@ -314,7 +304,7 @@ export function SecretsPanel() {
             <DialogTitle>Add a secret</DialogTitle>
             <DialogDescription>
               The value is encrypted and never shown again. Reference it in an MCP config as{" "}
-              <code className="font-mono text-xs not-italic text-foreground">
+              <code className="font-mono text-xs text-foreground">
                 {secretRef(normalizeSecretName(addName) || "NAME")}
               </code>
               .
@@ -332,7 +322,7 @@ export function SecretsPanel() {
                 value={addName}
                 onChange={(e) => setAddName(normalizeSecretName(e.target.value))}
               />
-              <p className="text-xs italic text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Capital letters, digits and underscores, up to 64 characters.
               </p>
             </div>
@@ -402,7 +392,8 @@ export function SecretsPanel() {
             </DialogDescription>
           </DialogHeader>
           {deleteTarget && deleteTarget.usedBy.length > 0 && (
-            <div className="border border-warning/40 bg-warning/10 px-3 py-2 text-warning">
+            <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-warning">
+              <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
               <UsedBy usedBy={deleteTarget.usedBy} />
             </div>
           )}

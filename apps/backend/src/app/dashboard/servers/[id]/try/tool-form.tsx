@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { Input, fieldClasses } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -15,8 +15,11 @@ import { enumKey, type FormField, type FormValues, type SubField } from "@/lib/m
 // A Radix Select item cannot carry "" as its value: this stands for "unset".
 const UNSET = "__unset__";
 
-export const textareaClass =
-  "block w-full resize-y border border-input bg-card px-3 py-2 font-mono text-xs leading-relaxed text-foreground shadow-inner placeholder:italic placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-0";
+// Same border, focus and invalid states as the Input primitive, in mono.
+export const textareaClass = cn(
+  fieldClasses,
+  "block resize-y py-2 font-mono text-xs leading-relaxed"
+);
 
 function inputType(field: FormField): string {
   if (field.kind === "number" || field.kind === "integer") return "number";
@@ -60,7 +63,7 @@ export function ToolForm({
   disabled?: boolean;
 }) {
   if (fields.length === 0) {
-    return <p className="text-sm italic text-muted-foreground">This tool takes no arguments.</p>;
+    return <p className="text-sm text-muted-foreground">This tool takes no arguments.</p>;
   }
 
   return (
@@ -81,8 +84,8 @@ export function ToolForm({
               )}
               <span
                 className={cn(
-                  "smallcaps tracking-sc text-xs",
-                  f.required ? "text-foreground/85" : "text-muted-foreground"
+                  "text-xs",
+                  f.required ? "font-medium text-foreground" : "text-muted-foreground"
                 )}
               >
                 {f.required ? "required" : "optional"}
@@ -92,7 +95,7 @@ export function ToolForm({
               </span>
             </div>
             {f.description && (
-              <p id={`${id}-desc`} className="text-xs italic text-muted-foreground">
+              <p id={`${id}-desc`} className="text-xs text-muted-foreground">
                 {f.description}
               </p>
             )}
@@ -127,9 +130,9 @@ function SubFieldList({ fields }: { fields: SubField[] }) {
     <ul className="space-y-0.5 border-l border-border pl-3 text-xs text-muted-foreground">
       {fields.map((s) => (
         <li key={s.name} className="break-words">
-          <span className="font-mono text-foreground/85">{s.name}</span>{" "}
+          <span className="font-mono text-foreground">{s.name}</span>{" "}
           <span className="font-mono">{s.type}</span>
-          {s.required && <span className="smallcaps tracking-sc"> · required</span>}
+          {s.required && <span> · required</span>}
           {s.enumValues && (
             <span>
               {" "}
@@ -217,7 +220,7 @@ function FieldControl({
             <label key={key} className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                className="h-4 w-4 accent-foreground"
+                className="h-4 w-4 accent-brand"
                 checked={picked.includes(key)}
                 onChange={() => toggle(key)}
                 disabled={disabled}
@@ -240,7 +243,7 @@ function FieldControl({
         spellCheck={false}
         placeholder={placeholderFor(f)}
         disabled={disabled}
-        className={cn(textareaClass, invalid && "border-destructive")}
+        className={textareaClass}
         {...aria}
       />
     );
@@ -257,10 +260,7 @@ function FieldControl({
       min={f.minimum}
       max={f.maximum}
       disabled={disabled}
-      className={cn(
-        (f.kind === "number" || f.kind === "integer") && "lining sm:w-72",
-        invalid && "border-destructive"
-      )}
+      className={cn((f.kind === "number" || f.kind === "integer") && "tabular-nums sm:w-72")}
       {...aria}
     />
   );

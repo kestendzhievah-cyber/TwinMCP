@@ -13,12 +13,19 @@ import {
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbListSchema, howToSchema } from "@/lib/seo/schema";
 import { CodeSnippet } from "@/components/marketing/code-snippet";
-import { Separator } from "@/components/ui/separator";
+import { BrandLogo, hasBrandLogo } from "@/components/brand/brand-logo";
+import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
 import { COPY } from "./copy";
-import { Breadcrumbs, HostCta, SectionTitle } from "./parts";
+import { Breadcrumbs, HostCta, SectionTitle, ServerMark } from "./parts";
 
 const INDEX_LINK =
   "text-muted-foreground underline-offset-4 transition-colors hover:text-brand hover:underline";
+
+// Links in running text: brand blue, underlined at rest.
+const LINK =
+  "font-medium text-brand underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand";
+
+const SECTION = "mt-14 border-t border-border pt-10";
 
 export function ClientPageView({
   data,
@@ -54,18 +61,27 @@ export function ClientPageView({
         ]}
       />
 
-      <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-20">
+      <article className="mx-auto max-w-3xl px-4 pb-16 pt-10 sm:px-6 md:pb-24 md:pt-14">
         <Breadcrumbs crumbs={crumbs} />
 
-        <header className="pb-10">
-          <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-            {t.setupGuide}
-          </p>
-          <h1 className="mt-5 text-4xl font-medium sm:text-5xl">{data.h1}</h1>
-          <div className="mt-6 h-px w-12 bg-foreground/40" />
-          <p className="mt-6 text-lg text-muted-foreground md:text-xl">{server.description}</p>
+        <header className="border-b border-border pb-10">
+          <div aria-hidden className="mb-5 flex items-center gap-2">
+            <ServerMark slug={server.slug} category={server.categoryKey} />
+            {hasBrandLogo(data.client) && (
+              <>
+                <span className="text-muted-foreground">+</span>
+                <span className="grid h-11 w-11 place-items-center rounded-xl border border-border bg-card text-foreground">
+                  <BrandLogo slug={data.client} size={24} decorative />
+                </span>
+              </>
+            )}
+          </div>
+          <p className="eyebrow">{t.setupGuide}</p>
+          <h1 className="mt-3 text-balance font-display text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-4xl md:text-5xl">
+            {data.h1}
+          </h1>
+          <p className="mt-5 text-lg text-muted-foreground md:text-xl">{server.description}</p>
         </header>
-        <Separator variant="double" />
 
         {/* The snippet for this client, from the Connect panel's generator. */}
         <section className="mt-10">
@@ -84,36 +100,34 @@ export function ClientPageView({
         </section>
 
         {/* What is specific to this client, then to this MCP's config and host mode. */}
-        <section className="mt-14 border-t border-border pt-10">
+        <section className={SECTION}>
           <SectionTitle>{t.aboutClientTitle(label, server.name)}</SectionTitle>
           <ul className="space-y-3 text-base leading-7">
             {data.notes.map((n) => (
               <li key={n} className="flex gap-3">
-                <span aria-hidden className="text-muted-foreground">
+                <span aria-hidden className="font-semibold text-brand">
                   →
                 </span>
-                <span className="min-w-0 break-words text-foreground/90">{n}</span>
+                <span className="min-w-0 break-words text-foreground">{n}</span>
               </li>
             ))}
           </ul>
         </section>
 
-        <section className="mt-14 border-t border-border pt-10">
+        <section className={SECTION}>
           <SectionTitle>{t.clientStepsTitle}</SectionTitle>
           <ol className="space-y-5">
             {data.steps.map((s, i) => (
               <li key={s.name} className="flex gap-4">
                 <span
                   aria-hidden
-                  className="lining mt-0.5 grid h-8 w-8 shrink-0 place-items-center border border-border bg-card text-xs font-medium"
+                  className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-sm font-semibold tabular-nums text-brand-foreground"
                 >
                   {i + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="smallcaps tracking-sc block text-sm font-medium text-foreground">
-                    {s.name}
-                  </span>
-                  <span className="mt-1 block break-words text-base leading-7 text-foreground/90">
+                  <span className="block font-semibold text-foreground">{s.name}</span>
+                  <span className="mt-1 block break-words text-base leading-7 text-muted-foreground">
                     {s.text}
                   </span>
                 </span>
@@ -122,15 +136,15 @@ export function ClientPageView({
           </ol>
         </section>
 
-        <section className="mt-14 border-t border-border pt-10" id="troubleshooting">
+        <section className={`${SECTION} scroll-mt-24`} id="troubleshooting">
           <SectionTitle>{t.troubleshootingTitle}</SectionTitle>
-          <dl className="divide-y divide-border border-y border-border">
+          <dl className="divide-y divide-border rounded-2xl border border-border bg-card px-5 sm:px-6">
             {data.troubleshooting.map((item) => (
               <div key={item.title} className="py-5">
-                <dt className="text-lg font-medium">
+                <dt className="text-base font-semibold">
                   <Link
                     href={item.href as Route}
-                    className="underline-offset-4 transition-colors hover:text-brand hover:underline"
+                    className="text-foreground underline-offset-4 transition-colors hover:text-brand hover:underline"
                   >
                     {item.title}
                   </Link>
@@ -140,26 +154,23 @@ export function ClientPageView({
             ))}
           </dl>
           <p className="mt-6 text-sm">
-            <Link
-              href={`${server.docsHref}#troubleshooting` as Route}
-              className="text-foreground underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand"
-            >
+            <Link href={`${server.docsHref}#troubleshooting` as Route} className={LINK}>
               {t.troubleshootingMore}
             </Link>
           </p>
         </section>
 
-        <section className="rule-double mt-14 pt-10">
+        <section className={SECTION}>
           <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
             <div>
-              <h2 className="eyebrow mb-4 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+              <h2 className="mb-4 font-display text-lg font-bold tracking-tight">
                 {t.otherClients(server.name)}
               </h2>
               <ul className="space-y-2 text-sm">
                 <li>
                   <Link
                     href={serverPath(server.slug, locale) as Route}
-                    className="text-foreground underline-offset-4 transition-colors hover:text-brand hover:underline"
+                    className="font-medium text-brand underline-offset-4 hover:underline"
                   >
                     {t.fullGuide(server.name)}
                   </Link>
@@ -175,7 +186,7 @@ export function ClientPageView({
             </div>
             {linkable.length > 0 && (
               <div>
-                <h2 className="eyebrow mb-4 flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
+                <h2 className="mb-4 font-display text-lg font-bold tracking-tight">
                   {t.sameClient(label)}
                 </h2>
                 <ul className="space-y-2 text-sm">
@@ -204,6 +215,7 @@ export function ClientPageView({
           />
         </footer>
       </article>
+      <StickyMobileCta locale={locale} />
     </>
   );
 }

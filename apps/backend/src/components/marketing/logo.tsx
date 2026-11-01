@@ -4,51 +4,50 @@ interface LogoProps {
   className?: string;
   /** Render the "TwinMCP" wordmark (default true). */
   showWordmark?: boolean;
-  /** Kept for API compatibility with the old raster logo; scales the mark. */
+  /** Side of the square mark, in px (default 28). */
   size?: number;
-  /** Show the engraved monogram square before the wordmark. */
+  /** Show the square "T" mark before the wordmark (default true). */
   mark?: boolean;
-  /** The small-capitals line under the wordmark (the card's "Mergers and Acquisitions"). */
+  /**
+   * A short muted line under the wordmark: `true` for the default
+   * ("Managed MCP Runtimes"), a string for a custom one (the dashboard's
+   * "Control Plane"). Off by default.
+   */
   tagline?: boolean | string;
 }
 
-// The brand is typography, like the card: a small-capitals wordmark with a
-// letterspaced line underneath. No raster, no gradient. Vector files of the
-// same drawing live in /public (logo.svg, logo-mark.svg, …) for external use.
+// "Clear sky" brand (docs/DESIGN.md, spec §4.13): a navy rounded square with a
+// Plus Jakarta "T" and a small rose dot at its top-right corner, then the
+// wordmark in the display face. The square uses the ink token and the "T" the
+// page token, so the mark inverts with the theme. Vector files of the same
+// drawing live in /public (logo.svg, logo-mark.svg, …) for external use.
 export function Logo({
   className,
   showWordmark = true,
   size = 28,
-  mark = false,
-  tagline = true,
+  mark = true,
+  tagline = false,
 }: LogoProps) {
   const taglineText = typeof tagline === "string" ? tagline : "Managed MCP Runtimes";
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       {mark && (
-        // The monogram: the engraved "T" inside a double-rule frame (same
-        // drawing as /logo-mark.svg and the app icons), in currentColor so it
-        // follows the theme.
         <span
           aria-hidden
-          className="grid shrink-0 place-items-center border-2 border-foreground/85 p-[2px] text-foreground"
-          style={{ height: size, width: size }}
+          className="relative grid shrink-0 place-items-center rounded-lg bg-foreground font-display font-extrabold leading-none text-background"
+          style={{ height: size, width: size, fontSize: Math.round(size * 0.5) }}
         >
-          <span
-            className="grid h-full w-full place-items-center border border-foreground/70 font-serif font-medium leading-none"
-            style={{ fontSize: Math.round(size * 0.5) }}
-          >
-            T
-          </span>
+          T
+          <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-background" />
         </span>
       )}
       {showWordmark && (
         <span className="flex flex-col leading-none">
-          <span className="smallcaps text-[1.125rem] font-medium tracking-[0.14em] text-foreground">
+          <span className="font-display text-lg font-extrabold tracking-tight text-foreground">
             TwinMCP
           </span>
           {tagline && (
-            <span className="smallcaps mt-1 text-[0.625rem] tracking-[0.24em] text-muted-foreground">
+            <span className="mt-1 text-[0.625rem] font-medium text-muted-foreground">
               {taglineText}
             </span>
           )}

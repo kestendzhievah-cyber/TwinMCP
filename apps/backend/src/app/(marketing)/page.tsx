@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Hero, FinalCta } from "@/components/marketing/hero";
-import { SmitheryNotice } from "@/components/marketing/smithery-notice";
 import { IdeLogosBar } from "@/components/marketing/ide-logos-bar";
-import { ProblemSolution } from "@/components/marketing/problem-solution";
+import { OfferBand } from "@/components/marketing/offer-band";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { MarketplacePreview } from "@/components/marketing/marketplace-preview";
+import { UseCasesStrip } from "@/components/marketing/use-cases-strip";
 import { PricingTeaser } from "@/components/marketing/pricing-teaser";
 import { SocialProof } from "@/components/marketing/social-proof";
 import { Faq, defaultFaqItems } from "@/components/marketing/faq";
+import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { AttributionLinks } from "@/components/analytics/attribution-links";
 import { trackPageServed } from "@/lib/analytics/server";
@@ -31,7 +32,8 @@ export const metadata: Metadata = {
 
 // Facts only: MCPs run on Node.js (npm, via npx) or Python (PyPI, via uvx)
 // inside the box, and a stdio→Streamable HTTP bridge (supergateway) exposes
-// each one; clients reach it through the control-plane proxy URL.
+// each one; clients reach it through the control-plane proxy URL. The three
+// steps mirror the "How it works" cards (components/marketing/how-it-works.tsx).
 const homeHowTo = howToSchema({
   name: "How to run an MCP server with TwinMCP",
   description:
@@ -39,21 +41,17 @@ const homeHowTo = howToSchema({
   totalTime: "PT2M",
   steps: [
     {
-      name: "Create a TwinMCP account",
-      text: `Sign up with ${SIGNUP_OFFER.en}. You get one server and access to the MCP catalogue.`,
+      name: "Sign up",
+      text: `Create a TwinMCP account: ${SIGNUP_OFFER.en}, available the moment the account exists.`,
       url: "/sign-up",
     },
     {
-      name: "Provision a server",
-      text: "Create a server: TwinMCP starts an isolated Upstash Box sandbox.",
+      name: "Pick an MCP",
+      text: "Add one from the catalogue of 70+ MCPs (Fetch, Wikipedia, Notion, Linear, Postgres…) in one click or, after your first top-up, publish your own npm (Node.js) or PyPI (Python) package. It runs in an isolated sandbox, and stdio servers are bridged to Streamable HTTP for you.",
     },
     {
-      name: "Install MCPs",
-      text: "Choose from 70+ MCPs (Fetch, Wikipedia, Notion, Linear, Postgres, Slack…) or, once your account is funded, publish your own npm (Node.js) or PyPI (Python) package. Stdio servers are bridged to Streamable HTTP inside the sandbox.",
-    },
-    {
-      name: "Connect your AI client",
-      text: "Copy the MCP's URL (https://twinmcp.fr/api/mcp/<server>/<mcp>) and an API key, then paste the config block the dashboard generates into Cursor, Claude Code, Claude Desktop, VS Code, Windsurf, Cline or Zed.",
+      name: "Paste the URL in your client",
+      text: "Copy the config block the dashboard generates (the MCP’s URL, https://twinmcp.fr/api/mcp/<server>/<mcp>, and an API key) into Cursor, Claude Code, Claude Desktop, VS Code, Windsurf, Cline or Zed.",
       url: "/docs",
     },
   ],
@@ -86,8 +84,7 @@ export default async function HomePage({
       <JsonLd
         data={[
           softwareApplicationSchema({
-            description:
-              "TwinMCP hosts any Model Context Protocol server — from the catalogue, stdio included, or your own npm or PyPI package — in an isolated sandbox reachable over Streamable HTTP from every MCP client. Pay as you go, no subscription.",
+            description: `TwinMCP hosts any Model Context Protocol server — from the catalogue, stdio included, or your own npm or PyPI package — in an isolated sandbox reachable over Streamable HTTP from every MCP client. Pay as you go from a prepaid balance, no subscription, ${SIGNUP_OFFER.en}.`,
             offers: marketingOffers(),
           }),
           faqPageSchema(defaultFaqItems),
@@ -96,14 +93,13 @@ export default async function HomePage({
       />
       <TrackOnMount name="landing_view" properties={{ locale: "en" }} />
       <AttributionLinks />
-      <SmitheryNotice locale="en" renderedAt={Date.now()} />
+      {/* Paid traffic lands here: the offer comes first (hero + what the credit
+          buys), then how it works, the catalogue, use cases, the price, trust,
+          objections and a closing CTA that restates the terms. */}
       <Hero />
       <IdeLogosBar />
       <div className={CV}>
-        <SocialProof />
-      </div>
-      <div className={CV}>
-        <ProblemSolution />
+        <OfferBand />
       </div>
       <div className={CV}>
         <HowItWorks />
@@ -112,7 +108,13 @@ export default async function HomePage({
         <MarketplacePreview />
       </div>
       <div className={CV}>
+        <UseCasesStrip />
+      </div>
+      <div className={CV}>
         <PricingTeaser />
+      </div>
+      <div className={CV}>
+        <SocialProof />
       </div>
       <div className={CV}>
         <Faq variant="list" />
@@ -120,6 +122,7 @@ export default async function HomePage({
       <div className={CV}>
         <FinalCta />
       </div>
+      <StickyMobileCta />
     </>
   );
 }

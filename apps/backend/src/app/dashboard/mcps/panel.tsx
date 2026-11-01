@@ -7,6 +7,8 @@ import { Plus, Trash2, Globe, Lock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -194,11 +196,6 @@ export function PublishMcpPanel({
     }
   }
 
-  // The textarea is set like the Input primitive: a debossed rectangle on the
-  // card, hairline turning to ink on focus, italic placeholder.
-  const inputCls =
-    "flex min-h-[72px] w-full border border-input bg-card px-3 py-2 text-sm text-foreground shadow-inner transition-colors placeholder:italic placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-0";
-
   return (
     <div className="space-y-8">
       {canPublish && (
@@ -236,7 +233,7 @@ export function PublishMcpPanel({
                     className="font-mono"
                     required
                   />
-                  <p className="text-xs italic text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Lowercase, hyphens only. Used in the connection URL.
                   </p>
                 </div>
@@ -280,9 +277,9 @@ export function PublishMcpPanel({
                   className="font-mono"
                   required
                 />
-                <p className="text-xs italic text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   The stdio command TwinMCP runs. Reference config values as{" "}
-                  <code className="font-mono not-italic">$MY_KEY</code>.
+                  <code className="font-mono">$MY_KEY</code>.
                 </p>
               </div>
 
@@ -295,9 +292,9 @@ export function PublishMcpPanel({
                   onChange={(e) => setInstallCmd(e.target.value)}
                   className="font-mono"
                 />
-                <p className="text-xs italic text-muted-foreground">
-                  Runs once before start. Use <code className="font-mono not-italic">true</code> if
-                  npx/uvx fetches it on demand.
+                <p className="text-xs text-muted-foreground">
+                  Runs once before start. Use <code className="font-mono">true</code> if npx/uvx
+                  fetches it on demand.
                 </p>
               </div>
 
@@ -314,26 +311,23 @@ export function PublishMcpPanel({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description (optional)</Label>
-                  <textarea
+                  <Textarea
                     id="description"
                     placeholder="What does this MCP do?"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className={inputCls}
+                    className="min-h-[72px]"
                     maxLength={2000}
                   />
                 </div>
               </div>
 
-              {/* Config fields editor: a sub-panel on a shade darker stock, its
-                  title as an eyebrow with a leading rule, one hairline row per field. */}
-              <div className="space-y-4 border border-border bg-secondary/40 p-4">
+              {/* Config fields editor: a quiet sub-panel, one row per field. */}
+              <div className="space-y-4 rounded-xl border border-border bg-surface-alt p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-                      Configuration fields
-                    </p>
-                    <p className="text-xs italic text-muted-foreground">
+                    <p className="eyebrow">Configuration fields</p>
+                    <p className="text-xs text-muted-foreground">
                       Values the installer must supply (API keys, paths). Mark secrets so
                       they&apos;re write-only.
                     </p>
@@ -389,21 +383,21 @@ export function PublishMcpPanel({
                           />
                         </div>
                         <div className="flex items-center gap-3">
-                          <label className="smallcaps tracking-sc flex min-h-10 items-center gap-1.5 text-xs text-muted-foreground">
+                          <label className="flex min-h-10 items-center gap-1.5 text-xs text-muted-foreground">
                             <input
                               type="checkbox"
                               checked={f.required}
                               onChange={(e) => updateField(i, { required: e.target.checked })}
-                              className="h-4 w-4 accent-foreground"
+                              className="h-4 w-4 accent-brand"
                             />
                             req
                           </label>
-                          <label className="smallcaps tracking-sc flex min-h-10 items-center gap-1.5 text-xs text-muted-foreground">
+                          <label className="flex min-h-10 items-center gap-1.5 text-xs text-muted-foreground">
                             <input
                               type="checkbox"
                               checked={f.secret}
                               onChange={(e) => updateField(i, { secret: e.target.checked })}
-                              className="h-4 w-4 accent-foreground"
+                              className="h-4 w-4 accent-brand"
                             />
                             secret
                           </label>
@@ -423,15 +417,15 @@ export function PublishMcpPanel({
                 )}
               </div>
 
-              {/* A memo, not a warning: the neutral info tint with a left rule. */}
-              <p className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
+              {/* A note, not a warning: the info tint. */}
+              <p className="rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info">
                 Published MCPs are <span className="font-medium">private to your account</span> —
                 only you can install them on your boxes. Listing an MCP in the public marketplace is
                 reviewed manually (it runs its install/start commands in other users&apos; boxes).
                 To request a public listing, email{" "}
                 <a
                   href="mailto:hello@twinmcp.fr?subject=Public%20MCP%20listing%20request"
-                  className="font-medium underline decoration-info/40 underline-offset-4 transition-colors hover:decoration-info"
+                  className="font-semibold underline underline-offset-4"
                 >
                   hello@twinmcp.fr
                 </a>
@@ -439,7 +433,7 @@ export function PublishMcpPanel({
               </p>
 
               <div className="flex justify-end border-t border-border pt-6">
-                <Button type="submit" disabled={submitting}>
+                <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
                   {submitting ? "Publishing…" : "Publish MCP"}
                 </Button>
               </div>
@@ -451,23 +445,22 @@ export function PublishMcpPanel({
       <Card>
         <CardHeader className="border-b border-border">
           <CardTitle>Your MCPs</CardTitle>
-          <CardDescription className="lining">
+          <CardDescription className="tabular-nums">
             {mcps.length === 0
               ? "Nothing published yet."
               : `${mcps.length} published MCP${mcps.length > 1 ? "s" : ""}.`}
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className={cn("pt-5 sm:pt-6", mcps.length > 0 && "p-0 sm:p-0")}>
           {mcps.length === 0 ? (
-            // Empty slot (DESIGN.md §5): dashed ink hairline, one italic line.
-            <p className="border border-dashed border-foreground/40 px-4 py-8 text-center text-sm italic text-muted-foreground">
+            <p className="rounded-xl border-2 border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
               Publish your first MCP with the form above — it appears here and in the marketplace
               (if public).
             </p>
           ) : (
-            // The ledger (§4.5): small-capital heads on a firmer rule, hairline
-            // rows, the name over its mono slug@version, the runtime in Courier.
-            <div className="border border-border">
+            // Inside the card the table drops its own frame and runs edge to
+            // edge: the name over its mono slug@version, the runtime in mono.
+            <div className="overflow-hidden rounded-b-2xl">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -481,7 +474,7 @@ export function PublishMcpPanel({
                   {mcps.map((m) => (
                     <TableRow key={m.id}>
                       <TableCell>
-                        <div className="font-medium">{m.name}</div>
+                        <div className="font-semibold">{m.name}</div>
                         <div className="mt-0.5 font-mono text-xs text-muted-foreground">
                           {m.slug}@{m.version}
                         </div>
@@ -504,6 +497,8 @@ export function PublishMcpPanel({
                           size="icon"
                           onClick={() => setPendingDelete(m)}
                           aria-label={`Delete ${m.name}`}
+                          title="Delete"
+                          className="hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

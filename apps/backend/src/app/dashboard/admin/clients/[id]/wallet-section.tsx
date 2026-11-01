@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Wallet } from "lucide-react";
+import { AlertTriangle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, fieldClasses } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,6 +20,7 @@ import {
 import { describeLedgerEntry, formatCredit, formatSignedCredit } from "@/lib/billing/upgrade-state";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { IconTile } from "../../admin-ui";
 
 interface AdminWallet {
   paidMicros: number;
@@ -103,11 +104,11 @@ export function WalletSection({ clientId }: { clientId: string }) {
 
   return (
     <Card>
-      <CardHeader className="border-b border-border px-6 py-4">
+      <CardHeader className="border-b border-border py-4">
         <CardTitle className="flex flex-wrap items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
-            <Wallet className="h-4 w-4" />
-          </span>
+          <IconTile>
+            <Wallet />
+          </IconTile>
           Crédit prépayé
           {wallet && (
             <Badge variant={wallet.funded ? "success" : "secondary"}>
@@ -115,45 +116,43 @@ export function WalletSection({ clientId }: { clientId: string }) {
             </Badge>
           )}
         </CardTitle>
-        <CardDescription className="pl-12">
+        <CardDescription className="sm:pl-12">
           Soldes, mouvements du registre, et ajout ou retrait de crédit avec un motif (audité).
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-6 pt-[var(--card-padding)]">
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : error || !wallet ? (
-          <p className="text-sm italic text-muted-foreground">{error || "Aucune donnée."}</p>
+          <p className="text-sm text-muted-foreground">{error || "Aucune donnée."}</p>
         ) : (
           <>
-            <dl className="lining grid gap-4 sm:grid-cols-4">
-              <Stat
-                label="Solde total"
-                value={fr(wallet.totalMicros)}
-                danger={wallet.totalMicros <= 0}
-              />
-              <Stat label="Payé" value={fr(wallet.paidMicros)} />
-              <Stat
-                label="Offert"
-                value={fr(wallet.promoMicros)}
-                sub={
-                  wallet.promoExpiresAt
-                    ? `${wallet.promoExpired ? "expiré le" : "expire le"} ${formatDateTime(wallet.promoExpiresAt)}`
-                    : undefined
-                }
-              />
-              <Stat
-                label="Recharge auto"
-                value={wallet.autoRecharge.enabled ? "Active" : "Inactive"}
-                sub={
-                  wallet.autoRecharge.enabled
-                    ? `${fr(wallet.autoRecharge.amountMicros)} sous ${fr(wallet.autoRecharge.thresholdMicros)}`
-                    : wallet.autoRecharge.hasPaymentMethod
-                      ? "carte enregistrée"
-                      : "pas de carte"
-                }
-              />
-            </dl>
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-start">
+              <BalancePanel wallet={wallet} />
+              <dl className="grid gap-4 tabular-nums sm:grid-cols-3">
+                <Stat label="Payé" value={fr(wallet.paidMicros)} />
+                <Stat
+                  label="Offert"
+                  value={fr(wallet.promoMicros)}
+                  sub={
+                    wallet.promoExpiresAt
+                      ? `${wallet.promoExpired ? "expiré le" : "expire le"} ${formatDateTime(wallet.promoExpiresAt)}`
+                      : undefined
+                  }
+                />
+                <Stat
+                  label="Recharge auto"
+                  value={wallet.autoRecharge.enabled ? "Active" : "Inactive"}
+                  sub={
+                    wallet.autoRecharge.enabled
+                      ? `${fr(wallet.autoRecharge.amountMicros)} sous ${fr(wallet.autoRecharge.thresholdMicros)}`
+                      : wallet.autoRecharge.hasPaymentMethod
+                        ? "carte enregistrée"
+                        : "pas de carte"
+                  }
+                />
+              </dl>
+            </div>
             <AdjustForm clientId={clientId} onDone={() => void load()} />
           </>
         )}
@@ -161,12 +160,10 @@ export function WalletSection({ clientId }: { clientId: string }) {
       {wallet && (
         <CardContent className="border-t border-border p-0">
           {entries.length === 0 ? (
-            <p className="px-6 py-6 text-center text-sm italic text-muted-foreground">
-              Aucun mouvement.
-            </p>
+            <p className="px-6 py-6 text-center text-sm text-muted-foreground">Aucun mouvement.</p>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="[&_td]:py-2">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-40 pl-6">Date (UTC)</TableHead>
@@ -208,7 +205,7 @@ export function WalletSection({ clientId }: { clientId: string }) {
             <button
               type="button"
               onClick={() => void load(nextCursor)}
-              className="smallcaps tracking-sc lining w-full border-t border-border py-2.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+              className="w-full rounded-b-2xl border-t border-border py-3 text-sm font-medium text-brand transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               Plus ancien
             </button>
@@ -219,22 +216,78 @@ export function WalletSection({ clientId }: { clientId: string }) {
   );
 }
 
-function Stat({
-  label,
-  value,
-  sub,
-  danger = false,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  danger?: boolean;
-}) {
+/**
+ * The client's balance in the dashboard CreditCard visual (spec §4.11/§6):
+ * soft-pink offer card while only free credit is live, a quiet card once
+ * funded, red with an icon at or below zero. The figure is the key number
+ * (rose); the stacked bar splits paid (brand) and free credit (rose).
+ */
+function BalancePanel({ wallet }: { wallet: AdminWallet }) {
+  const paid = Math.max(0, wallet.paidMicros);
+  const promo = wallet.promoExpired ? 0 : Math.max(0, wallet.promoMicros);
+  const whole = paid + promo;
+  const empty = wallet.totalMicros <= 0;
+  const promoOnly = !wallet.funded && promo > 0 && !empty;
   return (
-    <div>
-      <dt className="smallcaps tracking-sc text-xs text-muted-foreground">{label}</dt>
-      <dd className={cn("mt-1 text-2xl font-medium", danger && "text-destructive")}>{value}</dd>
-      {sub && <dd className="mt-0.5 text-xs italic text-muted-foreground">{sub}</dd>}
+    <div
+      className={cn(
+        "rounded-2xl border p-5",
+        empty
+          ? "border-destructive/30 bg-destructive/10"
+          : promoOnly
+            ? "border-offer-border bg-offer"
+            : "border-border bg-secondary"
+      )}
+    >
+      <p
+        className={cn(
+          "flex items-center gap-1.5 text-xs font-medium",
+          empty ? "text-destructive" : promoOnly ? "text-offer-foreground" : "text-muted-foreground"
+        )}
+      >
+        {empty && <AlertTriangle aria-hidden className="size-3.5 shrink-0" />}
+        Solde total
+      </p>
+      <p
+        className={cn(
+          "mt-1 font-display text-3xl font-bold tabular-nums tracking-tight",
+          empty ? "text-destructive" : "text-primary"
+        )}
+      >
+        {fr(wallet.totalMicros)}
+      </p>
+      {whole > 0 && (
+        <>
+          <div
+            className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-offer-border"
+            role="img"
+            aria-label={`Payé ${fr(paid)}, offert ${fr(promo)}`}
+          >
+            <div className="h-full bg-brand" style={{ width: `${(paid / whole) * 100}%` }} />
+            <div className="h-full bg-primary" style={{ width: `${(promo / whole) * 100}%` }} />
+          </div>
+          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden className="size-2 rounded-full bg-brand" />
+              Payé
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden className="size-2 rounded-full bg-primary" />
+              Offert
+            </span>
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-xl border border-border p-4">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 font-display text-xl font-bold tracking-tight">{value}</dd>
+      {sub && <dd className="mt-0.5 text-xs text-muted-foreground">{sub}</dd>}
     </div>
   );
 }
@@ -311,7 +364,9 @@ function AdjustForm({ clientId, onDone }: { clientId: string; onDone: () => void
 
   return (
     <form onSubmit={submit} className="space-y-3 border-t border-border pt-5" noValidate>
-      <p className="smallcaps tracking-sc text-xs font-medium">Ajouter ou retirer du crédit</p>
+      <p className="font-display text-base font-semibold tracking-tight">
+        Ajouter ou retirer du crédit
+      </p>
       <div className="grid gap-3 sm:grid-cols-4">
         <div className="space-y-2">
           <Label htmlFor="adj-amount">Montant (€)</Label>
@@ -321,7 +376,7 @@ function AdjustForm({ clientId, onDone }: { clientId: string; onDone: () => void
             placeholder="10 ou -5"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="lining"
+            className="tabular-nums"
           />
         </div>
         <div className="space-y-2">
@@ -330,7 +385,7 @@ function AdjustForm({ clientId, onDone }: { clientId: string; onDone: () => void
             id="adj-bucket"
             value={bucket}
             onChange={(e) => setBucket(e.target.value === "paid" ? "paid" : "promo")}
-            className="flex h-10 w-full border border-input bg-card px-3 text-sm text-foreground focus-visible:border-foreground focus-visible:outline-none"
+            className={cn(fieldClasses, "flex h-10 [&>option]:bg-card [&>option]:text-foreground")}
           >
             <option value="promo">Offert (promo)</option>
             <option value="paid">Payé</option>
@@ -344,7 +399,7 @@ function AdjustForm({ clientId, onDone }: { clientId: string; onDone: () => void
             value={days}
             disabled={bucket !== "promo"}
             onChange={(e) => setDays(e.target.value)}
-            className="lining"
+            className="tabular-nums"
           />
         </div>
         <div className="space-y-2">
@@ -358,16 +413,21 @@ function AdjustForm({ clientId, onDone }: { clientId: string; onDone: () => void
           />
         </div>
       </div>
-      <p className="text-xs italic text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         Un retrait peut rendre le solde négatif. Le crédit payé ajouté ici ne compte pas comme un
         premier paiement (le compte reste non financé).
       </p>
       {error && (
-        <p className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
           {error}
         </p>
       )}
-      <Button type="submit" disabled={saving}>
+      {/* Outline: "Créer un serveur" is this screen's one rose primary. */}
+      <Button type="submit" variant="outline" disabled={saving}>
         {saving ? "Enregistrement…" : "Appliquer"}
       </Button>
     </form>

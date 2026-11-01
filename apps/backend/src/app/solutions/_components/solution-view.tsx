@@ -1,12 +1,18 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/marketing/section";
 import { Faq } from "@/components/marketing/faq";
 import { JsonLd } from "@/components/seo/json-ld";
 import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
-import { FUNDED_UNLOCKS, SIGNUP_OFFER, WALLET_SUMMARY } from "@/components/pricing/wallet-copy";
+import {
+  FUNDED_UNLOCKS,
+  SIGNUP_OFFER,
+  WALLET_SUMMARY,
+  walletFacts,
+} from "@/components/pricing/wallet-copy";
+import { BrandLogo, hasBrandLogo } from "@/components/brand/brand-logo";
 import { getServerBySlug } from "@/lib/servers/catalog";
 import { breadcrumbListSchema, faqPageSchema, itemListSchema } from "@/lib/seo/schema";
 import type { Locale } from "@/lib/i18n/locales";
@@ -29,10 +35,10 @@ import {
 
 const PRICING_HREF: Record<Locale, string> = { en: "/plans", fr: "/fr/tarifs" };
 
-const EYEBROW_RULES =
-  "eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']";
-const LINK =
-  "text-brand underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand";
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
+
+const LINK = "font-medium text-brand underline-offset-4 hover:underline";
 
 const UI = {
   en: {
@@ -48,7 +54,7 @@ const UI = {
     toBring: (n: number) => `${n} setting${n > 1 ? "s" : ""} to provide`,
     fitsFree: "Fits on the free-credit server",
     requestSetup: "Request a guided setup",
-    startFree: "Start free",
+    startFree: `Claim my ${EN.signupCredit} credit`,
     problemEyebrow: "The problem",
     problemTitle: "Why this pack",
     forWhom: "Who it is for",
@@ -106,7 +112,7 @@ const UI = {
     toBring: (n: number) => `${n} paramètre${n > 1 ? "s" : ""} à fournir`,
     fitsFree: "Tient sur le serveur du crédit offert",
     requestSetup: "Demander une installation",
-    startFree: "Démarrer gratuitement",
+    startFree: `Récupérer mes ${FR.signupCredit} offerts`,
     problemEyebrow: "Le problème",
     problemTitle: "Pourquoi ce pack",
     forWhom: "Pour qui",
@@ -153,7 +159,7 @@ const UI = {
   },
 } as const;
 
-/** One line of small-caps facts under a hero or a card ("3 MCPs · No API key…"). */
+/** One line of facts under a hero or a card ("3 MCPs · No API key…"). */
 function packFacts(solution: Solution, locale: Locale): string[] {
   const t = UI[locale];
   const mcps = solutionMcps(solution);
@@ -166,9 +172,7 @@ function packFacts(solution: Solution, locale: Locale): string[] {
 
 function AddressLine({ items }: { items: string[] }) {
   return (
-    <p className="smallcaps tracking-sc lining text-xs text-muted-foreground">
-      {items.join(" · ")}
-    </p>
+    <p className="text-xs tabular-nums text-muted-foreground sm:text-sm">{items.join(" · ")}</p>
   );
 }
 
@@ -190,28 +194,30 @@ export function SolutionsIndexView({ locale }: { locale: Locale }) {
           ),
         ]}
       />
-      <section className="w-full py-20 md:py-28">
-        <div className="mx-auto max-w-5xl px-6 text-center">
-          <p className={EYEBROW_RULES}>{t.indexEyebrow}</p>
-          <h1 className="display letterpress mx-auto mt-6 max-w-4xl text-balance text-4xl md:text-5xl lg:text-6xl">
+      <section className="w-full py-16 md:py-24">
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
+          <p className="eyebrow">{t.indexEyebrow}</p>
+          <h1 className="mx-auto mt-3 max-w-4xl text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             {t.indexTitle}
           </h1>
-          <div className="mx-auto mt-8 h-px w-12 bg-foreground/40" />
-          <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
             {t.indexLead}
           </p>
         </div>
       </section>
 
       <Section bordered>
-        <ul className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2">
+        <ul className="mx-auto grid max-w-5xl gap-4 md:grid-cols-2 md:gap-6">
           {SOLUTIONS.map((s) => {
             const c = s[locale];
             return (
-              <li key={s.bundleId} className="flex flex-col border border-border bg-card p-6">
+              <li
+                key={s.bundleId}
+                className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-input hover:shadow-md sm:p-6"
+              >
                 <p className="eyebrow">{c.eyebrow}</p>
-                <h2 className="mt-3 text-xl font-medium">
-                  <Link href={solutionPath(s, locale) as Route} className="hover:underline">
+                <h2 className="mt-3 font-display text-xl font-bold tracking-tight">
+                  <Link href={solutionPath(s, locale) as Route} className="hover:text-brand">
                     {c.title}
                   </Link>
                 </h2>
@@ -220,8 +226,11 @@ export function SolutionsIndexView({ locale }: { locale: Locale }) {
                   {solutionMcps(s).map((m) => (
                     <code
                       key={m.slug}
-                      className="border border-border bg-background px-2 py-0.5 font-mono text-sm text-muted-foreground"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-0.5 font-mono text-sm text-muted-foreground"
                     >
+                      {hasBrandLogo(m.slug) ? (
+                        <BrandLogo slug={m.slug} size={14} decorative />
+                      ) : null}
                       {m.slug}
                     </code>
                   ))}
@@ -231,17 +240,17 @@ export function SolutionsIndexView({ locale }: { locale: Locale }) {
                 </div>
                 <Link
                   href={solutionPath(s, locale) as Route}
-                  className={`smallcaps tracking-sc mt-5 inline-flex min-h-10 items-center gap-2 text-sm ${LINK}`}
+                  className={`mt-5 inline-flex min-h-10 items-center gap-2 text-sm ${LINK}`}
                   data-cta-location={`solutions_index_${s.bundleId}`}
                 >
                   {t.indexCta}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
               </li>
             );
           })}
         </ul>
-        <p className="lining mx-auto mt-12 max-w-3xl text-center text-sm italic text-muted-foreground">
+        <p className="mx-auto mt-12 max-w-3xl text-center text-sm tabular-nums text-muted-foreground">
           {t.priceLine} {t.planFacts()}
         </p>
       </Section>
@@ -273,25 +282,24 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
         ]}
       />
 
-      {/* The centred name: eyebrow, engraved H1, hairline, lead, CTAs, address line. */}
-      <section className="w-full py-20 md:py-28">
-        <div className="mx-auto max-w-5xl px-6 text-center">
-          <p className={EYEBROW_RULES}>{c.eyebrow}</p>
-          <h1 className="display letterpress mx-auto mt-6 max-w-4xl text-balance text-4xl md:text-5xl lg:text-6xl">
+      {/* Hero: eyebrow, H1, lead, one rose CTA, the guided path, the pack facts. */}
+      <section className="w-full py-16 md:py-24">
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
+          <p className="eyebrow">{c.eyebrow}</p>
+          <h1 className="mx-auto mt-3 max-w-4xl text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             {c.title}
           </h1>
-          <div className="mx-auto mt-8 h-px w-12 bg-foreground/40" />
-          <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
             {c.lead}
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild size="lg" className="w-full max-w-xs sm:w-auto sm:max-w-none">
+          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <Button asChild size="lg">
               <Link
                 href={signUpHref(locale, "free") as Route}
                 data-cta-location={`solution_hero_${solution.bundleId}`}
               >
                 {t.startFree}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight aria-hidden />
               </Link>
             </Button>
             <Button asChild size="lg" variant="ghost">
@@ -316,33 +324,38 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
               {p}
             </p>
           ))}
-          <div className="mt-10 border-l border-foreground/60 pl-5">
-            <h3 className="smallcaps tracking-sc text-base font-medium">{t.forWhom}</h3>
+          <div className="mt-10 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <h3 className="font-display text-base font-semibold tracking-tight">{t.forWhom}</h3>
             <p className="mt-2 text-base text-muted-foreground">{c.audience}</p>
           </div>
         </div>
       </Section>
 
       <Section bordered eyebrow={t.packEyebrow} title={t.packTitle}>
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div
             aria-hidden
-            className="smallcaps tracking-sc hidden border-b border-foreground/50 pb-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-8"
+            className="hidden border-b border-border bg-surface-alt px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-8"
           >
             <span>{t.packHead[0]}</span>
             <span>{t.packHead[1]}</span>
           </div>
-          <ul className="border-t border-foreground/50 sm:border-t-0">
+          <ul className="divide-y divide-border">
             {mcps.map((m) => {
               // Link to the catalogue page when one exists (EN content only).
               const detail = locale === "en" && getServerBySlug(m.slug);
               return (
                 <li
                   key={m.slug}
-                  className="grid gap-2 border-b border-border py-5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-8"
+                  className="grid gap-2 px-5 py-5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-8"
                 >
                   <div>
-                    <strong className="text-base font-medium">{m.name}</strong>
+                    <span className="flex items-center gap-2">
+                      {hasBrandLogo(m.slug) ? (
+                        <BrandLogo slug={m.slug} size={18} decorative />
+                      ) : null}
+                      <strong className="text-base font-semibold">{m.name}</strong>
+                    </span>
                     <code className="mt-1 block font-mono text-sm text-muted-foreground">
                       {m.slug}
                     </code>
@@ -350,7 +363,7 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
                   <div>
                     <p className="text-base text-muted-foreground">{m.description[locale]}</p>
                     <p className="mt-2 text-sm">
-                      <span className="smallcaps tracking-sc text-xs text-muted-foreground">
+                      <span className="text-xs font-semibold text-muted-foreground">
                         {t.youBring} ·{" "}
                       </span>
                       <span className={m.needs ? "text-foreground" : "text-muted-foreground"}>
@@ -380,10 +393,10 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
             <p className="text-lg text-muted-foreground">{t.bringNone}</p>
           ) : (
             <>
-              <ul className="divide-y divide-border border-y border-border">
+              <ul className="divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
                 {needing.map((m) => (
-                  <li key={m.slug} className="py-4">
-                    <span className="font-medium">{m.name}</span>
+                  <li key={m.slug} className="px-5 py-4">
+                    <span className="font-semibold">{m.name}</span>
                     <span className="text-muted-foreground"> · {m.needs?.[locale]}</span>
                   </li>
                 ))}
@@ -396,9 +409,10 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
               {c.notes.map((n) => (
                 <li
                   key={n}
-                  className="border border-info/40 bg-info/10 px-4 py-3 text-sm text-info"
+                  className="flex gap-3 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info"
                 >
-                  {n}
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                  <span>{n}</span>
                 </li>
               ))}
             </ul>
@@ -414,9 +428,9 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
       >
         <ul className="mx-auto grid max-w-4xl gap-4">
           {c.prompts.map((p) => (
-            <li key={p.text} className="border border-border bg-secondary/60 p-5">
+            <li key={p.text} className="rounded-2xl border border-border bg-surface-alt p-5">
               <p className="font-mono text-sm leading-relaxed text-foreground">{p.text}</p>
-              <p className="smallcaps tracking-sc mt-3 text-xs text-muted-foreground">
+              <p className="mt-3 text-xs text-muted-foreground">
                 {t.uses} · {p.uses.join(", ")}
                 {p.needsFiles ? ` · ${t.needsFiles}` : ""}
               </p>
@@ -426,14 +440,17 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
       </Section>
 
       <Section bordered eyebrow={t.pathsEyebrow} title={t.pathsTitle}>
-        <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2">
-          <div className="flex flex-col border border-border bg-card p-6">
-            <h3 className="smallcaps tracking-sc text-lg font-medium">{t.diy.name}</h3>
+        <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-2 md:gap-6">
+          <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <h3 className="font-display text-lg font-semibold tracking-tight">{t.diy.name}</h3>
             <ol className="mt-4 flex-1 space-y-3">
               {t.diy.steps.map((step, i) => (
                 <li key={step} className="flex gap-3 text-base text-muted-foreground">
-                  <span aria-hidden className="lining font-medium text-foreground">
-                    {i + 1}.
+                  <span
+                    aria-hidden
+                    className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-xs font-semibold tabular-nums text-brand-foreground"
+                  >
+                    {i + 1}
                   </span>
                   <span>{step}</span>
                 </li>
@@ -458,29 +475,29 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
               </Button>
             </div>
           </div>
-          <div className="flex flex-col border border-foreground/60 bg-card p-6">
-            <h3 className="smallcaps tracking-sc text-lg font-medium">{t.guided.name}</h3>
+          <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <h3 className="font-display text-lg font-semibold tracking-tight">{t.guided.name}</h3>
             <p className="mt-4 flex-1 text-base text-muted-foreground">{t.guided.body}</p>
             <div className="mt-6">
-              <Button asChild>
+              <Button asChild variant="outline">
                 <Link
                   href={demoHref as Route}
                   data-cta-location={`solution_guided_${solution.bundleId}`}
                 >
                   {t.guided.cta}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight aria-hidden />
                 </Link>
               </Button>
             </div>
           </div>
         </div>
         <div className="mx-auto mt-10 max-w-3xl text-center">
-          <p className="text-lg font-medium">{t.priceLine}</p>
-          <p className="lining mt-3 text-sm italic text-muted-foreground">{t.planFacts()}</p>
+          <p className="text-lg font-semibold">{t.priceLine}</p>
+          <p className="mt-3 text-sm tabular-nums text-muted-foreground">{t.planFacts()}</p>
         </div>
       </Section>
 
-      <div className="rule-double">
+      <div className="border-t border-border">
         <Faq
           locale={locale}
           items={[...c.faq]}
@@ -498,13 +515,15 @@ export function SolutionView({ solution, locale }: { solution: Solution; locale:
             <li key={s.bundleId}>
               <Link
                 href={solutionPath(s, locale) as Route}
-                className="flex min-h-10 items-center justify-between gap-4 border border-border bg-card p-4 transition-colors hover:bg-secondary"
+                className="group flex min-h-10 items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-input hover:shadow-md"
               >
                 <span>
                   <span className="eyebrow block">{s[locale].eyebrow}</span>
-                  <span className="mt-1 block text-base font-medium">{s[locale].name}</span>
+                  <span className="mt-1 block font-display text-base font-semibold tracking-tight group-hover:text-brand">
+                    {s[locale].name}
+                  </span>
                 </span>
-                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <ArrowRight className="h-4 w-4 shrink-0 text-brand" aria-hidden />
               </Link>
             </li>
           ))}

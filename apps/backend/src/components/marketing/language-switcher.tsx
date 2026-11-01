@@ -4,9 +4,11 @@ import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LOCALES, localeFromPath } from "@/lib/i18n/locales";
+import { LOCALES, LOCALE_LABELS, localeFromPath } from "@/lib/i18n/locales";
 import { localeSwitchTargets } from "@/lib/i18n/switch";
 
+// A two-segment EN | FR control. The current language is the selected chip
+// (brand blue, spec §2.4), the other one a plain link.
 export function LanguageSwitcher({ className }: { className?: string }) {
   const pathname = usePathname() ?? "/";
   const active = localeFromPath(pathname);
@@ -19,7 +21,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "inline-flex items-center border border-border/60 bg-background p-0.5 text-xs",
+        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 text-xs font-semibold",
         className
       )}
       role="group"
@@ -32,12 +34,14 @@ export function LanguageSwitcher({ className }: { className?: string }) {
             key={loc}
             href={targets[loc] as Route}
             hrefLang={loc}
+            lang={loc}
+            title={LOCALE_LABELS[loc]}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "smallcaps tracking-sc px-2 py-1 font-medium transition-colors",
+              "inline-flex min-h-7 min-w-8 items-center justify-center rounded-md px-2 uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isActive
-                ? "bg-secondary text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-brand/10 text-brand"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
             {loc}

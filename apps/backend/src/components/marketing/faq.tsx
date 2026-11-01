@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -7,10 +8,23 @@ import {
 import type { Locale } from "@/lib/i18n/locales";
 import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
 import { walletFacts } from "@/components/pricing/wallet-copy";
+import { getServerBySlug } from "@/lib/servers/catalog";
+import { PROMO_EXCLUDED_MCP_SLUGS } from "@/lib/wallet/eligibility";
+import { cn } from "@/lib/utils";
 import { Section } from "./section";
 
 const EN = walletFacts("en");
 const FR = walletFacts("fr");
+
+// The MCPs held back from the sign-up credit (lib/wallet/eligibility.ts), by
+// their catalogue names, joined the way each language writes a list.
+function excludedNames(locale: Locale): string {
+  const names = PROMO_EXCLUDED_MCP_SLUGS.map((slug) => getServerBySlug(slug)?.name ?? slug);
+  const and = locale === "fr" ? " et " : " and ";
+  return names.length > 1
+    ? `${names.slice(0, -1).join(", ")}${and}${names.at(-1)}`
+    : names.join("");
+}
 
 export interface FaqItem {
   q: string;
@@ -35,6 +49,14 @@ export const defaultFaqItems: { q: string; a: string }[] = [
     a: "No. TwinMCP is prepaid: you can only spend the credit in your balance. When it reaches zero, tool calls are refused with a clear message and your servers pause. Nothing is charged to a card unless you turn on auto-recharge, which has a monthly cap you set.",
   },
   {
+    q: "Am I charged while my server is idle?",
+    a: "Compute is charged on the active CPU time your server uses. A paused server uses none, an awake but idle one uses very little, and servers pause on their own after a period without activity.",
+  },
+  {
+    q: "Which MCPs need a top-up first?",
+    a: `MCPs that run shell commands, code or a headless browser (for example ${excludedNames("en")}) unlock with your first top-up. Everything else runs on the free credit.`,
+  },
+  {
     q: "What happens when the free credit runs out?",
     a: `Nothing is charged: with no card on file, nothing can be. Calls stop until you top up from ${EN.minTopup}, whenever you decide. Your first top-up also unlocks up to ${EN.fundedServers} servers and every box size.`,
   },
@@ -43,7 +65,7 @@ export const defaultFaqItems: { q: string; a: string }[] = [
     a: "No. Pick an MCP from the catalog: TwinMCP installs it in your isolated server and gives you a URL and an API key. It takes about 2 minutes.",
   },
   {
-    q: "Can I host an MCP server that isn't in the catalogue?",
+    q: "Can I host an MCP server that isn’t in the catalogue?",
     a: "Yes, once your account is funded (after your first top-up). Publish any MCP server shipped as an npm or PyPI package, stdio servers included: TwinMCP installs it in your isolated server, bridges stdio to Streamable HTTP and gives it a URL like any catalogue MCP. It stays private to your account. Servers that only ship as a Docker image cannot run in the sandbox today.",
   },
   {
@@ -76,6 +98,14 @@ export const frFaqItems: { q: string; a: string }[] = [
   {
     q: "Puis-je recevoir une facture surprise ?",
     a: "Non. TwinMCP est prépayé : vous ne pouvez dépenser que le crédit de votre solde. Quand il arrive à zéro, les appels d’outils sont refusés avec un message clair et vos serveurs se mettent en pause. Rien n’est prélevé sur une carte, sauf si vous activez la recharge automatique, plafonnée chaque mois au montant que vous fixez.",
+  },
+  {
+    q: "Suis-je facturé quand mon serveur est inactif ?",
+    a: "Le calcul est facturé au temps CPU actif. Un serveur en pause n’en consomme pas, un serveur éveillé mais inactif très peu, et les serveurs se mettent en pause d’eux-mêmes après une période sans activité.",
+  },
+  {
+    q: "Quels MCP demandent une première recharge ?",
+    a: `Les MCP qui exécutent des commandes shell, du code ou un navigateur headless (par exemple ${excludedNames("fr")}) se débloquent à la première recharge. Tout le reste fonctionne avec le crédit offert.`,
   },
   {
     q: "Que se passe-t-il quand le crédit offert est épuisé ?",
@@ -111,7 +141,7 @@ const DEFAULTS: Record<Locale, { title: string; description: string; items: FaqI
   en: {
     title: "Questions that come up before signing up",
     description:
-      "If something's missing, send it to hello@twinmcp.fr — answers feed back into this list.",
+      "If something’s missing, send it to hello@twinmcp.fr — answers feed back into this list.",
     items: defaultFaqItems,
   },
   fr: {
@@ -128,11 +158,13 @@ interface FaqProps {
   title?: React.ReactNode;
   description?: React.ReactNode;
   id?: string;
+  /** Extra classes on the section (e.g. a background). */
+  className?: string;
   /** Picks the default items, title and description. */
   locale?: Locale;
-  /** "accordion" (default) collapses answers; "list" prints every answer as an
-   *  open ledger, so objections are answered without a click and the answers
-   *  are in the HTML that the FAQPage JSON-LD describes. */
+  /** "accordion" (default) is the Radix accordion. "list" is a stack of native
+   *  <details> rows (the first one open): collapsible without JavaScript, and
+   *  every answer stays in the HTML that the FAQPage JSON-LD describes. */
   variant?: "accordion" | "list";
 }
 
@@ -143,6 +175,7 @@ export function Faq({
   title,
   description,
   id = "faq",
+  className,
   variant = "accordion",
 }: FaqProps = {}) {
   const d = DEFAULTS[locale];
@@ -153,21 +186,30 @@ export function Faq({
       eyebrow={eyebrow}
       title={title ?? d.title}
       description={description ?? d.description}
-      className="scroll-mt-20"
+      className={cn("scroll-mt-20 py-16 md:py-24", className)}
+      containerClassName="px-4 sm:px-6"
     >
       {variant === "list" ? (
-        // The list is a ledger: a hairline above the first question closes the ruling.
-        <dl className="mx-auto max-w-3xl divide-y divide-border border-y border-border">
+        <div className="mx-auto grid max-w-3xl gap-3">
           {list.map((item, i) => (
-            <div key={i} className="py-5">
-              <dt className="text-lg font-medium">{item.q}</dt>
-              <dd className="mt-2 text-base leading-7 text-muted-foreground">{item.a}</dd>
-            </div>
+            <details
+              key={i}
+              open={i === 0}
+              className="group rounded-2xl border border-border bg-card shadow-sm open:shadow-md"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl p-5 text-left font-semibold text-foreground transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
+                <span>{item.q}</span>
+                <ChevronDown
+                  aria-hidden
+                  className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
+                />
+              </summary>
+              <div className="px-5 pb-5 text-base leading-7 text-muted-foreground">{item.a}</div>
+            </details>
           ))}
-        </dl>
+        </div>
       ) : (
-        // The accordion is a ledger: a hairline above the first question closes the ruling.
-        <div className="mx-auto max-w-3xl border-t border-border">
+        <div className="mx-auto max-w-3xl">
           <Accordion type="single" collapsible className="w-full">
             {list.map((item, i) => (
               <AccordionItem key={i} value={`item-${i}`}>

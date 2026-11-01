@@ -145,10 +145,8 @@ export function ReconfigureDialog({
             <Skeleton className="h-10 w-full" />
           </div>
         ) : fields.length === 0 ? (
-          <div className="border border-dashed border-foreground/40 px-6 py-8 text-center">
-            <p className="text-sm italic text-muted-foreground">
-              This MCP has no configuration options.
-            </p>
+          <div className="rounded-xl border-2 border-dashed border-border px-6 py-8 text-center">
+            <p className="text-sm text-muted-foreground">This MCP has no configuration options.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -157,12 +155,12 @@ export function ReconfigureDialog({
               const hasExisting = data.config[key] !== undefined && data.config[key] !== null;
               return (
                 <div key={key} className="space-y-2">
-                  {/* Config keys are code: typewriter, never small capitals (DESIGN.md §2). */}
-                  <Label htmlFor={key} className="no-smallcaps font-mono">
+                  {/* Config keys are code: mono. */}
+                  <Label htmlFor={key} className="font-mono">
                     {key}
                     {def.required && <span className="ml-1 text-destructive">*</span>}
                     {isSecret && hasExisting && (
-                      <span className="ml-2 font-serif text-xs font-normal italic text-muted-foreground">
+                      <span className="ml-2 font-sans text-xs font-normal text-muted-foreground">
                         (currently set — leave empty to keep)
                       </span>
                     )}
@@ -199,7 +197,7 @@ export function ReconfigureDialog({
                     />
                   )}
                   {def.description && !isSecret && (
-                    <p className="text-xs italic text-muted-foreground">{def.description}</p>
+                    <p className="text-xs text-muted-foreground">{def.description}</p>
                   )}
                 </div>
               );

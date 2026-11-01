@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/dashboard/empty-state";
 
 export default function DashboardError({
   error,
@@ -15,25 +17,28 @@ export default function DashboardError({
     console.error("[dashboard]", error);
   }, [error]);
 
-  // A card lifted off the stack (DESIGN.md §5, error pages): an "Error" eyebrow
-  // between two hairlines, the serif title, one italic line, one button.
+  // The empty-state pattern with the error tint (docs/DESIGN.md, Loading /
+  // error): an outline "Try again" and the primary way back to the overview.
   return (
-    <div className="flex justify-center py-10">
-      <div className="flex w-full max-w-lg flex-col items-center gap-5 border border-border bg-card p-10 text-center shadow-stack">
-        <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-          Error
-        </p>
-        <AlertCircle className="h-6 w-6 text-destructive" />
-        <div className="space-y-2">
-          <h2 className="text-3xl font-medium">Something went wrong</h2>
-          <p className="text-sm italic text-muted-foreground">
-            This section failed to load. You can retry — if it keeps happening, contact support.
-          </p>
-        </div>
-        <Button onClick={reset} variant="outline">
-          Try again
-        </Button>
-      </div>
+    <div className="py-6 md:py-10">
+      <EmptyState
+        icon={AlertTriangle}
+        tone="destructive"
+        title="Something went wrong"
+        description="This section failed to load. You can retry — if it keeps happening, contact support."
+        className="mx-auto max-w-lg"
+        primaryAction={
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/dashboard">Back to dashboard</Link>
+          </Button>
+        }
+        secondaryAction={
+          <Button onClick={reset} variant="outline" className="w-full sm:w-auto">
+            <RotateCcw className="h-4 w-4" />
+            Try again
+          </Button>
+        }
+      />
     </div>
   );
 }

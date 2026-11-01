@@ -18,7 +18,7 @@ describe("lifecycleLabel", () => {
     const l = lifecycleLabel(box("stopped", "box_1"));
     expect(l.state).toBe("paused");
     expect(l.label).toBe("Paused — resumes on next request");
-    expect(l.variant).toBe("info");
+    expect(l.variant).toBe("secondary");
     expect(l.transient).toBe(false);
     expect(l.label.toLowerCase()).not.toContain("stopped");
   });
@@ -48,7 +48,7 @@ describe("lifecycleLabel", () => {
     expect(lifecycleLabel(box("running", "box_1")).variant).toBe("success");
     expect(lifecycleLabel(box("error", null)).variant).toBe("destructive");
     expect(lifecycleLabel(box("destroyed", null)).variant).toBe("outline");
-    expect(lifecycleLabel(box("provisioning", null)).variant).toBe("warning");
+    expect(lifecycleLabel(box("provisioning", null)).variant).toBe("info");
   });
 
   it("speaks French for the admin console", () => {
@@ -57,7 +57,7 @@ describe("lifecycleLabel", () => {
     );
     expect(lifecycleLabel(box("stopped", null), "fr").label).toBe("Aucun runtime — Démarrer");
     // Same tint whatever the language.
-    expect(lifecycleLabel(box("stopped", "box_1"), "fr").variant).toBe("info");
+    expect(lifecycleLabel(box("stopped", "box_1"), "fr").variant).toBe("secondary");
   });
 
   it("never sends the old 'Sleeping… Start it' copy", () => {

@@ -17,15 +17,18 @@ export function PriceTable({ table, buys }: { table: PublicPriceTable; buys: Wha
     ["Medium and large boxes", "the compute cost the box reports"],
   ];
   return (
-    <Card>
-      <CardHeader className="border-b border-border px-6 py-4">
-        <CardTitle className="flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b border-border pb-4">
+        <CardTitle as="h2" className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-secondary text-brand"
+          >
             <Tag className="h-4 w-4" />
           </span>
           What costs what
         </CardTitle>
-        <CardDescription className="pl-12">
+        <CardDescription className="sm:pl-12">
           You pay for tool calls and for the CPU time your servers actually use.
         </CardDescription>
       </CardHeader>
@@ -34,22 +37,22 @@ export function PriceTable({ table, buys }: { table: PublicPriceTable; buys: Wha
           <TableBody>
             {rows.map(([label, value]) => (
               <TableRow key={label}>
-                <TableCell className="pl-6">{label}</TableCell>
-                <TableCell className="pr-6 text-right font-medium">{value}</TableCell>
+                <TableCell className="pl-5 sm:pl-6">{label}</TableCell>
+                <TableCell className="pr-5 text-right font-semibold sm:pr-6">{value}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        <div className="space-y-3 border-t border-border px-6 py-4 text-sm">
-          <p className="smallcaps tracking-sc text-xs text-muted-foreground">
+        <div className="space-y-3 border-t border-border px-5 py-4 text-sm sm:px-6">
+          <p className="text-sm font-semibold text-foreground">
             What {formatCredit(eurToMicros(buys.amountEur))} buys, spent on one thing only
           </p>
-          <ul className="lining list-disc space-y-1 pl-5">
+          <ul className="list-disc space-y-1 pl-5 tabular-nums marker:text-brand">
             {buys.examples.en.map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>
-          <ul className="space-y-1 text-xs italic text-muted-foreground">
+          <ul className="space-y-1 text-xs text-muted-foreground">
             {table.notes.en.map((line) => (
               <li key={line}>{line}</li>
             ))}

@@ -1,14 +1,23 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-// Tables are ledgers: hairline row rules, a firmer rule under the header,
-// small-capital column names, lining tabular figures.
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+// Tables sit in a rounded white frame with a light-blue header row and
+// tabular figures. Horizontal overflow scrolls inside the frame, never the
+// page. Inside a Card the frame drops its own border/radius (the card is
+// already the frame). Use `containerClassName` to style the frame.
+type TableProps = React.HTMLAttributes<HTMLTableElement> & { containerClassName?: string };
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, containerClassName, ...props }, ref) => (
+    <div
+      className={cn(
+        "relative w-full overflow-x-auto rounded-xl border border-border bg-card [[data-slot=card]_&]:rounded-none [[data-slot=card]_&]:border-0 [[data-slot=card]_&]:bg-transparent",
+        containerClassName
+      )}
+    >
       <table
         ref={ref}
-        className={cn("lining w-full caption-bottom text-sm", className)}
+        className={cn("w-full caption-bottom text-sm tabular-nums", className)}
         {...props}
       />
     </div>
@@ -20,11 +29,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead
-    ref={ref}
-    className={cn("[&_tr]:border-b [&_tr]:border-foreground/50", className)}
-    {...props}
-  />
+  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-border", className)} {...props} />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -41,7 +46,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        "border-b border-border transition-colors hover:bg-secondary/50 data-[state=selected]:bg-secondary",
+        "border-b border-border transition-colors hover:bg-accent/40 data-[state=selected]:bg-brand/5",
         className
       )}
       {...props}
@@ -57,7 +62,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "smallcaps tracking-sc h-10 px-3 text-left align-middle text-xs font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-10 bg-surface-alt px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -71,7 +76,10 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-3 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn(
+      "px-4 py-3 align-middle text-sm tabular-nums [&:has([role=checkbox])]:pr-0",
+      className
+    )}
     {...props}
   />
 ));

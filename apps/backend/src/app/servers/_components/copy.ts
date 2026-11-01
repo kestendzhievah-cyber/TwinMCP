@@ -30,6 +30,10 @@ export const COPY = {
     local: "Runs locally",
     guide: "Hosting guide →",
     indexCtaTitle: "Host any of these MCP servers",
+    jumpTo: "Jump to a category",
+    unlocks: "Unlocks with first top-up",
+    unlocksText:
+      "This MCP runs shell commands, code or a headless browser, so it unlocks with your first top-up. Everything else in the catalogue runs on the free credit.",
     ownTitle: "Not in the catalogue?",
     ownText:
       "Once your account is funded (after a first top-up), you can publish your own MCP server from an npm or PyPI package and host it the same way.",
@@ -68,7 +72,7 @@ export const COPY = {
     ctaEyebrow: "Managed MCP hosting",
     ctaTitle: (name: string) => `Host ${name} on TwinMCP`,
     ctaText: `${EN.signupCredit} of free credit at sign-up, no credit card. Then pay only for what you use.`,
-    ctaPrimary: `Start with ${EN.signupCredit} free →`,
+    ctaPrimary: `Start with ${EN.signupCredit} free`,
     ctaSecondary: "See pricing",
     // Client page
     setupGuide: "Setup guide",
@@ -92,7 +96,7 @@ export const COPY = {
       "Tous les serveurs MCP que vous pouvez installer sur TwinMCP, avec les clés que chacun demande, où les obtenir, et une configuration à copier pour chaque client.",
     indexMetaTitle: "Catalogue de serveurs MCP à héberger · TwinMCP",
     indexMetaDescription: (n: number) =>
-      `${n} serveurs MCP à héberger sur TwinMCP : ce que fait chacun, les clés à fournir et la configuration pour Cursor, Claude, VS Code, Windsurf, Cline et Zed.`,
+      `${n} serveurs MCP à héberger sur TwinMCP : ce que fait chacun, les clés à fournir et la configuration pour Cursor, Claude, VS Code, Windsurf, Cline et Zed.`,
     countLine: (n: number, cats: number, clients: number) =>
       `${n} serveurs MCP · ${cats} catégories · ${clients} clients`,
     serverCount: (n: number) => `${n} serveur${n > 1 ? "s" : ""}`,
@@ -102,7 +106,11 @@ export const COPY = {
     local: "En local",
     guide: "Guide d’hébergement →",
     indexCtaTitle: "Hébergez n’importe lequel de ces serveurs MCP",
-    ownTitle: "Absent du catalogue ?",
+    jumpTo: "Aller à une catégorie",
+    unlocks: "Débloqué à la première recharge",
+    unlocksText:
+      "Ce MCP exécute des commandes shell, du code ou un navigateur headless : il se débloque à la première recharge. Tout le reste du catalogue fonctionne avec le crédit offert.",
+    ownTitle: "Absent du catalogue ?",
     ownText:
       "Une fois votre compte alimenté (après une première recharge), vous pouvez publier votre propre serveur MCP à partir d’un paquet npm ou PyPI et l’héberger de la même façon.",
     whatItDoes: "Ce qu’il fait",
@@ -110,12 +118,12 @@ export const COPY = {
     commandLabel: "TwinMCP le lance avec",
     upstream: "dépôt source ↗",
     pinnedNote: (v: string) =>
-      `Version ${v} épinglée : une nouvelle version publiée en amont n’est prise qu’après mise à jour du catalogue.`,
-    latestNote: "Sans épinglage : le lanceur résout la dernière version publiée.",
+      `Version ${v} épinglée : une nouvelle version publiée en amont n’est prise qu’après mise à jour du catalogue.`,
+    latestNote: "Sans épinglage : le lanceur résout la dernière version publiée.",
     keysTitle: "Clés et réglages",
     keysLead: "À saisir une fois, à l’installation. Les valeurs secrètes sont stockées chiffrées.",
     noKeysText:
-      "Rien à configurer : ni clé API, ni réglage. Installez-le et connectez votre client.",
+      "Rien à configurer : ni clé API, ni réglage. Installez-le et connectez votre client.",
     colField: "Nom",
     colStatus: "Statut",
     colWhere: "Ce que c’est et où l’obtenir",
@@ -124,15 +132,15 @@ export const COPY = {
     secret: "Secret",
     localTitle: "S’exécute sur votre machine",
     localText: (name: string) =>
-      `${name} est un outil local : il tourne sur votre propre ordinateur, pas dans une box TwinMCP. Créez un serveur Local (agent) et laissez tourner ${LOCAL_AGENT.fr} ; TwinMCP lui relaie les requêtes de votre client.`,
+      `${name} est un outil local : il tourne sur votre propre ordinateur, pas dans une box TwinMCP. Créez un serveur Local (agent) et laissez tourner ${LOCAL_AGENT.fr} ; TwinMCP lui relaie les requêtes de votre client.`,
     stepsTitle: "Le mettre en place sur TwinMCP en 3 étapes",
     connectTitle: "Blocs de connexion",
     connectLead: (url: string) =>
-      `Remplacez mon-serveur par le slug de votre serveur et le modèle par votre clé API. URL du MCP : ${url}`,
+      `Remplacez mon-serveur par le slug de votre serveur et le modèle par votre clé API. URL du MCP : ${url}`,
     tabsLabel: "Client MCP",
     clientGuide: (client: string) => `Guide complet ${client} →`,
     serverUrlNote: (url: string) =>
-      `Plusieurs MCP sur un même serveur ? Connectez-les tous d’un coup avec l’URL du serveur ${url} : les outils sont préfixés par le slug du MCP, et ?mode=router n’expose que trois méta-outils au lieu de tous les outils.`,
+      `Plusieurs MCP sur un même serveur ? Connectez-les tous d’un coup avec l’URL du serveur ${url} : les outils sont préfixés par le slug du MCP, et ?mode=router n’expose que trois méta-outils au lieu de tous les outils.`,
     faqTitle: "Questions fréquentes",
     relatedTitle: "Serveurs MCP proches",
     readingTitle: "À lire aussi",
@@ -140,18 +148,18 @@ export const COPY = {
     ctaEyebrow: "Hébergement MCP géré",
     ctaTitle: (name: string) => `Hébergez ${name} sur TwinMCP`,
     ctaText: `${FR.signupCredit} de crédit offert à l’inscription, sans carte bancaire. Ensuite, vous ne payez que ce que vous utilisez.`,
-    ctaPrimary: `Démarrer avec ${FR.signupCredit} offerts →`,
+    ctaPrimary: `Démarrer avec ${FR.signupCredit} offerts`,
     ctaSecondary: "Voir les tarifs",
     setupGuide: "Guide d’installation",
     configTitle: (client: string) => `La configuration ${client}`,
     commandTitle: (client: string) => `La commande ${client}`,
-    aboutClientTitle: (client: string, name: string) => `${name} dans ${client} : l’essentiel`,
+    aboutClientTitle: (client: string, name: string) => `${name} dans ${client} : l’essentiel`,
     clientStepsTitle: "Pas à pas",
     troubleshootingTitle: "Dépannage",
     troubleshootingMore: "Toutes les erreurs et leurs solutions dans la doc →",
     otherClients: (name: string) => `${name} dans les autres clients`,
     sameClient: (client: string) => `Autres serveurs MCP dans ${client}`,
-    fullGuide: (name: string) => `${name} : guide d’hébergement`,
+    fullGuide: (name: string) => `${name} : guide d’hébergement`,
   },
 } as const;
 

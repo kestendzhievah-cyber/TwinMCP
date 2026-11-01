@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { maxMcpsForBoxSize } from "@/lib/plan-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,7 +68,7 @@ export function AdminCreateServerDialog({
   return (
     <>
       <Button size="sm" onClick={() => setOpen(true)}>
-        <Plus className="h-4 w-4" />
+        <Plus aria-hidden />
         Créer un serveur
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -81,23 +82,31 @@ export function AdminCreateServerDialog({
           </DialogHeader>
           <div className="space-y-5">
             <div className="flex flex-col gap-2">
-              <Label>Nom du serveur</Label>
+              <Label htmlFor="admin-server-name">Nom du serveur</Label>
               <Input
+                id="admin-server-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Production, Démo…"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label>Taille de la box</Label>
+              <Label htmlFor="admin-server-size">Taille de la box</Label>
               <Select value={boxSize} onValueChange={(v) => setBoxSize(v as BoxSize)}>
-                <SelectTrigger>
+                <SelectTrigger id="admin-server-size">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="small">Small — jusqu'à 4 MCPs</SelectItem>
-                  <SelectItem value="medium">Medium — jusqu'à 8 MCPs</SelectItem>
-                  <SelectItem value="large">Large — jusqu'à 16 MCPs</SelectItem>
+                  {/* Capacities from lib/plan-features (never hand-typed). */}
+                  <SelectItem value="small">
+                    Small — jusqu’à {maxMcpsForBoxSize("small")} MCPs
+                  </SelectItem>
+                  <SelectItem value="medium">
+                    Medium — jusqu’à {maxMcpsForBoxSize("medium")} MCPs
+                  </SelectItem>
+                  <SelectItem value="large">
+                    Large — jusqu’à {maxMcpsForBoxSize("large")} MCPs
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

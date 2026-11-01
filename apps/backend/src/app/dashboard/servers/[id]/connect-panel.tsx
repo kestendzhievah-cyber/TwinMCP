@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import type { Route } from "next";
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRight,
   Check,
   CheckCircle2,
@@ -18,6 +19,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { fieldClasses } from "@/components/ui/input";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { CodeSnippet } from "@/components/marketing/code-snippet";
 import { cn } from "@/lib/utils";
 import { CLI_PACKAGE, localAgentCommand } from "@/lib/cli";
@@ -43,6 +46,13 @@ interface ConnectMcp {
 }
 
 const IDE_KEYS = Object.keys(IDE_LABELS) as IdeKey[];
+
+const fieldLabel = "text-sm font-medium leading-none text-foreground";
+// Choice chips: the selected one is filled brand blue (the colour of selection).
+const chip =
+  "min-h-10 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card";
+const chipOn = "border-brand bg-brand text-brand-foreground";
+const chipOff = "border-input bg-card text-foreground hover:bg-accent";
 
 /** Whole server behind one URL (contract D3), or one URL per MCP. */
 type ConnectScope = "server" | "mcp";
@@ -173,26 +183,28 @@ export function ConnectPanel({
 
   return (
     <Card>
-      {/* Ruled header: hairline icon square + small-caps title, the brief in italic under it. */}
-      <CardHeader className="border-b border-border px-6 py-4">
-        <CardTitle className="flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
-            <Plug className="h-4 w-4" />
+      <CardHeader className="border-b border-border">
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-brand"
+          >
+            <Plug className="h-5 w-5" />
           </span>
-          Connect your LLM
-        </CardTitle>
-        <CardDescription className="pl-12">
-          One URL for the whole server, or one per MCP. Paste it into your client, then connect with
-          a <code className="font-mono text-xs not-italic">ctx7sk_</code> API key. Keys made here
-          can only call this server&apos;s MCPs, never manage your account.
-        </CardDescription>
+          <div className="min-w-0 space-y-1.5">
+            <CardTitle as="h2">Connect your LLM</CardTitle>
+            <CardDescription>
+              One URL for the whole server, or one per MCP. Paste it into your client, then connect
+              with a <code className="font-mono text-xs">ctx7sk_</code> API key. Keys made here can
+              only call this server&apos;s MCPs, never manage your account.
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-6 pt-5 sm:pt-6">
         {isLocalAgent && (
-          <div className="space-y-3 border border-info/40 border-l-2 border-l-info bg-info/10 p-4 text-sm">
-            <p className="smallcaps tracking-sc text-xs font-medium text-info">
-              Run the local agent
-            </p>
+          <div className="space-y-3 rounded-xl border border-info/30 bg-info/10 p-4 text-sm">
+            <p className="font-semibold text-info">Run the local agent</p>
             <p className="text-muted-foreground">
               This server&apos;s tools run on your machine. Start the agent there so your LLM can
               reach them, and keep it running. This uses the TwinMCP CLI (
@@ -205,7 +217,7 @@ export function ConnectPanel({
               language="bash"
               filename="Run in your terminal, on the machine that hosts the tool"
             />
-            <p className="text-xs italic text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {apiKey
                 ? "Your key is in the command above. The status badge turns running once the agent is connected."
                 : "Get a key below and it drops into the command. The status badge turns running once the agent is connected."}
@@ -215,7 +227,7 @@ export function ConnectPanel({
                 No local tool on this server yet —{" "}
                 <Link
                   href={"/dashboard/marketplace" as Route}
-                  className="font-medium text-foreground underline underline-offset-4"
+                  className="font-medium text-brand underline-offset-4 hover:underline"
                 >
                   add one from the Marketplace
                 </Link>
@@ -225,8 +237,8 @@ export function ConnectPanel({
           </div>
         )}
         {!isLocalAgent && status && status !== "running" && (
-          <p className="flex items-start gap-2 border border-warning/40 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-sm text-warning">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+            <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               Your server is <strong>{status}</strong> — the connection details below start working
               once it reaches <strong>running</strong>.
@@ -236,14 +248,40 @@ export function ConnectPanel({
 
         {hasMcp && (
           <>
-            {/* Which MCP, which client. The MCP list is data (a select); the client is a
-                row of hairline stamps, the chosen one pressed in ink. */}
+            {/* Which client first (the logo tabs), then which endpoint. */}
             <div className="space-y-5">
               <div className="flex flex-col gap-2">
-                <p
-                  id="connect-scope-label"
-                  className="smallcaps tracking-sc text-xs font-medium leading-none text-foreground/85"
+                <p id="connect-client-label" className={fieldLabel}>
+                  Client
+                </p>
+                <div
+                  role="group"
+                  aria-labelledby="connect-client-label"
+                  className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-secondary p-1"
                 >
+                  {IDE_KEYS.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setIde(k)}
+                      aria-pressed={ide === k}
+                      className={cn(
+                        "inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-[background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        ide === k
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {/* Logos only where the brand allows it (no VS Code mark). */}
+                      <BrandLogo slug={k} size={16} decorative />
+                      {IDE_LABELS[k]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <p id="connect-scope-label" className={fieldLabel}>
                   Endpoint
                 </p>
                 <div
@@ -265,30 +303,25 @@ export function ConnectPanel({
                         test.reset();
                       }}
                       aria-pressed={scope === k}
-                      className={cn(
-                        "smallcaps tracking-sc min-h-10 border px-3 py-2 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card active:translate-y-px",
-                        scope === k
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-card text-muted-foreground hover:border-foreground/60 hover:text-foreground"
-                      )}
+                      className={cn(chip, scope === k ? chipOn : chipOff)}
                     >
                       {text}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs italic text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {scope === "server" ? (
                     <>
                       Every enabled MCP of {label} behind one endpoint. Tools are named{" "}
-                      <code className="font-mono not-italic">mcp__tool</code>; an MCP you add later
-                      appears the next time your client reloads its tools, with no config change.
+                      <code className="font-mono">mcp__tool</code>; an MCP you add later appears the
+                      next time your client reloads its tools, with no config change.
                     </>
                   ) : (
                     "One endpoint for a single MCP, if you want a client to see only its tools."
                   )}
                 </p>
                 {scope === "server" && (
-                  <label className="flex min-h-10 items-start gap-2 text-sm">
+                  <label className="flex min-h-10 cursor-pointer items-start gap-2.5 text-sm">
                     <input
                       type="checkbox"
                       checked={router}
@@ -296,13 +329,13 @@ export function ConnectPanel({
                         setRouter(e.target.checked);
                         test.reset();
                       }}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
                     />
                     <span>
-                      <span className="smallcaps tracking-sc text-xs font-medium text-foreground/85">
+                      <span className="font-medium text-foreground">
                         Router mode for large servers
                       </span>
-                      <span className="block text-xs italic text-muted-foreground">
+                      <span className="block text-xs text-muted-foreground">
                         Your client sees three tools (search, read a schema, call) instead of every
                         tool, which keeps its context small. Search is free; each call counts as one
                         tool call.
@@ -321,7 +354,7 @@ export function ConnectPanel({
                       setMcpSlug(e.target.value);
                       test.reset();
                     }}
-                    className="h-10 w-full max-w-xs border border-input bg-card px-3 text-sm text-foreground shadow-inner transition-colors focus-visible:border-foreground focus-visible:outline-none [&>option]:bg-card [&>option]:text-foreground"
+                    className={cn(fieldClasses, "h-10 max-w-xs [&>option]:bg-card")}
                   >
                     {enabled.map((m) => (
                       <option key={m.slug} value={m.slug}>
@@ -331,60 +364,26 @@ export function ConnectPanel({
                   </select>
                 </div>
               )}
-              <div className="flex flex-col gap-2">
-                <p
-                  id="connect-client-label"
-                  className="smallcaps tracking-sc text-xs font-medium leading-none text-foreground/85"
-                >
-                  Client
-                </p>
-                <div
-                  role="group"
-                  aria-labelledby="connect-client-label"
-                  className="flex flex-wrap gap-2"
-                >
-                  {IDE_KEYS.map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => setIde(k)}
-                      aria-pressed={ide === k}
-                      className={cn(
-                        "smallcaps tracking-sc h-10 border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card active:translate-y-px",
-                        ide === k
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-card text-muted-foreground hover:border-foreground/60 hover:text-foreground"
-                      )}
-                    >
-                      {IDE_LABELS[k]}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
-            {/* The endpoint: a typewriter line on darker stock, the copy button a
-                hairline square (DESIGN.md §4.6). */}
+            {/* The endpoint and its copy button: the panel's primary action. */}
             <div className="space-y-2">
-              <p className="smallcaps tracking-sc text-xs font-medium leading-none text-foreground/85">
+              <p id="connect-url-label" className={fieldLabel}>
                 Connection URL
               </p>
-              <div className="flex items-center gap-3 border border-border bg-secondary/60 py-1.5 pl-3 pr-1.5">
-                <code className="min-w-0 flex-1 truncate font-mono text-xs sm:text-sm">
-                  {url || "…"}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <code className="flex h-10 min-w-0 flex-1 items-center truncate rounded-lg border border-border bg-secondary px-3 font-mono text-xs sm:text-sm">
+                  <span className="truncate">{url || "…"}</span>
                 </code>
-                <button
+                <Button
                   type="button"
                   onClick={copyUrl}
-                  aria-label="Copy URL"
-                  className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+                  disabled={!url}
+                  className="w-full sm:w-auto"
                 >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-success" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? "Copied" : "Copy URL"}
+                </Button>
               </div>
             </div>
 
@@ -393,8 +392,8 @@ export function ConnectPanel({
         )}
 
         {!apiKey && (
-          <p className="flex items-start gap-2 border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
-            <KeyRound className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="flex items-start gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info">
+            <KeyRound aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               The <code className="font-mono">ctx7sk_…</code> {hasMcp ? "in the snippet" : "above"}{" "}
               is a <strong>placeholder</strong>, not your key.{" "}
@@ -414,10 +413,13 @@ export function ConnectPanel({
           </p>
         )}
 
-        {/* Get a key (reuse the existing one first), then prove the handshake. */}
+        {/* Get a key (reuse the existing one first), then prove the handshake.
+            Outline: the copy button above is the panel's one primary. A local
+            agent server has no URL to copy, so its key button is the primary. */}
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
           {!apiKey && key.existing && (
             <Button
+              variant={hasMcp ? "outline" : "default"}
               onClick={() => key.existing && void key.rotate(key.existing)}
               disabled={keyBusy}
             >
@@ -430,7 +432,7 @@ export function ConnectPanel({
             </Button>
           )}
           <Button
-            variant={apiKey || key.existing ? "outline" : "default"}
+            variant={apiKey || key.existing || hasMcp ? "outline" : "default"}
             onClick={createKey}
             disabled={keyBusy}
           >
@@ -454,44 +456,46 @@ export function ConnectPanel({
         </div>
 
         {apiKey && (
-          <div className="space-y-3 border border-warning/40 border-l-2 border-l-warning bg-warning/10 p-4">
+          <div className="space-y-3 rounded-xl border border-warning/30 bg-warning/10 p-4">
             <div>
-              <p className="smallcaps tracking-sc text-xs font-medium text-warning">Your API key</p>
-              <p className="mt-1 text-xs italic text-warning">
+              <p className="text-sm font-semibold text-warning">Your API key</p>
+              <p className="mt-1 text-xs text-warning">
                 Copy it now — it&apos;s shown only once (also embedded above). It can only call MCPs
                 on {label}.
               </p>
               {key.oldKeyExpiresAt && (
-                <p className="mt-1 text-xs italic text-warning">
+                <p className="mt-1 text-xs text-warning">
                   The previous secret keeps working until{" "}
-                  <span className="lining not-italic">{formatDateTime(key.oldKeyExpiresAt)}</span>,
-                  then stops.
+                  <span className="tabular-nums">{formatDateTime(key.oldKeyExpiresAt)}</span>, then
+                  stops.
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-3 border border-border bg-card py-1.5 pl-3 pr-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-card py-1 pl-3 pr-1">
               <code className="min-w-0 flex-1 truncate font-mono text-xs text-foreground sm:text-sm">
                 {apiKey}
               </code>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 onClick={copyKey}
                 aria-label="Copy API key"
-                className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
+                className="h-9 w-9 text-muted-foreground hover:text-foreground"
               >
                 {keyCopied ? (
                   <Check className="h-4 w-4 text-success" />
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
         {key.error && (
-          <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
             {key.error}
           </p>
         )}
@@ -501,20 +505,20 @@ export function ConnectPanel({
             role="status"
             aria-live="polite"
             className={cn(
-              "flex items-start gap-2 border px-3 py-2 text-sm",
+              "flex items-start gap-2 rounded-xl border px-4 py-3 text-sm",
               test.phase === "success"
-                ? "border-success/40 bg-success/10 text-success"
+                ? "border-success/30 bg-success/10 text-success"
                 : test.phase === "error"
-                  ? "border-destructive/40 bg-destructive/10 text-destructive"
-                  : "border-border bg-card text-muted-foreground"
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : "border-border bg-secondary text-muted-foreground"
             )}
           >
             {test.phase === "success" ? (
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <CheckCircle2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
             ) : test.phase === "error" ? (
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
             ) : (
-              <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+              <Loader2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
             )}
             <span>
               {test.message || "Running initialize…"}
@@ -528,7 +532,7 @@ export function ConnectPanel({
                     className="inline-flex items-center gap-1 font-medium underline underline-offset-4"
                   >
                     Troubleshooting guide
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    <ArrowRight aria-hidden className="h-3.5 w-3.5" />
                   </a>
                 </>
               )}
@@ -538,16 +542,14 @@ export function ConnectPanel({
 
         {test.phase === "success" && (
           <div className="space-y-1 border-t border-border pt-4 text-sm">
-            <p className="smallcaps tracking-sc text-xs font-medium text-muted-foreground">
-              Try it
-            </p>
+            <p className="font-semibold text-foreground">Try it</p>
             <p>
               In {ideName}, ask:{" "}
               <span className="font-medium">
                 &ldquo;{sampleToolPrompt(sampleSlug, sampleTools)}&rdquo;
               </span>
             </p>
-            <p className="text-xs italic text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               The call appears in the Activity tab of this server.
             </p>
           </div>

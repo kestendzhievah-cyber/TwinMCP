@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Route } from "next";
-import { Separator } from "@/components/ui/separator";
 import { EDITEUR, HEBERGEUR } from "@/lib/legal/entity";
 
 export const metadata: Metadata = {
@@ -17,47 +16,39 @@ export const metadata: Metadata = {
 
 const LAST_UPDATED = "September 20, 2026";
 
-// Typeset as a document on the card stock (docs/DESIGN.md §4–5): a centred
-// header over the double rule, numbered sections with hanging small-caps
-// numerals, the identity details as hairline ledgers, pinstripe links.
-const EYEBROW =
-  "eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']";
+// A legal document in the "Clear sky" style (docs/DESIGN.md): a plain header,
+// the text on one white card, numbered sections with brand numerals, the
+// identity details and lists as rounded ledgers, underlined blue links.
+const EYEBROW = "eyebrow";
 const LANG_SWITCH =
-  "smallcaps tracking-sc inline-flex min-h-10 items-center text-xs text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground hover:decoration-foreground/60";
+  "inline-flex min-h-10 shrink-0 items-center rounded-lg border border-input bg-card px-3 text-sm font-medium text-foreground shadow-sm transition hover:bg-accent";
 const DOC =
-  "text-base leading-7 text-foreground [&_a:hover]:decoration-brand [&_a]:text-brand [&_a]:underline [&_a]:decoration-brand/40 [&_a]:underline-offset-4";
-const NOTE =
-  "border border-l-2 border-info/40 border-l-info bg-info/10 px-4 py-3 text-sm text-info";
+  "rounded-2xl border border-border bg-card p-5 text-base leading-7 text-foreground shadow-sm sm:p-10 [&_a:hover]:decoration-2 [&_a]:font-medium [&_a]:text-brand [&_a]:underline [&_a]:underline-offset-4";
+const NOTE = "rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info";
 const SECTION = "mt-10 border-t border-border pt-8";
-const H2 = "flex items-baseline text-2xl font-medium";
-const NUM = "smallcaps lining w-10 shrink-0 text-base font-normal text-muted-foreground";
+const H2 = "flex items-baseline font-display text-xl font-bold tracking-tight sm:text-2xl";
+const NUM = "w-10 shrink-0 text-base font-semibold tabular-nums text-brand";
 const BODY = "mt-4 space-y-4 sm:pl-10";
-const LEDGER = "lining divide-y divide-border border-y border-t-foreground/50";
-const LEDGER_ROW = "grid gap-x-6 gap-y-1 py-3 sm:grid-cols-[13rem_1fr] sm:items-baseline";
-const LEDGER_TERM = "smallcaps tracking-sc text-sm text-muted-foreground";
-const FOOTER_LINK = "inline-flex min-h-10 items-center hover:text-foreground";
+const LEDGER = "divide-y divide-border rounded-xl border border-border tabular-nums";
+const LEDGER_ROW = "grid gap-x-6 gap-y-1 px-4 py-3 sm:grid-cols-[13rem_1fr] sm:items-baseline";
+const LEDGER_TERM = "text-sm font-medium text-muted-foreground";
+const FOOTER_LINK =
+  "inline-flex min-h-10 items-center gap-2 font-medium text-brand underline-offset-4 hover:underline";
 
 export default function LegalNoticePageEn() {
   return (
-    <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-24">
-      {/* The document header: the language switch in the top-right corner,
-          then the centred name — eyebrow between rules, the title, a short
-          rule, the dateline — over the double rule. */}
-      <header className="mb-10">
-        <div className="flex justify-end">
+    <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 md:py-20">
+      <header className="mb-8">
+        <div className="flex items-center justify-between gap-4">
+          <p className={EYEBROW}>Legal document</p>
           <Link href={"/legal/mentions-legales" as Route} className={LANG_SWITCH}>
             Français
           </Link>
         </div>
-        <div className="mt-4 text-center">
-          <p className={EYEBROW}>Legal document</p>
-          <h1 className="letterpress mt-6 text-4xl font-medium sm:text-5xl">Legal Notice</h1>
-          <div aria-hidden className="mx-auto mt-6 h-px w-12 bg-foreground/40" />
-          <p className="lining mt-6 text-sm italic text-muted-foreground">
-            Last updated: {LAST_UPDATED}
-          </p>
-        </div>
-        <Separator variant="double" className="mt-10" />
+        <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl">
+          Legal Notice
+        </h1>
+        <p className="mt-4 text-sm text-muted-foreground">Last updated: {LAST_UPDATED}</p>
       </header>
 
       <div className={DOC}>
@@ -189,7 +180,7 @@ export default function LegalNoticePageEn() {
         </section>
       </div>
 
-      <footer className="rule-double smallcaps tracking-sc mt-16 flex flex-wrap items-center justify-center gap-x-3 pt-4 text-xs text-muted-foreground">
+      <footer className="mt-10 flex flex-wrap items-center justify-center gap-x-3 text-sm text-muted-foreground">
         <Link href={"/legal/en/privacy" as Route} className={FOOTER_LINK}>
           Privacy Policy
         </Link>

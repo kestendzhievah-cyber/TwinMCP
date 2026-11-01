@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { AlertTriangle, Info, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { track } from "@/lib/analytics/funnel";
 import { BILLING_HREF, DISMISS_DAYS, isUrgent, type NudgeLevel } from "@/lib/billing/upgrade-state";
@@ -14,24 +14,28 @@ import { cn } from "@/lib/utils";
 const DISMISS_KEY = "tmcp_wallet_nudge_dismissed_until:";
 const DAY_MS = 86_400_000;
 
-// One strip per level, in the tint recipe (DESIGN.md §5 callouts:
-// border-S/40 bg-S/10 text-S, with the memo rule on the left).
-const STRIP: Record<NudgeLevel, { tint: string; eyebrow: string }> = {
-  none: { tint: "", eyebrow: "" },
-  offer: { tint: "border-brand/40 border-l-brand bg-brand/10 text-brand", eyebrow: "Credit" },
-  info: { tint: "border-info/40 border-l-info bg-info/10 text-info", eyebrow: "Billing" },
-  trial: { tint: "border-info/40 border-l-info bg-info/10 text-info", eyebrow: "Free credit" },
+// One strip per level: the 10 % tint recipe, with an icon so the state never
+// relies on colour alone. The layout only renders BANNER_LEVELS (warning,
+// limit, past_due); the other entries keep the record total.
+const STRIP: Record<NudgeLevel, { tint: string; icon: LucideIcon; iconColor: string }> = {
+  none: { tint: "", icon: Info, iconColor: "" },
+  offer: { tint: "border-offer-border bg-offer", icon: Info, iconColor: "text-offer-foreground" },
+  info: { tint: "border-info/30 bg-info/10", icon: Info, iconColor: "text-info" },
+  trial: { tint: "border-info/30 bg-info/10", icon: Info, iconColor: "text-info" },
   warning: {
-    tint: "border-warning/40 border-l-warning bg-warning/10 text-warning",
-    eyebrow: "Low balance",
+    tint: "border-warning/30 bg-warning/10",
+    icon: AlertTriangle,
+    iconColor: "text-warning",
   },
   limit: {
-    tint: "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive",
-    eyebrow: "Credit used up",
+    tint: "border-destructive/30 bg-destructive/10",
+    icon: AlertTriangle,
+    iconColor: "text-destructive",
   },
   past_due: {
-    tint: "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive",
-    eyebrow: "Payment",
+    tint: "border-destructive/30 bg-destructive/10",
+    icon: AlertTriangle,
+    iconColor: "text-destructive",
   },
 };
 
@@ -53,9 +57,9 @@ function rememberDismissal(key: string): void {
 }
 
 /**
- * The full-width strip under the dashboard header (the layout renders it for
- * BANNER_LEVELS, through the server wrapper in ./balance-banner): credit used
- * up, low balance, free credit expiring, legacy subscription conversion.
+ * The full-width rounded strip at the top of the dashboard page (the layout
+ * renders it for BANNER_LEVELS, through the server wrapper in
+ * ./balance-banner): credit used up, low balance, a failed legacy payment.
  * Dismissal is per device and per reason, for DISMISS_DAYS; urgent levels
  * (credit used up, failed payment) are never dismissible and render on the
  * server pass, everything else waits for the client so a dismissed strip
@@ -91,20 +95,23 @@ export function BalanceBannerStrip({ nudge }: { nudge: SerializedWalletNudge }) 
     setVisible(false);
   }
 
+  const Icon = strip.icon;
   return (
     <aside
       aria-label="Credit notice"
       className={cn(
-        "mb-6 flex flex-col gap-3 border border-l-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:mb-8",
+        "mb-6 flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:mb-8",
         strip.tint
       )}
     >
-      <div className="min-w-0 space-y-1">
-        <p className="smallcaps tracking-sc text-xs">{strip.eyebrow}</p>
-        <p className="font-medium">{nudge.headline}</p>
-        <p className="text-sm italic text-muted-foreground">{nudge.body}</p>
+      <div className="flex min-w-0 items-start gap-3">
+        <Icon aria-hidden className={cn("mt-0.5 h-5 w-5 shrink-0", strip.iconColor)} />
+        <div className="min-w-0 space-y-0.5">
+          <p className="font-semibold text-foreground">{nudge.headline}</p>
+          <p className="text-sm text-muted-foreground">{nudge.body}</p>
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+      <div className="flex shrink-0 items-center gap-1 pl-8 sm:gap-2 sm:pl-0">
         {pathname !== BILLING_HREF && (
           <Button asChild size="sm">
             <Link

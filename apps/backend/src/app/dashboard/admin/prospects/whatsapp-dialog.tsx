@@ -95,24 +95,27 @@ export function WhatsappQuickDialog({ onDone }: { onDone: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2 sm:col-span-2">
-              <Label>Numéro de téléphone *</Label>
+              <Label htmlFor="wa-phone">Numéro de téléphone *</Label>
               <Input
+                id="wa-phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+33 6 12 34 56 78"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label>Entreprise *</Label>
+              <Label htmlFor="wa-company">Entreprise *</Label>
               <Input
+                id="wa-company"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="Acme SAS"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label>Contact (optionnel)</Label>
+              <Label htmlFor="wa-contact">Contact (optionnel)</Label>
               <Input
+                id="wa-contact"
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder="Marie"
@@ -120,10 +123,10 @@ export function WhatsappQuickDialog({ onDone }: { onDone: () => void }) {
             </div>
           </div>
 
-          {/* The outgoing message as a memo on darker stock: a small-caps tab over the
-              text, an ink rule down the left edge. */}
-          <div className="border border-border border-l-2 border-l-foreground/40 bg-secondary/60">
-            <p className="smallcaps tracking-sc border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground">
+          {/* The outgoing message as a preview card on the quiet fill, a brand
+              rule down the left edge. */}
+          <div className="overflow-hidden rounded-xl border border-border border-l-4 border-l-brand bg-secondary">
+            <p className="border-b border-border px-4 py-2 text-xs font-semibold text-muted-foreground">
               Aperçu du message
             </p>
             <p className="whitespace-pre-wrap px-4 py-3 text-sm leading-relaxed">
@@ -139,7 +142,7 @@ export function WhatsappQuickDialog({ onDone }: { onDone: () => void }) {
               onClick={() => void submit()}
               disabled={sending || !phone.trim() || !company.trim()}
             >
-              <Send className="h-4 w-4" />
+              <Send aria-hidden />
               {sending ? "Envoi…" : "Créer + envoyer"}
             </Button>
           </DialogFooter>

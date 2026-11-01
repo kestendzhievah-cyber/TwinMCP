@@ -1,32 +1,36 @@
-import { CreditCard, Gauge, Wallet } from "lucide-react";
+import { Check } from "lucide-react";
 import type { Locale } from "@/lib/i18n/locales";
-import { walletFacts } from "./wallet-copy";
+import { cn } from "@/lib/utils";
+import { offerCopy } from "@/components/marketing/offer-badge";
 
-const EN = walletFacts("en");
-const FR = walletFacts("fr");
-
-const SIGNALS = {
-  en: [
-    { icon: CreditCard, label: `${EN.signupCredit} free credit · no card` },
-    { icon: Wallet, label: "No subscription · pay only for what you use" },
-    { icon: Gauge, label: "Stops at zero · no surprise bills" },
-  ],
-  fr: [
-    { icon: CreditCard, label: `${FR.signupCredit} de crédit offert · sans carte` },
-    { icon: Wallet, label: "Sans abonnement · vous payez ce que vous utilisez" },
-    { icon: Gauge, label: "Arrêt à zéro · aucune facture surprise" },
-  ],
-} as const;
-
-// The pricing hero's "address line": one row of small-caps facts, each led by
-// a bare engraved pictogram. The caller frames it between two hairlines.
-export function TrustSignals({ locale = "en" }: { locale?: Locale }) {
-  const signals = SIGNALS[locale];
+/**
+ * The offer's terms line (docs/DESIGN.md, "Copy rules"), printed under every
+ * sign-up CTA so the free credit is never oversold: valid N days, no card, no
+ * subscription, stops at zero. The terms are the shared offer copy
+ * (components/marketing/offer-badge.tsx, rendered from the wallet facts); this
+ * wrapper adds the alignment the pricing pages and creator landings need.
+ */
+export function TrustSignals({
+  locale = "en",
+  align = "center",
+  className,
+}: {
+  locale?: Locale;
+  /** "center" (default) for centred heroes and panels, "start" for left-aligned copy. */
+  align?: "center" | "start";
+  className?: string;
+}) {
   return (
-    <ul className="smallcaps tracking-sc flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs text-muted-foreground">
-      {signals.map(({ icon: Icon, label }) => (
-        <li key={label} className="inline-flex items-center gap-2">
-          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+    <ul
+      className={cn(
+        "flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground",
+        align === "center" ? "justify-center" : "justify-start",
+        className
+      )}
+    >
+      {offerCopy(locale).terms.map((label) => (
+        <li key={label} className="inline-flex items-center gap-1.5">
+          <Check className="h-4 w-4 shrink-0 text-success" aria-hidden />
           <span>{label}</span>
         </li>
       ))}

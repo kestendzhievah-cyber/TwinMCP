@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { AlertCircle, Check, KeyRound, Lock, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, fieldClasses } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { badgeVariants } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
+import { BrandLogo, hasBrandLogo } from "@/components/brand/brand-logo";
+import { PROMO_EXCLUDED_MCP_SLUGS } from "@/lib/wallet/eligibility";
 import { cn } from "@/lib/utils";
+
+const TITLE = "font-display text-2xl font-bold tracking-tight sm:text-3xl";
 
 export interface CatalogMcp {
   id: string;
@@ -15,6 +19,8 @@ export interface CatalogMcp {
   description: string;
   runtime: string;
   version: string;
+  /** "popular": a well-known app that needs the user's API key; "instant": zero-config. */
+  group?: "popular" | "instant";
   configSchema: {
     properties?: Record<
       string,
@@ -37,7 +43,12 @@ interface StepMcpProps {
 }
 
 export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: StepMcpProps) {
-  const [index, setIndex] = useState(0);
+  // Open on the first no-key MCP so "Install" works in one click; the
+  // well-known apps above it are one tap away for users who have a key.
+  const [index, setIndex] = useState(() => {
+    const firstInstant = catalog.findIndex((m) => m.group !== "popular");
+    return firstInstant === -1 ? 0 : firstInstant;
+  });
   const [config, setConfig] = useState<Record<string, string | number | boolean>>({});
   const [error, setError] = useState("");
   const [installing, setInstalling] = useState(false);
@@ -46,7 +57,7 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
     return (
       <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-medium md:text-3xl">No MCPs in the catalog yet.</h2>
+          <h2 className={TITLE}>No MCPs in the catalogue yet.</h2>
           <p className="mt-2 text-base text-muted-foreground">
             Skip ahead and install MCPs from the marketplace once it&apos;s seeded.
           </p>
@@ -56,7 +67,7 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
             Back
           </Button>
           <Button size="lg" onClick={onSkip}>
-            Skip — connect IDE
+            Skip, connect your client
           </Button>
         </div>
       </div>
@@ -71,8 +82,9 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
     setConfig((c) => ({ ...c, [field]: value }));
   }
 
-  function move(delta: number) {
-    setIndex((i) => (i + delta + catalog.length) % catalog.length);
+  function select(i: number) {
+    if (i === index) return;
+    setIndex(i);
     setConfig({});
     setError("");
   }
@@ -106,83 +118,137 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
     }
   }
 
+  const indexed = catalog.map((mcp, i) => ({ mcp, i }));
+  const groups = [
+    {
+      key: "popular",
+      title: "Popular apps",
+      hint: "Bring your own API key",
+      Icon: KeyRound,
+      items: indexed.filter(({ mcp }) => mcp.group === "popular"),
+    },
+    {
+      key: "instant",
+      title: "Try instantly",
+      hint: "No API key needed",
+      Icon: Zap,
+      items: indexed.filter(({ mcp }) => mcp.group !== "popular"),
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-medium md:text-3xl">Pick your first MCP.</h2>
+        <h2 className={TITLE}>Pick your first MCP.</h2>
         <p className="mt-2 text-base text-muted-foreground">
-          Pick one that needs no API key — you can add Notion, Slack or Postgres later from the
-          marketplace. Installing takes about a minute; you can wire up your IDE meanwhile.
+          Connect an app you already use with its API key, or try one instantly with no key at all.
+          Installing takes about a minute; you can wire up your client meanwhile.
         </p>
       </div>
 
-      {/* The catalogue card: a shade darker stock, hairline-square arrows either
-          side, the MCP engraved dead-centre with its runtime and version in Courier. */}
-      <div className="border border-border bg-secondary/40 p-5 md:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => move(-1)}
-            aria-label="Previous MCP"
-            className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-
-          <div className="flex min-w-0 flex-col items-center text-center">
-            <div className="grid h-10 w-10 place-items-center border border-border bg-card text-muted-foreground">
-              <Sparkles className="h-4 w-4" />
+      {/* Two logo grids: well-known apps (need the user's API key), then
+          zero-config MCPs; the chosen one is outlined in brand blue. One
+          radiogroup per list, same selection state. */}
+      {groups.map(({ key, title, hint, Icon, items }) =>
+        items.length === 0 ? null : (
+          <section key={key} className="space-y-3" aria-labelledby={`mcp-group-${key}`}>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <h3
+                id={`mcp-group-${key}`}
+                className="flex items-center gap-2 text-base font-semibold"
+              >
+                <Icon aria-hidden className="h-4 w-4 text-brand" />
+                {title}
+              </h3>
+              <p className="text-xs text-muted-foreground">{hint}</p>
             </div>
-            <h3 className="smallcaps tracking-sc mt-4 text-lg font-medium">{current.name}</h3>
-            <p className="mt-1.5 flex items-center gap-2 font-mono text-xs text-muted-foreground">
-              <span>{current.runtime}</span>
-              <span aria-hidden>·</span>
-              <span>v{current.version}</span>
-            </p>
-            <p className="mt-3 max-w-md text-balance text-sm text-muted-foreground">
-              {current.description}
-            </p>
-            <p className="sr-only" aria-live="polite">
-              MCP {index + 1} of {catalog.length}: {current.name}
-            </p>
-          </div>
+            <div
+              role="radiogroup"
+              aria-labelledby={`mcp-group-${key}`}
+              className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+            >
+              {items.map(({ mcp, i }) => {
+                const active = i === index;
+                const locked = PROMO_EXCLUDED_MCP_SLUGS.includes(mcp.slug);
+                return (
+                  <button
+                    key={mcp.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => select(i)}
+                    className={cn(
+                      "relative flex min-w-0 flex-col items-start gap-2 rounded-xl border bg-card p-3.5 text-left transition-[border-color,box-shadow,background-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-4",
+                      active
+                        ? "border-brand bg-brand/5 ring-1 ring-brand"
+                        : "border-border hover:border-input hover:shadow-md"
+                    )}
+                  >
+                    {hasBrandLogo(mcp.slug) ? (
+                      <BrandLogo slug={mcp.slug} size={32} decorative />
+                    ) : (
+                      <span
+                        aria-hidden
+                        className="grid h-8 w-8 place-items-center rounded-lg bg-secondary text-brand"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                      </span>
+                    )}
+                    <span className="pr-6 text-sm font-semibold">{mcp.name}</span>
+                    <span className="line-clamp-2 text-xs text-muted-foreground">
+                      {mcp.description}
+                    </span>
+                    {mcp.group === "popular" && !locked && (
+                      <Badge variant="outline" className="mt-auto max-w-full whitespace-normal">
+                        <KeyRound aria-hidden className="h-3 w-3" />
+                        Needs your API key
+                      </Badge>
+                    )}
+                    {locked && (
+                      <Badge variant="offer" className="mt-auto max-w-full whitespace-normal">
+                        <Lock aria-hidden className="h-3 w-3" />
+                        Unlocks with first top-up
+                      </Badge>
+                    )}
+                    {active && (
+                      <span
+                        aria-hidden
+                        className="absolute right-2.5 top-2.5 grid h-5 w-5 place-items-center rounded-full bg-brand text-brand-foreground"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )
+      )}
 
-          <button
-            type="button"
-            onClick={() => move(1)}
-            aria-label="Next MCP"
-            className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Position in the catalogue: a row of short hairline ticks, the
-            current one inked and doubled in weight. */}
-        <div className="mt-5 flex items-center justify-center gap-1.5">
-          {catalog.map((_, i) => (
-            <span
-              key={i}
-              className={cn(
-                "w-6 transition-colors",
-                i === index ? "h-0.5 bg-foreground" : "h-px bg-border"
-              )}
-            />
-          ))}
-        </div>
+      <div className="rounded-xl border border-border bg-surface-alt p-4 sm:p-5">
+        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="font-semibold">{current.name}</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {current.runtime} ·{" "}
+            {/^\d/.test(current.version) ? `v${current.version}` : current.version}
+          </span>
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{current.description}</p>
+        <p className="sr-only" aria-live="polite">
+          MCP {index + 1} of {catalog.length}: {current.name}
+        </p>
 
         {propertyKeys.length > 0 && (
-          <div className="mt-6 space-y-4 border-t border-border pt-5">
-            <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-              Configuration
-            </p>
+          <div className="mt-5 space-y-4 border-t border-border pt-5">
+            <p className="eyebrow">Configuration</p>
             {propertyKeys.map((key) => {
               const def = properties[key];
               const value = config[key];
               return (
                 <div key={key} className="flex flex-col gap-2 text-left">
                   <Label htmlFor={`mcp-${key}`} className="flex items-center gap-2">
-                    <span className="no-smallcaps font-mono text-foreground">{key}</span>
+                    <span className="font-mono text-foreground">{key}</span>
                     {def.required && (
                       <span className={badgeVariants({ variant: "destructive" })}>required</span>
                     )}
@@ -195,7 +261,7 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
                       id={`mcp-${key}`}
                       value={String(value ?? false)}
                       onChange={(e) => update(key, e.target.value === "true")}
-                      className="h-10 border border-input bg-card px-3 text-sm text-foreground shadow-inner focus-visible:border-foreground focus-visible:outline-none"
+                      className={cn("h-10", fieldClasses)}
                     >
                       <option value="false">false</option>
                       <option value="true">true</option>
@@ -212,7 +278,7 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
                     />
                   )}
                   {def.description && (
-                    <p className="text-xs italic text-muted-foreground">{def.description}</p>
+                    <p className="text-xs text-muted-foreground">{def.description}</p>
                   )}
                 </div>
               );
@@ -221,8 +287,8 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
         )}
 
         {error && (
-          <p className="mt-5 flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="mt-5 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
             {error}
           </p>
         )}
@@ -232,11 +298,16 @@ export function StepMcp({ catalog, serverId, onInstalled, onSkip, onBack }: Step
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row">
           <Button variant="outline" onClick={onSkip} disabled={installing}>
-            Skip — install later
+            Skip, install later
           </Button>
-          <Button size="lg" onClick={install} disabled={installing}>
+          <Button
+            size="lg"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center"
+            onClick={install}
+            disabled={installing}
+          >
             {installing ? "Installing…" : `Install ${current.name}`}
           </Button>
         </div>

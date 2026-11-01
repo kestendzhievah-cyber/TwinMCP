@@ -7,7 +7,6 @@ import { configNeedsKey, configNeedsSetup } from "@/lib/mcp/bundles";
 import { McpBundles } from "./bundles";
 import { Store } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { Separator } from "@/components/ui/separator";
 import { RefreshCatalogButton } from "./refresh-button";
 import { getWallet } from "@/lib/wallet/ledger";
 import { isPromoOnly } from "@/lib/wallet/eligibility";
@@ -122,15 +121,13 @@ export default async function MarketplacePage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Page header: engraved title, italic subtitle, double rule (DESIGN.md §5). */}
+    <div className="space-y-6 md:space-y-8">
       <div>
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">Marketplace</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          <span className="lining">{catalog.length}</span> MCPs available · search, filter, and
-          install on any of your servers
+        <h1 className="font-display text-2xl font-bold tracking-tight">Marketplace</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          <span className="tabular-nums">{catalog.length}</span> MCPs available · search, filter,
+          and install on any of your servers
         </p>
-        <Separator variant="double" className="mt-4" />
       </div>
 
       {catalog.length === 0 ? (
@@ -141,7 +138,7 @@ export default async function MarketplacePage() {
           primaryAction={<RefreshCatalogButton />}
         />
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-10 md:space-y-12">
           <McpBundles
             catalog={catalog}
             userServers={userServers}
@@ -149,9 +146,7 @@ export default async function MarketplacePage() {
             promoOnly={promoOnly}
           />
           <div className="space-y-4">
-            <h2 className="smallcaps tracking-sc flex items-center gap-4 text-xl font-medium after:h-px after:flex-1 after:bg-border after:content-['']">
-              All MCPs
-            </h2>
+            <h2 className="font-display text-xl font-semibold tracking-tight">All MCPs</h2>
             <McpCatalogGrid
               catalog={catalog}
               userServers={userServers}

@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import type { HostType, ServerStatus } from "@/db/schema/platform";
 import { lifecycleLabel } from "@/lib/server-lifecycle-label";
+import { LifecycleBadge } from "../lifecycle-badge";
 
 /**
  * Live server-status badge. Says the derived lifecycle state
@@ -58,14 +57,5 @@ export function ServerStatusBadge({
     };
   }, [serverId, status, view.transient, router]);
 
-  return (
-    <Badge variant={view.variant} title={view.help}>
-      {/* The status dot — the one place a circle is allowed; it breathes while in flight. */}
-      <span
-        aria-hidden
-        className={cn("h-1.5 w-1.5 rounded-full bg-current", view.transient && "animate-pulse")}
-      />
-      {view.label}
-    </Badge>
-  );
+  return <LifecycleBadge view={view} className="whitespace-normal" />;
 }

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
-import { EB_Garamond, Courier_Prime } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -17,21 +17,28 @@ const GSC_VERIFICATION = process.env.NEXT_PUBLIC_GSC_VERIFICATION;
 const BING_VERIFICATION = process.env.NEXT_PUBLIC_BING_VERIFICATION;
 const YANDEX_VERIFICATION = process.env.NEXT_PUBLIC_YANDEX_VERIFICATION;
 
-// The card's typefaces: EB Garamond (engraved serif, real small caps via
-// font-variant-caps) for everything, Courier Prime (typewriter / telex) for
-// code, slugs, keys and logs. Both self-hosted by next/font (CSP font-src 'self').
-const garamond = EB_Garamond({
+// "Clear sky" typefaces, all variable fonts self-hosted by next/font (CSP
+// font-src 'self'): Inter for UI and body, Plus Jakarta Sans for display
+// headings, JetBrains Mono for code, keys, slugs and logs (not preloaded).
+const inter = Inter({
   subsets: ["latin", "latin-ext"],
-  style: ["normal", "italic"],
+  style: ["normal"],
   display: "swap",
-  variable: "--font-serif",
+  variable: "--font-sans",
 });
 
-const courier = Courier_Prime({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  style: ["normal", "italic"],
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin", "latin-ext"],
+  style: ["normal"],
   display: "swap",
+  variable: "--font-display",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin", "latin-ext"],
+  style: ["normal"],
+  display: "swap",
+  preload: false,
   variable: "--font-mono",
 });
 
@@ -103,8 +110,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f0e8" },
-    { media: "(prefers-color-scheme: dark)", color: "#171512" },
+    { media: "(prefers-color-scheme: light)", color: "#F3F8FF" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A1424" },
   ],
   colorScheme: "light dark",
 };
@@ -113,13 +120,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`h-full ${garamond.variable} ${courier.variable}`}
+      className={`h-full ${inter.variable} ${jakarta.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
-      <body className="h-full font-serif antialiased">
+      <body className="h-full font-sans antialiased">
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:border focus:border-foreground focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:border focus:border-input focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
         >
           Skip to content
         </a>

@@ -157,13 +157,13 @@ function WakingNotice({ waiting, onCancel }: { waiting: Waiting; onCancel: () =>
   return (
     <div
       role="status"
-      className="flex flex-wrap items-start justify-between gap-3 border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info"
+      className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info"
     >
       <div className="flex items-start gap-2">
         <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
         <p>
           {waiting.message}{" "}
-          <span className="lining italic">
+          <span className="tabular-nums">
             Retrying automatically for up to 2 minutes · {mm}:{ss}
           </span>
         </p>
@@ -370,7 +370,7 @@ export function ToolPlayground({
   if (mcps.length === 0) {
     return (
       <Card>
-        <CardContent className="space-y-3 pt-6 text-sm">
+        <CardContent className="space-y-3 pt-5 text-sm sm:pt-6">
           <p>
             No MCP on this server can be tried here yet.
             {disabledCount > 0 &&
@@ -389,8 +389,8 @@ export function ToolPlayground({
   return (
     <div className="space-y-6">
       {(lifecycle === "paused" || lifecycle === "provisioning") && (
-        <div className="flex items-start gap-2 border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="flex items-start gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info">
+          <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             {lifecycle === "paused"
               ? "This server is paused. The first request wakes it up, which takes about a minute."
@@ -399,8 +399,8 @@ export function ToolPlayground({
         </div>
       )}
       {(lifecycle === "no_runtime" || lifecycle === "error" || lifecycle === "agent_offline") && (
-        <div className="flex items-start gap-2 border border-warning/40 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-sm text-warning">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             {lifecycle === "agent_offline"
               ? `The local agent is offline. Run ${localAgentCommand(serverSlug ?? "<server-slug>")} on the machine that hosts these tools.`
@@ -410,18 +410,21 @@ export function ToolPlayground({
       )}
 
       <Card>
-        <CardHeader className="border-b border-border px-6 py-4">
+        <CardHeader className="border-b border-border">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1.5">
-              <CardTitle className="flex items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
-                  <Wrench className="h-4 w-4" />
-                </span>
-                Tools
-              </CardTitle>
-              <CardDescription className="pl-12">
-                Listing tools is free. It shows what your IDE sees, after the tool policy.
-              </CardDescription>
+            <div className="flex min-w-0 items-start gap-3">
+              <span
+                aria-hidden
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-brand"
+              >
+                <Wrench className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 space-y-1.5">
+                <CardTitle>Tools</CardTitle>
+                <CardDescription>
+                  Listing tools is free. It shows what your IDE sees, after the tool policy.
+                </CardDescription>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={mcpSlug} onValueChange={setMcpSlug}>
@@ -451,10 +454,8 @@ export function ToolPlayground({
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4 pt-6">
-          {mcp?.description && (
-            <p className="text-sm italic text-muted-foreground">{mcp.description}</p>
-          )}
+        <CardContent className="space-y-4 pt-5 sm:pt-6">
+          {mcp?.description && <p className="text-sm text-muted-foreground">{mcp.description}</p>}
 
           <WakingNotice waiting={listWaiting} onCancel={() => listAbort.current?.abort()} />
 
@@ -467,7 +468,7 @@ export function ToolPlayground({
           {listError && <ResultPanel response={listError} title="tools/list" />}
 
           {listResponse?.ok && tools.length === 0 && (
-            <p className="text-sm italic text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               This MCP exposes no tools
               {listResponse.hiddenByPolicy ? " allowed by its tool policy" : ""}.
             </p>
@@ -475,7 +476,7 @@ export function ToolPlayground({
 
           {listResponse?.ok && !!listResponse.hiddenByPolicy && (
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldAlert className="h-4 w-4" />
+              <ShieldAlert aria-hidden className="h-4 w-4" />
               {listResponse.hiddenByPolicy} tool{listResponse.hiddenByPolicy > 1 ? "s" : ""} hidden
               by this MCP&apos;s tool policy.
             </p>
@@ -497,7 +498,7 @@ export function ToolPlayground({
                     />
                   </div>
                 )}
-                <ul className="max-h-[560px] divide-y divide-border overflow-auto border border-border">
+                <ul className="max-h-[560px] divide-y divide-border overflow-auto rounded-xl border border-border">
                   {visibleTools.map((t) => (
                     <li key={t.name}>
                       <button
@@ -505,8 +506,10 @@ export function ToolPlayground({
                         onClick={() => setToolName(t.name)}
                         aria-current={t.name === toolName ? "true" : undefined}
                         className={cn(
-                          "w-full space-y-1 px-3 py-2.5 text-left transition-colors",
-                          t.name === toolName ? "bg-secondary" : "hover:bg-secondary/60"
+                          "w-full space-y-1 border-l-2 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                          t.name === toolName
+                            ? "border-l-brand bg-brand/10"
+                            : "border-l-transparent hover:bg-accent"
                         )}
                       >
                         <span className="block break-all font-mono text-xs text-foreground">
@@ -519,10 +522,10 @@ export function ToolPlayground({
                     </li>
                   ))}
                   {visibleTools.length === 0 && (
-                    <li className="px-3 py-2.5 text-xs italic text-muted-foreground">No match.</li>
+                    <li className="px-3 py-2.5 text-xs text-muted-foreground">No match.</li>
                   )}
                 </ul>
-                <p className="lining text-xs text-muted-foreground">
+                <p className="text-xs tabular-nums text-muted-foreground">
                   {tools.length} tool{tools.length > 1 ? "s" : ""}
                 </p>
               </div>
@@ -532,7 +535,7 @@ export function ToolPlayground({
                 <div className="min-w-0 space-y-5">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="break-all font-mono text-sm font-medium">{tool.name}</h2>
+                      <h2 className="break-all font-mono text-sm font-semibold">{tool.name}</h2>
                       <ToolBadges tool={tool} />
                     </div>
                     {(tool.title || tool.annotations?.title) && (
@@ -543,13 +546,13 @@ export function ToolPlayground({
                         {tool.description}
                       </p>
                     ) : (
-                      <p className="text-sm italic text-muted-foreground">No description.</p>
+                      <p className="text-sm text-muted-foreground">No description.</p>
                     )}
                   </div>
 
                   <div className="space-y-4 border-t border-border pt-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="smallcaps tracking-sc text-sm font-medium">Arguments</h3>
+                      <h3 className="text-sm font-semibold">Arguments</h3>
                       {!form.rawOnly && (
                         <div className="flex items-center gap-1" role="group" aria-label="Editor">
                           {(["form", "json"] as const).map((m) => {
@@ -561,10 +564,10 @@ export function ToolPlayground({
                                 aria-pressed={active}
                                 onClick={() => (m === "json" ? switchToRaw() : switchToForm())}
                                 className={cn(
-                                  "smallcaps tracking-sc border px-2.5 py-1 text-xs transition-colors",
+                                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                                   active
-                                    ? "border-foreground bg-foreground text-background"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                    ? "bg-brand text-brand-foreground"
+                                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
                                 )}
                               >
                                 {m === "form" ? "Form" : "JSON"}
@@ -578,7 +581,7 @@ export function ToolPlayground({
                     {rawMode ? (
                       <div className="space-y-1.5">
                         {form.rawOnly && (
-                          <p className="text-xs italic text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             This tool&apos;s input schema cannot be shown as a form. Edit the
                             arguments as a JSON object.
                           </p>
@@ -591,7 +594,7 @@ export function ToolPlayground({
                           aria-label="Arguments as JSON"
                           aria-invalid={!!rawError || undefined}
                           disabled={running}
-                          className={cn(textareaClass, rawError && "border-destructive")}
+                          className={textareaClass}
                         />
                         {rawError && <p className="text-xs text-destructive">{rawError}</p>}
                       </div>
@@ -608,19 +611,26 @@ export function ToolPlayground({
 
                   <div className="space-y-2 border-t border-border pt-4">
                     <div className="flex flex-wrap items-center gap-3">
+                      {/* The page's primary. A destructive tool gets the outline
+                          red look: the solid red is its confirmation dialog's. */}
                       <Button
                         type="button"
                         onClick={requestRun}
                         disabled={running}
-                        variant={needsConfirmation(tool) ? "destructive" : "default"}
+                        variant={needsConfirmation(tool) ? "outline" : "default"}
+                        className={cn(
+                          "w-full sm:w-auto",
+                          needsConfirmation(tool) &&
+                            "border-destructive/40 text-destructive hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+                        )}
                       >
                         {running ? <Loader2 className="animate-spin" /> : <Play />}
                         {running ? "Running…" : "Run tool"}
                       </Button>
                     </div>
-                    <p className="text-xs italic text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Each run is charged as one tool call (
-                      <span className="lining not-italic">{CALL_PRICE}</span> from your credit) and
+                      <span className="tabular-nums">{CALL_PRICE}</span> from your credit) and
                       appears in your usage, like a call from your IDE.
                     </p>
                   </div>
@@ -640,9 +650,9 @@ export function ToolPlayground({
           <DialogHeader>
             <DialogTitle>Run a destructive tool?</DialogTitle>
             <DialogDescription>
-              <span className="font-mono not-italic">{tool?.name}</span> declares itself
-              destructive: it may delete or overwrite data in the service it connects to. It runs
-              for real, with the credentials you configured.
+              <span className="font-mono">{tool?.name}</span> declares itself destructive: it may
+              delete or overwrite data in the service it connects to. It runs for real, with the
+              credentials you configured.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

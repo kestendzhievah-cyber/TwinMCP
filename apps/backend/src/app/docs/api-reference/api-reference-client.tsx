@@ -11,32 +11,41 @@ const ApiReferenceReact = dynamic(
   {
     ssr: false,
     loading: () => (
-      <p className="px-4 py-8 text-sm italic text-muted-foreground sm:px-6">
-        Loading API reference…
-      </p>
+      <p className="px-4 py-8 text-sm text-muted-foreground sm:px-6">Loading API reference…</p>
     ),
   }
 );
 
-// Scalar ships its own theme; these variables pull it onto the card — bone
-// surfaces, ink type, hairlines, square corners (docs/DESIGN.md).
+// Scalar ships its own theme; these variables pull it onto "Clear sky"
+// (docs/DESIGN.md §2): white panels on the light-blue page, navy ink, brand
+// blue for links and the selected sidebar item, rose for the one primary
+// button, rounded corners. Hex constants mirror the tokens in globals.css,
+// light and dark (the design-tokens guard exempts this file: no class names).
 const CARD_CSS = `
 .light-mode, .dark-mode {
-  --scalar-font: var(--font-serif), Garamond, Georgia, serif;
-  --scalar-font-code: var(--font-mono), "Courier New", monospace;
-  --scalar-radius: 0; --scalar-radius-lg: 0; --scalar-radius-xl: 0;
+  --scalar-font: var(--font-sans), Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --scalar-font-code: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --scalar-radius: 8px; --scalar-radius-md: 8px; --scalar-radius-lg: 10px; --scalar-radius-xl: 12px;
 }
 .light-mode {
-  --scalar-background-1: #f9f6ef; --scalar-background-2: #f4f0e8; --scalar-background-3: #ebe5d9;
-  --scalar-color-1: #2b2825; --scalar-color-2: #665f55; --scalar-color-3: #8a8275;
-  --scalar-color-accent: #233048; --scalar-background-accent: #23304814;
-  --scalar-border-color: #d8d1c3;
+  --scalar-background-1: #FFFFFF; --scalar-background-2: #F3F8FF; --scalar-background-3: #E6F0FC;
+  --scalar-color-1: #0B1F3A; --scalar-color-2: #3D5272; --scalar-color-3: #53688A;
+  --scalar-color-accent: #1E4FC2; --scalar-background-accent: #1E4FC21A;
+  --scalar-border-color: #D2DEEE;
+  --scalar-button-1: #C2255C; --scalar-button-1-hover: #A61E4D; --scalar-button-1-color: #FFFFFF;
+  --scalar-color-green: #0E7A4B; --scalar-color-yellow: #8A5A00;
+  --scalar-color-blue: #1D62B5; --scalar-color-red: #B42318;
+  --scalar-sidebar-color-active: #1E4FC2; --scalar-sidebar-item-active-background: #1E4FC21A;
 }
 .dark-mode {
-  --scalar-background-1: #1e1b17; --scalar-background-2: #171512; --scalar-background-3: #272320;
-  --scalar-color-1: #e9e3d5; --scalar-color-2: #a39b8c; --scalar-color-3: #7d7668;
-  --scalar-color-accent: #8fa3c9; --scalar-background-accent: #8fa3c914;
-  --scalar-border-color: #35302a;
+  --scalar-background-1: #101D33; --scalar-background-2: #0A1424; --scalar-background-3: #13233D;
+  --scalar-color-1: #E8EFFA; --scalar-color-2: #A6B6CF; --scalar-color-3: #8395B3;
+  --scalar-color-accent: #8FB4FF; --scalar-background-accent: #8FB4FF1A;
+  --scalar-border-color: #263A5C;
+  --scalar-button-1: #F06A93; --scalar-button-1-hover: #FF85A8; --scalar-button-1-color: #1B0610;
+  --scalar-color-green: #4ACB8E; --scalar-color-yellow: #F2B755;
+  --scalar-color-blue: #7DB3F5; --scalar-color-red: #FF8A7A;
+  --scalar-sidebar-color-active: #8FB4FF; --scalar-sidebar-item-active-background: #8FB4FF1A;
 }
 `;
 

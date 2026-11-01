@@ -4,7 +4,6 @@ import { teamspaceMembers, teamspaces, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Users } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { Separator } from "@/components/ui/separator";
 import { TeamPanel } from "./panel";
 import { getEntitlements } from "@/lib/wallet/entitlements";
 
@@ -61,14 +60,11 @@ export default async function TeamPage() {
   const unavailable = plan !== "team" && memberships.length === 0;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">Team</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          Members and roles on your teamspace.
-        </p>
-        <Separator variant="double" className="mt-4" />
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      <header>
+        <h1 className="font-display text-2xl font-bold tracking-tight">Team</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Members and roles on your teamspace.</p>
+      </header>
       {unavailable ? (
         <EmptyState
           icon={Users}

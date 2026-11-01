@@ -5,9 +5,9 @@ import * as LabelPrimitive from "@radix-ui/react-label";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-// Field labels are small capitals, like the "Fax" / "Telex" prefixes on the card.
+// Field labels: sentence case, 14px medium, full ink.
 const labelVariants = cva(
-  "smallcaps tracking-sc text-xs font-medium leading-none text-foreground/85 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+  "text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
 );
 
 const Label = React.forwardRef<

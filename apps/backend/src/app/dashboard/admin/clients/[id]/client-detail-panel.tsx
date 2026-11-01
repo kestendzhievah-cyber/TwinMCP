@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import {
+  AlertTriangle,
   ArrowLeft,
   Boxes,
   Activity,
@@ -21,7 +22,6 @@ import {
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -49,6 +49,7 @@ import type { HostType, ServerStatus } from "@/db/schema/platform";
 import { AdminCreateServerDialog } from "./admin-create-server-dialog";
 import { AdminInstallMcpDialog } from "./admin-install-mcp-dialog";
 import { WalletSection } from "./wallet-section";
+import { AdminPageHeader, DENSE_TABLE, EmptyNote, IconTile, StatTile } from "../../admin-ui";
 
 type Plan = "free" | "pro" | "team";
 
@@ -272,9 +273,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
     return (
       <div className="space-y-6">
         <BackLink />
-        <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
-          <p className="text-sm italic text-muted-foreground">{error || "Aucune donnée."}</p>
-        </div>
+        <EmptyNote>{error || "Aucune donnée."}</EmptyNote>
       </div>
     );
   }
@@ -288,48 +287,40 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
   const maxReq = Math.max(1, ...usage14d.map((d) => d.req));
 
   return (
-    <div className="space-y-8">
-      {/* Header — the engraved name, its address line, then the double rule. */}
-      <div>
+    <div className="space-y-6 md:space-y-8">
+      {/* Header: back link, the client's name with the Admin badge, then its meta row. */}
+      <div className="space-y-3">
         <BackLink />
-        <h1 className="smallcaps tracking-sc mt-4 break-words text-2xl font-medium">
-          {user.name || user.email}
-        </h1>
-        {user.name && <p className="mt-1 break-all text-sm text-muted-foreground">{user.email}</p>}
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <Badge variant={user.plan === "free" ? "secondary" : "success"}>
-            {PLAN_LABEL[user.plan]}
-          </Badge>
-          {user.subscriptionStatus && <Badge variant="outline">{user.subscriptionStatus}</Badge>}
-          {user.cancelAtPeriodEnd && <Badge variant="warning">annulation prévue</Badge>}
-          <span className="smallcaps tracking-sc lining text-xs text-muted-foreground">
-            Client depuis {fmtDate(user.createdAt)}
-          </span>
-        </div>
-        <Separator variant="double" className="mt-4" />
+        <AdminPageHeader
+          title={user.name || user.email}
+          description={user.name ? <span className="break-all">{user.email}</span> : undefined}
+        >
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <Badge variant={user.plan === "free" ? "secondary" : "success"}>
+              {PLAN_LABEL[user.plan]}
+            </Badge>
+            {user.subscriptionStatus && <Badge variant="outline">{user.subscriptionStatus}</Badge>}
+            {user.cancelAtPeriodEnd && <Badge variant="warning">annulation prévue</Badge>}
+            <span className="text-xs tabular-nums text-muted-foreground">
+              Client depuis {fmtDate(user.createdAt)}
+            </span>
+          </div>
+        </AdminPageHeader>
       </div>
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi
-          icon={<Boxes className="h-4 w-4" />}
+        <StatTile
+          icon={errored > 0 ? <AlertTriangle /> : <Boxes />}
           label="Serveurs"
           value={`${running}/${servers.length}`}
           sub={errored > 0 ? `${errored} en erreur` : "aucune erreur"}
           danger={errored > 0}
         />
-        <Kpi
-          icon={<Puzzle className="h-4 w-4" />}
-          label="MCPs installés"
-          value={nf.format(mcps.length)}
-        />
-        <Kpi
-          icon={<Activity className="h-4 w-4" />}
-          label="Appels d’outils 14j"
-          value={nf.format(req14)}
-        />
-        <Kpi
-          icon={<CreditCard className="h-4 w-4" />}
+        <StatTile icon={<Puzzle />} label="MCPs installés" value={nf.format(mcps.length)} />
+        <StatTile icon={<Activity />} label="Appels d’outils 14j" value={nf.format(req14)} />
+        <StatTile
+          icon={<CreditCard />}
           label="Abonnement (ancien)"
           value={user.subscriptionStatus ?? "—"}
           sub={user.currentPeriodEnd ? `jusqu'au ${fmtDate(user.currentPeriodEnd)}` : undefined}
@@ -341,27 +332,27 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
 
       {/* Usage */}
       <Card>
-        <CardHeader className="border-b border-border px-6 py-4">
-          <CardTitle className="lining flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
-              <Activity className="h-4 w-4" />
-            </span>
+        <CardHeader className="border-b border-border py-4">
+          <CardTitle className="flex items-center gap-3">
+            <IconTile>
+              <Activity />
+            </IconTile>
             Usage MCP · 14 jours
           </CardTitle>
-          <CardDescription className="pl-12">
+          <CardDescription className="sm:pl-12">
             Appels d’outils (tools/call) traités pour le client, par jour. Chaque appel qui atteint
             le MCP est débité du crédit.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="pt-[var(--card-padding)]">
           {usage14d.length === 0 ? (
-            <p className="py-6 text-center text-sm italic text-muted-foreground">
+            <p className="py-6 text-center text-sm text-muted-foreground">
               Aucune activité sur la période.
             </p>
           ) : (
             <div>
-              {/* Ink bars on a hairline baseline — a ledger chart, no rounding, no fills. */}
-              <div className="flex h-28 items-end gap-px border-b border-foreground/50">
+              {/* Brand-blue bars on a hairline baseline; days with errors in red (legend below). */}
+              <div className="flex h-28 items-end gap-0.5 border-b border-border">
                 {usage14d.map((d) => (
                   <div
                     key={d.day}
@@ -369,16 +360,30 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                     title={`${d.day} · ${d.req} appels d’outils · ${d.err} en erreur`}
                   >
                     <div
-                      className={cn("w-full", d.err > 0 ? "bg-destructive/80" : "bg-foreground/80")}
+                      className={cn(
+                        "w-full rounded-t-sm",
+                        d.err > 0 ? "bg-destructive" : "bg-brand"
+                      )}
                       style={{ height: `${(d.req / maxReq) * 100}%` }}
                     />
                   </div>
                 ))}
               </div>
-              <div className="lining mt-2 flex justify-between text-xs text-muted-foreground">
+              <div className="mt-2 flex justify-between text-xs tabular-nums text-muted-foreground">
                 <span>{usage14d[0]?.day}</span>
                 <span>{usage14d[usage14d.length - 1]?.day}</span>
               </div>
+              <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden className="size-2.5 rounded-sm bg-brand" />
+                  Appels
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <AlertTriangle aria-hidden className="size-3.5 text-destructive" />
+                  <span aria-hidden className="size-2.5 rounded-sm bg-destructive" />
+                  Jour avec erreurs
+                </span>
+              </p>
             </div>
           )}
         </CardContent>
@@ -393,7 +398,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
         {servers.length === 0 ? (
           <Empty>Aucun serveur. Créez-en un pour ce client.</Empty>
         ) : (
-          <Table>
+          <Table className={DENSE_TABLE}>
             <TableHeader>
               <TableRow>
                 <TableHead className="pl-6">Nom</TableHead>
@@ -412,7 +417,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                     <div className="font-mono text-xs text-muted-foreground">{s.slug}</div>
                   </TableCell>
                   <TableCell>
-                    {/* Derived lifecycle (DESIGN.md §4.9 tints): `stopped` reads as
+                    {/* Derived lifecycle (semantic badge tints): `stopped` reads as
                         paused (box kept) or no runtime, never the raw enum. */}
                     {(() => {
                       const view = lifecycleLabel(s, "fr");
@@ -451,7 +456,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                                 >
                                   <div className="flex flex-col">
                                     <span className="font-medium">{b.label}</span>
-                                    <span className="text-xs italic text-muted-foreground">
+                                    <span className="text-xs text-muted-foreground">
                                       {b.description}
                                     </span>
                                   </div>
@@ -474,7 +479,12 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                       )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" title="Cycle de vie">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Cycle de vie"
+                            aria-label="Cycle de vie"
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -537,7 +547,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
           <Empty>Aucun MCP installé.</Empty>
         ) : (
           <ul className="divide-y divide-border">
-            {/* One ledger row per MCP: live dot, name, mono slug, category, then the uninstall stamp. */}
+            {/* One row per MCP: live dot, name, mono slug, category, then the uninstall button. */}
             {mcps.map((m) => (
               <li
                 key={m.id}
@@ -546,21 +556,21 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
               >
                 <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                   <span
+                    aria-hidden
                     className={cn(
                       "inline-block h-2 w-2 shrink-0 rounded-full",
                       m.live ? "bg-success" : "bg-muted-foreground/40"
                     )}
                   />
+                  <span className="sr-only">{m.live ? "En ligne." : "Hors ligne."}</span>
                   <span className="font-medium">{m.mcpName}</span>
                   <span className="font-mono text-xs text-muted-foreground">{m.mcpSlug}</span>
                   {m.category && (
-                    <span className="smallcaps tracking-sc text-xs text-muted-foreground">
-                      {m.category}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{m.category}</span>
                   )}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  <span className="smallcaps tracking-sc lining text-xs text-muted-foreground">
+                  <span className="tabular-nums text-xs text-muted-foreground">
                     installé {relTime(m.installedAt)}
                   </span>
                   {m.mcpSlug !== "twinmcp-docs" && (
@@ -569,6 +579,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                       variant="ghost"
                       size="icon"
                       title="Désinstaller"
+                      aria-label={`Désinstaller ${m.mcpName}`}
                       onClick={() => void uninstallMcp(m.serverId, m.id, m.mcpName)}
                       className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     >
@@ -620,7 +631,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                       </Badge>
                     )}
                   </span>
-                  <span className="smallcaps tracking-sc lining shrink-0 text-xs text-muted-foreground">
+                  <span className="tabular-nums shrink-0 text-xs text-muted-foreground">
                     utilisée {relTime(k.lastUsedAt)}
                   </span>
                 </li>
@@ -642,7 +653,7 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
                   <span className="font-mono">{a.action}</span>{" "}
                   <span className="text-muted-foreground">{a.targetType}</span>
                 </span>
-                <span className="smallcaps tracking-sc lining shrink-0 text-xs text-muted-foreground">
+                <span className="tabular-nums shrink-0 text-xs text-muted-foreground">
                   {relTime(a.createdAt)}
                 </span>
               </li>
@@ -662,51 +673,21 @@ export function ClientDetailPanel({ clientId }: { clientId: string }) {
   );
 }
 
-// Breadcrumb-style back link (DESIGN.md §5): small caps, muted, ink on hover.
+// Back link to the clients list: brand blue, underline on hover.
 function BackLink() {
   return (
     <Link
       href={"/dashboard/admin/clients" as Route}
-      className="smallcaps tracking-sc inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      className="inline-flex items-center gap-2 text-sm font-medium text-brand underline-offset-4 hover:underline"
     >
-      <ArrowLeft className="h-4 w-4" />
+      <ArrowLeft aria-hidden className="size-4" />
       Tous les clients
     </Link>
   );
 }
 
-// Stat card (DESIGN.md §5): small-caps caption, lining number, italic footnote.
-function Kpi({
-  icon,
-  label,
-  value,
-  sub,
-  danger = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  danger?: boolean;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardDescription className="smallcaps tracking-sc flex items-center gap-2 text-xs not-italic">
-          {icon}
-          {label}
-        </CardDescription>
-        <CardTitle className={cn("lining text-3xl", danger && "text-destructive")}>
-          {value}
-        </CardTitle>
-        {sub && <p className="lining text-xs italic text-muted-foreground">{sub}</p>}
-      </CardHeader>
-    </Card>
-  );
-}
-
-// A section is a card: hairline icon square + small-caps title on a ruled header row,
-// then flush content (ledger tables and lists run edge to edge).
+// A section is a card: icon tile + title on a ruled header row, then flush
+// content (tables and lists run edge to edge).
 function Section({
   icon,
   title,
@@ -720,11 +701,9 @@ function Section({
 }) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b border-border px-6 py-4">
-        <CardTitle className="lining flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
-            {icon}
-          </span>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b border-border py-4">
+        <CardTitle className="flex items-center gap-3 tabular-nums">
+          <IconTile>{icon}</IconTile>
           {title}
         </CardTitle>
         {action}
@@ -735,5 +714,5 @@ function Section({
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="px-6 py-8 text-center text-sm italic text-muted-foreground">{children}</p>;
+  return <p className="px-6 py-8 text-center text-sm text-muted-foreground">{children}</p>;
 }

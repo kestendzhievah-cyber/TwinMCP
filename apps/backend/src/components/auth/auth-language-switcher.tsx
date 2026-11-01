@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
 import { LOCALES, type Locale } from "@/lib/i18n/locales";
 import { authSwitchTargets } from "@/lib/i18n/auth-switch";
 
-// The EN · FR stamp of the marketing header, for the auth screens: the same
+// The EN · FR switch of the marketing header, for the auth screens: the same
 // page in the other language with its query kept (lib/i18n/auth-switch.ts).
+// A small segmented control, the current language selected in brand blue.
 // Hidden where there is no twin to switch to.
 function Switcher({ locale, search }: { locale: Locale; search: string }) {
   const pathname = usePathname() ?? "/";
@@ -17,7 +18,7 @@ function Switcher({ locale, search }: { locale: Locale; search: string }) {
   if (!targets) return null;
   return (
     <div
-      className="inline-flex items-center border border-border/60 bg-background p-0.5 text-xs"
+      className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 text-xs"
       role="group"
       aria-label={locale === "fr" ? "Langue" : "Language"}
     >
@@ -30,10 +31,10 @@ function Switcher({ locale, search }: { locale: Locale; search: string }) {
             hrefLang={loc}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "smallcaps tracking-sc px-2 py-1 font-medium transition-colors",
+              "inline-flex min-h-9 items-center rounded-md px-2.5 font-semibold uppercase transition-colors",
               isActive
-                ? "bg-secondary text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-brand/10 text-brand"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
             {loc}

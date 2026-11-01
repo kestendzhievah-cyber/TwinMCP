@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { and, desc, eq } from "drizzle-orm";
-import { Activity, AlertCircle, ArrowRight, RotateCcw, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { apiKeys } from "@/db/schema/core";
@@ -19,9 +19,9 @@ import { ACTIVITY_RETENTION_DAYS } from "@/lib/activity/retention";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, fieldClasses } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ServerNav } from "./server-nav";
+import { ServerHeader } from "../server-header";
 import { CopyRequestId } from "./copy-request-id";
 import { getEntitlements } from "@/lib/wallet/entitlements";
 
@@ -68,9 +68,8 @@ function formatLatency(ms: number | null): string {
 }
 
 // A native select dressed as the Input field (a GET form needs no client JS).
-const selectClass =
-  "flex h-10 w-full border border-input bg-card px-3 py-2 text-sm text-foreground shadow-inner transition-colors focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-0";
-const fieldLabel = "smallcaps tracking-sc text-xs text-muted-foreground";
+const selectClass = cn(fieldClasses, "flex h-10 py-2");
+const fieldLabel = "text-xs font-medium text-muted-foreground";
 
 function queryString(filters: ActivityFilters, cursor?: string | null): string {
   const p = new URLSearchParams();
@@ -148,46 +147,39 @@ export default async function ServerActivityPage({
   }
 
   return (
-    <div className="space-y-8">
-      {/* Page header (DESIGN.md §5), same as the server overview. */}
-      <div>
-        <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-          Servers
-        </p>
-        <h1 className="smallcaps tracking-sc mt-2 text-2xl font-medium">{srv.name}</h1>
-        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{srv.slug}</p>
-        <Separator variant="double" className="mt-4" />
-        <div className="mt-4">
-          <ServerNav serverId={srv.id} />
-        </div>
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      <ServerHeader serverId={srv.id} name={srv.name} slug={srv.slug} />
 
       <div className="space-y-2">
-        <h2 className="smallcaps tracking-sc text-lg font-medium">Activity</h2>
-        <p className="text-sm italic text-muted-foreground">
+        <h2 className="font-display text-xl font-semibold tracking-tight">Activity</h2>
+        <p className="text-sm text-muted-foreground">
           Every tool call through this server&apos;s MCP endpoints, newest first, kept{" "}
-          <span className="lining">{retentionDays}</span> days on your account.
+          <span className="tabular-nums">{retentionDays}</span> days on your account.
           {plan === "free" && retentionDays < proDays && (
             <>
               {" "}
               <Link
                 href={"/dashboard/billing" as Route}
-                className="not-italic text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+                className="font-medium text-brand underline-offset-4 hover:underline"
               >
-                A first top-up keeps <span className="lining">{proDays}</span> days
+                A first top-up keeps <span className="tabular-nums">{proDays}</span> days
               </Link>
               .
             </>
           )}
         </p>
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+          <ShieldCheck aria-hidden className="h-3.5 w-3.5 shrink-0 text-success" />
           Metadata only — arguments and results are never stored.
         </p>
       </div>
 
       {/* Filters: a plain GET form, so a filtered view is a shareable URL. */}
-      <form method="get" action={base} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <form
+        method="get"
+        action={base}
+        className="grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5"
+      >
         <div className="space-y-1.5">
           <Label htmlFor="f-status" className={fieldLabel}>
             Status
@@ -263,8 +255,8 @@ export default async function ServerActivityPage({
       </form>
 
       {!parsed.ok ? (
-        <div className="flex items-start gap-2 border border-destructive/40 border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             {parsed.error}{" "}
             <Link href={base as Route} className="underline underline-offset-4">
@@ -300,74 +292,71 @@ export default async function ServerActivityPage({
           }
         />
       ) : (
-        // The ledger (DESIGN.md §4.5): lining timestamps, slugs and ids in Courier,
-        // the outcome as a tinted stamp.
-        <div className="border border-border bg-card shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-40">Time (UTC)</TableHead>
-                <TableHead>MCP</TableHead>
-                <TableHead>Tool</TableHead>
-                <TableHead className="w-36">Status</TableHead>
-                <TableHead className="w-24 text-right">Latency</TableHead>
-                <TableHead className="w-32">Key</TableHead>
-                <TableHead className="w-44">Request id</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {result.items.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="lining whitespace-nowrap text-muted-foreground">
-                    {TIME.format(new Date(r.createdAt))}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{r.mcpSlug}</TableCell>
-                  <TableCell className="break-all font-mono text-xs">
-                    {r.toolName ?? <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center gap-2">
-                      <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"}>
-                        {STATUS_LABEL[r.status] ?? r.status}
-                      </Badge>
-                      {r.errorCode !== null && (
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {r.errorCode}
-                        </span>
-                      )}
-                    </span>
-                  </TableCell>
-                  <TableCell className="lining whitespace-nowrap text-right text-muted-foreground">
-                    {formatLatency(r.latencyMs)}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {r.apiKeyPrefix ??
-                      (r.oauthClientName ? (
-                        <span className="font-sans" title={r.apiKeyId ?? undefined}>
-                          OAuth · {r.oauthClientName}
-                        </span>
-                      ) : r.apiKeyId ? (
-                        // Not one of your current keys (nor a live connector grant).
-                        <span className="font-sans italic" title={r.apiKeyId}>
-                          Deleted key
-                        </span>
-                      ) : (
-                        "—"
-                      ))}
-                    {r.externalUserId && (
-                      <span className="block break-all" title="External user">
-                        {r.externalUserId}
-                      </span>
+        // The call log: tabular timestamps, slugs and ids in mono, the outcome
+        // as a tinted pill. Scrolls sideways inside its frame on phones.
+        <Table containerClassName="shadow-sm">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-40">Time (UTC)</TableHead>
+              <TableHead>MCP</TableHead>
+              <TableHead>Tool</TableHead>
+              <TableHead className="w-36">Status</TableHead>
+              <TableHead className="w-24 text-right">Latency</TableHead>
+              <TableHead className="w-32">Key</TableHead>
+              <TableHead className="w-44">Request id</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {result.items.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="whitespace-nowrap text-muted-foreground">
+                  {TIME.format(new Date(r.createdAt))}
+                </TableCell>
+                <TableCell className="font-mono text-xs">{r.mcpSlug}</TableCell>
+                <TableCell className="break-all font-mono text-xs">
+                  {r.toolName ?? <span className="text-muted-foreground">—</span>}
+                </TableCell>
+                <TableCell>
+                  <span className="inline-flex items-center gap-2">
+                    <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"}>
+                      {r.status === "error" && <XCircle aria-hidden className="h-3 w-3" />}
+                      {STATUS_LABEL[r.status] ?? r.status}
+                    </Badge>
+                    {r.errorCode !== null && (
+                      <span className="font-mono text-xs text-muted-foreground">{r.errorCode}</span>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <CopyRequestId requestId={r.requestId} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  </span>
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-right text-muted-foreground">
+                  {formatLatency(r.latencyMs)}
+                </TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  {r.apiKeyPrefix ??
+                    (r.oauthClientName ? (
+                      <span className="font-sans" title={r.apiKeyId ?? undefined}>
+                        OAuth · {r.oauthClientName}
+                      </span>
+                    ) : r.apiKeyId ? (
+                      // Not one of your current keys (nor a live connector grant).
+                      <span className="font-sans" title={r.apiKeyId}>
+                        Deleted key
+                      </span>
+                    ) : (
+                      "—"
+                    ))}
+                  {r.externalUserId && (
+                    <span className="block break-all" title="External user">
+                      {r.externalUserId}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <CopyRequestId requestId={r.requestId} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {parsed.ok && (!onFirstPage || result?.nextCursor) && (

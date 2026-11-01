@@ -7,11 +7,13 @@ import { toast } from "sonner";
 import { track } from "@/lib/analytics/funnel";
 import { BILLING_HREF, type NudgeLevel, type NudgeSource } from "@/lib/billing/upgrade-state";
 import { maxMcpsForBoxSize } from "@/lib/plan-features";
+import { formatEurAmount } from "@/lib/wallet/pricing";
 import { cn } from "@/lib/utils";
 
 /**
  * Small, contextual "add credit" prompts: a one-line tinted callout
- * (TopUpInline, e.g. "Top up to continue"), a bare text link (TopUpLink) and
+ * (TopUpInline, e.g. "Top up to continue", optionally with amount chips), a
+ * bare text link (TopUpLink) and
  * the marketplace "box is full" toast. Every surface fires the same two funnel
  * events — `upgrade_nudge_viewed` once on mount and `upgrade_cta_clicked` on
  * the CTA (the event names predate the wallet) — so the viewed → clicked ratio
@@ -21,19 +23,30 @@ import { cn } from "@/lib/utils";
  * wallet price list (lib/wallet/pricing.ts), never typed inline.
  */
 
-const LINK = "text-brand underline underline-offset-4 decoration-brand/40 hover:decoration-brand";
+const LINK = "font-medium text-brand underline-offset-4 hover:underline";
 
-// The tint recipe per level (DESIGN.md §5 callouts): hairline + 10 % tint +
-// text, with the memo rule on the left. The standing offer is navy (brand) —
-// gilt is reserved for the one seal of a view.
+// The tint recipe per level (docs/DESIGN.md callouts): a rounded strip with a
+// /30 border and a /10 fill, text in navy. The standing free-credit offer
+// uses the soft-pink offer surface; urgent levels carry their status colour.
 const TINT: Record<NudgeLevel, string> = {
-  none: "border-brand/40 border-l-brand bg-brand/10 text-brand",
-  info: "border-info/40 border-l-info bg-info/10 text-info",
-  offer: "border-brand/40 border-l-brand bg-brand/10 text-brand",
-  trial: "border-info/40 border-l-info bg-info/10 text-info",
-  warning: "border-warning/40 border-l-warning bg-warning/10 text-warning",
-  limit: "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive",
-  past_due: "border-destructive/40 border-l-destructive bg-destructive/10 text-destructive",
+  none: "border-brand/30 bg-brand/10",
+  info: "border-info/30 bg-info/10",
+  offer: "border-offer-border bg-offer",
+  trial: "border-info/30 bg-info/10",
+  warning: "border-warning/30 bg-warning/10",
+  limit: "border-destructive/30 bg-destructive/10",
+  past_due: "border-destructive/30 bg-destructive/10",
+};
+
+// The CTA's colour on each tint (all AA on their /10 fill or the offer pink).
+const CTA_TEXT: Record<NudgeLevel, string> = {
+  none: "text-brand",
+  info: "text-info",
+  offer: "text-offer-foreground",
+  trial: "text-info",
+  warning: "text-warning",
+  limit: "text-destructive",
+  past_due: "text-destructive",
 };
 
 export interface NudgeIdentity {
@@ -63,10 +76,15 @@ interface TopUpInlineProps extends Partial<Omit<NudgeIdentity, "source">> {
   label?: string;
   href?: string;
   description?: React.ReactNode;
+  /**
+   * Quick amounts (whole euros, from the price list): one chip per amount,
+   * linking to the Credits page with that amount pre-selected (?amount=).
+   */
+  presetsEur?: readonly number[];
   className?: string;
 }
 
-/** A one-line tinted callout with the top-up link at the end. */
+/** A one-line tinted callout with the top-up link at the end (and optional amount chips). */
 export function TopUpInline({
   source,
   level = "offer",
@@ -74,27 +92,46 @@ export function TopUpInline({
   label,
   href = BILLING_HREF,
   description,
+  presetsEur,
   className,
 }: TopUpInlineProps) {
   useNudgeViewed({ source, level, reason });
   const text = label ?? (level === "limit" ? "Top up to continue" : "Add credit");
+  const id: NudgeIdentity = { source, level, reason };
   return (
-    <p
+    <div
       className={cn(
-        "flex flex-wrap items-baseline gap-x-3 gap-y-1 border border-l-2 px-3 py-2 text-sm",
+        "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-2.5 text-sm text-foreground",
         TINT[level],
         className
       )}
     >
       {description && <span className="min-w-0">{description}</span>}
+      {presetsEur && presetsEur.length > 0 && (
+        <span className="flex flex-wrap items-center gap-2">
+          {presetsEur.map((amount) => (
+            <Link
+              key={amount}
+              href={`${href}?amount=${amount}` as Route}
+              onClick={() => trackTopUpClick(id)}
+              className="inline-flex h-9 items-center rounded-full border border-input bg-card px-3 text-sm font-semibold tabular-nums text-foreground transition-colors hover:border-brand hover:bg-brand/10 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {formatEurAmount(amount)}
+            </Link>
+          ))}
+        </span>
+      )}
       <Link
         href={href as Route}
-        onClick={() => trackTopUpClick({ source, level, reason })}
-        className={cn("font-medium", LINK)}
+        onClick={() => trackTopUpClick(id)}
+        className={cn(
+          "font-semibold underline underline-offset-4 hover:no-underline",
+          CTA_TEXT[level]
+        )}
       >
         {text}
       </Link>
-    </p>
+    </div>
   );
 }
 

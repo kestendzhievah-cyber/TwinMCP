@@ -5,24 +5,30 @@ import { Toaster as Sonner } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
-// Toasts are slips of card stock: square, ink hairline, stacked-card shadow.
+// Toasts are small white cards: 12px radius, hairline, soft shadow. Success
+// and error toasts keep sonner's icons, tinted with the status tokens, so the
+// state never relies on colour alone.
 export function Toaster(props: ToasterProps) {
-  const { theme = "system" } = useTheme();
+  const { theme = "light" } = useTheme();
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       toastOptions={{
-        style: { borderRadius: 0 },
+        style: { borderRadius: "0.75rem" },
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-card group-[.toaster]:text-foreground group-[.toaster]:border-foreground/60 group-[.toaster]:shadow-lg group-[.toaster]:font-serif",
-          title: "group-[.toast]:font-medium",
-          description: "group-[.toast]:italic group-[.toast]:text-muted-foreground",
+            "group toast group-[.toaster]:rounded-xl group-[.toaster]:border-border group-[.toaster]:bg-card group-[.toaster]:font-sans group-[.toaster]:text-foreground group-[.toaster]:shadow-lg",
+          title: "group-[.toast]:font-semibold",
+          description: "group-[.toast]:text-muted-foreground",
+          success: "[&_[data-icon]]:text-success",
+          error: "[&_[data-icon]]:text-destructive",
+          warning: "[&_[data-icon]]:text-warning",
+          info: "[&_[data-icon]]:text-info",
           actionButton:
-            "group-[.toast]:rounded-none group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
+            "group-[.toast]:rounded-lg group-[.toast]:bg-primary group-[.toast]:font-semibold group-[.toast]:text-primary-foreground",
           cancelButton:
-            "group-[.toast]:rounded-none group-[.toast]:bg-secondary group-[.toast]:text-foreground",
+            "group-[.toast]:rounded-lg group-[.toast]:bg-secondary group-[.toast]:text-foreground",
         },
       }}
       {...props}

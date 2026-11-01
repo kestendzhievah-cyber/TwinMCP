@@ -30,9 +30,11 @@ interface PricingExperienceProps {
 // estimator, so the browser never re-derives a price from its own env.
 export function PricingExperience({ locale = "en" }: PricingExperienceProps) {
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8 md:gap-10">
       <PriceTable locale={locale} table={PRICE_TABLE} />
-      <CostEstimator locale={locale} table={PRICE_TABLE} />
+      <div id="estimator" className="scroll-mt-24">
+        <CostEstimator locale={locale} table={PRICE_TABLE} />
+      </div>
     </div>
   );
 }

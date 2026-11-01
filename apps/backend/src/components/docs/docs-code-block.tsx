@@ -6,9 +6,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n/locales";
 
-// Typewriter code block for the docs (same look as marketing/code-snippet.tsx:
-// Courier on a darker bone panel, one hairline, hairline-square copy button),
-// with the copy feedback in the page's language.
+// Code block for the docs (same family as marketing/code-snippet.tsx: mono on
+// the quiet light-blue fill, a rounded frame, a rounded copy button), with the
+// copy feedback in the page's language.
 
 const COPY = {
   en: {
@@ -46,11 +46,11 @@ export function DocsCodeBlock({ code, language, locale = "en", className }: Docs
   }
 
   return (
-    <div className={cn("relative border border-border bg-secondary/60", className)}>
-      <span className="smallcaps tracking-sc absolute left-3 top-2 text-xs text-muted-foreground">
+    <div className={cn("relative rounded-xl border border-border bg-secondary", className)}>
+      <span className="absolute left-4 top-3 font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {language}
       </span>
-      <pre className="overflow-x-auto px-4 pb-4 pt-8 text-sm leading-relaxed">
+      <pre className="overflow-x-auto px-4 pb-4 pt-12 text-sm leading-relaxed">
         <code className="!bg-transparent !p-0 font-mono text-foreground">{code}</code>
       </pre>
       <button
@@ -59,7 +59,7 @@ export function DocsCodeBlock({ code, language, locale = "en", className }: Docs
         aria-label={t.copy}
         title={t.copy}
         className={cn(
-          "absolute right-3 top-3 grid h-10 w-10 place-items-center border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/60 hover:text-foreground",
+          "absolute right-2 top-2 grid h-10 w-10 place-items-center rounded-lg border border-input bg-card text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           copied && "border-success/40 bg-success/10 text-success"
         )}
       >

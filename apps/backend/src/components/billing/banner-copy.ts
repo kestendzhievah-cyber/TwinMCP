@@ -9,12 +9,15 @@ export type SerializedWalletNudge = Omit<WalletNudge, "promoExpiresAt"> & {
   promoExpiresAt: string | null;
 };
 
-/** The levels the dashboard strip speaks for: balance, expiry, legacy subscription. */
+/**
+ * The levels the dashboard strip speaks for: low balance, credit used up and a
+ * failed legacy payment. Free credit (offer / trial) and a pending legacy
+ * conversion (info) are said by the sidebar balance card and the Credits page
+ * instead, so the strip never repeats the pill for accounts on free credit.
+ */
 export const BANNER_LEVELS: ReadonlySet<NudgeLevel> = new Set<NudgeLevel>([
   "limit",
   "warning",
-  "trial",
-  "info",
   "past_due",
 ]);
 

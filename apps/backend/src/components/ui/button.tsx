@@ -3,31 +3,38 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-// Buttons are typeset like the card: small capitals, letterspaced, square,
-// hairline or ink-filled. `outline` inverts to an ink stamp on hover; every
-// variant presses down 1px on :active (letterpress). See docs/DESIGN.md.
+// "Clear sky" buttons (docs/DESIGN.md §6). `default` is the rose primary:
+// at most ONE per viewport, for the screen's main action. Everything else is
+// `outline` (white card, input-grey border), `ghost` or `link` (blue).
+// `destructive` is the solid red fill and belongs only inside a confirmation
+// dialog; elsewhere use `outline` + `text-destructive` and an icon.
 const buttonVariants = cva(
-  "smallcaps tracking-sc inline-flex items-center justify-center gap-2 whitespace-nowrap border font-medium transition-[background-color,border-color,color,transform] duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
+        default:
+          "border-primary bg-primary text-primary-foreground shadow-cta hover:border-primary-hover hover:bg-primary-hover active:border-primary-active active:bg-primary-active",
+        outline:
+          "border-input bg-card text-foreground shadow-sm hover:border-foreground/40 hover:bg-accent",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-surface-band",
+        ghost: "border-transparent text-foreground hover:bg-accent",
+        link: "border-transparent font-medium text-brand underline-offset-4 hover:underline",
         destructive:
           "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border-foreground/60 bg-transparent text-foreground hover:border-foreground hover:bg-foreground hover:text-background",
-        secondary:
-          "border-border bg-secondary text-secondary-foreground hover:border-foreground/50",
-        ghost: "border-transparent text-foreground/80 hover:bg-secondary hover:text-foreground",
-        link: "no-smallcaps border-transparent font-normal text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand",
       },
       size: {
-        default: "h-10 px-5 text-sm",
-        sm: "h-8 px-3 text-xs",
-        lg: "h-12 px-7 text-base",
+        sm: "h-9 px-3.5 text-sm",
+        default: "h-10 px-4 text-sm",
+        lg: "h-12 px-6 text-base",
+        // Hero and final CTA only.
+        xl: "h-14 rounded-xl px-8 text-lg",
         icon: "h-10 w-10",
       },
     },
+    // A link reads as inline text: no horizontal padding whatever the size.
+    compoundVariants: [{ variant: "link", className: "px-0" }],
     defaultVariants: { variant: "default", size: "default" },
   }
 );

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { ResetPasswordForm } from "./form";
 
 // Reached from a reset email only: kept out of the index. The hreflang pair
@@ -20,8 +21,10 @@ export const metadata: Metadata = {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense>
-      <ResetPasswordForm />
-    </Suspense>
+    <AuthShell locale="en">
+      <Suspense>
+        <ResetPasswordForm />
+      </Suspense>
+    </AuthShell>
   );
 }

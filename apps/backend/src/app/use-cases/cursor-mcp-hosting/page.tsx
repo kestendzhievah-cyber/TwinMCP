@@ -79,32 +79,33 @@ const faq = [
 export default function CursorMcpHostingPage() {
   return (
     <UseCaseLayout useCase={useCase} benefits={benefits} steps={steps} faq={faq}>
-      <section className="rule-double py-16 md:py-20">
+      <section className="border-t border-border py-16 md:py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-            Configuration
-          </p>
-          <h2 className="mt-4 text-balance text-3xl font-medium md:text-4xl">
+          <p className="eyebrow">Configuration</p>
+          <h2 className="mt-4 text-balance text-3xl font-display font-bold tracking-tight md:text-4xl">
             The Cursor config snippet you actually paste
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
             Every hosted MCP in your dashboard exposes a ready-to-copy snippet for{" "}
-            <code className="bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">
+            <code className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">
               ~/.cursor/mcp.json
             </code>
             . No path resolution, no{" "}
-            <code className="bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">command</code> and{" "}
-            <code className="bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">args</code>{" "}
+            <code className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">
+              command
+            </code>{" "}
+            and{" "}
+            <code className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]">
+              args
+            </code>{" "}
             wrangling — just URL and token.
           </p>
         </div>
-        {/* Typewriter block: engraved filename tab, Courier on darker bone (DESIGN.md §4.6) */}
-        <div className="mx-auto mt-12 max-w-2xl border border-border bg-secondary/60">
+        {/* Code block: a filename header over mono code. */}
+        <div className="mx-auto mt-12 max-w-2xl overflow-hidden rounded-xl border border-border bg-surface-alt">
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
-            <span className="smallcaps tracking-sc text-xs text-muted-foreground">
-              ~/.cursor/mcp.json
-            </span>
-            <span className="smallcaps tracking-sc border border-border px-1.5 text-xs leading-5 text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">~/.cursor/mcp.json</span>
+            <span className="rounded-md border border-border bg-card px-1.5 font-mono text-xs leading-5 text-muted-foreground">
               json
             </span>
           </div>
@@ -125,7 +126,7 @@ export default function CursorMcpHostingPage() {
           Need a deeper walk-through of Cursor&apos;s MCP config?{" "}
           <Link
             href={"/blog/cursor-mcp-setup" as Route}
-            className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+            className="text-brand underline underline-offset-4 hover:decoration-2"
           >
             Read the Cursor MCP setup guide
           </Link>

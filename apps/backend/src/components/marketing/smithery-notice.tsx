@@ -3,8 +3,8 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
 import type { Locale } from "@/lib/i18n/locales";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 
 // Smithery stops its hosted proxy, URLs, API and accounts on 31 October 2026
 // (source: https://smithery.ai/future). Until then the band announces it, for
@@ -21,53 +21,75 @@ function phaseAt(ms: number): Phase {
   return null;
 }
 
+const EN = walletFacts("en");
+const FR = walletFacts("fr");
+
+// Spec §4.9. The credit amount comes from the wallet facts, never typed.
 const COPY = {
   en: {
-    closing: "Smithery shuts down its hosting on 31 October — migrate your MCP servers",
-    closed: "Smithery shut down its hosting on 31 October — migrate your MCP servers",
+    closing: `Smithery is closing. Move your MCPs to TwinMCP in 2 minutes, with ${EN.signupCredit} on us.`,
+    closed: `Smithery has closed. Move your MCPs to TwinMCP in 2 minutes, with ${EN.signupCredit} on us.`,
+    action: "Migrate",
     href: "/migrate-from-smithery",
   },
   fr: {
-    closing: "Smithery ferme son hébergement le 31 octobre — migrez vos serveurs MCP",
-    closed: "Smithery a fermé son hébergement le 31 octobre — migrez vos serveurs MCP",
+    closing: `Smithery ferme. Migrez vos MCP vers TwinMCP en 2 minutes, ${FR.signupCredit} offerts.`,
+    closed: `Smithery a fermé. Migrez vos MCP vers TwinMCP en 2 minutes, ${FR.signupCredit} offerts.`,
+    action: "Migrer",
     href: "/fr/migrer-depuis-smithery",
   },
 } as const;
 
 interface SmitheryNoticeProps {
   locale?: Locale;
-  /** `Date.now()` taken by the server page when it rendered. The first render
-   *  uses it so the hydrated markup matches the static HTML (no layout shift on
-   *  a fresh build); the effect then re-checks against the visitor's clock, so a
-   *  page built before a boundary still switches wording or hides itself. */
+  /** `Date.now()` taken when the server rendered. The first render uses it so
+   *  the hydrated markup matches the HTML; the effect then re-checks against
+   *  the visitor's clock, so a page built before a boundary still switches
+   *  wording or hides itself. */
   renderedAt: number;
+  /**
+   * Where the band is mounted. The announcement bar sits ABOVE the sticky
+   * header (spec §4.9), so MarketingHeader renders it with `placement="top"`
+   * on the home pages. The legacy page-level calls (`<SmitheryNotice>` inside
+   * app/(marketing)/page.tsx and app/fr/page.tsx, which render under the
+   * header) default to `"page"` and render nothing, so the band never shows
+   * twice. Those calls can simply be removed.
+   */
+  placement?: "top" | "page";
 }
 
-// A thin info-tinted band under the header: one line, the whole line a link to
-// the locale's Smithery migration landing (/migrate-from-smithery,
-// /fr/migrer-depuis-smithery).
-export function SmitheryNotice({ locale = "en", renderedAt }: SmitheryNoticeProps) {
+// A one-line navy announcement bar: white text, the whole line a link to the
+// locale's Smithery migration landing (/migrate-from-smithery,
+// /fr/migrer-depuis-smithery). No rose on navy (contrast 2.92).
+export function SmitheryNotice({
+  locale = "en",
+  renderedAt,
+  placement = "page",
+}: SmitheryNoticeProps) {
   const [phase, setPhase] = useState<Phase>(() => phaseAt(renderedAt));
 
   useEffect(() => {
     setPhase(phaseAt(Date.now()));
   }, []);
 
-  if (!phase) return null;
+  if (placement !== "top" || !phase) return null;
   const t = COPY[locale];
 
   return (
-    <div className="border-b border-info/40 bg-info/10">
+    // Dark mode keeps a dark bar (surface-band) instead of flipping to a light strip.
+    <div className="bg-foreground text-background dark:bg-surface-band dark:text-foreground">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <Link
           href={t.href as Route}
           data-cta-location="smithery_notice"
-          className="group flex min-h-10 items-center justify-center gap-2 py-2 text-center text-xs text-foreground sm:text-sm"
+          className="group flex min-h-10 items-center justify-center py-2 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background focus-visible:ring-offset-2 focus-visible:ring-offset-foreground dark:focus-visible:ring-ring dark:focus-visible:ring-offset-surface-band"
         >
-          <span className="underline decoration-info/40 underline-offset-4 transition-colors group-hover:decoration-info">
-            {t[phase]}
+          <span suppressHydrationWarning>
+            {t[phase]}{" "}
+            <span className="whitespace-nowrap font-semibold underline underline-offset-4 group-hover:decoration-2 dark:text-foreground">
+              {t.action}&nbsp;<span aria-hidden>→</span>
+            </span>
           </span>
-          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-info" aria-hidden />
         </Link>
       </div>
     </div>

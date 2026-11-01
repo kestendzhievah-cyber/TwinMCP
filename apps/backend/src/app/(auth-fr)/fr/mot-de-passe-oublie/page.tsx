@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { ForgotPasswordForm } from "@/app/(auth)/forgot-password/form";
 
 // French twin of /forgot-password: kept out of the index, reciprocal hreflang.
@@ -19,8 +20,10 @@ export const metadata: Metadata = {
 
 export default function FrForgotPasswordPage() {
   return (
-    <Suspense>
-      <ForgotPasswordForm locale="fr" />
-    </Suspense>
+    <AuthShell locale="fr">
+      <Suspense>
+        <ForgotPasswordForm locale="fr" />
+      </Suspense>
+    </AuthShell>
   );
 }

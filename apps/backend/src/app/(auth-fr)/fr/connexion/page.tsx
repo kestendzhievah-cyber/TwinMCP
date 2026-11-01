@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { SignInForm } from "@/app/(auth)/sign-in/form";
 
 // French twin of /sign-in. Like the English page: no SEO value, kept out of the
@@ -16,8 +17,10 @@ export const metadata: Metadata = {
 
 export default function FrSignInPage() {
   return (
-    <Suspense>
-      <SignInForm locale="fr" />
-    </Suspense>
+    <AuthShell locale="fr">
+      <Suspense>
+        <SignInForm locale="fr" />
+      </Suspense>
+    </AuthShell>
   );
 }

@@ -11,7 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, ArrowDownToLine, Pause, Play, RefreshCw, ScrollText } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownToLine,
+  Info,
+  Pause,
+  Play,
+  RefreshCw,
+  ScrollText,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LogLine {
@@ -35,8 +43,8 @@ function detectLevel(message: string): "error" | "warn" | "info" | "debug" {
   return "info";
 }
 
-// Levels on ink stock (DESIGN.md §5 logs viewer): the panel carries the `dark`
-// class so these tokens resolve to bone, ochre and oxblood on ink.
+// Levels on the terminal panel: it carries the `dark` class, so these tokens
+// resolve to their dark-theme values (light text on navy) in both themes.
 const levelColor: Record<string, string> = {
   error: "text-destructive",
   warn: "text-warning",
@@ -108,23 +116,26 @@ export function LogsViewer({
 
   return (
     <Card>
-      {/* Ruled header: hairline icon square + small-caps title; the tail controls share the row. */}
-      <CardHeader className="border-b border-border px-6 py-4">
+      {/* Header: icon tile + title; the tail controls share the row. */}
+      <CardHeader className="border-b border-border">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-3">
-              <CardTitle className="flex items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground">
-                  <ScrollText className="h-4 w-4" />
-                </span>
-                Logs
-              </CardTitle>
-              {paused && <Badge variant="warning">Paused</Badge>}
+          <div className="flex min-w-0 items-start gap-3">
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-brand"
+            >
+              <ScrollText className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle as="h2">Logs</CardTitle>
+                {paused && <Badge variant="warning">Paused</Badge>}
+              </div>
+              <CardDescription className="tabular-nums">
+                Live tail · refreshes every {POLL_INTERVAL_MS / 1000}s
+                {lastFetch && <span> · last: {lastFetch}</span>}
+              </CardDescription>
             </div>
-            <CardDescription className="lining pl-12">
-              Live tail · refreshes every {POLL_INTERVAL_MS / 1000}s
-              {lastFetch && <span> · last: {lastFetch}</span>}
-            </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={slug} onValueChange={setSlug}>
@@ -160,7 +171,11 @@ export function LogsViewer({
             </Button>
             <Button
               size="icon"
-              variant={autoScroll ? "default" : "outline"}
+              variant="outline"
+              className={cn(
+                autoScroll &&
+                  "border-brand bg-brand/10 text-brand hover:border-brand hover:bg-brand/15"
+              )}
               onClick={() => setAutoScroll((a) => !a)}
               title="Auto-scroll to bottom"
               aria-label="Auto-scroll to bottom"
@@ -173,26 +188,27 @@ export function LogsViewer({
       </CardHeader>
       <CardContent className="p-0">
         {(error || notice) && (
-          <div className="space-y-3 border-b border-border px-6 py-4">
+          <div className="space-y-3 border-b border-border p-[var(--card-padding)]">
             {error && (
-              <div className="flex items-start gap-2 border border-destructive/40 border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
             {notice && (
-              <div className="border border-info/40 border-l-2 border-l-info bg-info/10 px-3 py-2 text-sm text-info">
-                {notice}
+              <div className="flex items-start gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info">
+                <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{notice}</span>
               </div>
             )}
           </div>
         )}
-        {/* Ink stock: `dark` flips the tokens locally so the tail reads as bone
-            type on ink, in both themes (DESIGN.md §1, §5). The panel runs flush
-            to the card's hairline, a window cut into the stock. */}
+        {/* A terminal: `dark` flips the tokens locally so the tail reads as
+            light text on navy in both themes. It runs flush to the card's
+            edges and follows its bottom corners. */}
         <div
           ref={containerRef}
-          className="dark h-[480px] overflow-auto bg-background p-4 font-mono text-xs text-foreground"
+          className="dark h-[480px] overflow-auto rounded-b-2xl bg-background p-4 font-mono text-xs text-foreground"
         >
           {loading && lines.length === 0 ? (
             <div className="text-muted-foreground">Loading logs…</div>

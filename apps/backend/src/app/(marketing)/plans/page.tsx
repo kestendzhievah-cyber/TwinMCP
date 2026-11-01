@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { Metadata, Route } from "next";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/marketing/section";
+import { OfferBadge, offerCopy } from "@/components/marketing/offer-badge";
+import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
 import { Faq, type FaqItem } from "@/components/marketing/faq";
 import { PricingExperience } from "@/components/pricing/pricing-experience";
 import { TrustSignals } from "@/components/pricing/trust-signals";
@@ -10,12 +12,7 @@ import { ComparisonTable } from "@/components/pricing/comparison-table";
 import { TrackOnMount } from "@/components/analytics/track-event";
 import { JsonLd } from "@/components/seo/json-ld";
 import { faqPageSchema, breadcrumbListSchema } from "@/lib/seo/schema";
-import {
-  FUNDED_UNLOCKS,
-  SIGNUP_OFFER,
-  walletFacts,
-  walletProductSchema,
-} from "@/components/pricing/wallet-copy";
+import { FUNDED_UNLOCKS, walletFacts, walletProductSchema } from "@/components/pricing/wallet-copy";
 
 // Every price on this page comes from lib/wallet/pricing.ts through
 // components/pricing/wallet-copy.ts (publicPriceTable, whatTenEuroBuys).
@@ -86,40 +83,50 @@ export default function PlansPage() {
         ]}
       />
       <TrackOnMount name="pricing_view" />
-      {/* Hero, price list and estimator. The header is written out (not
-          Section's title prop, which renders an h2) so the page has a real
-          h1, set in the same style as every other section title. */}
-      <Section>
-        <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
-          <p className="eyebrow mb-4 flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']">
-            Pricing
-          </p>
-          <h1 className="text-3xl font-medium md:text-4xl">
-            Pay as you go. {W.signupCredit} free to start.
+
+      {/* Hero: the offer first (pill, the € figure in the H1, the CTA label),
+          then the terms line, so the free credit is never oversold. */}
+      <section className="bg-background pb-14 pt-10 md:pb-20 md:pt-16">
+        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+          <OfferBadge />
+          <h1 className="mt-5 text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+            Pay as you go. <span className="text-primary">{W.signupCredit} free</span> to start.
           </h1>
-          <p className="mt-4 text-balance text-lg text-muted-foreground">
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-muted-foreground md:text-xl">
             No subscription. You top up a prepaid balance and pay only for what your servers use:
             tool calls and active CPU time. At zero, everything stops: no surprise bills.
           </p>
-          <div className="mt-8 flex justify-center">
-            <Button asChild size="lg">
-              <Link href={"/sign-up" as Route} data-cta-location="pricing_hero">
+          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <Button asChild size="xl" className="w-full sm:w-auto">
+              <Link href={"/sign-up" as Route} id="hero-cta" data-cta-location="pricing_hero">
                 Get {W.signupCredit} of free credit
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight aria-hidden />
               </Link>
             </Button>
+            <Button asChild size="xl" variant="outline" className="w-full sm:w-auto">
+              <a href="#estimator">
+                <Calculator aria-hidden />
+                Estimate your cost
+              </a>
+            </Button>
           </div>
+          <TrustSignals className="mt-6" />
         </div>
+      </section>
+
+      {/* Price list, what the credit buys, then the estimator. */}
+      <Section
+        id="prices"
+        className="scroll-mt-16 bg-surface-alt"
+        eyebrow="Price list"
+        title="Pay only for what you use"
+        description={`Two meters, both in euros: tool calls and active CPU time. Top up from ${W.minTopup} when you need more.`}
+      >
         <PricingExperience />
-        {/* The section's address line: facts between two hairlines. */}
-        <div className="mx-auto mt-12 max-w-3xl border-y border-border py-4">
-          <TrustSignals />
-        </div>
       </Section>
 
       {/* Before and after the first top-up */}
       <Section
-        bordered
         eyebrow="Your account"
         title="Free credit, then pay as you go"
         description="Same prices before and after your first top-up. Funding the account lifts the limits that keep the free credit from being abused."
@@ -127,38 +134,44 @@ export default function PlansPage() {
         <ComparisonTable />
       </Section>
 
-      {/* FAQ */}
-      <Faq
-        items={pricingFaq}
-        eyebrow="Pricing FAQ"
-        title="Pricing questions, answered"
-        description="If something's not covered here, email hello@twinmcp.fr — we read everything."
-        id="pricing-faq"
-      />
+      {/* FAQ on the alternate band */}
+      <div className="bg-surface-alt">
+        <Faq
+          items={pricingFaq}
+          eyebrow="Pricing FAQ"
+          title="Pricing questions, answered"
+          description="If something's not covered here, email hello@twinmcp.fr. We read everything."
+          id="pricing-faq"
+        />
+      </div>
 
-      {/* Final CTA: a single card on the bone page — title, a short rule, lead, buttons. */}
-      <Section bordered>
-        <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 border border-border bg-card px-6 py-12 text-center shadow-sm md:px-12 md:py-14">
-          <h2 className="text-balance text-3xl font-medium md:text-4xl">
-            Ship faster with context that lives where your agent runs.
-          </h2>
-          <div className="h-px w-12 bg-foreground/40" />
-          <p className="max-w-xl text-balance text-lg text-muted-foreground">
-            Start with {W.signupCredit} on us. Top up only when you need more.
-          </p>
-          <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href={"/sign-up" as Route} data-cta-location="pricing_final">
-                {SIGNUP_OFFER.en}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href={"/docs#credit" as Route}>How credit works</Link>
-            </Button>
+      {/* Final CTA: a strong-band panel (never navy: a rose button on navy fails contrast). */}
+      <section id="final-cta" data-sticky-cta-hide className="bg-background py-16 md:py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto flex max-w-4xl flex-col items-center rounded-3xl bg-surface-band p-8 text-center md:p-14">
+            <OfferBadge />
+            <h2 className="mt-5 max-w-2xl text-balance font-display text-3xl font-bold tracking-tight md:text-4xl">
+              Your first hosted MCP server, live in about 2 minutes.
+            </h2>
+            <p className="mt-4 max-w-xl text-balance text-lg text-muted-foreground">
+              Start with {W.signupCredit} on us. Top up only when you need more.
+            </p>
+            <div className="mt-8 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
+              <Button asChild size="xl" className="w-full sm:w-auto">
+                <Link href={"/sign-up" as Route} data-cta-location="pricing_final">
+                  {offerCopy("en").cta}
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild size="xl" variant="outline" className="w-full sm:w-auto">
+                <Link href={"/docs#credit" as Route}>How credit works</Link>
+              </Button>
+            </div>
+            <TrustSignals className="mt-6" />
           </div>
         </div>
-      </Section>
+      </section>
+      <StickyMobileCta />
     </>
   );
 }

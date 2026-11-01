@@ -5,8 +5,8 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// FAQ rows are a ledger: hairline between questions, question in the larger
-// serif, answer in the muted reading size.
+// FAQ rows: a hairline between questions, the question in semibold (blue on
+// hover), the answer in the muted reading size. The chevron rotates open.
 const Accordion = AccordionPrimitive.Root;
 
 const AccordionItem = React.forwardRef<
@@ -29,7 +29,7 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between gap-4 py-5 text-left text-lg font-medium transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&[data-state=open]>svg]:rotate-180",
+        "flex flex-1 items-center justify-between gap-4 rounded-md py-4 text-left text-base font-semibold transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&[data-state=open]>svg]:rotate-180",
         className
       )}
       {...props}
@@ -50,7 +50,7 @@ const AccordionContent = React.forwardRef<
     className="overflow-hidden text-base text-muted-foreground data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
     {...props}
   >
-    <div className={cn("pb-5 pt-0", className)}>{children}</div>
+    <div className={cn("pb-4 pt-0", className)}>{children}</div>
   </AccordionPrimitive.Content>
 ));
 AccordionContent.displayName = AccordionPrimitive.Content.displayName;

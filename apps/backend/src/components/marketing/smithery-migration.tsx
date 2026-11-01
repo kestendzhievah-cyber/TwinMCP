@@ -15,6 +15,7 @@ import { Section } from "@/components/marketing/section";
 import { CodeSnippet } from "@/components/marketing/code-snippet";
 import { Faq } from "@/components/marketing/faq";
 import { walletFacts } from "@/components/pricing/wallet-copy";
+import { BrandLogo, hasBrandLogo } from "@/components/brand/brand-logo";
 import {
   API_KEY_PLACEHOLDER,
   buildClientConfig,
@@ -445,34 +446,28 @@ export const SMITHERY_MIGRATION_FAQ: Record<Locale, { q: string; a: string }[]> 
 
 // ─── Sections ────────────────────────────────────────────────────────────────
 
-// Section eyebrow between two short hairlines (DESIGN.md §4.7), for the hero.
-const eyebrowRules =
-  "eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']";
-
-const LINK =
-  "text-brand underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand";
+const LINK = "font-medium text-brand underline underline-offset-4 hover:decoration-2";
 
 interface LocaleProps {
   locale?: Locale;
 }
 
-/** The centred name (DESIGN.md §4.2): eyebrow, engraved H1, hairline, lead, CTAs, address line. */
+/** Hero: eyebrow, H1, lead, one rose CTA (the credit), pricing, the facts line. */
 export function MigrationHero({ locale = "en" }: LocaleProps) {
   const t = COPY[locale].hero;
   return (
-    <section className="w-full py-20 md:py-28">
-      <div className="mx-auto max-w-5xl px-6 text-center">
-        <p className={eyebrowRules}>{t.eyebrow}</p>
-        <h1 className="display letterpress mx-auto mt-6 max-w-4xl text-balance text-4xl md:text-5xl lg:text-6xl">
+    <section className="w-full py-16 md:py-24">
+      <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
+        <p className="eyebrow">{t.eyebrow}</p>
+        <h1 className="mx-auto mt-3 max-w-4xl text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
           {t.title}
         </h1>
-        <div className="mx-auto mt-8 h-px w-12 bg-foreground/40" />
-        <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl">{t.lead}</p>
-        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">{t.lead}</p>
+        <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
           <Button asChild size="lg">
             <Link href={signUpHref(locale)} data-cta-location="smithery_migration_hero">
               {t.primary}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight aria-hidden />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
@@ -481,9 +476,14 @@ export function MigrationHero({ locale = "en" }: LocaleProps) {
             </Link>
           </Button>
         </div>
-        <p className="smallcaps tracking-sc mt-10 text-xs text-muted-foreground">
-          {t.facts.join(" · ")}
-        </p>
+        <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+          {t.facts.map((fact) => (
+            <li key={fact} className="inline-flex items-center gap-1.5">
+              <Check className="h-4 w-4 text-success" aria-hidden />
+              {fact}
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );
@@ -494,15 +494,13 @@ export function ShutdownFacts({ locale = "en" }: LocaleProps) {
   const t = COPY[locale].shutdown;
   return (
     <Section bordered eyebrow={t.eyebrow} title={t.title} description={t.description}>
-      <dl className="mx-auto max-w-3xl border-y border-foreground/50">
+      <dl className="mx-auto max-w-3xl divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
         {t.rows.map((row) => (
           <div
             key={row.name}
-            className="grid gap-1 border-b border-border py-4 last:border-b-0 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-8"
+            className="grid gap-1 px-5 py-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-8 sm:px-6"
           >
-            <dt className="smallcaps tracking-sc text-base font-medium text-foreground">
-              {row.name}
-            </dt>
+            <dt className="text-base font-semibold text-foreground">{row.name}</dt>
             <dd className="text-base text-muted-foreground">{row.body}</dd>
           </div>
         ))}
@@ -529,7 +527,7 @@ export function MigrationMapping({ locale = "en" }: LocaleProps) {
   const url = exampleUrl(locale);
   return (
     <Section bordered id="steps" eyebrow={t.eyebrow} title={t.title} description={t.description}>
-      <div className="mx-auto max-w-4xl border border-border bg-card">
+      <div className="mx-auto max-w-4xl">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -544,7 +542,7 @@ export function MigrationMapping({ locale = "en" }: LocaleProps) {
                 <TableCell className="align-top">
                   <span
                     aria-hidden
-                    className="lining grid h-9 w-9 place-items-center border border-foreground/60 text-base font-medium"
+                    className="grid h-8 w-8 place-items-center rounded-full bg-brand text-sm font-semibold tabular-nums text-brand-foreground"
                   >
                     {i + 1}
                   </span>
@@ -561,9 +559,7 @@ export function MigrationMapping({ locale = "en" }: LocaleProps) {
       </div>
 
       <div className="mx-auto mt-16 max-w-5xl">
-        <h3 className="smallcaps tracking-sc border-b border-foreground/50 pb-3 text-lg font-medium">
-          {t.snippetsTitle}
-        </h3>
+        <h3 className="font-display text-xl font-semibold tracking-tight">{t.snippetsTitle}</h3>
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           {SNIPPET_CLIENTS.map((ide) => {
             const cfg = buildClientConfig(ide, {
@@ -573,7 +569,8 @@ export function MigrationMapping({ locale = "en" }: LocaleProps) {
             });
             return (
               <div key={ide} className="min-w-0">
-                <p className="smallcaps tracking-sc mb-2 text-sm font-medium text-foreground">
+                <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+                  {hasBrandLogo(ide) ? <BrandLogo slug={ide} size={18} decorative /> : null}
                   {CLIENT_NAMES[ide]}
                 </p>
                 <CodeSnippet
@@ -586,7 +583,7 @@ export function MigrationMapping({ locale = "en" }: LocaleProps) {
             );
           })}
         </div>
-        <p className="mt-6 text-sm italic text-muted-foreground">{t.snippetsNote}</p>
+        <p className="mt-6 text-sm text-muted-foreground">{t.snippetsNote}</p>
       </div>
     </Section>
   );
@@ -598,11 +595,9 @@ export function KeepAndDiffer({ locale = "en" }: LocaleProps) {
   const c = COPY[locale];
   return (
     <Section bordered eyebrow={t.eyebrow} title={t.title}>
-      <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2">
-        <div className="border border-border bg-card p-6">
-          <h3 className="smallcaps tracking-sc border-b border-border pb-3 text-lg font-medium">
-            {t.keepTitle}
-          </h3>
+      <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-2 md:gap-6">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <h3 className="font-display text-lg font-semibold tracking-tight">{t.keepTitle}</h3>
           <ul className="mt-4 space-y-3">
             {t.keep.map((item) => (
               <li key={item} className="flex gap-3 text-base text-muted-foreground">
@@ -613,10 +608,8 @@ export function KeepAndDiffer({ locale = "en" }: LocaleProps) {
             ))}
           </ul>
         </div>
-        <div className="border border-border bg-card p-6">
-          <h3 className="smallcaps tracking-sc border-b border-border pb-3 text-lg font-medium">
-            {t.differTitle}
-          </h3>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <h3 className="font-display text-lg font-semibold tracking-tight">{t.differTitle}</h3>
           <ul className="mt-4 space-y-3">
             {t.differ.map((item) => (
               <li key={item} className="flex gap-3 text-base text-muted-foreground">
@@ -631,57 +624,60 @@ export function KeepAndDiffer({ locale = "en" }: LocaleProps) {
   );
 }
 
-/** (d) The offer: free credit to try, then pay as you go. The one gilt seal of the page. */
+/** (d) The offer: free credit to try (the highlighted card, the rose action), then pay as you go. */
 export function MigrationOffer({ locale = "en" }: LocaleProps) {
   const t = COPY[locale].offer;
   return (
     <Section bordered id="offer" eyebrow={t.eyebrow} title={t.title} description={t.description}>
-      <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
-        <div className="flex flex-col border border-border bg-card p-6">
-          <h3 className="smallcaps tracking-sc text-lg font-medium">{t.free.name}</h3>
+      <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2 md:gap-6">
+        <div className="flex flex-col rounded-2xl border border-offer-border bg-offer p-5 shadow-sm sm:p-6">
+          <h3 className="font-display text-lg font-semibold tracking-tight">{t.free.name}</h3>
           <p className="mt-3">
-            <span className="lining text-4xl font-medium">{t.free.price}</span>{" "}
-            <span className="text-sm italic text-muted-foreground">{t.free.cadence}</span>
+            <span className="font-display text-4xl font-extrabold tabular-nums text-primary">
+              {t.free.price}
+            </span>{" "}
+            <span className="text-sm text-muted-foreground">{t.free.cadence}</span>
           </p>
           <ul className="mt-6 flex-1 space-y-2">
             {t.free.bullets.map((b) => (
               <li key={b} className="flex gap-3 text-base text-muted-foreground">
                 <Check className="mt-1 h-4 w-4 shrink-0 text-success" aria-hidden />
-                <span className="lining">{b}</span>
+                <span className="tabular-nums">{b}</span>
               </li>
             ))}
           </ul>
-          <Button asChild variant="outline" className="mt-8">
+          <Button asChild className="mt-8">
             <Link href={signUpHref(locale)} data-cta-location="smithery_migration_offer">
               {t.free.cta}
+              <ArrowRight aria-hidden />
             </Link>
           </Button>
         </div>
 
-        <div className="relative flex flex-col border border-foreground/70 bg-card p-6 shadow-stack">
-          <Badge variant="gilt" className="absolute -top-3 left-6">
+        <div className="relative flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <Badge variant="brand" className="absolute -top-3 left-6 bg-card">
             {t.pro.seal}
           </Badge>
-          <h3 className="smallcaps tracking-sc text-lg font-medium">{t.pro.name}</h3>
+          <h3 className="font-display text-lg font-semibold tracking-tight">{t.pro.name}</h3>
           <p className="mt-3">
-            <span className="lining text-4xl font-medium">{t.pro.price}</span>{" "}
-            <span className="lining text-sm italic text-muted-foreground">{t.pro.cadence}</span>
+            <span className="font-display text-4xl font-extrabold tabular-nums">{t.pro.price}</span>{" "}
+            <span className="tabular-nums text-sm text-muted-foreground">{t.pro.cadence}</span>
           </p>
           <ul className="mt-6 flex-1 space-y-2">
             {t.pro.bullets.map((b) => (
               <li key={b} className="flex gap-3 text-base text-muted-foreground">
                 <Check className="mt-1 h-4 w-4 shrink-0 text-success" aria-hidden />
-                <span className="lining">{b}</span>
+                <span className="tabular-nums">{b}</span>
               </li>
             ))}
           </ul>
-          <p className="lining mt-6 border-t border-border pt-4 text-sm italic text-muted-foreground">
+          <p className="mt-6 border-t border-border pt-4 text-sm tabular-nums text-muted-foreground">
             {t.pro.trial}
           </p>
-          <Button asChild className="mt-6">
+          <Button asChild variant="outline" className="mt-6">
             <Link href={pricingHref(locale)} data-cta-location="smithery_migration_offer_pricing">
               {t.pro.cta}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight aria-hidden />
             </Link>
           </Button>
         </div>
@@ -694,7 +690,7 @@ export function MigrationOffer({ locale = "en" }: LocaleProps) {
 export function MigrationFaq({ locale = "en" }: LocaleProps) {
   const t = COPY[locale].faq;
   return (
-    <div className="rule-double">
+    <div className="border-t border-border">
       <Faq
         locale={locale}
         items={SMITHERY_MIGRATION_FAQ[locale]}
@@ -708,21 +704,22 @@ export function MigrationFaq({ locale = "en" }: LocaleProps) {
   );
 }
 
-/** Closing card: title, short rule, lead, the two CTAs. */
+/** Closing panel on the surface band: title, lead, the two CTAs, the guided-setup link. */
 export function MigrationFinalCta({ locale = "en" }: LocaleProps) {
   const t = COPY[locale].final;
   const hero = COPY[locale].hero;
   return (
     <Section bordered>
-      <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 border border-border bg-card px-6 py-12 text-center shadow-sm md:px-12 md:py-14">
-        <h2 className="text-balance text-3xl font-medium md:text-4xl">{t.title}</h2>
-        <div className="h-px w-12 bg-foreground/40" />
+      <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 rounded-3xl bg-surface-band px-6 py-12 text-center md:px-14 md:py-14">
+        <h2 className="text-balance font-display text-3xl font-bold tracking-tight md:text-4xl">
+          {t.title}
+        </h2>
         <p className="max-w-xl text-balance text-lg text-muted-foreground">{t.lead}</p>
-        <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-2 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <Button asChild size="lg">
             <Link href={signUpHref(locale)} data-cta-location="smithery_migration_final">
               {hero.primary}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight aria-hidden />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">

@@ -1,13 +1,17 @@
-import { Check } from "lucide-react";
+import { Check, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { ActivationLink, type ActivationStep } from "@/components/onboarding/activation-link";
+import { CreditMeter } from "@/components/billing/credit-meter";
 import { cn } from "@/lib/utils";
 
 /**
- * "Getting started" on the dashboard overview: the five steps from a new
- * account to its first tool call, each either done or a link to the place
- * where it gets done. The overview renders it only while a step is missing
- * (see `isActivated`), and the flags are computed there from the DB.
+ * "Getting started" on the dashboard overview: the steps from a new account
+ * to its first tool call, each either done or a link to the place where it
+ * gets done. The next step's button is the page's primary action (unless the
+ * page hands the primary to a top-up). Once every step is done the card
+ * collapses to a one-line success strip. The flags are computed on the
+ * overview from the DB.
  */
 
 export interface ActivationState {
@@ -32,12 +36,39 @@ export function isActivated(s: ActivationState): boolean {
 interface Row {
   step: ActivationStep;
   done: boolean;
+  label: string;
   doneLabel: string;
-  todo: React.ReactNode;
+  href: string;
+  cta: string;
 }
 
-export function ActivationChecklist({ state }: { state: ActivationState }) {
-  if (isActivated(state)) return null;
+export function ActivationChecklist({
+  state,
+  primary = true,
+  className,
+}: {
+  state: ActivationState;
+  /** The next step's button is the page's rose primary (false: outline). */
+  primary?: boolean;
+  className?: string;
+}) {
+  if (isActivated(state)) {
+    return (
+      <p
+        role="status"
+        className={cn(
+          "flex items-center gap-3 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-foreground",
+          className
+        )}
+      >
+        <CheckCircle2 aria-hidden className="h-5 w-5 shrink-0 text-success" />
+        <span>
+          <span className="font-semibold">You&apos;re live.</span> Your first tool call went
+          through: every step of the setup is done.
+        </span>
+      </p>
+    );
+  }
 
   const serverHref = state.serverId
     ? `/dashboard/servers/${state.serverId}`
@@ -47,97 +78,120 @@ export function ActivationChecklist({ state }: { state: ActivationState }) {
     {
       step: "server",
       done: state.hasServer,
+      label: "Create your server",
       doneLabel: "Server created",
-      todo: (
-        <ActivationLink step="server" href="/onboarding?force=1&step=2">
-          Create your server
-        </ActivationLink>
-      ),
+      href: "/onboarding?force=1&step=2",
+      cta: "Create server",
     },
     {
       step: "mcp",
       done: state.hasMcp,
+      label: "Install an MCP from the marketplace",
       doneLabel: "MCP installed",
-      todo: (
-        <ActivationLink step="mcp" href="/dashboard/marketplace">
-          Install an MCP from the marketplace
-        </ActivationLink>
-      ),
+      href: "/dashboard/marketplace",
+      cta: "Add an MCP",
     },
     {
       step: "key",
       done: state.hasKey,
+      label: "Get an API key on your server page",
       doneLabel: "API key created",
-      todo: (
-        <ActivationLink step="key" href={serverHref}>
-          Get an API key on your server page
-        </ActivationLink>
-      ),
+      href: serverHref,
+      cta: "Get a key",
     },
     {
       step: "connect",
       done: state.ideConnected,
-      doneLabel: "IDE connected",
-      todo: (
-        <ActivationLink step="connect" href={serverHref}>
-          Paste the config into your IDE
-        </ActivationLink>
-      ),
+      label: "Paste the config into your client",
+      doneLabel: "Client connected",
+      href: serverHref,
+      cta: "Copy config",
     },
     {
       step: "first_call",
       done: state.firstToolCall,
+      label: "Ask your client to use a tool: the call appears in Logs",
       doneLabel: "First tool call made",
-      todo: (
-        <span>
-          Ask your IDE to use a tool —{" "}
-          <ActivationLink step="first_call" href={serverHref}>
-            the call appears in Logs
-          </ActivationLink>
-        </span>
-      ),
+      href: serverHref,
+      cta: "Open logs",
     },
   ];
   const doneCount = rows.filter((r) => r.done).length;
+  const nextIndex = rows.findIndex((r) => !r.done);
 
   return (
-    <Card>
-      <CardHeader className="border-b border-border px-6 py-4">
-        <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-          Getting started
-        </p>
-        <CardTitle className="mt-1 flex flex-wrap items-baseline justify-between gap-2 text-base">
-          <span>From sign-up to your first tool call</span>
-          <span className="lining text-sm font-normal italic text-muted-foreground">
+    <Card className={className}>
+      <CardHeader className="space-y-3 pb-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <CardTitle as="h2">Getting started</CardTitle>
+          <span className="text-sm tabular-nums text-muted-foreground">
             {doneCount} of {rows.length} done
           </span>
-        </CardTitle>
+        </div>
+        <CreditMeter
+          share={doneCount / rows.length}
+          label="Setup progress"
+          trackClassName="bg-secondary"
+          fillClassName="bg-brand"
+        />
       </CardHeader>
-      <CardContent className="p-0">
-        <ol className="divide-y divide-border">
-          {rows.map((row, i) => (
-            <li key={row.step} className="flex items-start gap-3 px-6 py-3 text-sm">
-              <span
-                aria-hidden
-                className={cn(
-                  "mt-0.5 grid h-5 w-5 shrink-0 place-items-center border text-xs",
-                  row.done
-                    ? "border-success/40 bg-success/10 text-success"
-                    : "lining border-border text-muted-foreground"
-                )}
-              >
-                {row.done ? <Check className="h-3.5 w-3.5" /> : i + 1}
-              </span>
-              {row.done ? (
-                <span className="text-muted-foreground">
-                  <span className="sr-only">Done: </span>
-                  {row.doneLabel}
+      <CardContent>
+        <ol className="space-y-3">
+          {rows.map((row, i) => {
+            const isNext = i === nextIndex;
+            return (
+              <li key={row.step} className="flex items-start gap-3 text-sm">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "mt-px grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold tabular-nums",
+                    row.done
+                      ? "bg-success text-success-foreground"
+                      : isNext
+                        ? "border-2 border-brand text-brand"
+                        : "border-2 border-input text-muted-foreground"
+                  )}
+                >
+                  {row.done ? <Check className="h-3.5 w-3.5" /> : i + 1}
                 </span>
-              ) : (
-                <span>{row.todo}</span>
-              )}
-            </li>
-          ))}
+                <div className="min-w-0 flex-1 pt-0.5">
+                  {row.done ? (
+                    <span className="text-muted-foreground">
+                      <span className="sr-only">Done: </span>
+                      {row.doneLabel}
+                    </span>
+                  ) : isNext ? (
+                    <>
+                      <span className="font-semibold text-foreground">{row.label}</span>
+                      <div className="mt-2">
+                        <ActivationLink
+                          step={row.step}
+                          href={row.href}
+                          className={cn(
+                            buttonVariants({
+                              variant: primary ? "default" : "outline",
+                              size: "sm",
+                            }),
+                            "no-underline"
+                          )}
+                        >
+                          {row.cta}
+                        </ActivationLink>
+                      </div>
+                    </>
+                  ) : (
+                    <ActivationLink
+                      step={row.step}
+                      href={row.href}
+                      className="font-normal text-muted-foreground no-underline hover:text-brand hover:underline"
+                    >
+                      {row.label}
+                    </ActivationLink>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       </CardContent>
     </Card>

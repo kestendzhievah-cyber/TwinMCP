@@ -7,7 +7,7 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { countsTowardKeyLimit, keyScopeLabel, type KeyScope } from "@/lib/auth/key-scope";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { fieldClasses, Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,7 +26,17 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import { AlertTriangle, CheckCircle2, Copy, Key, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  Copy,
+  Key,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Plan } from "@/db/schema/core";
 import { limitFor, minPlanForLimit, PLAN_LABELS } from "@/lib/plan-features";
 import { TopUpInline } from "@/components/billing/top-up-inline";
@@ -59,8 +69,18 @@ function isRetiring(k: Key): boolean {
   );
 }
 
-export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
+export function ApiKeysPanel({
+  keys,
+  plan,
+  defaultOpen = true,
+}: {
+  keys: Key[];
+  plan: Plan;
+  /** The card starts expanded (the overview collapses it once keys exist). */
+  defaultOpen?: boolean;
+}) {
   const router = useRouter();
+  const [open, setOpen] = useState(defaultOpen);
   const [creating, setCreating] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
@@ -153,6 +173,7 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
       setNewKeyName("");
       setNewExternalUserId("");
       setCreateOpen(false);
+      setOpen(true);
       refresh();
       toast.success("API key created");
     } else {
@@ -185,6 +206,7 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
     if (res.ok) {
       const data = await res.json();
       setRotateTarget(null);
+      setOpen(true);
       setRevealedKey(data.key);
       setRevealedNote(
         data.oldKeyExpiresAt
@@ -210,115 +232,149 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
   }
 
   return (
-    <Card>
-      <CardHeader className="border-b border-border">
-        <CardTitle>API Keys</CardTitle>
-        <CardDescription>
-          Proxy keys go in IDE configs and can only call MCP servers; full-access keys also drive
-          the management API from scripts.{" "}
-          <span className="lining font-medium not-italic text-foreground">
-            {usedSlots}/{limit}
-          </span>{" "}
-          used ({PLAN_LABELS[plan]}).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 pt-6">
-        {revealedKey && (
-          // The freshly minted key: a green-tinted memo slip with the key set
-          // typewriter-style and a hairline-square copy button (DESIGN.md §4.6).
-          <div className="border border-success/40 bg-success/10 p-3 text-sm">
-            <p className="mb-2 flex items-center gap-2 font-medium text-success">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              New key — copy now, it won&apos;t be shown again
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 break-all border border-border bg-card px-2 py-1.5 font-mono text-xs">
-                {revealedKey}
-              </code>
-              <Button
-                size="icon"
-                variant="outline"
-                className="shrink-0 border-border bg-card"
-                onClick={copyKey}
-                aria-label="Copy key"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setRevealedKey(null);
-                  setRevealedNote(null);
-                }}
-              >
-                Dismiss
-              </Button>
-            </div>
-            {revealedNote && <p className="mt-2 text-xs italic text-success">{revealedNote}</p>}
-          </div>
-        )}
-
-        <div className="flex">
-          <Button onClick={() => setCreateOpen(true)} disabled={atLimit}>
+    <Card className="overflow-hidden">
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+        <div className="min-w-0 basis-full space-y-1 sm:basis-0 sm:flex-1">
+          <CardTitle as="h2" className="flex flex-wrap items-center gap-2">
+            API keys
+            <Badge variant="secondary" className="tabular-nums">
+              {usedSlots}/{limit} used
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            Proxy keys go in IDE configs and can only call MCP servers; full-access keys also drive
+            the management API from scripts. {PLAN_LABELS[plan]} account.
+          </CardDescription>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setCreateOpen(true)} disabled={atLimit}>
             <Plus className="h-4 w-4" />
             Create key
           </Button>
-        </div>
-        {atLimit &&
-          (upgradeTo ? (
-            // A tier limit that a first top-up lifts: the tinted memo line.
-            <TopUpInline
-              source="keys"
-              level="offer"
-              reason="keys_limit"
-              description={`${PLAN_LABELS[plan]} accounts get ${limit} API key${limit > 1 ? "s" : ""}. A first top-up raises it to ${limitFor(upgradeTo, "apiKeys")}.`}
-              className="lining"
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-expanded={open}
+            aria-controls="api-keys-body"
+            aria-label={open ? "Hide API keys" : "Show API keys"}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform motion-reduce:transition-none",
+                open && "rotate-180"
+              )}
             />
-          ) : (
-            <p className="text-xs italic text-muted-foreground">
-              You&apos;ve reached your plan&apos;s limit of <span className="lining">{limit}</span>{" "}
-              key{limit > 1 ? "s" : ""}. Rotate a key to replace one without using a slot.
-            </p>
-          ))}
+          </Button>
+        </div>
+      </CardHeader>
+      <div id="api-keys-body" hidden={!open}>
+        {(revealedKey || atLimit || shownKeys.length === 0) && (
+          <CardContent className="space-y-4">
+            {revealedKey && (
+              // The freshly minted key: a success-tinted strip with the key in
+              // mono and a copy button.
+              <div className="rounded-xl border border-success/30 bg-success/10 p-3 text-sm">
+                <p className="mb-2 flex items-center gap-2 font-semibold text-success">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  New key — copy now, it won&apos;t be shown again
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="min-w-0 flex-1 break-all rounded-md border border-border bg-card px-2 py-1.5 font-mono text-xs">
+                    {revealedKey}
+                  </code>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={copyKey}
+                    aria-label="Copy key"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setRevealedKey(null);
+                      setRevealedNote(null);
+                    }}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+                {revealedNote && <p className="mt-2 text-xs text-foreground">{revealedNote}</p>}
+              </div>
+            )}
 
-        {shownKeys.length === 0 ? (
-          // Empty state (DESIGN.md §5): dashed ink hairline, bare icon, small-caps title, italic body.
-          <div className="flex flex-col items-center gap-2 border border-dashed border-foreground/40 bg-transparent px-6 py-10 text-center">
-            <Key aria-hidden className="h-6 w-6 text-muted-foreground" />
-            <p className="smallcaps tracking-sc mt-1 font-medium">No API keys yet</p>
-            <p className="max-w-sm text-sm italic text-muted-foreground">
-              Create one above to connect the TwinMCP runtime from your IDE. Lost a key later?
-              Rotate it instead of revoking: you get a replacement without using a slot.
-            </p>
-          </div>
-        ) : (
-          // The ledger (DESIGN.md §4.5): mono prefixes, lining dates, a bare bin at the end.
-          <div className="border border-border">
+            {atLimit &&
+              (upgradeTo ? (
+                // A tier limit that a first top-up lifts: the tinted callout.
+                <TopUpInline
+                  source="keys"
+                  level="offer"
+                  reason="keys_limit"
+                  description={`${PLAN_LABELS[plan]} accounts get ${limit} API key${limit > 1 ? "s" : ""}. A first top-up raises it to ${limitFor(upgradeTo, "apiKeys")}.`}
+                  className="tabular-nums"
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  You&apos;ve reached your plan&apos;s limit of{" "}
+                  <span className="tabular-nums">{limit}</span> key{limit > 1 ? "s" : ""}. Rotate a
+                  key to replace one without using a slot.
+                </p>
+              ))}
+
+            {shownKeys.length === 0 && (
+              <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border px-6 py-8 text-center">
+                <span
+                  aria-hidden
+                  className="grid h-12 w-12 place-items-center rounded-full bg-secondary text-brand"
+                >
+                  <Key className="h-5 w-5" />
+                </span>
+                <p className="font-display text-base font-semibold tracking-tight">
+                  No API keys yet
+                </p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Create one to connect the TwinMCP runtime from your IDE. Lost a key later? Rotate
+                  it instead of revoking: you get a replacement without using a slot.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        )}
+
+        {shownKeys.length > 0 && (
+          // Flush to the card edges: mono prefixes, tabular dates, the actions at the end.
+          <div className="border-t border-border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Prefix</TableHead>
+                  <TableHead className="pl-5 sm:pl-6">Prefix</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>End customer</TableHead>
                   <TableHead>Last used</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead className="w-24"></TableHead>
+                  <TableHead className="w-24 pr-5 sm:pr-6">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {shownKeys.map((k) => (
                   <TableRow key={k.id}>
-                    <TableCell className="font-mono text-xs">{k.prefix}…</TableCell>
+                    <TableCell className="pl-5 font-mono text-xs sm:pl-6">{k.prefix}…</TableCell>
                     <TableCell className="font-medium">{k.name ?? "—"}</TableCell>
                     <TableCell>
                       {k.scope ? (
                         <Badge variant={k.scope === "full" ? "warning" : "secondary"}>
+                          {k.scope === "full" && <AlertTriangle aria-hidden className="h-3 w-3" />}
                           {keyScopeLabel({ scope: k.scope, serverName: k.serverName })}
                         </Badge>
                       ) : (
-                        <span className="italic text-muted-foreground">…</span>
+                        <span className="text-muted-foreground">…</span>
                       )}
                     </TableCell>
                     <TableCell className="max-w-[12rem] text-muted-foreground">
@@ -327,29 +383,25 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
                           {k.externalUserId}
                         </span>
                       ) : (
-                        <span className="italic">—</span>
+                        <span>—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {k.lastUsedAt ? (
-                        formatDate(k.lastUsedAt)
-                      ) : (
-                        <span className="italic">never</span>
-                      )}
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {k.lastUsedAt ? formatDate(k.lastUsedAt) : "never"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
                       {k.expiresAt ? (
-                        <span className="lining" title="Replaced by a rotation; stops working then">
+                        <span title="Replaced by a rotation; stops working then">
                           {formatDateTime(k.expiresAt)}
                         </span>
                       ) : (
-                        <span className="italic">never</span>
+                        "never"
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
                       {formatDate(k.createdAt)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="pr-5 text-right sm:pr-6">
                       <div className="flex justify-end gap-1">
                         <Button
                           size="icon"
@@ -368,10 +420,11 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
                         <Button
                           size="icon"
                           variant="ghost"
+                          className="text-destructive hover:text-destructive"
                           onClick={() => setRevokeTarget(k)}
                           aria-label={`Revoke key ${k.name ?? k.prefix}`}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -381,168 +434,166 @@ export function ApiKeysPanel({ keys, plan }: { keys: Key[]; plan: Plan }) {
             </Table>
           </div>
         )}
+      </div>
 
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create an API key</DialogTitle>
-              <DialogDescription>
-                The key is shown once. Pick the narrowest access that does the job.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-5">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="new-key-name">Name (optional)</Label>
-                <Input
-                  id="new-key-name"
-                  placeholder="e.g. Laptop · Cursor"
-                  maxLength={80}
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                />
-              </div>
-              <fieldset className="space-y-3">
-                <legend className="smallcaps tracking-sc mb-2 text-xs font-medium text-foreground/85">
-                  Access
-                </legend>
-                <label className="flex cursor-pointer items-start gap-3 border border-border p-3 has-[:checked]:border-foreground">
-                  <input
-                    type="radio"
-                    name="key-scope"
-                    value="mcp_proxy"
-                    checked={newScope === "mcp_proxy"}
-                    onChange={() => setNewScope("mcp_proxy")}
-                    className="mt-1 accent-foreground"
-                  />
-                  <span className="space-y-1 text-sm">
-                    <span className="block font-medium">MCP proxy only</span>
-                    <span className="block italic text-muted-foreground">
-                      Calls MCP servers, nothing else. The one to paste into an IDE config.
-                    </span>
-                  </span>
-                </label>
-                {newScope === "mcp_proxy" && (
-                  <div className="flex flex-col gap-2 pl-7">
-                    <Label htmlFor="new-key-server">Server</Label>
-                    <select
-                      id="new-key-server"
-                      value={newServerId}
-                      onChange={(e) => setNewServerId(e.target.value)}
-                      className="h-10 w-full border border-input bg-card px-3 text-sm text-foreground shadow-inner transition-colors focus-visible:border-foreground focus-visible:outline-none [&>option]:bg-card [&>option]:text-foreground"
-                    >
-                      {serverOptions.map((srv) => (
-                        <option key={srv.id} value={srv.id}>
-                          {srv.name}
-                        </option>
-                      ))}
-                      <option value="">All my servers</option>
-                    </select>
-                    <Label htmlFor="new-key-external" className="mt-2">
-                      End customer id (optional)
-                    </Label>
-                    <Input
-                      id="new-key-external"
-                      placeholder="e.g. acme-corp or your CRM id"
-                      maxLength={128}
-                      value={newExternalUserId}
-                      onChange={(e) => setNewExternalUserId(e.target.value)}
-                    />
-                    <p className="text-xs italic text-muted-foreground">
-                      For agencies: give each customer its own key, tagged with your id for them, so
-                      you can tell keys apart and revoke one without the others.
-                    </p>
-                  </div>
-                )}
-                <label className="flex cursor-pointer items-start gap-3 border border-border p-3 has-[:checked]:border-foreground">
-                  <input
-                    type="radio"
-                    name="key-scope"
-                    value="full"
-                    checked={newScope === "full"}
-                    onChange={() => setNewScope("full")}
-                    className="mt-1 accent-foreground"
-                  />
-                  <span className="space-y-1 text-sm">
-                    <span className="block font-medium">Full access (management API)</span>
-                    <span className="block italic text-muted-foreground">
-                      Also creates and deletes servers and manages keys, like your login.
-                    </span>
-                  </span>
-                </label>
-                {newScope === "full" && (
-                  <p className="flex items-start gap-2 border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    Anyone holding this key controls your account: keep it out of IDE configs.
-                  </p>
-                )}
-              </fieldset>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create an API key</DialogTitle>
+            <DialogDescription>
+              The key is shown once. Pick the narrowest access that does the job.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="new-key-name">Name (optional)</Label>
+              <Input
+                id="new-key-name"
+                placeholder="e.g. Laptop · Cursor"
+                maxLength={80}
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+              />
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={createKey} disabled={creating || atLimit}>
-                {creating ? "Creating…" : "Create key"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <fieldset className="space-y-3">
+              <legend className="mb-2 text-sm font-medium text-foreground">Access</legend>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:border-input has-[:checked]:border-brand has-[:checked]:ring-1 has-[:checked]:ring-brand">
+                <input
+                  type="radio"
+                  name="key-scope"
+                  value="mcp_proxy"
+                  checked={newScope === "mcp_proxy"}
+                  onChange={() => setNewScope("mcp_proxy")}
+                  className="mt-1 accent-brand"
+                />
+                <span className="space-y-1 text-sm">
+                  <span className="block font-medium">MCP proxy only</span>
+                  <span className="block text-muted-foreground">
+                    Calls MCP servers, nothing else. The one to paste into an IDE config.
+                  </span>
+                </span>
+              </label>
+              {newScope === "mcp_proxy" && (
+                <div className="flex flex-col gap-2 pl-7">
+                  <Label htmlFor="new-key-server">Server</Label>
+                  <select
+                    id="new-key-server"
+                    value={newServerId}
+                    onChange={(e) => setNewServerId(e.target.value)}
+                    className={cn(
+                      fieldClasses,
+                      "h-10 [&>option]:bg-card [&>option]:text-foreground"
+                    )}
+                  >
+                    {serverOptions.map((srv) => (
+                      <option key={srv.id} value={srv.id}>
+                        {srv.name}
+                      </option>
+                    ))}
+                    <option value="">All my servers</option>
+                  </select>
+                  <Label htmlFor="new-key-external" className="mt-2">
+                    End customer id (optional)
+                  </Label>
+                  <Input
+                    id="new-key-external"
+                    placeholder="e.g. acme-corp or your CRM id"
+                    maxLength={128}
+                    value={newExternalUserId}
+                    onChange={(e) => setNewExternalUserId(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For agencies: give each customer its own key, tagged with your id for them, so
+                    you can tell keys apart and revoke one without the others.
+                  </p>
+                </div>
+              )}
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:border-input has-[:checked]:border-brand has-[:checked]:ring-1 has-[:checked]:ring-brand">
+                <input
+                  type="radio"
+                  name="key-scope"
+                  value="full"
+                  checked={newScope === "full"}
+                  onChange={() => setNewScope("full")}
+                  className="mt-1 accent-brand"
+                />
+                <span className="space-y-1 text-sm">
+                  <span className="block font-medium">Full access (management API)</span>
+                  <span className="block text-muted-foreground">
+                    Also creates and deletes servers and manages keys, like your login.
+                  </span>
+                </span>
+              </label>
+              {newScope === "full" && (
+                <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  Anyone holding this key controls your account: keep it out of IDE configs.
+                </p>
+              )}
+            </fieldset>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createKey} disabled={creating || atLimit}>
+              {creating ? "Creating…" : "Create key"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <Dialog open={!!rotateTarget} onOpenChange={(o) => !o && setRotateTarget(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Rotate this API key?</DialogTitle>
-              <DialogDescription>
-                A new key with the same access replaces{" "}
-                <code className="font-mono text-xs not-italic text-foreground">
-                  {rotateTarget?.name ?? rotateTarget?.prefix}
-                </code>
-                . The old key keeps working for 24 hours, then stops — revoke it instead if it
-                leaked. You&apos;ll see the new key once: paste it into every IDE or script that
-                used the old one.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRotateTarget(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => rotateTarget && rotateKey(rotateTarget.id)}
-                disabled={rotating}
-              >
-                {rotating ? "Rotating…" : "Rotate key"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      <Dialog open={!!rotateTarget} onOpenChange={(o) => !o && setRotateTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rotate this API key?</DialogTitle>
+            <DialogDescription>
+              A new key with the same access replaces{" "}
+              <code className="font-mono text-xs text-foreground">
+                {rotateTarget?.name ?? rotateTarget?.prefix}
+              </code>
+              . The old key keeps working for 24 hours, then stops — revoke it instead if it leaked.
+              You&apos;ll see the new key once: paste it into every IDE or script that used the old
+              one.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRotateTarget(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => rotateTarget && rotateKey(rotateTarget.id)} disabled={rotating}>
+              {rotating ? "Rotating…" : "Rotate key"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <Dialog open={!!revokeTarget} onOpenChange={(o) => !o && setRevokeTarget(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Revoke this API key?</DialogTitle>
-              <DialogDescription>
-                This immediately breaks any IDE or script using{" "}
-                <code className="font-mono text-xs not-italic text-foreground">
-                  {revokeTarget?.name ?? revokeTarget?.prefix}
-                </code>
-                . It can&apos;t be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRevokeTarget(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => revokeTarget && revokeKey(revokeTarget.id)}
-                disabled={revoking}
-              >
-                {revoking ? "Revoking…" : "Revoke key"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
+      <Dialog open={!!revokeTarget} onOpenChange={(o) => !o && setRevokeTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke this API key?</DialogTitle>
+            <DialogDescription>
+              This immediately breaks any IDE or script using{" "}
+              <code className="font-mono text-xs text-foreground">
+                {revokeTarget?.name ?? revokeTarget?.prefix}
+              </code>
+              . It can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => revokeTarget && revokeKey(revokeTarget.id)}
+              disabled={revoking}
+            >
+              {revoking ? "Revoking…" : "Revoke key"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

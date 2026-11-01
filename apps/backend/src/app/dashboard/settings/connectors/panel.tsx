@@ -4,12 +4,12 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, Copy, Plug } from "lucide-react";
+import { Check, Copy, Info, Plug } from "lucide-react";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { fieldClasses } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { cn } from "@/lib/utils";
 
 /** GET /api/v2/oauth/connections row (lib/oauth.ts OAuthConnection). */
 interface Connection {
@@ -98,24 +99,18 @@ export function ConnectorsPanel({
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">Connectors</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
+    <div className="space-y-6 md:space-y-8">
+      <header>
+        <h1 className="font-display text-2xl font-bold tracking-tight">Connectors</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Apps you signed in to TwinMCP with OAuth. They can call the tools of your MCPs, never
-          manage your account.{" "}
-          <Link
-            href={"/dashboard/settings" as Route}
-            className="not-italic text-brand underline underline-offset-4"
-          >
-            Back to settings
-          </Link>
+          manage your account.
         </p>
-        <Separator variant="double" className="mt-4" />
-      </div>
+      </header>
 
       {!enabled && (
-        <p className="border border-info/40 bg-info/10 px-3 py-2 text-sm text-info">
+        <p className="flex items-start gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm text-info">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           OAuth sign-in for connectors is currently turned off. Existing connectors stop working
           until it is turned back on; API keys are unaffected.
         </p>
@@ -135,7 +130,7 @@ export function ConnectorsPanel({
               Revoking ends access at once. The app will ask you to sign in again.
             </CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -143,7 +138,9 @@ export function ConnectorsPanel({
                   <TableHead>Access</TableHead>
                   <TableHead>Authorized</TableHead>
                   <TableHead>Last used</TableHead>
-                  <TableHead className="w-24"></TableHead>
+                  <TableHead className="w-24">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -194,11 +191,11 @@ export function ConnectorsPanel({
         <CardContent className="space-y-4 text-sm">
           {servers.length > 1 && (
             <label className="flex flex-wrap items-center gap-2">
-              <span className="smallcaps tracking-sc text-xs text-muted-foreground">Server</span>
+              <span className="text-sm font-medium">Server</span>
               <select
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
-                className="h-9 border border-input bg-card px-2 text-sm shadow-inner"
+                className={cn(fieldClasses, "h-10 w-auto min-w-[12rem] [&>option]:bg-card")}
               >
                 {servers.map((s) => (
                   <option key={s.id} value={s.slug}>
@@ -209,7 +206,7 @@ export function ConnectorsPanel({
             </label>
           )}
           <div className="flex items-stretch gap-2">
-            <code className="flex-1 break-all border border-border bg-secondary/60 px-3 py-2 font-mono text-sm">
+            <code className="flex-1 break-all rounded-lg border border-border bg-secondary px-3 py-2 font-mono text-sm">
               {url}
             </code>
             <button
@@ -217,7 +214,7 @@ export function ConnectorsPanel({
               onClick={copy}
               disabled={!slug}
               aria-label="Copy URL"
-              className="grid w-10 place-items-center border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-50"
+              className="grid w-10 shrink-0 place-items-center rounded-lg border border-input bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50"
             >
               {copied ? (
                 <Check aria-hidden className="h-4 w-4 text-success" />
@@ -227,11 +224,11 @@ export function ConnectorsPanel({
             </button>
           </div>
           {servers.length === 0 && (
-            <p className="text-xs italic text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Create a server first:{" "}
               <Link
                 href={"/dashboard/servers" as Route}
-                className="not-italic text-brand underline underline-offset-4"
+                className="font-medium text-brand underline-offset-4 hover:underline"
               >
                 Servers
               </Link>
@@ -260,7 +257,7 @@ export function ConnectorsPanel({
               appears in the list above.
             </li>
           </ol>
-          <p className="text-xs italic text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Menu names can differ between app versions. Tool calls made by a connector count against
             your plan&apos;s daily quota, like calls made with an API key.
           </p>

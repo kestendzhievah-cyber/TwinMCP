@@ -9,15 +9,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
   PIPELINE_ORDER,
   STATUS_LABEL,
   STATUS_PROBABILITY,
+  STATUS_VARIANT,
   STATUSES,
   eur,
   weightedPipeline,
   type ProspectRow,
 } from "./prospects-shared";
+import { DENSE_TABLE, EmptyNote, StatTile } from "../admin-ui";
 
 const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
@@ -46,58 +49,27 @@ export function ProspectsAnalytics({ items }: { items: ProspectRow[] }) {
   });
 
   if (items.length === 0) {
-    return (
-      <div className="border border-dashed border-foreground/40 px-6 py-10 text-center">
-        <p className="text-sm italic text-muted-foreground">
-          Ajoutez des prospects pour voir vos statistiques de conversion.
-        </p>
-      </div>
-    );
+    return <EmptyNote>Ajoutez des prospects pour voir vos statistiques de conversion.</EmptyNote>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Stat cards (DESIGN.md §5): small-caps caption, lining number, one muted line under. */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
-              Prévision pondérée
-            </CardDescription>
-            <CardTitle className="lining text-3xl">{eur.format(weighted)}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs italic text-muted-foreground">
-              Revenu attendu (valeur × probabilité par étape).
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
-              Taux de closing
-            </CardDescription>
-            <CardTitle className="lining text-3xl">{winRate}%</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="lining text-xs text-muted-foreground">
-              {won} gagné{won > 1 ? "s" : ""} · {lost} perdu{lost > 1 ? "s" : ""}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="smallcaps tracking-sc text-xs not-italic">
-              Deals actifs
-            </CardDescription>
-            <CardTitle className="lining text-3xl">
-              {items.filter((p) => p.status !== "won" && p.status !== "lost").length}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs italic text-muted-foreground">Prospects encore en jeu.</p>
-          </CardContent>
-        </Card>
+        <StatTile
+          label="Prévision pondérée"
+          value={eur.format(weighted)}
+          sub="Revenu attendu (valeur × probabilité par étape)."
+        />
+        <StatTile
+          label="Taux de closing"
+          value={`${winRate}%`}
+          sub={`${won} gagné${won > 1 ? "s" : ""} · ${lost} perdu${lost > 1 ? "s" : ""}`}
+        />
+        <StatTile
+          label="Deals actifs"
+          value={items.filter((p) => p.status !== "won" && p.status !== "lost").length}
+          sub="Prospects encore en jeu."
+        />
       </div>
 
       {/* Conversion funnel */}
@@ -109,26 +81,28 @@ export function ProspectsAnalytics({ items }: { items: ProspectRow[] }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* A ledger of stages: hairline rows, small-caps stage, a thin ink rule on bone
-              (the stat-card progress bar), then the lining count and the step conversion. */}
-          <div className="lining divide-y divide-border">
+          {/* One row per stage: the stage badge, a brand progress bar, the count
+              and the step conversion. */}
+          <div className="divide-y divide-border tabular-nums">
             {funnel.map((stage, i) => {
               const prev = i > 0 ? funnel[i - 1].count : null;
               const conv = prev != null ? pct(stage.count, prev) : null;
               return (
                 <div key={stage.status} className="flex items-center gap-4 py-3">
-                  <div className="smallcaps tracking-sc w-24 shrink-0 text-xs font-medium">
-                    {STATUS_LABEL[stage.status]}
+                  <div className="w-24 shrink-0">
+                    <Badge variant={STATUS_VARIANT[stage.status]}>
+                      {STATUS_LABEL[stage.status]}
+                    </Badge>
                   </div>
-                  <div className="h-1.5 flex-1 bg-secondary">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
                     <div
-                      className="h-full bg-foreground"
+                      className="h-full rounded-full bg-brand"
                       style={{
                         width: `${top > 0 ? Math.max((stage.count / top) * 100, stage.count > 0 ? 8 : 0) : 0}%`,
                       }}
                     />
                   </div>
-                  <div className="w-10 shrink-0 text-right text-sm font-medium">
+                  <div className="w-10 shrink-0 text-right text-sm font-semibold">
                     {stage.count > 0 ? stage.count : "—"}
                   </div>
                   <div className="w-14 shrink-0 text-right text-xs text-muted-foreground">
@@ -142,12 +116,12 @@ export function ProspectsAnalytics({ items }: { items: ProspectRow[] }) {
       </Card>
 
       {/* Value by status */}
-      <Card>
-        <CardHeader className="pb-2">
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-4">
           <CardTitle className="text-base">Répartition par statut</CardTitle>
         </CardHeader>
-        {/* A ledger table (DESIGN.md §4.5) set flush in the card, instead of a row of chips. */}
-        <Table>
+        {/* A table set flush in the card (the card is the frame). */}
+        <Table className={DENSE_TABLE}>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="pl-6">Statut</TableHead>
@@ -159,8 +133,8 @@ export function ProspectsAnalytics({ items }: { items: ProspectRow[] }) {
           <TableBody>
             {byStatus.map((b) => (
               <TableRow key={b.status}>
-                <TableCell className="smallcaps tracking-sc pl-6 text-xs font-medium">
-                  {STATUS_LABEL[b.status]}
+                <TableCell className="pl-6">
+                  <Badge variant={STATUS_VARIANT[b.status]}>{STATUS_LABEL[b.status]}</Badge>
                 </TableCell>
                 <TableCell className="text-right">{b.count}</TableCell>
                 <TableCell className="text-right">

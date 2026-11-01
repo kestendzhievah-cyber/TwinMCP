@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { ForgotPasswordForm } from "./form";
 
 // Utility screen: no SEO value, kept out of the index. The hreflang pair with
@@ -20,8 +21,10 @@ export const metadata: Metadata = {
 
 export default function ForgotPasswordPage() {
   return (
-    <Suspense>
-      <ForgotPasswordForm />
-    </Suspense>
+    <AuthShell locale="en">
+      <Suspense>
+        <ForgotPasswordForm />
+      </Suspense>
+    </AuthShell>
   );
 }

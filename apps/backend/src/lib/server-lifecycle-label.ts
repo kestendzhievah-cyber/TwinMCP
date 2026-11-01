@@ -84,9 +84,9 @@ const FR: Copy = {
 };
 
 const VARIANT: Record<LifecycleState, LifecycleBadgeVariant> = {
-  provisioning: "warning",
+  provisioning: "info",
   running: "success",
-  paused: "info",
+  paused: "secondary",
   no_runtime: "secondary",
   agent_offline: "secondary",
   error: "destructive",

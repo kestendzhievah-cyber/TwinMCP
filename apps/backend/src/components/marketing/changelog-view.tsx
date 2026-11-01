@@ -30,42 +30,44 @@ const COPY: Record<Locale, { eyebrow: string; title: string; description: string
   },
 };
 
-// The changelog is a ledger: one month per block under a double rule, each
-// entry a dated line with a semantic tint for its kind (DESIGN.md §4).
+// One month per card, each entry a dated row with a semantic tint for its
+// kind (docs/DESIGN.md, Badge).
 export function ChangelogView({ locale = "en" }: { locale?: Locale }) {
   const t = COPY[locale];
   const months = groupChangelogByMonth(CHANGELOG, locale);
   return (
     <Section eyebrow={t.eyebrow} title={t.title} description={t.description}>
-      <div className="mx-auto max-w-3xl space-y-14">
+      <div className="mx-auto max-w-3xl space-y-10 md:space-y-12">
         {months.map((month) => (
           <section key={month.key} aria-labelledby={`month-${month.key}`}>
             <h2
               id={`month-${month.key}`}
-              className="smallcaps tracking-sc lining border-b-[3px] border-double border-border pb-3 text-xl font-medium"
+              className="mb-4 font-display text-xl font-bold tracking-tight"
             >
               {month.label}
             </h2>
-            <ol className="divide-y divide-border">
+            <ol className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               {month.entries.map((entry) => {
                 const kind = KIND[entry.kind];
                 const text = entry[locale];
                 return (
                   <li
                     key={`${entry.date}-${entry.en.title}`}
-                    className="grid gap-2 py-5 sm:grid-cols-[9rem_1fr] sm:gap-6"
+                    className="grid gap-2 p-5 sm:grid-cols-[8rem_1fr] sm:gap-6 sm:p-6"
                   >
                     <div className="flex items-center gap-3 sm:flex-col sm:items-start">
                       <time
                         dateTime={entry.date}
-                        className="smallcaps tracking-sc lining text-xs text-muted-foreground"
+                        className="text-sm tabular-nums text-muted-foreground"
                       >
                         {dayLabel(entry.date, locale)}
                       </time>
                       <Badge variant={kind.variant}>{kind[locale]}</Badge>
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-lg font-medium">{text.title}</h3>
+                      <h3 className="font-display text-lg font-semibold tracking-tight">
+                        {text.title}
+                      </h3>
                       <p className="mt-1 text-base leading-7 text-muted-foreground">{text.body}</p>
                     </div>
                   </li>

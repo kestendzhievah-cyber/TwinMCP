@@ -15,7 +15,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Pause, Play, RotateCw, ServerOff, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Pause, Play, RotateCw, ServerOff, Trash2 } from "lucide-react";
 import type { HostType, ServerStatus } from "@/db/schema/platform";
 import {
   DELETE_RUNTIME_KEEPS,
@@ -27,9 +33,10 @@ import {
 type Busy = "start" | "pause" | "restart" | "runtime" | "delete" | null;
 type Confirm = "pause" | "restart" | "runtime" | "delete" | null;
 
-// Oxblood hairline; inverts to an oxblood stamp on hover like the outline variant.
+// Destructive actions outside a confirmation dialog are outline + red text +
+// an icon; the solid red button lives only inside the dialog.
 const destructiveOutline =
-  "border-destructive/60 text-destructive hover:border-destructive hover:bg-destructive hover:text-destructive-foreground";
+  "border-destructive/40 text-destructive hover:border-destructive hover:bg-destructive/10 hover:text-destructive";
 
 /**
  * Server lifecycle controls (contract K4):
@@ -179,23 +186,6 @@ export function ServerControls({
           Pause
         </Button>
       )}
-      {actions.restart && (
-        <Button variant="outline" onClick={() => openConfirm("restart")} disabled={!!busy}>
-          <RotateCw className="h-4 w-4" />
-          Restart
-        </Button>
-      )}
-      {actions.deleteRuntime && (
-        <Button
-          variant="outline"
-          onClick={() => openConfirm("runtime")}
-          disabled={!!busy}
-          className={destructiveOutline}
-        >
-          <ServerOff className="h-4 w-4" />
-          Delete runtime
-        </Button>
-      )}
       <Button
         variant="outline"
         onClick={() => openConfirm("delete")}
@@ -205,6 +195,34 @@ export function ServerControls({
         <Trash2 className="h-4 w-4" />
         Delete
       </Button>
+      {/* Rarer runtime actions live in an overflow menu. Non-modal, so the
+          confirmation dialog it opens gets the focus cleanly. */}
+      {(actions.restart || actions.deleteRuntime) && (
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" disabled={!!busy} aria-label="More actions">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {actions.restart && (
+              <DropdownMenuItem onSelect={() => openConfirm("restart")}>
+                <RotateCw aria-hidden className="h-4 w-4" />
+                Restart
+              </DropdownMenuItem>
+            )}
+            {actions.deleteRuntime && (
+              <DropdownMenuItem
+                onSelect={() => openConfirm("runtime")}
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              >
+                <ServerOff aria-hidden className="h-4 w-4" />
+                Delete runtime
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {/* Pause: light confirmation, nothing is lost. */}
       <Dialog open={confirm === "pause"} onOpenChange={onOpenChange}>
@@ -241,7 +259,7 @@ export function ServerControls({
           </DialogHeader>
           <div className="space-y-2 text-sm">
             <Label htmlFor="confirm-restart-name">
-              Type <span className="no-smallcaps font-mono">{serverName}</span> to confirm
+              Type <span className="font-mono">{serverName}</span> to confirm
             </Label>
             <Input
               id="confirm-restart-name"
@@ -277,7 +295,7 @@ export function ServerControls({
             <DialogDescription>This cannot be undone. It permanently deletes:</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
-            <ul className="list-disc space-y-1 border border-destructive/40 bg-destructive/10 py-2 pl-7 pr-3 text-destructive">
+            <ul className="list-disc space-y-1 rounded-xl border border-destructive/30 bg-destructive/10 py-3 pl-8 pr-4 text-destructive">
               {DELETE_RUNTIME_LOSES.map((line) => (
                 <li key={line}>{line}</li>
               ))}
@@ -285,7 +303,7 @@ export function ServerControls({
             <p className="text-muted-foreground">{DELETE_RUNTIME_KEEPS}</p>
             <div className="space-y-2">
               <Label htmlFor="confirm-runtime-name">
-                Type <span className="no-smallcaps font-mono">{serverName}</span> to confirm
+                Type <span className="font-mono">{serverName}</span> to confirm
               </Label>
               <Input
                 id="confirm-runtime-name"

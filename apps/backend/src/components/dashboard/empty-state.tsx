@@ -1,5 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
@@ -8,36 +7,53 @@ interface EmptyStateProps {
   description?: React.ReactNode;
   primaryAction?: React.ReactNode;
   secondaryAction?: React.ReactNode;
+  /** "destructive" draws the icon circle in the error tint (error pages). */
+  tone?: "default" | "destructive";
+  /** Heading level of the title (h2 by default; h3 inside a titled card). */
+  as?: "h2" | "h3";
   className?: string;
 }
 
-// An empty state (DESIGN.md §5) is a blank slot on the card: a dashed ink
-// hairline on bare stock, the icon bare, a small-caps title, one italic line.
+// An empty state (docs/DESIGN.md, Empty states): a dashed white slot, a 48 px
+// circle holding the icon, a display title, one muted line, then one primary
+// button and an optional link. The caller picks the buttons' variants so the
+// page keeps a single rose primary.
 export function EmptyState({
   icon: Icon,
   title,
   description,
   primaryAction,
   secondaryAction,
+  tone = "default",
+  as: Heading = "h2",
   className,
 }: EmptyStateProps) {
   return (
-    <Card
-      className={cn("border-dashed border-foreground/40 bg-transparent shadow-none", className)}
+    <div
+      className={cn(
+        "flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-border bg-card p-8 text-center sm:p-10",
+        className
+      )}
     >
-      <CardContent className="flex flex-col items-center gap-4 py-14 text-center md:py-20">
-        <Icon aria-hidden className="h-6 w-6 text-muted-foreground" />
-        <div className="max-w-md space-y-2">
-          <h2 className="smallcaps tracking-sc text-base font-medium">{title}</h2>
-          {description && <p className="text-sm italic text-muted-foreground">{description}</p>}
-        </div>
-        {(primaryAction || secondaryAction) && (
-          <div className="mt-2 flex flex-col items-center gap-2 sm:flex-row">
-            {primaryAction}
-            {secondaryAction}
-          </div>
+      <span
+        aria-hidden
+        className={cn(
+          "grid h-12 w-12 place-items-center rounded-full",
+          tone === "destructive" ? "bg-destructive/10 text-destructive" : "bg-secondary text-brand"
         )}
-      </CardContent>
-    </Card>
+      >
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="max-w-md space-y-1.5">
+        <Heading className="font-display text-lg font-semibold tracking-tight">{title}</Heading>
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      </div>
+      {(primaryAction || secondaryAction) && (
+        <div className="mt-1 flex w-full flex-col items-center gap-2 sm:w-auto sm:flex-row">
+          {primaryAction}
+          {secondaryAction}
+        </div>
+      )}
+    </div>
   );
 }

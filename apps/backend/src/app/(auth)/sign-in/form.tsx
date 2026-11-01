@@ -4,11 +4,18 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { AlertCircle, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import {
+  AUTH_LINK,
+  AUTH_QUIET_ACTION,
+  AUTH_TITLE,
+  AuthError,
+  AuthStatusIcon,
+} from "@/components/auth/auth-ui";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 import { createClient } from "@/utils/supabase/client";
 import { track } from "@/lib/analytics/funnel";
 import { friendlyAuthError } from "@/lib/auth/errors";
@@ -19,6 +26,9 @@ import type { Locale } from "@/lib/i18n/locales";
 type Mode = "password" | "magic-link";
 
 const RESEND_COOLDOWN_S = 60;
+
+// The sign-up credit, for the "new here?" link (lib/wallet/pricing.ts).
+const W = { en: walletFacts("en"), fr: walletFacts("fr") };
 
 // Every visible string, per locale. French uses "vous", like the French sign-up
 // and landing pages. The Supabase calls, redirects and analytics are shared;
@@ -46,8 +56,8 @@ const COPY = {
     sendMagicLink: "Send me a magic link",
     useMagicLink: "Use a magic link instead",
     usePassword: "Use a password instead",
-    noAccount: "Don’t have an account yet?",
-    createAccount: "Create an account",
+    noAccount: "New here?",
+    createAccount: `Get ${W.en.signupCredit} free`,
   },
   fr: {
     checkTitle: "Vérifiez votre boîte mail",
@@ -60,20 +70,20 @@ const COPY = {
     email: "E-mail",
     emailPlaceholder: "vous@entreprise.fr",
     password: "Mot de passe",
-    forgot: "Oublié ?",
+    forgot: "Oublié ?",
     resendIn: (s: number) => `Renvoyer dans ${s} s`,
     resendConfirmation: "Renvoyer l’e-mail de confirmation",
     confirmationSent: (email: string) =>
       `Un nouveau lien de confirmation est en route vers ${email}.`,
     spamHint:
-      "Rien reçu ? Regardez dans vos spams ou l’onglet Promotions, puis ouvrez le lien le plus récent.",
+      "Rien reçu ? Regardez dans vos spams ou l’onglet Promotions, puis ouvrez le lien le plus récent.",
     signingIn: "Connexion…",
     signIn: "Se connecter",
     sendMagicLink: "Recevoir un lien de connexion",
     useMagicLink: "Recevoir plutôt un lien par e-mail",
     usePassword: "Utiliser plutôt un mot de passe",
-    noAccount: "Pas encore de compte ?",
-    createAccount: "Créer un compte",
+    noAccount: "Nouveau ?",
+    createAccount: `${W.fr.signupCredit} offerts`,
   },
 } as const;
 
@@ -228,27 +238,16 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
   if (magicLinkSent) {
     return (
       <div className="flex flex-col items-center text-center">
-        {/* The stamp: a hairline icon square between two short rules. */}
-        <div className="flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-          <span
-            aria-hidden
-            className="grid h-12 w-12 place-items-center border border-border text-muted-foreground"
-          >
-            <Mail className="h-5 w-5" />
-          </span>
-        </div>
-        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">{t.checkTitle}</h1>
+        <AuthStatusIcon>
+          <Mail />
+        </AuthStatusIcon>
+        <h1 className={`${AUTH_TITLE} mt-5`}>{t.checkTitle}</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           {t.checkLead} <span className="font-medium text-foreground">{email}</span>.
         </p>
 
         <div role="status" aria-live="polite" className="mt-4 min-h-[2.5rem] self-stretch">
-          {error && (
-            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-left text-sm text-destructive">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </p>
-          )}
+          {error && <AuthError>{error}</AuthError>}
         </div>
 
         <div className="mt-6 flex flex-col gap-2 self-stretch">
@@ -267,7 +266,7 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
               setMode("password");
               setError("");
             }}
-            className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className={AUTH_QUIET_ACTION}
           >
             {t.otherMethod}
           </button>
@@ -278,11 +277,9 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
 
   return (
     <div>
-      {/* The engraved name: small-caps title, italic subtitle, double rule. */}
-      <div className="mb-8">
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">{t.title}</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">{t.subtitle}</p>
-        <Separator variant="double" className="mt-4" />
+      <div className="mb-6">
+        <h1 className={AUTH_TITLE}>{t.title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t.subtitle}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
@@ -306,7 +303,7 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
               <Label htmlFor="password">{t.password}</Label>
               <Link
                 href={authPath("forgotPassword", locale, { email }) as Route}
-                className="smallcaps tracking-sc -my-2.5 inline-flex min-h-10 items-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+                className="-my-2.5 inline-flex min-h-10 items-center text-sm font-medium text-brand underline-offset-4 hover:underline"
               >
                 {t.forgot}
               </Link>
@@ -326,12 +323,7 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
         )}
 
         <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
-          {error && (
-            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </p>
-          )}
+          {error && <AuthError>{error}</AuthError>}
           {errorCode === "email_not_confirmed" && (
             // Unconfirmed account: resend the confirmation email from here
             // instead of leaving the user stuck on an error.
@@ -341,7 +333,7 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
                 variant="outline"
                 onClick={handleResendConfirmation}
                 disabled={resending || resendCooldown > 0 || !email}
-                className="lining"
+                className="tabular-nums"
               >
                 {resending
                   ? t.sending
@@ -350,16 +342,21 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
                     : t.resendConfirmation}
               </Button>
               {resendSent && (
-                <p className="border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
+                <p className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
                   {t.confirmationSent(email)}
                 </p>
               )}
-              <p className="text-xs italic text-muted-foreground">{t.spamHint}</p>
+              <p className="text-xs text-muted-foreground">{t.spamHint}</p>
             </div>
           )}
         </div>
 
-        <Button type="submit" disabled={loading || !email || (mode === "password" && !password)}>
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          disabled={loading || !email || (mode === "password" && !password)}
+        >
           {loading ? t.signingIn : mode === "password" ? t.signIn : t.sendMagicLink}
         </Button>
 
@@ -369,13 +366,13 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
             setMode((m) => (m === "password" ? "magic-link" : "password"));
             setError("");
           }}
-          className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className={AUTH_QUIET_ACTION}
         >
           {mode === "password" ? t.useMagicLink : t.usePassword}
         </button>
       </form>
 
-      <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 border-t border-border pt-5 text-center text-sm text-muted-foreground">
         {t.noAccount}{" "}
         <Link
           href={
@@ -385,7 +382,7 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
               ...Object.fromEntries(new URLSearchParams(intentQuery)),
             }) as Route
           }
-          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
+          className={AUTH_LINK}
         >
           {t.createAccount}
         </Link>

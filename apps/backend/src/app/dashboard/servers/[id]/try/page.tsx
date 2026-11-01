@@ -3,10 +3,9 @@ import { and, eq } from "drizzle-orm";
 import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { servers, userServers, mcpServers } from "@/db/schema/platform";
-import { Separator } from "@/components/ui/separator";
 import { lifecycleState } from "@/lib/server-lifecycle";
 import { TWINMCP_DOCS_SLUG } from "@/lib/provisioning";
-import { ServerNav } from "../activity/server-nav";
+import { ServerHeader } from "../server-header";
 import { ToolPlayground } from "./playground";
 
 export const dynamic = "force-dynamic";
@@ -59,23 +58,12 @@ export default async function TryPage({ params }: { params: Promise<{ id: string
   ).length;
 
   return (
-    <div className="space-y-8">
-      {/* Page header (DESIGN.md §5), same as the server overview and activity. */}
-      <div>
-        <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-          Servers
-        </p>
-        <h1 className="smallcaps tracking-sc mt-2 text-2xl font-medium">{srv.name}</h1>
-        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{srv.slug}</p>
-        <Separator variant="double" className="mt-4" />
-        <div className="mt-4">
-          <ServerNav serverId={srv.id} />
-        </div>
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      <ServerHeader serverId={srv.id} name={srv.name} slug={srv.slug} />
 
       <div className="space-y-2">
-        <h2 className="smallcaps tracking-sc text-lg font-medium">Playground</h2>
-        <p className="max-w-2xl text-sm italic text-muted-foreground">
+        <h2 className="font-display text-xl font-semibold tracking-tight">Playground</h2>
+        <p className="max-w-2xl text-sm text-muted-foreground">
           List the tools of an MCP on this server and run one with a generated form. Calls run for
           real, with the configuration you saved, and are charged and go through the same tool
           policy as your IDE.

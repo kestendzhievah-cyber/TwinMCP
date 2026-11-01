@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Check, X } from "lucide-react";
 import type { Locale } from "@/lib/i18n/locales";
+import { cn } from "@/lib/utils";
 
 type Rule = { id: string; test: (pw: string) => boolean };
 
@@ -53,8 +54,9 @@ export function PasswordStrength({
 
   if (!password) return null;
 
-  // Meter ink follows the semantic set (DESIGN.md §6): oxblood while weak,
-  // ochre while fair or good, racing green once strong.
+  // One segment per rule met, all in the score's tone: destructive while weak,
+  // warning while fair or good, success once strong. The level is also written
+  // out, so the meter never relies on colour alone.
   const tone = score <= 1 ? "bg-destructive" : score <= 3 ? "bg-warning" : "bg-success";
   const label =
     score <= 1 ? t.levels[0] : score === 2 ? t.levels[1] : score === 3 ? t.levels[2] : t.levels[3];
@@ -62,13 +64,15 @@ export function PasswordStrength({
   return (
     <div className="mt-2">
       <div className="flex items-center gap-3">
-        <div className="h-1.5 flex-1 overflow-hidden bg-secondary">
-          <div
-            className={`h-full ${tone} transition-all`}
-            style={{ width: `${(score / RULES.length) * 100}%` }}
-          />
+        <div aria-hidden className="grid flex-1 grid-cols-4 gap-1">
+          {RULES.map((r, i) => (
+            <span
+              key={r.id}
+              className={cn("h-1.5 rounded-full transition-colors", i < score ? tone : "bg-border")}
+            />
+          ))}
         </div>
-        <span className="smallcaps tracking-sc min-w-14 text-right text-xs font-medium text-muted-foreground">
+        <span className="min-w-14 text-right text-xs font-semibold text-muted-foreground">
           {label}
         </span>
       </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { ResetPasswordForm } from "@/app/(auth)/reset-password/form";
 
 // French twin of /reset-password, where a reset link requested from
@@ -20,8 +21,10 @@ export const metadata: Metadata = {
 
 export default function FrResetPasswordPage() {
   return (
-    <Suspense>
-      <ResetPasswordForm locale="fr" />
-    </Suspense>
+    <AuthShell locale="fr">
+      <Suspense>
+        <ResetPasswordForm locale="fr" />
+      </Suspense>
+    </AuthShell>
   );
 }

@@ -4,13 +4,20 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { AlertCircle, Eye, EyeOff, Mail, Sparkles, UserCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Mail, Sparkles, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { PasswordStrength } from "@/components/auth/password-strength";
+import {
+  AUTH_LINK,
+  AUTH_QUIET_ACTION,
+  AUTH_TITLE,
+  AuthError,
+  AuthStatusIcon,
+} from "@/components/auth/auth-ui";
+import { OfferBadge } from "@/components/marketing/offer-badge";
 import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
 import { SIGNUP_OFFER, walletFacts } from "@/components/pricing/wallet-copy";
 import { createClient } from "@/utils/supabase/client";
@@ -84,13 +91,13 @@ const COPY = {
       `Pay as you go, no subscription. Your account starts with ${W.en.signupCredit} of free credit; once you confirm your email you land on the Credits page to top up from ${W.en.minTopup}.`,
     subtitlePromo: `Pay as you go, no subscription. Your account starts with ${W.en.signupCredit} of free credit; once you confirm your email you land on the Credits page.`,
     planSeal: (plan: SignupPlan) => `Signing up for ${planLabels[plan]}`,
-    freeLine: `1 server · up to ${FREE_MCP_LIMIT} MCPs + TwinMCP Docs · ${W.en.signupCredit} free credit, no card`,
+    freeLine: `1 server · up to ${FREE_MCP_LIMIT} MCPs + TwinMCP Docs · no subscription`,
     email: "Email",
     emailPlaceholder: "you@company.com",
     password: "Password",
     passwordPlaceholder: "8+ characters",
     showPassword: "Show password",
-    submitFree: "Create my free account",
+    submitFree: `Create account & claim ${W.en.signupCredit}`,
     submitPaid: "Create my account",
     submitting: "Creating…",
     termsLead: "By creating an account you agree to our",
@@ -119,16 +126,16 @@ const COPY = {
     title: "Créez votre compte TwinMCP",
     subtitleFree: `${SIGNUP_OFFER.fr}, valable ${W.fr.signupDays} jours. Votre premier serveur prêt en 2 minutes environ.`,
     subtitlePaid: (_cadence: SignupCadence) =>
-      `Paiement à l’usage, sans abonnement. Votre compte démarre avec ${W.fr.signupCredit} de crédit offert ; une fois votre e-mail confirmé, vous arrivez sur la page Crédits pour recharger à partir de ${W.fr.minTopup}.`,
-    subtitlePromo: `Paiement à l’usage, sans abonnement. Votre compte démarre avec ${W.fr.signupCredit} de crédit offert ; une fois votre e-mail confirmé, vous arrivez sur la page Crédits.`,
+      `Paiement à l’usage, sans abonnement. Votre compte démarre avec ${W.fr.signupCredit} de crédit offert ; une fois votre e-mail confirmé, vous arrivez sur la page Crédits pour recharger à partir de ${W.fr.minTopup}.`,
+    subtitlePromo: `Paiement à l’usage, sans abonnement. Votre compte démarre avec ${W.fr.signupCredit} de crédit offert ; une fois votre e-mail confirmé, vous arrivez sur la page Crédits.`,
     planSeal: (plan: SignupPlan) => (plan === "free" ? "Crédit offert" : "Paiement à l’usage"),
-    freeLine: `1 serveur · jusqu’à ${FREE_MCP_LIMIT} MCP + TwinMCP Docs · ${W.fr.signupCredit} de crédit offert, sans carte`,
+    freeLine: `1 serveur · jusqu’à ${FREE_MCP_LIMIT} MCP + TwinMCP Docs · sans abonnement`,
     email: "E-mail",
     emailPlaceholder: "vous@entreprise.fr",
     password: "Mot de passe",
     passwordPlaceholder: "8 caractères minimum",
     showPassword: "Afficher le mot de passe",
-    submitFree: "Créer mon compte gratuit",
+    submitFree: `Créer mon compte et recevoir ${W.fr.signupCredit}`,
     submitPaid: "Créer mon compte",
     submitting: "Création…",
     termsLead: "En créant un compte, vous acceptez nos",
@@ -137,20 +144,20 @@ const COPY = {
     and: "et notre",
     privacy: "Politique de confidentialité",
     privacyHref: "/legal/privacy",
-    haveAccount: "Vous avez déjà un compte ?",
+    haveAccount: "Vous avez déjà un compte ?",
     signIn: "Se connecter",
     checkTitle: "Vérifiez votre boîte mail",
     checkLead: "Un lien de confirmation a été envoyé à",
     checkTail: "Cliquez dessus pour activer votre compte.",
     checkTailPaid: "Cliquez dessus pour activer votre compte et ouvrir la page Crédits.",
-    checkSpam: "Rien reçu ? Regardez dans vos spams ou l'onglet Promotions.",
+    checkSpam: "Rien reçu ? Regardez dans vos spams ou l’onglet Promotions.",
     resendIn: (s: number) => `Renvoyer dans ${s} s`,
     resend: "Renvoyer le lien",
-    startOver: "Mauvaise adresse ? Recommencer",
+    startOver: "Mauvaise adresse ? Recommencer",
     existsTitle: "Vous avez déjà un compte",
     existsLead: "Un compte existe déjà pour",
     existsTail:
-      "Connectez-vous pour continuer, ou réinitialisez votre mot de passe si vous l'avez oublié.",
+      "Connectez-vous pour continuer, ou réinitialisez votre mot de passe si vous l’avez oublié.",
     resetPassword: "Réinitialiser le mot de passe",
     useAnother: "Utiliser une autre adresse",
   },
@@ -305,22 +312,16 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
   if (existing) {
     return (
       <div className="flex flex-col items-center text-center">
-        {/* The stamp: a hairline icon square between two short rules. */}
-        <div className="flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-          <span
-            aria-hidden
-            className="grid h-12 w-12 place-items-center border border-border text-muted-foreground"
-          >
-            <UserCheck className="h-5 w-5" />
-          </span>
-        </div>
-        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">{t.existsTitle}</h1>
+        <AuthStatusIcon>
+          <UserCheck />
+        </AuthStatusIcon>
+        <h1 className={`${AUTH_TITLE} mt-5`}>{t.existsTitle}</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           {t.existsLead} <span className="font-medium text-foreground">{email}</span>.{" "}
           {t.existsTail}
         </p>
         <div className="mt-6 flex flex-col gap-2 self-stretch">
-          <Button asChild>
+          <Button asChild size="lg">
             <Link href={signInHref(true)}>{t.signIn}</Link>
           </Button>
           <Button asChild variant="outline">
@@ -336,7 +337,7 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
               setPassword("");
               setError("");
             }}
-            className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className={AUTH_QUIET_ACTION}
           >
             {t.useAnother}
           </button>
@@ -348,29 +349,18 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
   if (done) {
     return (
       <div className="flex flex-col items-center text-center">
-        {/* The stamp: a hairline icon square between two short rules. */}
-        <div className="flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-          <span
-            aria-hidden
-            className="grid h-12 w-12 place-items-center border border-border text-muted-foreground"
-          >
-            <Mail className="h-5 w-5" />
-          </span>
-        </div>
-        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">{t.checkTitle}</h1>
+        <AuthStatusIcon>
+          <Mail />
+        </AuthStatusIcon>
+        <h1 className={`${AUTH_TITLE} mt-5`}>{t.checkTitle}</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           {t.checkLead} <span className="font-medium text-foreground">{email}</span>.{" "}
           {paidIntent ? t.checkTailPaid : t.checkTail}
         </p>
-        <p className="mt-2 text-xs italic text-muted-foreground">{t.checkSpam}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t.checkSpam}</p>
 
         <div role="alert" aria-live="assertive" className="mt-4 min-h-[2.5rem] self-stretch">
-          {error && (
-            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-left text-sm text-destructive">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </p>
-          )}
+          {error && <AuthError>{error}</AuthError>}
         </div>
 
         <div className="mt-6 flex flex-col gap-2 self-stretch">
@@ -379,7 +369,7 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
             variant="outline"
             onClick={handleResend}
             disabled={resendCooldown > 0}
-            className="lining"
+            className="tabular-nums"
           >
             {resendCooldown > 0 ? t.resendIn(resendCooldown) : t.resend}
           </Button>
@@ -391,7 +381,7 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
               setPassword("");
               setError("");
             }}
-            className="smallcaps tracking-sc inline-flex min-h-10 items-center justify-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className={AUTH_QUIET_ACTION}
           >
             {t.startOver}
           </button>
@@ -402,11 +392,16 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
 
   return (
     <div>
-      {/* The engraved name: small-caps title, italic subtitle, the plan seal
-          when one was picked on the pricing page, then the double rule. */}
-      <div className="mb-8">
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">{t.title}</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
+      {/* The offer leads on phones, where the side panel is hidden (≥lg shows
+          it there). Not for a paid intent, where "no card" would mislead. */}
+      <div className="mb-6">
+        {!paidIntent && (
+          <div className="mb-4 lg:hidden">
+            <OfferBadge locale={locale} />
+          </div>
+        )}
+        <h1 className={AUTH_TITLE}>{t.title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           {paidIntent
             ? selectedPromo
               ? t.subtitlePromo
@@ -419,16 +414,11 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
             <span>{t.planSeal(selectedPlan)}</span>
           </Badge>
         )}
-        {/* The side panel (and its free-tier card) is hidden below lg, so
-            phones get the free tier here as one address line (DESIGN.md §4),
-            short enough to keep the button above the fold. Not shown for a
-            paid plan, where "no credit card" would mislead. */}
+        {/* The free credit's terms in one line, for phones (the panel states
+            them on wide screens). */}
         {!paidIntent && (
-          <p className="smallcaps tracking-sc lining mt-3 text-xs text-muted-foreground lg:hidden">
-            {t.freeLine}
-          </p>
+          <p className="mt-3 text-xs text-muted-foreground tabular-nums lg:hidden">{t.freeLine}</p>
         )}
-        <Separator variant="double" className="mt-4" />
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
@@ -487,43 +477,35 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
             a negative margin cancels its flex gap instead of reserving blank
             space between the fields and the button. */}
         <div role="alert" aria-live="assertive" className="empty:-mt-5">
-          {error && (
-            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </p>
-          )}
+          {error && <AuthError>{error}</AuthError>}
         </div>
 
-        <Button type="submit" disabled={loading || !email || !passwordAccepted(password)}>
+        <Button
+          type="submit"
+          size="lg"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center"
+          disabled={loading || !email || !passwordAccepted(password)}
+        >
           {loading ? t.submitting : paidIntent ? t.submitPaid : t.submitFree}
+          {!loading && <ArrowRight aria-hidden />}
         </Button>
       </form>
 
-      <p className="mt-6 text-xs italic text-muted-foreground">
+      <p className="mt-5 text-xs text-muted-foreground">
         {t.termsLead}{" "}
-        <Link
-          href={t.termsHref as Route}
-          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
-        >
+        <Link href={t.termsHref as Route} className={AUTH_LINK}>
           {t.terms}
         </Link>{" "}
         {t.and}{" "}
-        <Link
-          href={t.privacyHref as Route}
-          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
-        >
+        <Link href={t.privacyHref as Route} className={AUTH_LINK}>
           {t.privacy}
         </Link>
         .
       </p>
 
-      <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 border-t border-border pt-5 text-center text-sm text-muted-foreground">
         {t.haveAccount}{" "}
-        <Link
-          href={signInHref(true)}
-          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
-        >
+        <Link href={signInHref(true)} className={AUTH_LINK}>
           {t.signIn}
         </Link>
       </p>

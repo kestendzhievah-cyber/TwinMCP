@@ -30,7 +30,7 @@ export function ActivationLink({
       href={href as Route}
       onClick={() => track({ name: "activation_step_clicked", properties: { step } })}
       className={cn(
-        "inline-flex items-center gap-1 font-medium text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand",
+        "inline-flex items-center gap-1 font-medium text-brand underline-offset-4 hover:underline",
         className
       )}
     >

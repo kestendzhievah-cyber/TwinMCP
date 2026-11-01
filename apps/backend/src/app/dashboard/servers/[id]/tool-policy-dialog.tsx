@@ -9,7 +9,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { AlertTriangle, Plus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -229,13 +229,11 @@ export function ToolPolicyDialog({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <fieldset className="space-y-3">
-              <legend className="smallcaps tracking-sc mb-2 text-xs font-medium text-foreground/85">
-                Mode
-              </legend>
+              <legend className="mb-2 text-sm font-medium text-foreground">Mode</legend>
               {MODES.map((m) => (
                 <label
                   key={m.value}
-                  className="flex cursor-pointer items-start gap-3 border border-border p-3 has-[:checked]:border-foreground"
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:border-input has-[:checked]:border-brand has-[:checked]:bg-brand/5 has-[:checked]:ring-1 has-[:checked]:ring-brand"
                 >
                   <input
                     type="radio"
@@ -243,31 +241,30 @@ export function ToolPolicyDialog({
                     value={m.value}
                     checked={mode === m.value}
                     onChange={() => setMode(m.value)}
-                    className="mt-1 accent-foreground"
+                    className="mt-1 accent-brand"
                   />
                   <span className="space-y-1 text-sm">
-                    <span className="block font-medium">{m.label}</span>
-                    <span className="block italic text-muted-foreground">{m.help}</span>
+                    <span className="block font-semibold">{m.label}</span>
+                    <span className="block text-muted-foreground">{m.help}</span>
                   </span>
                 </label>
               ))}
             </fieldset>
 
             {mode === "allow_list" && allow.size === 0 && (
-              <p className="border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+              <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+                <AlertTriangle aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
                 The allow-list is empty: no tool of this MCP will be callable.
               </p>
             )}
 
             <div className="space-y-3 border-t border-border pt-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="eyebrow flex items-center gap-4 before:h-px before:w-10 before:bg-border before:content-['']">
-                  Tools
-                </p>
+                <p className="eyebrow">Tools</p>
                 {exposedCount !== null && tools && (
                   <span className="text-xs text-muted-foreground">
-                    <span className="lining">{exposedCount}</span> of{" "}
-                    <span className="lining">{tools.length}</span> exposed
+                    <span className="tabular-nums">{exposedCount}</span> of{" "}
+                    <span className="tabular-nums">{tools.length}</span> exposed
                   </span>
                 )}
               </div>
@@ -278,14 +275,14 @@ export function ToolPolicyDialog({
                   <Skeleton className="h-10 w-full" />
                 </div>
               ) : toolsError ? (
-                <p className="border border-info/40 bg-info/10 px-3 py-2 text-xs text-info">
+                <p className="rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-xs text-info">
                   Could not list this MCP&apos;s tools ({toolsError}). If the server is paused or
                   waking up, try again in a moment. You can still type tool names below.
                 </p>
               ) : tools && tools.length === 0 ? (
-                <p className="text-sm italic text-muted-foreground">This MCP exposes no tools.</p>
+                <p className="text-sm text-muted-foreground">This MCP exposes no tools.</p>
               ) : tools ? (
-                <div className="max-h-72 divide-y divide-border overflow-y-auto border border-border">
+                <div className="max-h-72 divide-y divide-border overflow-y-auto rounded-xl border border-border">
                   {tools.map((t) => {
                     const ro = t.annotations?.readOnlyHint === true;
                     const destructive = t.annotations?.destructiveHint === true;
@@ -316,23 +313,23 @@ export function ToolPolicyDialog({
                           )}
                         </div>
                         <div className="flex shrink-0 items-center gap-3">
-                          <label className="smallcaps tracking-sc flex min-h-8 items-center gap-1.5 text-xs text-muted-foreground">
+                          <label className="flex min-h-8 items-center gap-1.5 text-xs text-muted-foreground">
                             <input
                               type="checkbox"
                               checked={allowChecked}
                               disabled={mode !== "allow_list"}
                               onChange={(e) => toggleIn(setAllow, t.name, e.target.checked)}
-                              className="h-4 w-4 accent-foreground"
+                              className="h-4 w-4 accent-brand"
                               aria-label={`Allow ${t.name}`}
                             />
                             allow
                           </label>
-                          <label className="smallcaps tracking-sc flex min-h-8 items-center gap-1.5 text-xs text-muted-foreground">
+                          <label className="flex min-h-8 items-center gap-1.5 text-xs text-muted-foreground">
                             <input
                               type="checkbox"
                               checked={deny.has(t.name)}
                               onChange={(e) => toggleIn(setDeny, t.name, e.target.checked)}
-                              className="h-4 w-4 accent-foreground"
+                              className="h-4 w-4 accent-destructive"
                               aria-label={`Block ${t.name}`}
                             />
                             block
@@ -346,13 +343,13 @@ export function ToolPolicyDialog({
 
               {(extraAllow.length > 0 && mode === "allow_list") || extraDeny.length > 0 ? (
                 <div className="space-y-2">
-                  <p className="text-xs italic text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Names not in the current tool list:
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {mode === "allow_list" &&
                       extraAllow.map((n) => (
-                        <Badge key={`a-${n}`} variant="outline" className="no-smallcaps font-mono">
+                        <Badge key={`a-${n}`} variant="outline" className="font-mono">
                           allow {n}
                           <button
                             type="button"
@@ -364,11 +361,7 @@ export function ToolPolicyDialog({
                         </Badge>
                       ))}
                     {extraDeny.map((n) => (
-                      <Badge
-                        key={`d-${n}`}
-                        variant="destructive"
-                        className="no-smallcaps font-mono"
-                      >
+                      <Badge key={`d-${n}`} variant="destructive" className="font-mono">
                         block {n}
                         <button
                           type="button"
@@ -419,7 +412,7 @@ export function ToolPolicyDialog({
                     <Plus className="h-4 w-4" /> Block
                   </Button>
                 </div>
-                <p className="text-xs italic text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Blocking always wins. Read-only relies on the annotations the MCP author declares;
                   they are hints, so review destructive tools yourself.
                 </p>

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { onboardingGateApplies } from "@/lib/auth/return-to";
 
 /**
@@ -29,7 +30,8 @@ export function OnboardingGate({
 
   if (redirecting) {
     return (
-      <p className="py-10 text-base italic text-muted-foreground" role="status">
+      <p className="flex items-center gap-2 py-10 text-sm text-muted-foreground" role="status">
+        <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />
         Opening the setup…
       </p>
     );

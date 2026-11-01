@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { TopupConversion } from "@/components/analytics/ads-conversion";
 import { getCheckoutConversion } from "@/lib/billing/checkout-conversion";
 import { computeWalletNudge } from "@/lib/billing/upgrade-state";
@@ -86,25 +86,19 @@ export default async function CreditsPage({
   const funded = Boolean(wallet?.funded);
 
   return (
-    <div className="space-y-8">
-      {/* Page header: name line top-left, the account mode in the top-right corner, a double rule under. */}
-      <div>
-        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-          <div>
-            <h1 className="smallcaps tracking-sc text-2xl font-medium">Credits</h1>
-            <p className="mt-1 text-sm italic text-muted-foreground">
-              Prepaid, pay as you go. No subscription.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="smallcaps tracking-sc text-xs text-muted-foreground">Account</span>
-            <Badge variant={funded ? "success" : "secondary"}>
+    <div className="space-y-6 md:space-y-8">
+      <PageHeader
+        title="Credits"
+        description="Prepaid, pay as you go. No subscription."
+        actions={
+          <span className="flex items-center gap-2 text-sm text-muted-foreground">
+            Account
+            <Badge variant={funded ? "success" : "offer"}>
               {funded ? "Pay as you go" : "Free credit"}
             </Badge>
-          </div>
-        </div>
-        <Separator variant="double" className="mt-4" />
-      </div>
+          </span>
+        }
+      />
 
       <TopupConversion conversion={conversion} email={user.email} />
 
@@ -133,6 +127,8 @@ export default async function CreditsPage({
         serverNow={new Date().toISOString()}
       />
 
+      <PriceTable table={publicPriceTable()} buys={whatTenEuroBuys()} />
+
       <LedgerTable
         entries={
           ledger?.entries.map((e) => ({
@@ -149,8 +145,6 @@ export default async function CreditsPage({
         nextCursor={ledger?.nextCursor ?? null}
         paged={Boolean(cursor)}
       />
-
-      <PriceTable table={publicPriceTable()} buys={whatTenEuroBuys()} />
     </div>
   );
 }

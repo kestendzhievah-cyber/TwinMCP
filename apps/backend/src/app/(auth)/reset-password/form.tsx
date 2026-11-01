@@ -8,8 +8,8 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { PasswordStrength } from "@/components/auth/password-strength";
+import { AUTH_LINK, AUTH_TITLE, AuthError, AuthStatusIcon } from "@/components/auth/auth-ui";
 import { createClient } from "@/utils/supabase/client";
 import { friendlyAuthError } from "@/lib/auth/errors";
 // The sign-up rule (8+ characters and two of mixed case, a number, a symbol):
@@ -49,13 +49,13 @@ const COPY = {
     requestNew: "Demander un nouveau lien",
     title: "Nouveau mot de passe",
     subtitle:
-      "Au moins 8 caractères, avec deux éléments parmi : majuscules et minuscules, un chiffre, un symbole.",
+      "Au moins 8 caractères, avec deux éléments parmi : majuscules et minuscules, un chiffre, un symbole.",
     password: "Nouveau mot de passe",
     confirm: "Confirmez le mot de passe",
     mismatch: "Les mots de passe ne correspondent pas.",
     updating: "Mise à jour…",
     update: "Modifier le mot de passe",
-    remembered: "Finalement, il vous est revenu ?",
+    remembered: "Finalement, il vous est revenu ?",
     signIn: "Se connecter",
   },
 } as const;
@@ -107,17 +107,11 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
   if (done) {
     return (
       <div className="flex flex-col items-center text-center">
-        {/* The stamp: a tinted hairline icon square between two short rules. */}
-        <div className="flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-          <span
-            aria-hidden
-            className="grid h-12 w-12 place-items-center border border-success/40 bg-success/10 text-success"
-          >
-            <CheckCircle2 className="h-5 w-5" />
-          </span>
-        </div>
-        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">{t.doneTitle}</h1>
-        <p className="mt-3 text-sm italic text-muted-foreground">{t.doneLead}</p>
+        <AuthStatusIcon tone="success">
+          <CheckCircle2 />
+        </AuthStatusIcon>
+        <h1 className={`${AUTH_TITLE} mt-5`}>{t.doneTitle}</h1>
+        <p className="mt-3 text-sm text-muted-foreground">{t.doneLead}</p>
       </div>
     );
   }
@@ -125,7 +119,7 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
   if (checking) {
     return (
       <div className="flex flex-col items-center text-center">
-        <p className="text-sm italic text-muted-foreground">{t.checking}</p>
+        <p className="text-sm text-muted-foreground">{t.checking}</p>
       </div>
     );
   }
@@ -133,19 +127,13 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
   if (!hasSession) {
     return (
       <div className="flex flex-col items-center text-center">
-        {/* The stamp: a tinted hairline icon square between two short rules. */}
-        <div className="flex items-center justify-center gap-4 before:h-px before:w-10 before:bg-border before:content-[''] after:h-px after:w-10 after:bg-border after:content-['']">
-          <span
-            aria-hidden
-            className="grid h-12 w-12 place-items-center border border-destructive/40 bg-destructive/10 text-destructive"
-          >
-            <AlertCircle className="h-5 w-5" />
-          </span>
-        </div>
-        <h1 className="smallcaps tracking-sc mt-6 text-2xl font-medium">{t.invalidTitle}</h1>
+        <AuthStatusIcon tone="destructive">
+          <AlertCircle />
+        </AuthStatusIcon>
+        <h1 className={`${AUTH_TITLE} mt-5`}>{t.invalidTitle}</h1>
         <p className="mt-3 text-sm text-muted-foreground">{t.invalidLead}</p>
         <div className="mt-8 flex flex-col gap-2 self-stretch">
-          <Button asChild>
+          <Button asChild size="lg">
             <Link href={authPath("forgotPassword", locale) as Route}>{t.requestNew}</Link>
           </Button>
         </div>
@@ -155,10 +143,9 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="smallcaps tracking-sc text-2xl font-medium">{t.title}</h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">{t.subtitle}</p>
-        <Separator variant="double" className="mt-4" />
+      <div className="mb-6">
+        <h1 className={AUTH_TITLE}>{t.title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t.subtitle}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
@@ -191,31 +178,28 @@ export function ResetPasswordForm({ locale = "en" }: { locale?: Locale }) {
             required
             minLength={8}
             aria-invalid={mismatch}
-            className={mismatch ? "border-destructive" : undefined}
+            aria-describedby={mismatch ? "confirm-error" : undefined}
           />
-          {mismatch && <p className="text-xs text-destructive">{t.mismatch}</p>}
-        </div>
-
-        <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
-          {error && (
-            <p className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
+          {mismatch && (
+            <p id="confirm-error" className="flex items-center gap-1.5 text-xs text-destructive">
+              <AlertCircle aria-hidden className="h-3.5 w-3.5 shrink-0" />
+              {t.mismatch}
             </p>
           )}
         </div>
 
-        <Button type="submit" disabled={loading || !canSubmit}>
+        <div role="alert" aria-live="assertive" className="min-h-[2.5rem]">
+          {error && <AuthError>{error}</AuthError>}
+        </div>
+
+        <Button type="submit" size="lg" className="w-full" disabled={loading || !canSubmit}>
           {loading ? t.updating : t.update}
         </Button>
       </form>
 
-      <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 border-t border-border pt-5 text-center text-sm text-muted-foreground">
         {t.remembered}{" "}
-        <Link
-          href={authPath("signIn", locale) as Route}
-          className="text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand"
-        >
+        <Link href={authPath("signIn", locale) as Route} className={AUTH_LINK}>
           {t.signIn}
         </Link>
       </p>

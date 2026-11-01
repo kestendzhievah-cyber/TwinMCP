@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { AlertTriangle, Check, Copy } from "lucide-react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -37,12 +37,12 @@ function prettyText(text: string): string {
   }
 }
 
-/** Ink stock (DESIGN.md §5 logs viewer): bone type on ink in both themes. */
+/** A result block: mono on the quiet secondary fill, scrolling inside itself. */
 function InkBlock({ children, label }: { children: string; label?: string }) {
   return (
     <pre
       aria-label={label}
-      className="dark max-h-[480px] overflow-auto whitespace-pre-wrap break-words bg-background p-4 font-mono text-xs leading-relaxed text-foreground"
+      className="max-h-[480px] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-secondary p-4 font-mono text-xs leading-relaxed text-foreground"
     >
       {children}
     </pre>
@@ -91,18 +91,18 @@ export function ResultPanel({ response, title }: { response: TryResponse; title:
       : undefined;
 
   return (
-    <section aria-label={title} className="border border-border">
+    <section aria-label={title} className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h3 className="smallcaps tracking-sc text-sm font-medium">{title}</h3>
+          <h3 className="font-mono text-sm font-semibold">{title}</h3>
           <Badge variant={status.variant}>{status.label}</Badge>
-          <span className="lining text-xs text-muted-foreground">
+          <span className="text-xs tabular-nums text-muted-foreground">
             {response.latencyMs.toLocaleString("en-US")} ms
           </span>
         </div>
         {response.requestId && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span className="smallcaps tracking-sc">Request id</span>
+            <span className="font-medium">Request id</span>
             <span className="max-w-[16rem] truncate font-mono" title={response.requestId}>
               {response.requestId}
             </span>
@@ -111,7 +111,11 @@ export function ResultPanel({ response, title }: { response: TryResponse; title:
         )}
       </div>
 
-      <div className="flex items-center gap-1 border-b border-border px-4 py-2" role="group">
+      <div
+        className="flex items-center gap-1 border-b border-border px-4 py-2"
+        role="group"
+        aria-label="Result view"
+      >
         {(["result", "raw"] as const).map((v) => (
           <button
             key={v}
@@ -119,10 +123,10 @@ export function ResultPanel({ response, title }: { response: TryResponse; title:
             onClick={() => setView(v)}
             aria-pressed={view === v}
             className={cn(
-              "smallcaps tracking-sc border px-2.5 py-1 text-xs transition-colors",
+              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               view === v
-                ? "border-foreground bg-foreground text-background"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "bg-brand text-brand-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
             {v === "result" ? "Result" : "Raw JSON-RPC"}
@@ -135,9 +139,12 @@ export function ResultPanel({ response, title }: { response: TryResponse; title:
           <InkBlock label="Raw JSON-RPC message">{pretty(response.raw)}</InkBlock>
         ) : response.error ? (
           <div className="space-y-2">
-            <div className="border border-destructive/40 border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <p>{response.error.message}</p>
-              <p className="lining mt-1 font-mono text-xs">code {response.error.code}</p>
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="min-w-0">
+                <p>{response.error.message}</p>
+                <p className="mt-1 font-mono text-xs">code {response.error.code}</p>
+              </div>
             </div>
             {response.status === "no_credit" && (
               <Button asChild size="sm">
@@ -159,7 +166,7 @@ export function ResultPanel({ response, title }: { response: TryResponse; title:
               <InkBlock label="Structured content">{pretty(structured)}</InkBlock>
             )}
             {otherBlocks > 0 && (
-              <p className="text-xs italic text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {otherBlocks} non-text content block{otherBlocks > 1 ? "s" : ""} (images,
                 resources…): see Raw JSON-RPC.
               </p>

@@ -1,140 +1,179 @@
-import { ShieldCheck, Zap, Layers, Workflow } from "lucide-react";
-import { Logo } from "@/components/marketing/logo";
+import { Check, Layers, ShieldCheck, Zap } from "lucide-react";
+import { BrandLogo, MCP_LOGO_KEY } from "@/components/brand/brand-logo";
+import { OfferBadge } from "@/components/marketing/offer-badge";
+import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
+import { walletFacts } from "@/components/pricing/wallet-copy";
 import type { Locale } from "@/lib/i18n/locales";
-import { cn } from "@/lib/utils";
+
+/**
+ * Which side panel an auth screen shows (docs/DESIGN.md, "Auth"):
+ * - "offer": sign-up. The €10 credit front and centre: badge, headline, the
+ *   three terms and what the credit covers.
+ * - "default": sign-in, password screens, OAuth consent. No offer emphasis,
+ *   just what TwinMCP does.
+ */
+export type AuthPanelVariant = "offer" | "default";
+
+// Sign-up credit facts, from the wallet price list (lib/wallet/pricing.ts).
+const W = { en: walletFacts("en"), fr: walletFacts("fr") };
+
+// The AI clients TwinMCP generates a config for, in the marketing order.
+// VS Code has no key on purpose: Microsoft's rules make it a text-only chip.
+const CLIENTS: { key: string | null; label: Record<Locale, string> }[] = [
+  { key: "cursor", label: { en: "Cursor", fr: "Cursor" } },
+  { key: "claude-code", label: { en: "Claude Code", fr: "Claude Code" } },
+  { key: "claude-desktop", label: { en: "Claude Desktop", fr: "Claude Desktop" } },
+  { key: null, label: { en: "VS Code", fr: "VS Code" } },
+  { key: "windsurf", label: { en: "Windsurf", fr: "Windsurf" } },
+  { key: "cline", label: { en: "Cline", fr: "Cline" } },
+  { key: "zed", label: { en: "Zed", fr: "Zed" } },
+  { key: MCP_LOGO_KEY, label: { en: "Any MCP client", fr: "Tout client MCP" } },
+];
 
 // One icon per reason, in order.
-const ICONS = [Zap, Layers, Workflow, ShieldCheck];
+const ICONS = [Zap, Layers, ShieldCheck];
 
-// Verifiable facts only (catalog seed in scripts/seed-mcps.ts, pricing data): no
-// timing claims beyond "about 2 minutes", no MCP that isn't installable.
-type PanelCopy = {
-  heading: string;
-  reasons: { title: string; body: string }[];
-  facts: { label: string; value: string; caption: string }[];
-};
-
-const COPY: Record<Locale, PanelCopy> = {
+// Verifiable facts only (catalogue seed, wallet price list): no timing claim
+// beyond "about 2 minutes", no MCP that isn't installable.
+const COPY = {
   en: {
-    heading: "Why developers pick TwinMCP",
+    worksWith: "Works with",
+    offerHeading: { figure: W.en.signupCredit, after: " credited the moment you sign up" },
+    terms: ["No card", `${W.en.signupDays} days`, "No subscription"],
+    offerSmall: `1 server with up to ${FREE_MCP_LIMIT} MCPs + TwinMCP Docs. Free credit is spent before paid credit; MCPs that run shell commands, code or a headless browser unlock with your first top-up.`,
+    heading: "Your MCP servers, one URL away",
     reasons: [
       {
         title: "Ready in about 2 minutes",
-        body: "Pick an MCP from the catalog, paste the server URL into your client. No Docker, no VPS to keep warm.",
+        body: "Pick an MCP from the catalogue, paste the server URL into your client. No Docker, no VPS to keep warm.",
       },
       {
-        title: "Curated MCPs out of the box",
-        body: "70+ MCPs in the catalog, including fetch, memory, time and Notion.",
-      },
-      {
-        title: "One config, every IDE",
-        body: "The same TwinMCP server URL drops into Cursor, Claude Code, Claude Desktop, Windsurf, Cline, Zed and VS Code.",
+        title: "70+ MCPs out of the box",
+        body: "Fetch, memory, time, Notion and more, each in its own isolated sandbox.",
       },
       {
         title: "Isolated and encrypted",
-        body: "Each server runs in its own sandbox. Secrets encrypted at rest (AES-256-GCM), one API key per server, live logs.",
+        body: "Secrets encrypted at rest (AES-256-GCM), one API key per server, live logs.",
       },
-    ],
-    facts: [
-      { label: "Free tier", value: "1", caption: "server" },
-      { label: "Official", value: "5", caption: "MCPs included" },
-      { label: "Card", value: "0", caption: "credit cards asked" },
     ],
   },
   fr: {
-    heading: "Pourquoi les développeurs choisissent TwinMCP",
+    worksWith: "Compatible avec",
+    offerHeading: { figure: W.fr.signupCredit, after: " crédités dès votre inscription" },
+    terms: ["Sans carte", `${W.fr.signupDays} jours`, "Sans abonnement"],
+    offerSmall: `1 serveur avec jusqu’à ${FREE_MCP_LIMIT} MCP + TwinMCP Docs. Le crédit offert est consommé avant le crédit payé ; les MCP qui exécutent des commandes shell, du code ou un navigateur headless se débloquent à la première recharge.`,
+    heading: "Vos serveurs MCP, derrière une seule URL",
     reasons: [
       {
         title: "Prêt en 2 minutes environ",
-        body: "Choisissez un MCP dans le catalogue, collez l'URL du serveur dans votre client. Sans Docker, sans VPS à maintenir.",
+        body: "Choisissez un MCP dans le catalogue, collez l’URL du serveur dans votre client. Sans Docker, sans VPS à maintenir.",
       },
       {
-        title: "Des MCPs prêts à l'emploi",
-        body: "Plus de 70 MCPs au catalogue, dont fetch, memory, time et Notion.",
-      },
-      {
-        title: "Une config, tous vos IDE",
-        body: "La même URL de serveur TwinMCP fonctionne dans Cursor, Claude Code, Claude Desktop, Windsurf, Cline, Zed et VS Code.",
+        title: "Plus de 70 MCP prêts à l’emploi",
+        body: "Fetch, memory, time, Notion et d’autres, chacun dans son propre sandbox isolé.",
       },
       {
         title: "Isolé et chiffré",
-        body: "Chaque serveur tourne dans son propre sandbox. Secrets chiffrés au repos (AES-256-GCM), une clé API par serveur, logs en direct.",
+        body: "Secrets chiffrés au repos (AES-256-GCM), une clé API par serveur, logs en direct.",
       },
     ],
-    facts: [
-      { label: "Gratuit", value: "1", caption: "serveur" },
-      { label: "Officiels", value: "5", caption: "MCPs inclus" },
-      { label: "Carte", value: "0", caption: "carte bancaire demandée" },
-    ],
   },
-};
+} as const;
 
-// The free tier in three ledger cells, on the card at the foot of the panel.
-// Exported so other auth surfaces can reuse the same ledger.
-export function FreeTierFacts({
+/**
+ * The AI clients as small white chips (logo + name). Logos sit on bg-card,
+ * unmodified, in a "works with" sense only; the visible name labels each one,
+ * so the marks are decorative for assistive tech.
+ */
+export function AuthWorksWith({
   locale = "en",
   className,
 }: {
   locale?: Locale;
   className?: string;
 }) {
+  const label = COPY[locale].worksWith;
   return (
-    <dl className={cn("lining grid grid-cols-3 gap-4 text-center", className)}>
-      {COPY[locale].facts.map(({ label, value, caption }) => (
-        <div key={label}>
-          <dt className="smallcaps tracking-sc text-xs text-muted-foreground">{label}</dt>
-          <dd className="mt-1 text-2xl font-medium">{value}</dd>
-          <dd className="text-xs italic text-muted-foreground">{caption}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className={className}>
+      <p className="eyebrow">{label}</p>
+      <ul aria-label={label} className="mt-3 flex flex-wrap gap-2">
+        {CLIENTS.map(({ key, label: name }) => (
+          <li
+            key={name.en}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground"
+          >
+            {key && <BrandLogo slug={key} size={14} decorative />}
+            <span>{name[locale]}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-// The reverse of the card: a shade darker bone behind a left hairline, the
-// wordmark, a ruled ledger of reasons, and the card itself — the one piece of
-// "product" on the page — sitting on the stacked-card shadow.
-export function AuthPanel({ locale = "en" }: { locale?: Locale }) {
+// The right-hand panel of the split auth layout (≥lg only): a light-blue band
+// with rounded corners. Text on the band stays navy or muted; rose appears only
+// as the solid offer badge and the ≥24px credit figure (AA on surface-band).
+export function AuthPanel({
+  locale = "en",
+  variant = "default",
+}: {
+  locale?: Locale;
+  variant?: AuthPanelVariant;
+}) {
   const t = COPY[locale];
   return (
-    <div className="flex h-full flex-col justify-between border-l border-border bg-secondary/40 px-10 py-12 lg:px-12">
-      <div>
-        <Logo />
-        <h2 className="mt-12 text-balance text-2xl font-medium md:text-3xl">{t.heading}</h2>
-        <ul className="mt-8 divide-y divide-border border-y border-border">
-          {t.reasons.map(({ title, body }, i) => {
-            const Icon = ICONS[i];
-            return (
-              <li key={title} className="flex items-start gap-4 py-4">
+    <aside className="flex h-full flex-col justify-center rounded-3xl bg-surface-band p-10 xl:p-14">
+      {variant === "offer" ? (
+        <div className="max-w-md">
+          <OfferBadge locale={locale} tone="solid" />
+          <h2 className="mt-6 text-balance font-display text-3xl font-bold tracking-tight xl:text-4xl">
+            <span className="text-primary">{t.offerHeading.figure}</span>
+            {t.offerHeading.after}
+          </h2>
+          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-base font-medium text-foreground">
+            {t.terms.map((term) => (
+              <li key={term} className="inline-flex items-center gap-2">
                 <span
                   aria-hidden
-                  className="grid h-9 w-9 shrink-0 place-items-center border border-border text-muted-foreground"
+                  className="grid h-5 w-5 place-items-center rounded-full bg-success text-success-foreground"
                 >
-                  <Icon className="h-4 w-4" />
+                  <Check className="h-3 w-3" />
                 </span>
-                <div>
-                  <h3 className="smallcaps tracking-sc text-base font-medium">{title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{body}</p>
-                </div>
+                <span className="tabular-nums">{term}</span>
               </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      {/* The card itself — verifiable facts only, no testimonials. */}
-      <div className="mt-10 border border-border bg-card p-6 text-center shadow-stack">
-        <p className="smallcaps text-lg font-medium tracking-[0.14em]">TwinMCP</p>
-        <p className="smallcaps mt-1 text-[0.625rem] tracking-[0.24em] text-muted-foreground">
-          Managed MCP Runtimes
-        </p>
-        <div className="rule-double my-5" />
-        <FreeTierFacts locale={locale} />
-        <div className="my-5 h-px bg-border" />
-        <p className="smallcaps tracking-sc text-xs text-muted-foreground">
-          twinmcp.fr · hello@twinmcp.fr · security@twinmcp.fr
-        </p>
-      </div>
-    </div>
+            ))}
+          </ul>
+          <p className="mt-6 text-sm text-muted-foreground">{t.offerSmall}</p>
+          <AuthWorksWith locale={locale} className="mt-10" />
+        </div>
+      ) : (
+        <div className="max-w-md">
+          <h2 className="text-balance font-display text-3xl font-bold tracking-tight">
+            {t.heading}
+          </h2>
+          <ul className="mt-8 space-y-5">
+            {t.reasons.map(({ title, body }, i) => {
+              const Icon = ICONS[i];
+              return (
+                <li key={title} className="flex items-start gap-4">
+                  <span
+                    aria-hidden
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-card text-brand shadow-sm"
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold">{title}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <AuthWorksWith locale={locale} className="mt-10" />
+        </div>
+      )}
+    </aside>
   );
 }

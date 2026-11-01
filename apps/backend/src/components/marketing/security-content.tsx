@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -257,49 +257,51 @@ const COPY = {
   },
 } as const;
 
-const EYEBROW_RULES =
-  "eyebrow flex items-center justify-center gap-4 before:h-px before:w-10 before:shrink-0 before:bg-border before:content-[''] after:h-px after:w-10 after:shrink-0 after:bg-border after:content-['']";
-const LINK =
-  "text-brand underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand";
+const LINK = "font-medium text-brand underline underline-offset-4 hover:decoration-2";
 
 export function SecurityContent({ locale = "en" }: { locale?: Locale }) {
   const t = COPY[locale];
   const list = controls(locale);
   return (
     <>
-      <section className="w-full py-20 md:py-28">
-        <div className="mx-auto max-w-5xl px-6 text-center">
-          <p className={EYEBROW_RULES}>{t.eyebrow}</p>
-          <h1 className="display letterpress mx-auto mt-6 max-w-4xl text-balance text-4xl md:text-5xl lg:text-6xl">
+      <section className="w-full py-16 md:py-24">
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-secondary text-brand">
+            <ShieldCheck className="h-6 w-6" aria-hidden />
+          </span>
+          <p className="eyebrow mt-5">{t.eyebrow}</p>
+          <h1 className="mx-auto mt-3 max-w-4xl text-balance font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             {t.title}
           </h1>
-          <div className="mx-auto mt-8 h-px w-12 bg-foreground/40" />
-          <p className="mx-auto mt-8 max-w-2xl text-lg text-muted-foreground md:text-xl">
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
             {t.lead}
           </p>
         </div>
       </section>
 
       <Section bordered eyebrow={t.controlsEyebrow} title={t.controlsTitle}>
-        <ol className="mx-auto max-w-4xl border-y border-foreground/50">
+        <ol className="mx-auto max-w-4xl divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
           {list.map((c, i) => (
             <li
               key={c.name}
-              className="grid gap-2 border-b border-border py-5 last:border-b-0 sm:grid-cols-[2.5rem_minmax(0,14rem)_minmax(0,1fr)] sm:gap-6"
+              className="grid gap-2 px-5 py-5 sm:grid-cols-[2rem_minmax(0,14rem)_minmax(0,1fr)] sm:gap-6 sm:px-6"
             >
-              <span className="smallcaps lining text-base text-muted-foreground" aria-hidden>
-                {i + 1}.
+              <span
+                className="grid h-7 w-7 place-items-center rounded-full bg-brand/10 text-sm font-semibold tabular-nums text-brand"
+                aria-hidden
+              >
+                {i + 1}
               </span>
-              <h3 className="smallcaps tracking-sc text-base font-medium">{c.name}</h3>
+              <h3 className="font-display text-base font-semibold tracking-tight">{c.name}</h3>
               <p className="text-base text-muted-foreground">{c.body}</p>
             </li>
           ))}
         </ol>
 
-        <div className="mx-auto mt-10 flex max-w-4xl gap-3 border border-warning/40 bg-warning/10 px-5 py-4 text-warning">
+        <div className="mx-auto mt-10 flex max-w-4xl gap-3 rounded-xl border border-warning/30 bg-warning/10 px-5 py-4 text-warning">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
           <div>
-            <p className="smallcaps tracking-sc font-medium">{t.notTitle}</p>
+            <p className="font-semibold">{t.notTitle}</p>
             <p className="mt-1 text-sm">{t.notBody}</p>
           </div>
         </div>
@@ -312,7 +314,7 @@ export function SecurityContent({ locale = "en" }: { locale?: Locale }) {
         title={t.processorsTitle}
         description={t.processorsLead}
       >
-        <div className="mx-auto max-w-4xl border border-border bg-card">
+        <div className="mx-auto max-w-4xl">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -323,7 +325,7 @@ export function SecurityContent({ locale = "en" }: { locale?: Locale }) {
             <TableBody>
               {PROCESSORS.map((p) => (
                 <TableRow key={p.name} className="hover:bg-transparent">
-                  <TableCell className="align-top font-medium">{p.name}</TableCell>
+                  <TableCell className="align-top font-semibold">{p.name}</TableCell>
                   <TableCell className="align-top text-muted-foreground">
                     {p.purpose[locale]}
                   </TableCell>
@@ -341,14 +343,17 @@ export function SecurityContent({ locale = "en" }: { locale?: Locale }) {
       </Section>
 
       <Section bordered>
-        <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
-          <div id="dpa" className="flex flex-col border border-border bg-card p-6">
-            <h2 className="smallcaps tracking-sc text-lg font-medium">{t.dpaTitle}</h2>
+        <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2 md:gap-6">
+          <div
+            id="dpa"
+            className="flex scroll-mt-24 flex-col rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
+          >
+            <h2 className="font-display text-lg font-bold tracking-tight">{t.dpaTitle}</h2>
             <p className="mt-3 flex-1 text-base text-muted-foreground">
               {t.dpaBody}{" "}
               <a
                 href={`mailto:${EDITEUR.email}?subject=DPA`}
-                className={`${LINK} font-mono text-sm`}
+                className={`${LINK} break-all font-mono text-sm`}
               >
                 {EDITEUR.email}
               </a>
@@ -359,15 +364,21 @@ export function SecurityContent({ locale = "en" }: { locale?: Locale }) {
                 data-cta-location="security_dpa"
               >
                 {t.dpaCta}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight aria-hidden />
               </Link>
             </Button>
           </div>
-          <div id="disclosure" className="flex flex-col border border-border bg-card p-6">
-            <h2 className="smallcaps tracking-sc text-lg font-medium">{t.disclosureTitle}</h2>
+          <div
+            id="disclosure"
+            className="flex scroll-mt-24 flex-col rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
+          >
+            <h2 className="font-display text-lg font-bold tracking-tight">{t.disclosureTitle}</h2>
             <p className="mt-3 flex-1 text-base text-muted-foreground">
               {t.disclosureBody}{" "}
-              <a href={`mailto:${SECURITY_EMAIL}`} className={`${LINK} font-mono text-sm`}>
+              <a
+                href={`mailto:${SECURITY_EMAIL}`}
+                className={`${LINK} break-all font-mono text-sm`}
+              >
                 {SECURITY_EMAIL}
               </a>
             </p>

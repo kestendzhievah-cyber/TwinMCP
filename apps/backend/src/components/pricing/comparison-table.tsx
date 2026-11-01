@@ -1,4 +1,5 @@
 import { Check, Minus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -147,49 +148,54 @@ function renderValue(value: string | boolean, locale: Locale) {
   if (value === false) {
     return (
       <>
-        <Minus className="h-4 w-4 text-muted-foreground/50" aria-hidden />
+        <Minus className="h-4 w-4 text-muted-foreground" aria-hidden />
         <span className="sr-only">{t.notIncluded}</span>
       </>
     );
   }
-  return <span className="text-foreground">{featureValueLabel(value, locale)}</span>;
+  return <span className="font-medium text-foreground">{featureValueLabel(value, locale)}</span>;
 }
 
-// A ledger: small-caps column names on a firmer rule, group titles as
-// small-caps sub-headings, hairline rows, lining figures (Table is `lining`).
-// Two columns, so the ledger is held to the cards' width rather than
-// stretched across the whole section. Shared by /plans and /fr/tarifs.
+// The before / after the first top-up table: a rounded white frame (Table),
+// group titles on the light-blue band, the funded column flagged with a blue
+// pill. Two columns, so it is held to the cards' width rather than stretched
+// across the whole section; on phones it scrolls inside its frame. Shared by
+// /plans and /fr/tarifs.
 export function ComparisonTable({ locale = "en" }: { locale?: Locale }) {
   const t = CHROME[locale];
   const grouped = groupBy<FeatureRow, string>(FEATURES, (row) => row.group);
   const groupOrder = Array.from(new Set(FEATURES.map((f) => f.group)));
 
   return (
-    <div className="mx-auto max-w-[860px] border border-border bg-card">
-      <Table>
+    <div className="mx-auto max-w-4xl">
+      <Table containerClassName="shadow-sm" className="min-w-[520px]">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-1/2 min-w-[180px] py-4 align-bottom">{t.features}</TableHead>
+            <TableHead className="h-auto w-1/2 min-w-[180px] py-4 align-bottom">
+              {t.features}
+            </TableHead>
             {planOrder.map((id) => {
               const highlighted = id === HIGHLIGHTED;
               return (
                 <TableHead
                   key={id}
-                  className={cn("py-4 text-center align-bottom", highlighted && "text-foreground")}
+                  className={cn(
+                    "h-auto py-4 text-center align-bottom normal-case tracking-normal",
+                    highlighted && "bg-brand/10"
+                  )}
                 >
                   {/* col-reverse keeps the name first in the DOM while the
-                      note line sits above it, like the card's eyebrow over
-                      the name; names then share a baseline. */}
-                  <div className="flex flex-col-reverse items-center gap-0.5">
-                    <span className="text-sm font-medium text-foreground">
+                      pill sits above it; names then share a baseline. */}
+                  <div className="flex flex-col-reverse items-center gap-1.5">
+                    <span className="font-display text-sm font-semibold text-foreground">
                       {id === "free"
                         ? ACCOUNT_STATES[locale].credit
                         : ACCOUNT_STATES[locale].funded}
                     </span>
                     {highlighted && (
-                      <span className="text-xs font-normal text-muted-foreground">
+                      <Badge variant="brand" className="font-semibold">
                         {t.recommended}
-                      </span>
+                      </Badge>
                     )}
                   </div>
                 </TableHead>
@@ -218,10 +224,10 @@ function GroupBlock({
 }) {
   return (
     <>
-      <TableRow className="border-foreground/40 hover:bg-transparent">
+      <TableRow className="bg-surface-alt hover:bg-surface-alt">
         <TableCell
           colSpan={planOrder.length + 1}
-          className="smallcaps tracking-sc pb-2 pt-7 text-xs font-medium text-muted-foreground"
+          className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
         >
           {featureGroupLabel(group, locale)}
         </TableCell>
@@ -231,15 +237,18 @@ function GroupBlock({
         return (
           <TableRow key={row.label}>
             <TableCell className="align-top">
-              <div className="font-medium text-foreground">{copy.label}</div>
+              <div className="font-semibold text-foreground">{copy.label}</div>
               {copy.description && (
-                <div className="mt-0.5 text-xs italic text-muted-foreground">
+                <div className="mt-0.5 text-xs leading-5 text-muted-foreground">
                   {copy.description}
                 </div>
               )}
             </TableCell>
             {planOrder.map((id) => (
-              <TableCell key={id} className="text-center align-top">
+              <TableCell
+                key={id}
+                className={cn("text-center align-top", id === HIGHLIGHTED && "bg-brand/5")}
+              >
                 <div className="flex min-h-5 items-center justify-center">
                   {renderValue(row.values[id], locale)}
                 </div>
