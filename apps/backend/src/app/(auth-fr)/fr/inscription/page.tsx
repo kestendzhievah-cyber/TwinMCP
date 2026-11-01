@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getOAuthProviders } from "@/lib/auth/oauth-providers";
 import { Suspense } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SIGNUP_OFFER } from "@/components/pricing/wallet-copy";
@@ -30,11 +31,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function FrSignUpPage() {
+export default async function FrSignUpPage() {
+  // The Google button shows once the provider is enabled in Supabase.
+  const { google } = await getOAuthProviders();
   return (
     <AuthShell locale="fr" panel="offer">
       <Suspense>
-        <SignUpForm locale="fr" />
+        <SignUpForm locale="fr" googleEnabled={google} />
       </Suspense>
     </AuthShell>
   );

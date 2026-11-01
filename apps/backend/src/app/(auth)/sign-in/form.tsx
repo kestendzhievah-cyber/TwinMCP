@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
 import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +88,14 @@ const COPY = {
   },
 } as const;
 
-export function SignInForm({ locale = "en" }: { locale?: Locale }) {
+export function SignInForm({
+  locale = "en",
+  googleEnabled = false,
+}: {
+  locale?: Locale;
+  /** Render "Continue with Google" (the page checks the Supabase provider). */
+  googleEnabled?: boolean;
+}) {
   const t = COPY[locale];
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -281,6 +289,13 @@ export function SignInForm({ locale = "en" }: { locale?: Locale }) {
         <h1 className={AUTH_TITLE}>{t.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{t.subtitle}</p>
       </div>
+
+      {googleEnabled && (
+        <>
+          <GoogleButton locale={locale} callbackUrl={callbackUrl} onError={setError} />
+          <AuthDivider locale={locale} />
+        </>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <div className="flex flex-col gap-2">

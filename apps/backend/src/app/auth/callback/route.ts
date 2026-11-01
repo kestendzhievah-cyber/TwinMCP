@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { readAttribution } from "@/lib/analytics/attribution";
 import type { EmailOtpType, User } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import {
@@ -88,7 +89,15 @@ export async function GET(req: NextRequest) {
   }
   if (errorCode || !user) return failTo(errorCode ?? "auth_failed");
 
-  const state = await completePostAuth({ user, locale, request: req });
+  // An OAuth sign-up carries its first-touch attribution in this URL (the
+  // Google button appends it): there is no form metadata to hold it.
+  const urlAttribution = readAttribution(url.search, { locale });
+  const state = await completePostAuth({
+    user,
+    locale,
+    request: req,
+    ...(urlAttribution ? { attribution: urlAttribution } : {}),
+  });
   const destination = postAuthRedirect({
     returnTo,
     intent,

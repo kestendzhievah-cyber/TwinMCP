@@ -18,6 +18,7 @@ import {
   AuthStatusIcon,
 } from "@/components/auth/auth-ui";
 import { OfferBadge } from "@/components/marketing/offer-badge";
+import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
 import { FREE_MCP_LIMIT } from "@/components/pricing/pricing-data";
 import { SIGNUP_OFFER, walletFacts } from "@/components/pricing/wallet-copy";
 import { createClient } from "@/utils/supabase/client";
@@ -163,7 +164,14 @@ const COPY = {
   },
 } as const;
 
-export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
+export function SignUpForm({
+  locale = "en",
+  googleEnabled = false,
+}: {
+  locale?: Locale;
+  /** Render "Continue with Google" (the page checks the Supabase provider). */
+  googleEnabled?: boolean;
+}) {
   const t = COPY[locale];
   const searchParams = useSearchParams();
   // Never trust returnTo outside the site: it ends up in window.location.assign
@@ -420,6 +428,13 @@ export function SignUpForm({ locale = "en" }: { locale?: Locale }) {
           <p className="mt-3 text-xs text-muted-foreground tabular-nums lg:hidden">{t.freeLine}</p>
         )}
       </div>
+
+      {googleEnabled && (
+        <>
+          <GoogleButton locale={locale} callbackUrl={emailRedirectTo} onError={setError} />
+          <AuthDivider locale={locale} />
+        </>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <div className="flex flex-col gap-2">
