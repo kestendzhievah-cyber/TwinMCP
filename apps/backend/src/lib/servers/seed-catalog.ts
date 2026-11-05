@@ -1238,7 +1238,9 @@ export const OFFICIAL_MCPS: SeedEntry[] = [
     version: "0.4.0",
     configSchema: {
       properties: {
-        HUBSPOT_ACCESS_TOKEN: {
+        // The package reads PRIVATE_APP_ACCESS_TOKEN (its README documents only
+        // this name) — HUBSPOT_ACCESS_TOKEN was never picked up by the server.
+        PRIVATE_APP_ACCESS_TOKEN: {
           type: "string",
           required: true,
           secret: true,
@@ -1583,6 +1585,163 @@ export const OFFICIAL_MCPS: SeedEntry[] = [
       },
     },
   },
+
+  // ——— Marketing stack (SEO / analytics / commerce / CMS) — box servers ———
+  {
+    // Node server (npm: shopify-mcp, community GeLi2001). Store DATA over the
+    // Admin GraphQL API — products, orders, customers — complementing
+    // shopify-dev (docs/schema only, no store access).
+    slug: "shopify",
+    name: "Shopify",
+    description:
+      "Work with your Shopify store from the model — search, create and update products and variants, read and update orders, and look up customers. Requires an Admin API access token.",
+    repoUrl: "https://github.com/GeLi2001/shopify-mcp",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y shopify-mcp@1.0.8",
+    version: "1.0.8",
+    configSchema: {
+      properties: {
+        SHOPIFY_ACCESS_TOKEN: {
+          type: "string",
+          required: true,
+          secret: true,
+          description:
+            "Admin API access token of a custom app (shpat_…) with the product/order/customer scopes.",
+        },
+        MYSHOPIFY_DOMAIN: {
+          type: "string",
+          required: true,
+          description: "Your store's myshopify domain, e.g. my-store.myshopify.com",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: @automattic/mcp-wordpress-remote, official Automattic).
+    // Proxy to a WordPress site over its REST API with an application password;
+    // richer tools when the site runs Automattic's `wordpress-mcp` plugin.
+    slug: "wordpress",
+    name: "WordPress",
+    description:
+      "Manage a WordPress site from the model — read, create and update posts and pages, browse media and users. Works with an application password; richer tools with the WordPress MCP plugin installed.",
+    repoUrl: "https://github.com/Automattic/mcp-wordpress-remote",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y @automattic/mcp-wordpress-remote@0.5.4",
+    version: "0.5.4",
+    configSchema: {
+      properties: {
+        WP_API_URL: {
+          type: "string",
+          required: true,
+          description: "Your WordPress site URL, e.g. https://www.example.com/",
+        },
+        WP_API_USERNAME: {
+          type: "string",
+          required: true,
+          description: "WordPress username the server acts as.",
+        },
+        WP_API_PASSWORD: {
+          type: "string",
+          required: true,
+          secret: true,
+          description:
+            "Application password for that user (WP admin → Users → Profile → Application Passwords).",
+        },
+      },
+    },
+  },
+  {
+    // Python server (PyPI: analytics-mcp, official Google). GA4 via the Data +
+    // Admin APIs. Google's libs only accept a credentials FILE, so the pasted
+    // JSON key is written to /tmp at start, then exported as
+    // GOOGLE_APPLICATION_CREDENTIALS. NOTE: this write-then-start pattern is
+    // new in the catalogue — smoke-test one install on a real box before
+    // demoing to a client.
+    slug: "google-analytics",
+    name: "Google Analytics",
+    description:
+      "Query GA4 from the model — accounts and properties, core and realtime reports, funnels, custom dimensions. Requires a Google Cloud service-account key with read access to the property.",
+    repoUrl: "https://github.com/googleanalytics/google-analytics-mcp",
+    runtime: "node",
+    installCmd: "command -v uvx >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh",
+    startCmd:
+      "printf '%s' \"$GA_SERVICE_ACCOUNT_JSON\" > /tmp/ga-sa.json && GOOGLE_APPLICATION_CREDENTIALS=/tmp/ga-sa.json uvx analytics-mcp",
+    version: "latest",
+    configSchema: {
+      properties: {
+        GA_SERVICE_ACCOUNT_JSON: {
+          type: "string",
+          required: true,
+          secret: true,
+          description:
+            "Full JSON key of a Google Cloud service account added to your GA4 property (Viewer role).",
+        },
+        GOOGLE_CLOUD_PROJECT: {
+          type: "string",
+          required: true,
+          description: "The Google Cloud project ID the service account belongs to.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: mcp-server-gsc, community). Search Console analytics —
+    // clicks/impressions/CTR/position by query, page, country, device, with
+    // regex filters and quick-wins detection. Same service-account file
+    // pattern as google-analytics above (smoke-test before demoing).
+    slug: "search-console",
+    name: "Google Search Console",
+    description:
+      "Search Console analytics from the model — clicks, impressions, CTR and positions by query, page, country or device, with regex filters and quick-win detection. Requires a service-account key added to the property.",
+    repoUrl: "https://github.com/ahonn/mcp-server-gsc",
+    runtime: "node",
+    installCmd: "true",
+    startCmd:
+      "printf '%s' \"$GSC_SERVICE_ACCOUNT_JSON\" > /tmp/gsc-sa.json && GOOGLE_APPLICATION_CREDENTIALS=/tmp/gsc-sa.json npx -y mcp-server-gsc@0.3.0",
+    version: "0.3.0",
+    configSchema: {
+      properties: {
+        GSC_SERVICE_ACCOUNT_JSON: {
+          type: "string",
+          required: true,
+          secret: true,
+          description:
+            "Full JSON key of a Google Cloud service account added as a user of the Search Console property.",
+        },
+      },
+    },
+  },
+  {
+    // Node server (npm: dataforseo-mcp-server, official DataForSEO). Live SERPs,
+    // keyword volume, backlinks, on-page audits and domain analytics over the
+    // DataForSEO API (pay-as-you-go credentials).
+    slug: "dataforseo",
+    name: "DataForSEO",
+    description:
+      "SEO data from the model — live SERPs, keyword search volume, backlinks, on-page audits and domain analytics via the DataForSEO API. Requires DataForSEO API credentials (pay-as-you-go).",
+    repoUrl: "https://github.com/dataforseo/mcp-server-typescript",
+    runtime: "node",
+    installCmd: "true",
+    startCmd: "npx -y dataforseo-mcp-server@3.1.3",
+    version: "3.1.3",
+    configSchema: {
+      properties: {
+        DATAFORSEO_USERNAME: {
+          type: "string",
+          required: true,
+          description: "DataForSEO API login (app.dataforseo.com → API Access).",
+        },
+        DATAFORSEO_PASSWORD: {
+          type: "string",
+          required: true,
+          secret: true,
+          description: "DataForSEO API password (not your dashboard password).",
+        },
+      },
+    },
+  },
 ];
 
 // Servers with no viable runtime in a Node box: github (Go/Docker-only) and the
@@ -1666,4 +1825,10 @@ export const CATEGORY: Record<string, string> = {
   netlify: "dev",
   digitalocean: "dev",
   searxng: "web",
+  // Marketing stack
+  shopify: "productivity",
+  wordpress: "productivity",
+  "google-analytics": "data",
+  "search-console": "web",
+  dataforseo: "web",
 };

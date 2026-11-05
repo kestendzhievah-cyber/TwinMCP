@@ -270,6 +270,16 @@ export const FR_DESCRIPTIONS: Record<string, string> = {
     "Parcourt Reddit depuis le modèle : posts populaires d’un subreddit, détail d’un post et son arbre de commentaires. Sans clé API.",
   hubspot:
     "Travaillez avec votre CRM HubSpot depuis le modèle : lire et mettre à jour contacts, entreprises, transactions, tickets et engagements. Nécessite un jeton d’accès d’app privée HubSpot.",
+  shopify:
+    "Gérez votre boutique Shopify depuis le modèle : rechercher, créer et mettre à jour produits et variantes, lire et mettre à jour les commandes, consulter les clients. Nécessite un jeton d’accès Admin API.",
+  wordpress:
+    "Gérez un site WordPress depuis le modèle : lire, créer et mettre à jour articles et pages, parcourir médias et utilisateurs. Fonctionne avec un mot de passe d’application ; outils enrichis avec le plugin WordPress MCP.",
+  "google-analytics":
+    "Interrogez GA4 depuis le modèle : comptes et propriétés, rapports standards et temps réel, entonnoirs, dimensions personnalisées. Nécessite une clé de compte de service Google Cloud avec accès en lecture à la propriété.",
+  "search-console":
+    "Les données Search Console depuis le modèle : clics, impressions, CTR et positions par requête, page, pays ou appareil, avec filtres regex et détection de « quick wins ». Nécessite une clé de compte de service ajoutée à la propriété.",
+  dataforseo:
+    "Les données SEO depuis le modèle : SERP en direct, volumes de recherche, backlinks, audits on-page et analytics de domaine via l’API DataForSEO. Nécessite des identifiants API DataForSEO (paiement à l’usage).",
   clickup:
     "Gère ClickUp depuis le modèle : créer et modifier des tâches, parcourir listes et dossiers, gérer des docs. Nécessite une clé API et un ID d’équipe ClickUp.",
   discord:
@@ -362,8 +372,25 @@ export const FR_FIELD_DESCRIPTIONS: Record<string, string> = {
   "trello.TRELLO_API_KEY": "Clé API Trello (trello.com/power-ups/admin → votre clé).",
   "trello.TRELLO_TOKEN": "Jeton Trello (généré à partir de votre clé API).",
   "kubernetes.KUBECONFIG": "Facultatif. Chemin d’un fichier kubeconfig dans votre box.",
-  "hubspot.HUBSPOT_ACCESS_TOKEN":
+  "hubspot.PRIVATE_APP_ACCESS_TOKEN":
     "Jeton d’accès d’app privée HubSpot (pat-…) avec les scopes CRM nécessaires.",
+  "shopify.SHOPIFY_ACCESS_TOKEN":
+    "Jeton d’accès Admin API d’une app personnalisée (shpat_…) avec les scopes produits/commandes/clients.",
+  "shopify.MYSHOPIFY_DOMAIN":
+    "Le domaine myshopify de votre boutique, par ex. ma-boutique.myshopify.com",
+  "wordpress.WP_API_URL": "L’URL de votre site WordPress, par ex. https://www.exemple.com/",
+  "wordpress.WP_API_USERNAME": "Nom d’utilisateur WordPress au nom duquel le serveur agit.",
+  "wordpress.WP_API_PASSWORD":
+    "Mot de passe d’application de cet utilisateur (admin WP → Utilisateurs → Profil → Mots de passe d’application).",
+  "google-analytics.GA_SERVICE_ACCOUNT_JSON":
+    "Clé JSON complète d’un compte de service Google Cloud ajouté à votre propriété GA4 (rôle Lecteur).",
+  "google-analytics.GOOGLE_CLOUD_PROJECT":
+    "L’ID du projet Google Cloud auquel appartient le compte de service.",
+  "search-console.GSC_SERVICE_ACCOUNT_JSON":
+    "Clé JSON complète d’un compte de service ajouté comme utilisateur de la propriété Search Console.",
+  "dataforseo.DATAFORSEO_USERNAME": "Identifiant API DataForSEO (app.dataforseo.com → API Access).",
+  "dataforseo.DATAFORSEO_PASSWORD":
+    "Mot de passe API DataForSEO (différent du mot de passe du tableau de bord).",
   "clickup.CLICKUP_API_KEY": "Clé API ClickUp (ClickUp → Settings → Apps).",
   "clickup.CLICKUP_TEAM_ID": "L’ID de votre équipe (espace de travail) ClickUp.",
   "discord.DISCORD_TOKEN": "Jeton de bot Discord (Discord Developer Portal → votre app → Bot).",
