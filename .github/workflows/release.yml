@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     branches:
-      - master
+      - main
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -14,6 +14,9 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # npm trusted publishing (OIDC). Unused while NPM_TOKEN publishes; once each
+      # package has a trusted publisher on npmjs.com, the token can be removed.
+      id-token: write
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
@@ -21,7 +24,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+
+      # Trusted publishing needs npm >= 11.5.1 (Node 22 ships npm 10).
+      - name: Upgrade npm
+        run: npm install -g npm@11
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

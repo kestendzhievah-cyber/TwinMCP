@@ -1,0 +1,118 @@
+diff --git a/apps/backend/src/lib/servers/catalog.ts b/apps/backend/src/lib/servers/catalog.ts
+index ef10a49..03e7840 100644
+--- a/apps/backend/src/lib/servers/catalog.ts
++++ b/apps/backend/src/lib/servers/catalog.ts
+@@ -266,6 +266,8 @@ export const FR_DESCRIPTIONS: Record<string, string> = {
+     "Recherche dans la documentation développeur de Shopify et explore le schéma GraphQL Admin depuis le modèle, pour créer des apps Shopify plus vite. Sans clé API.",
+   kubernetes:
+     "Pilote un cluster Kubernetes depuis le modèle : lister et décrire des ressources, lire des logs, appliquer des manifestes. Utilise un kubeconfig présent dans votre box.",
++  "reddit-drafts":
++    "Trouve les fils Reddit où votre produit aide vraiment et rédige des réponses honnêtes que vous relisez et publiez vous-même : opportunités classées, règles du subreddit et vérification des brouillons (mention du fondateur, réponse d’abord, pas de copier-coller). Lecture seule : il ne publie jamais. Nécessite une app Reddit gratuite.",
+   reddit:
+     "Parcourt Reddit depuis le modèle : posts populaires d’un subreddit, détail d’un post et son arbre de commentaires. Sans clé API.",
+   hubspot:
+@@ -372,6 +374,20 @@ export const FR_FIELD_DESCRIPTIONS: Record<string, string> = {
+   "trello.TRELLO_API_KEY": "Clé API Trello (trello.com/power-ups/admin → votre clé).",
+   "trello.TRELLO_TOKEN": "Jeton Trello (généré à partir de votre clé API).",
+   "kubernetes.KUBECONFIG": "Facultatif. Chemin d’un fichier kubeconfig dans votre box.",
++  "reddit-drafts.REDDIT_CLIENT_ID":
++    "Identifiant client d’une app Reddit de type script (reddit.com/prefs/apps → create another app → script).",
++  "reddit-drafts.REDDIT_CLIENT_SECRET": "Secret de cette app Reddit.",
++  "reddit-drafts.REDDIT_USERNAME":
++    "Facultatif. Votre nom d’utilisateur Reddit, envoyé dans le User-Agent comme Reddit le demande.",
++  "reddit-drafts.DRAFTS_BRAND":
++    "Le nom de votre produit, par exemple Acme. Les brouillons le citent au plus une fois, avec la mention du fondateur.",
++  "reddit-drafts.DRAFTS_BRAND_URL": "Facultatif. Le site de votre produit, par exemple acme.com.",
++  "reddit-drafts.DRAFTS_FACTS":
++    "Facultatif. Les seuls faits produit que les brouillons peuvent affirmer, un par ligne. Sans eux, ils n’en affirment aucun.",
++  "reddit-drafts.DRAFTS_KEYWORDS":
++    "Facultatif. Recherches séparées par des virgules, par exemple crm freelance, outil de facturation.",
++  "reddit-drafts.DRAFTS_SUBREDDITS":
++    "Facultatif. Subreddits à parcourir, séparés par des virgules, par exemple freelance, smallbusiness.",
+   "hubspot.PRIVATE_APP_ACCESS_TOKEN":
+     "Jeton d’accès d’app privée HubSpot (pat-…) avec les scopes CRM nécessaires.",
+   "shopify.SHOPIFY_ACCESS_TOKEN":
+diff --git a/apps/backend/src/lib/servers/seed-catalog.ts b/apps/backend/src/lib/servers/seed-catalog.ts
+index b5228b0..416f168 100644
+--- a/apps/backend/src/lib/servers/seed-catalog.ts
++++ b/apps/backend/src/lib/servers/seed-catalog.ts
+@@ -1224,6 +1224,71 @@ export const OFFICIAL_MCPS: SeedEntry[] = [
+     version: "latest",
+     configSchema: { properties: {} },
+   },
++  {
++    // Node server (npm: @twinmcp/reddit-drafts, packages/reddit-drafts in this repo).
++    // Finds Reddit threads where a product helps and drafts replies for a human to
++    // post. Read-only by design: no tool posts. Reddit's app-only OAuth (free app).
++    slug: "reddit-drafts",
++    name: "Reddit Drafts",
++    description:
++      "Find Reddit threads where your product genuinely helps and draft honest replies for you to review and post: ranked opportunities, subreddit rules, and a draft checker (disclosure, answer first, no copy-paste). Read-only: it never posts. Needs a free Reddit script app.",
++    repoUrl: "https://github.com/kestendzhievah-cyber/TwinMCP/tree/main/packages/reddit-drafts",
++    runtime: "node",
++    installCmd: "true",
++    startCmd: "npx -y @twinmcp/reddit-drafts@0.1.0",
++    version: "0.1.0",
++    configSchema: {
++      properties: {
++        REDDIT_CLIENT_ID: {
++          type: "string",
++          required: true,
++          secret: true,
++          description:
++            "Client id of a Reddit script app (reddit.com/prefs/apps → create another app → script).",
++        },
++        REDDIT_CLIENT_SECRET: {
++          type: "string",
++          required: true,
++          secret: true,
++          description: "Secret of that Reddit app.",
++        },
++        REDDIT_USERNAME: {
++          type: "string",
++          required: false,
++          description: "Optional. Your Reddit username, sent in the User-Agent as Reddit asks.",
++        },
++        DRAFTS_BRAND: {
++          type: "string",
++          required: true,
++          description:
++            "Your product's name, e.g. Acme. Drafts mention it at most once, with a disclosure.",
++        },
++        DRAFTS_BRAND_URL: {
++          type: "string",
++          required: false,
++          description: "Optional. Your product's site, e.g. acme.com.",
++        },
++        DRAFTS_FACTS: {
++          type: "string",
++          required: false,
++          description:
++            "Optional. The only product facts drafts may state, one per line. Without it, drafts state none.",
++        },
++        DRAFTS_KEYWORDS: {
++          type: "string",
++          required: false,
++          description:
++            "Optional. Comma-separated searches, e.g. crm for freelancers, invoice tool.",
++        },
++        DRAFTS_SUBREDDITS: {
++          type: "string",
++          required: false,
++          description:
++            "Optional. Comma-separated subreddits to search, e.g. freelance, smallbusiness.",
++        },
++      },
++    },
++  },
+   {
+     // Node server (npm: @hubspot/mcp-server, official HubSpot). CRM contacts,
+     // companies, deals, tickets and engagements. Needs a private-app token.
+@@ -1812,6 +1877,7 @@ export const CATEGORY: Record<string, string> = {
+   "shopify-dev": "dev",
+   kubernetes: "dev",
+   reddit: "web",
++  "reddit-drafts": "productivity",
+   hubspot: "productivity",
+   clickup: "productivity",
+   discord: "productivity",
