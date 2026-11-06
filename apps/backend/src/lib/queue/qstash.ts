@@ -61,6 +61,28 @@ export function getReceiver(): Receiver | null {
   return _receiver;
 }
 
+/**
+ * The URL QStash signed for, to check the signature's `sub` claim against.
+ * enqueue() publishes to `${APP_URL}${JOB_PATH}`, so that is the URL to verify.
+ * req.url cannot be used: behind the VPS reverse proxy the standalone server
+ * sees its internal address (http://0.0.0.0:3000/...), so every verify threw
+ * "invalid subject" and QStash jobs were all rejected with a 401. Without
+ * APP_URL, fall back to the forwarded host/proto, then to req.url.
+ */
+export function jobVerifyUrl(
+  reqUrl: string,
+  headers: { get(name: string): string | null },
+  appUrl: string | undefined = process.env.APP_URL
+): string {
+  if (appUrl) return `${appUrl.replace(/\/$/, "")}${JOB_PATH}`;
+  const host = headers.get("x-forwarded-host") ?? headers.get("host");
+  if (host) {
+    const proto = (headers.get("x-forwarded-proto") ?? "https").split(",")[0].trim();
+    return `${proto}://${host.split(",")[0].trim()}${JOB_PATH}`;
+  }
+  return reqUrl;
+}
+
 export function isQueueEnabled(): boolean {
   return !!process.env.QSTASH_TOKEN && !!process.env.APP_URL;
 }

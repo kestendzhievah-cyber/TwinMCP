@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
-import { getReceiver, runJob, type Job } from "@/lib/queue/qstash";
+import { getReceiver, jobVerifyUrl, runJob, type Job } from "@/lib/queue/qstash";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
       const valid = await receiver.verify({
         signature,
         body,
-        url: req.url,
+        // The public URL QStash signed for, not the proxied internal req.url.
+        url: jobVerifyUrl(req.url, req.headers),
       });
       if (!valid) {
         return NextResponse.json({ message: "Invalid signature" }, { status: 401 });
