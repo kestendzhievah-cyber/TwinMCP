@@ -63,6 +63,8 @@ export const TRANSLATED_TWINS: ReadonlyArray<{ en: string; fr: string }> = [
   { en: "/plans", fr: "/fr/tarifs" },
   { en: "/sign-up", fr: "/fr/inscription" },
   { en: "/migrate-from-smithery", fr: "/fr/migrer-depuis-smithery" },
+  // Smithery migration assistant (components/marketing/migrate-assistant.tsx).
+  { en: "/migrate", fr: "/fr/migrer" },
   { en: "/security", fr: "/fr/securite" },
   // Auth screens (app/(auth-fr)/fr/…; lib/i18n/auth-paths.ts). Not indexed.
   { en: "/sign-in", fr: "/fr/connexion" },

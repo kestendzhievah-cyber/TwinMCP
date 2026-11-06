@@ -26,6 +26,7 @@ import {
 import { PLAN_CAPABILITIES } from "@/lib/plan-features";
 import { CATALOGUE_COUNT, getComparison } from "@/lib/compare/data";
 import type { Locale } from "@/lib/i18n/locales";
+import { ASSISTANT_PATHS } from "@/lib/migrate/paths";
 
 // The Smithery migration landing (EN /migrate-from-smithery, FR
 // /fr/migrer-depuis-smithery). Every section takes a `locale` prop; the page
@@ -140,6 +141,7 @@ const COPY = {
       lead: "Most MCPs hosted on Smithery are open-source packages, so the code itself does not change. What moves is the hosting, the secrets and one block of client config. TwinMCP runs each server in its own isolated sandbox and gives it one URL that serves all its MCPs, reached with an API key from your account.",
       primary: `Start with ${EN.signupCredit} free`,
       secondary: "See pricing",
+      assistant: "Not sure which MCP it is? Paste your Smithery server and get your plan",
       facts: [
         `${EN.signupCredit} of free credit`,
         `${free.servers} server`,
@@ -271,6 +273,7 @@ const COPY = {
       lead: "La plupart des MCP hébergés sur Smithery sont des paquets open source : leur code ne change pas. Ce que vous déplacez, c’est l’hébergement, les secrets et un bloc de configuration client. TwinMCP fait tourner chaque serveur dans son propre sandbox isolé et lui donne une seule URL qui sert tous ses MCP, appelée avec une clé API de votre compte.",
       primary: `Démarrer avec ${FR.signupCredit} offerts`,
       secondary: "Voir les tarifs",
+      assistant: "Pas sûr du MCP ? Colle ton serveur Smithery et obtiens ton plan",
       facts: [
         `${FR.signupCredit} de crédit offert`,
         `${free.servers} serveur`,
@@ -476,6 +479,15 @@ export function MigrationHero({ locale = "en" }: LocaleProps) {
             </Link>
           </Button>
         </div>
+        <p className="mt-5 text-sm">
+          <Link
+            href={ASSISTANT_PATHS[locale] as Route}
+            className="inline-flex items-center gap-1 text-brand underline-offset-4 hover:underline"
+          >
+            {t.assistant}
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </p>
         <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
           {t.facts.map((fact) => (
             <li key={fact} className="inline-flex items-center gap-1.5">

@@ -47,6 +47,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: SMITHERY_WINDOW_PRIORITY,
     },
     {
+      url: `${SITE_URL}/migrate`,
+      lastModified: CONTENT_UPDATED,
+      changeFrequency: "weekly",
+      priority: SMITHERY_WINDOW_PRIORITY,
+    },
+    {
       url: `${SITE_URL}/blog`,
       lastModified: CONTENT_UPDATED,
       changeFrequency: "weekly",
@@ -229,6 +235,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${SITE_URL}/fr/migrer-depuis-smithery`,
+      lastModified: CONTENT_UPDATED,
+      changeFrequency: "weekly",
+      priority: SMITHERY_WINDOW_PRIORITY,
+    },
+    {
+      url: `${SITE_URL}/fr/migrer`,
       lastModified: CONTENT_UPDATED,
       changeFrequency: "weekly",
       priority: SMITHERY_WINDOW_PRIORITY,
