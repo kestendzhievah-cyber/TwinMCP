@@ -7,3 +7,6 @@ out
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+
+# Bundled DB ops for the production image (scripts/build-ops.mjs)
+ops/

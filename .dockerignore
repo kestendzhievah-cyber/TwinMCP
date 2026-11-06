@@ -12,6 +12,11 @@
 **/.env.development
 **/.env.production
 **/.env.*.local
+# Any other local env copy (e.g. .env.actuelle) holds real secrets
+**/.env.*
+!**/.env.example
+# Generated in the builder stage
+apps/backend/ops
 
 # VCS & editor
 .git

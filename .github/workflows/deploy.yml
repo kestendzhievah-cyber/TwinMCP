@@ -1,16 +1,11 @@
 name: Deploy Backend
 
+# Manual only. Production is deployed by Dokploy straight from the repo, and the
+# container runs its own migrations and catalogue seed at start
+# (apps/backend/docker-entrypoint.sh). This workflow needs the VPS_* and
+# DATABASE_URL_UNPOOLED repository secrets, which are not set; it stays as a
+# manual fallback (e.g. a rollback to a given SHA once those secrets exist).
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/backend/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - "scripts/smoke-seo.sh"
-      - ".github/workflows/deploy.yml"
-      - "Dockerfile"
-      - "docker-compose.yml"
   workflow_dispatch:
     inputs:
       sha:

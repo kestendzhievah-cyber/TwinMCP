@@ -69,6 +69,9 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_GITHUB_URL=$NEXT_PUBLIC_GITHUB_URL \
     NEXT_PUBLIC_LINKEDIN_URL=$NEXT_PUBLIC_LINKEDIN_URL
 RUN node ./node_modules/next/dist/bin/next build
+# Database ops for the container start (docker-entrypoint.sh): the migrations
+# and the MCP catalogue seed, bundled so the runner needs no tsx / dev deps.
+RUN node scripts/build-ops.mjs
 
 FROM base AS runner
 WORKDIR /app
@@ -80,9 +83,17 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/apps/backend/public ./apps/backend/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/backend/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/backend/.next/static ./apps/backend/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/backend/ops ./apps/backend/ops
+COPY --from=builder --chown=nextjs:nodejs /app/apps/backend/src/db/migrations ./apps/backend/src/db/migrations
+COPY --from=builder --chown=nextjs:nodejs /app/apps/backend/docker-entrypoint.sh ./apps/backend/docker-entrypoint.sh
+# Strip CR in case the file was checked out on Windows.
+RUN tr -d '\r' < ./apps/backend/docker-entrypoint.sh > /tmp/entrypoint.sh \
+    && cat /tmp/entrypoint.sh > ./apps/backend/docker-entrypoint.sh \
+    && rm /tmp/entrypoint.sh
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 WORKDIR /app/apps/backend
-CMD ["node", "server.js"]
+# Migrations, then the catalogue seed, then the server (see docker-entrypoint.sh).
+CMD ["sh", "docker-entrypoint.sh"]
