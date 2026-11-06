@@ -1,6 +1,6 @@
 {
   "name": "@twinmcp/reddit-drafts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server that finds Reddit threads where your product genuinely helps and drafts honest replies for YOU to review and post. Read-only: it has no tool that posts.",
   "type": "module",
   "bin": {

@@ -1,6 +1,6 @@
 {
   "name": "@twinmcp/tools-ai-sdk",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "TwinMCP tools for Vercel AI SDK",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -1,6 +1,6 @@
 {
   "name": "@twinmcp/mcp",
-  "version": "2.1.8",
+  "version": "2.2.0",
   "mcpName": "io.github.kestendzhievah-cyber/twinmcp",
   "description": "MCP server for TwinMCP",
   "scripts": {
