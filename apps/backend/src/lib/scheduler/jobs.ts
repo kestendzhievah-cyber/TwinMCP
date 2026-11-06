@@ -140,6 +140,17 @@ async function churn(): Promise<JobOutcome> {
   return { summary: `${r.alerted} alerted of ${r.atRisk} at risk` };
 }
 
+// Re-enqueues MCP installs that never completed (lost or rejected
+// install-mcp jobs), with a small per-row attempt budget.
+async function repairInstalls(): Promise<JobOutcome> {
+  const { runRepairInstalls } = await import("@/lib/mcp/repair-installs");
+  const r = await runRepairInstalls();
+  return {
+    ok: r.errors === 0,
+    summary: `${r.stuck} stuck install(s), ${r.requeued} re-queued, ${r.exhausted} out of retries, ${r.errors} error(s)`,
+  };
+}
+
 export const JOBS: readonly JobDef[] = [
   // Compute billing: a stopped meter means compute is used without being billed.
   {
@@ -192,5 +203,12 @@ export const JOBS: readonly JobDef[] = [
     schedule: { kind: "daily", hour: 9, minute: 0 },
     timeoutMs: 15 * MIN,
     run: nudges,
+  },
+  // A lost install leaves an MCP on "still installing" for ever.
+  {
+    name: "repair-installs",
+    schedule: { kind: "every", minutes: 10, offsetMinutes: 6 },
+    timeoutMs: 3 * MIN,
+    run: repairInstalls,
   },
 ];
